@@ -1,16 +1,34 @@
-# React + Vite
+# Trufit SQS - Frontend Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🛠 Tech Stack
 
-Currently, two official plugins are available:
+- **Framework:** React 18 + TypeScript (Vite)
+- **Routing:** React Router v6
+- **Backend/Auth:** Supabase
+- **Database Schema:** Relational (Employees -> UserCredentials -> Roles)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🔐 Authentication & Security
 
-## React Compiler
+- **Public Access:** Only `/home` and `/webapp/login` are accessible without a session.
+- **Route Protection:** All internal routes are wrapped in `<ProtectedRoute />`.
+- **Role-Based Access (RBAC):** The Dashboard adapts its UI based on the `role` integer/string fetched from the `UserCredentials` join.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 📁 Folder Structure
 
-## Expanding the ESLint configuration
+- `src/context/`: Contains `AuthContext.tsx` (Global session state).
+- `src/lib/`: Contains `supabaseClient.ts` (DB Connection).
+- `src/pages/internal/`: Dashboard and Department-specific tools.
+- `src/pages/public/`: Customer-facing landing pages.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 Getting Started
+
+1. `cd frontend`
+2. `npm install`
+3. Create a `.env` file with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. `npm run dev`
+
+## 📝 Implementation Notes for Devs
+
+- When querying the login, perform a join between `UserCredentials` and `Roles` to get the `role_name`.
+- Use the `useAuth()` hook to access the current user's role anywhere in the app.
+- Reference the DB Schema diagram for Foreign Key relationships between Employee IDs and Credentials.

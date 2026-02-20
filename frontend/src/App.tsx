@@ -5,39 +5,35 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-
-// Import your pages - Ensure the filenames match exactly (Case Sensitive!)
+import ProtectedRoute from "./components/ProtectedRoute"; // The bouncer
 import Home from "./pages/public/Home";
 import LoginPage from "./pages/internal/LoginPage";
-import Dashboard from "./pages/internal/Dashboard.tsx";
+import Dashboard from "./pages/internal/Dashboard";
 
 const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Customer Redirect */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        {/* Public - No ID needed */}
         <Route path="/home" element={<Home />} />
+        <Route path="/webapp/login" element={<LoginPage />} />
 
-        {/* Web App Area */}
+        {/* 🛡️ SECURITY WRAPPER STARTS HERE */}
+        <Route element={<ProtectedRoute />}>
+          {/* Any route inside here is invisible unless logged in */}
+          <Route path="/webapp/dashboard" element={<Dashboard />} />
+          {/* Add future protected pages here */}
+        </Route>
+
+        {/* Redirects */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
         <Route
           path="/webapp"
           element={<Navigate to="/webapp/login" replace />}
         />
-        <Route path="/webapp/login" element={<LoginPage />} />
-        <Route path="/webapp/dashboard" element={<Dashboard />} />
 
-        {/* 404 Page */}
-        <Route
-          path="*"
-          element={
-            <div className="flex items-center justify-center h-screen">
-              <h1 className="text-2xl font-bold font-sans">
-                404 - Page Not Found
-              </h1>
-            </div>
-          }
-        />
+        {/* 404 */}
+        <Route path="*" element={<div>404 Not Found</div>} />
       </Routes>
     </Router>
   );

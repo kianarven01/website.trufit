@@ -18,18 +18,15 @@ const App: React.FC = () => {
         <Route path="/home" element={<Home />} />
         <Route path="/webapp/login" element={<LoginPage />} />
 
-        {/* 🛡️ SECURITY WRAPPER STARTS HERE */}
         <Route element={<ProtectedRoute />}>
-          {/* Any route inside here is invisible unless logged in */}
           <Route path="/webapp/dashboard" element={<Dashboard />} />
-          {/* Add future protected pages here */}
         </Route>
 
         {/* Redirects */}
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route
           path="/webapp"
-          element={<Navigate to="/webapp/login" replace />}
+          element={<Navigate to="/webapp/dashboard" replace />}
         />
 
         {/* 404 */}

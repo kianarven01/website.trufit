@@ -2,16 +2,14 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute = () => {
-  const { isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
 
-  console.log("Is the user logged in?", isAuthenticated); // DEBUG: Check your console!
+  if (loading) return <div>Loading...</div>;
 
-  if (!isAuthenticated) {
-    // Kick them out!
+  if (!user) {
     return <Navigate to="/webapp/login" replace />;
   }
 
-  // Let them in
   return <Outlet />;
 };
 

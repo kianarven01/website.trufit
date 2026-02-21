@@ -1,14 +1,21 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const Dashboard: React.FC = () => {
-  // role should now be a string (e.g., 'Sales') fetched from your Roles table join
   const { user, role, logout } = useAuth();
 
   // Helper to check roles (matching your DB role_name values)
   const isSales = role?.toLowerCase() === "sales";
   const isPurchasing = role?.toLowerCase() === "purchasing";
   const isAdmin = role?.toLowerCase() === "admin";
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    // After clearing state, send them back to the login gate
+    navigate("/webapp/login", { replace: true });
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -40,11 +47,10 @@ const Dashboard: React.FC = () => {
         {/* User Info & Logout at bottom */}
         <div className="pt-6 border-t border-slate-700">
           <button
-            onClick={logout}
-            className="w-full flex items-center space-x-3 text-gray-400 hover:text-red-400 transition-colors p-2 text-sm"
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
           >
-            <span>🚪</span>
-            <span>Sign Out</span>
+            Sign Out
           </button>
         </div>
       </aside>
@@ -57,11 +63,7 @@ const Dashboard: React.FC = () => {
               System Dashboard
             </h1>
             <p className="text-slate-500 mt-2 text-lg">
-              Welcome back,{" "}
-              <span className="font-bold text-blue-600">{user?.name}</span>
-              <span className="ml-2 px-2 py-1 bg-slate-200 rounded text-xs text-slate-600 font-mono uppercase">
-                {role}
-              </span>
+              Welcome back, {user?.name}
             </p>
           </div>
           <div className="text-right">

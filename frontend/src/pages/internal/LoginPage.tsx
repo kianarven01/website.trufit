@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
@@ -10,6 +10,14 @@ const LoginPage: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    // If the bouncer recognizes you, he sends you straight to the party
+    if (!loading && user) {
+      navigate("/webapp/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

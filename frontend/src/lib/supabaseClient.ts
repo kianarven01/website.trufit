@@ -4,4 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = "https://fcmpbkhdgghpbwyzndhn.supabase.co";
 const supabaseAnonKey = "sb_publishable_wyyflyYnktUY0Ow_TlhVKg_CIo0hRAH";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  db: { schema: "Main" },
+});

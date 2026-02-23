@@ -1,15 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-// Define the shape of our context so TypeScript knows what functions are available
 interface AuthContextType {
   user: any;
   role: string | null;
   loading: boolean;
-  login: (
-    inputUsername: string,
-    inputPass: string,
-  ) => Promise<{ success: boolean }>;
+  login: (u: string, p: string) => Promise<{ success: boolean }>;
   logout: () => void;
 }
 
@@ -19,7 +15,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on initial app load
   useEffect(() => {
     const savedUser = localStorage.getItem("trufit_user");
     if (savedUser) {
@@ -29,33 +24,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const login = async (inputUsername: string, inputPass: string) => {
-    interface TrufitAuthResponse {
-      username: string;
-      employee: {
-        name: string;
-        role: {
-          name: string;
-        } | null;
-      } | null;
-    }
-
     const { data } = await supabase
       .from("UserCredentials")
       .select(
         `
-      username,
-      employee:"employeeID" ( 
-        name, 
-        role:"roleID" ( name ) 
-      )
-    `,
+        username,
+        employee:"employeeID" ( name, role:"roleID" ( name ) )
+      `,
       )
       .eq("username", inputUsername)
       .single();
 
     if (data) {
-      const authData = data as unknown as TrufitAuthResponse;
-
+      const authData = data as any;
       const userData = {
         name: authData.employee?.name || "Unknown User",
         role: authData.employee?.role?.name || "Staff",
@@ -63,8 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setUser(userData);
       localStorage.setItem("trufit_user", JSON.stringify(userData));
-
-      console.log("Login Successful for:", userData.name);
+      console.log("User logged in successfully:", userData);
       return { success: true };
     }
     return { success: false };
@@ -93,8 +73,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };

@@ -52,14 +52,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       return { success: true };
     } catch (error: any) {
-      // If it's a 401, we get the clean message from Laravel
+      if (error.response?.status === 401) {
+        return {
+          success: false,
+          message: "Wrong username or password",
+        };
+      }
+
       if (error.response) {
         return {
           success: false,
-          message: error.response.data.message || "Invalid Credentials",
+          message: error.response.data.message || "Login failed",
         };
       }
-      return { success: false, message: "Connection lost." };
+
+      return { success: false, message: "Server unreachable." };
     }
   };
 

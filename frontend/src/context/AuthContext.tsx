@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    //Check for both user data AND the Sanctum token
     const savedUser = localStorage.getItem("trufit_user");
     const token = localStorage.getItem("trufit_token");
 
@@ -38,12 +37,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password: inputPass,
       });
 
-      // Axios wraps the response in a 'data' object
       const { data: apiResponse } = response.data;
 
       const userData = {
         username: apiResponse.user.username,
         employeeID: apiResponse.user.employeeID,
+        name: apiResponse.user.name || apiResponse.user.username,
+        role: apiResponse.role,
       };
 
       setUser(userData);

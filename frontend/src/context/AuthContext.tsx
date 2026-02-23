@@ -1,11 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import api from "@/api/axios";
+
+const API_URL = "http://localhost:8000/api";
 
 interface AuthContextType {
   user: any;
   role: string | null;
   loading: boolean;
-  login: (u: string, p: string) => Promise<{ success: boolean }>;
+  login: (
+    u: string,
+    p: string,
+  ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
 
@@ -16,43 +21,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    //Check for both user data AND the Sanctum token
     const savedUser = localStorage.getItem("trufit_user");
-    if (savedUser) {
+    const token = localStorage.getItem("trufit_token");
+
+    if (savedUser && token) {
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
   }, []);
 
   const login = async (inputUsername: string, inputPass: string) => {
-    const { data } = await supabase
-      .from("UserCredentials")
-      .select(
-        `
-        username,
-        employee:"employeeID" ( name, role:"roleID" ( name ) )
-      `,
-      )
-      .eq("username", inputUsername)
-      .single();
+    try {
+      const response = await api.post("/login", {
+        username: inputUsername,
+        password: inputPass,
+      });
 
-    if (data) {
-      const authData = data as any;
+      // Axios wraps the response in a 'data' object
+      const { data: apiResponse } = response.data;
+
       const userData = {
-        name: authData.employee?.name || "Unknown User",
-        role: authData.employee?.role?.name || "Staff",
+        username: apiResponse.user.username,
+        employeeID: apiResponse.user.employeeID,
       };
 
       setUser(userData);
       localStorage.setItem("trufit_user", JSON.stringify(userData));
-      console.log("User logged in successfully:", userData);
+      localStorage.setItem("trufit_token", apiResponse.token);
+
       return { success: true };
+    } catch (error: any) {
+      // If it's a 401, we get the clean message from Laravel
+      if (error.response) {
+        return {
+          success: false,
+          message: error.response.data.message || "Invalid Credentials",
+        };
+      }
+      return { success: false, message: "Connection lost." };
     }
-    return { success: false };
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("trufit_user");
+    localStorage.removeItem("trufit_token");
     console.log("User logged out successfully");
   };
 

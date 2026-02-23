@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import KeyGenerator from "../../components/admin/KeyGenerator";
 
 const Dashboard: React.FC = () => {
   const { user, role, logout } = useAuth();
@@ -10,6 +11,7 @@ const Dashboard: React.FC = () => {
   const isPurchasing = role?.toLowerCase() === "purchasing";
   const isAdmin = role?.toLowerCase() === "admin";
   const navigate = useNavigate();
+  console.log("Current User Role:", role);
 
   const handleLogout = () => {
     logout();
@@ -37,9 +39,18 @@ const Dashboard: React.FC = () => {
 
           {/* Settings only visible to ADMIN */}
           {isAdmin && (
-            <div className="flex items-center space-x-3 text-gray-300 hover:text-white cursor-pointer p-2 transition-colors">
-              <span>⚙️</span>
-              <span>Settings</span>
+            <div className="bg-white p-8 rounded-2xl shadow-sm border-t-8 border-slate-900 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest">
+                  Staff Onboarding
+                </h3>
+                <span className="text-slate-900 text-xl">👤</span>
+              </div>
+              <p className="text-slate-500 text-sm">
+                Generate keys for new department members.
+              </p>
+
+              <KeyGenerator />
             </div>
           )}
         </nav>

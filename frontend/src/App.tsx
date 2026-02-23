@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/ProtectedRoute"; // The bouncer
 import Home from "./pages/public/Home";
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
+import Register from "./pages/internal/Register";
 
 const App: React.FC = () => {
   return (
@@ -17,6 +18,7 @@ const App: React.FC = () => {
         {/* Public - No ID needed */}
         <Route path="/home" element={<Home />} />
         <Route path="/webapp/login" element={<LoginPage />} />
+        <Route path="/webapp/register" element={<Register />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/webapp/dashboard" element={<Dashboard />} />

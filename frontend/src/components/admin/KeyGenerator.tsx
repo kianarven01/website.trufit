@@ -7,9 +7,9 @@ const KeyGenerator: React.FC = () => {
 
   const handleGenerate = async () => {
     try {
-      // This calls the route we set up in Laravel
       const response = await api.post("/admin/generate-key", {
-        role_id: selectedRole,
+        // Use parseInt to ensure we send a number, not a string
+        role_id: parseInt(selectedRole),
       });
       setGeneratedKey(response.data.data.key);
     } catch (error) {

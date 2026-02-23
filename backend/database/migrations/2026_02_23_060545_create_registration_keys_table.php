@@ -6,22 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
+
     public function up(): void
     {
-        Schema::create('registration_keys', function (Blueprint $table) {
+        Schema::create('Main.RegistrationKeys', function (Blueprint $table) {
             $table->id();
+            $table->string('key_code')->unique();
+            $table->foreignId('role_id')->constrained('Main.Roles');
+            $table->boolean('is_used')->default(false);
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('registration_keys');
+        Schema::dropIfExists('Main.RegistrationKeys');
     }
 };

@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class RegistrationKey extends Model
 {
-    // Explicitly set the table name with the Main schema prefix
     protected $table = 'Main.RegistrationKeys';
 
     protected $fillable = [
@@ -15,4 +14,6 @@ class RegistrationKey extends Model
         'is_used',
         'expires_at'
     ];
+
+    public $timestamps = false;
 }

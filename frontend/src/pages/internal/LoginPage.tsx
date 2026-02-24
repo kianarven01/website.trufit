@@ -6,7 +6,7 @@ import api from "@/api/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -18,6 +18,7 @@ import {
 
 import placeholder from "@/assets/placeholder.jpeg";
 import trufit_logo from "@/assets/trufit_logo.png";
+import { Eye, EyeOff } from "react-feather";
 
 const LoginPage: React.FC = () => {
   const { login, user, loading } = useAuth();
@@ -77,9 +78,13 @@ const LoginPage: React.FC = () => {
         id: response.data.role_id,
         name: response.data.role_name,
       });
-      navigate("/webapp/register", { state: { role: response.data.role_name, key: regKey } });
+      navigate("/webapp/register", {
+        state: { role: response.data.role_name, key: regKey },
+      });
     } catch (err: any) {
-      setRegKeyError(err.response?.data?.message || "Invalid registration key.");
+      setRegKeyError(
+        err.response?.data?.message || "Invalid registration key.",
+      );
     } finally {
       setLoadingState(false);
     }
@@ -93,7 +98,6 @@ const LoginPage: React.FC = () => {
       <div className="absolute inset-0 bg-black/40"></div>
 
       <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] overflow-hidden">
-        
         {/* LEFT: Logo */}
         <section className="md:w-1/2 flex flex-col justify-center items-center bg-blue-50 p-8 md:p-12">
           <img src={trufit_logo} alt="Trufit Logo" className="w-64 mb-6" />
@@ -106,13 +110,16 @@ const LoginPage: React.FC = () => {
         <section className="md:w-1/2 p-6 md:p-12 flex flex-col justify-center">
           <Card className="border-0 shadow-none">
             <CardHeader className="space-y-2 text-center">
-              <CardTitle className="text-2xl font-bold text-slate-900">Employee Login</CardTitle>
-              <CardDescription>Enter your credentials to access the SQS Portal</CardDescription>
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Employee Login
+              </CardTitle>
+              <CardDescription>
+                Enter your credentials to access the SQS Portal
+              </CardDescription>
             </CardHeader>
 
             <CardContent className="flex flex-col gap-4 p-4">
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                
                 {/* Username */}
                 <div className="space-y-1">
                   <Label htmlFor="username">Username</Label>
@@ -144,20 +151,23 @@ const LoginPage: React.FC = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </div>
 
                 {/* Login Error */}
-                {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
+                {loginError && (
+                  <p className="text-red-500 text-sm">{loginError}</p>
+                )}
 
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="accent-blue-900"
-                    />
+                    <input type="checkbox" className="accent-blue-900" />
                     Remember Me
                   </label>
 
@@ -210,7 +220,9 @@ const LoginPage: React.FC = () => {
           <Card className="w-96 p-6 bg-white">
             <CardHeader className="text-center">
               <CardTitle>Register New Account</CardTitle>
-              <CardDescription>Enter your registration key to proceed</CardDescription>
+              <CardDescription>
+                Enter your registration key to proceed
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleVerifyKey} className="flex flex-col gap-4">
@@ -223,12 +235,14 @@ const LoginPage: React.FC = () => {
                   onChange={(e) => setRegKey(e.target.value.toUpperCase())}
                   required
                 />
-                
-                {/* Registration Key Error */}
-                {regKeyError && <p className="text-red-500 text-sm">{regKeyError}</p>}
 
-                <Button 
-                  type="submit" 
+                {/* Registration Key Error */}
+                {regKeyError && (
+                  <p className="text-red-500 text-sm">{regKeyError}</p>
+                )}
+
+                <Button
+                  type="submit"
                   className="w-full mt-4 bg-trufitBlue text-white hover:bg-blue-950"
                   disabled={loadingState}
                 >

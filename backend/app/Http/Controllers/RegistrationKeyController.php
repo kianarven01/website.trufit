@@ -2,34 +2,52 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\RegistrationKey;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use App\Models\Role;
+use Illuminate\Validation\Rule;
 
 
 class RegistrationKeyController extends Controller
 {
-    public function generate(Request $request)
+    public function getRoles()
     {
-        // 1. Validate that the Admin sent a valid Role ID
-        $request->validate([
-            'role_id' => 'required|integer'
-        ]);
 
-        // 2. Generate a clean, readable key (e.g., TRUFIT-XJ92L)
-        $newKey = 'TRUFIT-' . strtoupper(Str::random(6));
+        $roles = Role::all(['id', 'name', 'permissions']);
 
-        // 3. We can't SAVE yet (because we haven't migrated), 
-        // but we can return it to React to test the UI!
         return response()->json([
             'status' => 'success',
-            'message' => 'Key generated successfully',
-            'data' => [
-                'key' => $newKey,
-                'role_id' => $request->role_id,
-                'expires_in' => '24 Hours'
+            'data'   => $roles
+        ]);
+    }
+
+    public function generate(Request $request)
+    {
+
+        $request->merge(['role_id' => (int) $request->role_id]);
+
+        $request->validate([
+            'role_id' => [
+                'required',
+                'integer',
+                Rule::exists(Role::class, 'id')
             ]
+        ]);
+
+        $newKey = 'TRUFIT-' . strtoupper(bin2hex(random_bytes(3)));
+
+        $keyEntry = RegistrationKey::create([
+            'key_code'   => $newKey,
+            'role_id'    => $request->role_id,
+            'is_used'    => false,
+            'expires_at' => now()->addHours(24),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => ['key' => $keyEntry->key_code]
         ]);
     }
 
@@ -37,22 +55,17 @@ class RegistrationKeyController extends Controller
     {
         $request->validate(['key_code' => 'required|string']);
 
-        // Find the key in the Main schema
         $key = RegistrationKey::where('key_code', $request->key_code)
             ->where('is_used', false)
+            ->where('expires_at', '>', now())
             ->first();
 
         if (!$key) {
-            return response()->json(['message' => 'Invalid or expired key'], 422);
+            return response()->json(['message' => 'This key is invalid, already used, or expired.'], 422);
         }
 
-        // Get the role name so the UI can say "Welcome, New Technician!"
         $role = Role::find($key->role_id);
 
-        return response()->json([
-            'status' => 'success',
-            'role_name' => $role->name,
-            'role_id' => $role->id
-        ]);
+        return response()->json(['status' => 'success', 'data' => \App\Models\Role::all()]);
     }
 }

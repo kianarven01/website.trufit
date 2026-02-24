@@ -2,60 +2,48 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "@/api/axios";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+
+import placeholder from "@/assets/placeholder.jpeg";
+import trufit_logo from "@/assets/trufit_logo.png";
+
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Step 1 State
-  const [regKey, setRegKey] = useState("");
-  const [assignedRole, setAssignedRole] = useState({ id: null, name: "" });
-
-  // Step 2 State
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     confirmPassword: "",
-    employeeID: "", // We can link this to their record later
   });
 
-  // Action: Verify the Registration Key
-  const handleVerifyKey = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await api.post("/verify-registration-key", {
-        key_code: regKey,
-      });
-      setAssignedRole({
-        id: response.data.role_id,
-        name: response.data.role_name,
-      });
-      setStep(2);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Invalid registration key.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Action: Create the Account
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (formData.password !== formData.confirmPassword) {
       return setError("Passwords do not match.");
     }
 
     setLoading(true);
+    setError("");
+
     try {
       await api.post("/register", {
-        ...formData,
-        role_id: assignedRole.id,
-        key_code: regKey,
+        username: formData.username,
+        password: formData.password,
       });
+
       alert("Registration successful! You can now log in.");
       navigate("/webapp/login");
     } catch (err: any) {
@@ -66,85 +54,75 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="p-8">
-          <h2 className="text-3xl font-black italic text-red-600 tracking-tighter mb-2">
-            TRUFIT SQS
-          </h2>
-          <p className="text-slate-500 mb-8 font-medium">
-            {step === 1
-              ? "Verify your employee access key"
-              : `Joining as ${assignedRole.name}`}
+    <main
+      className="h-screen w-screen flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden select-none p-4"
+      style={{ backgroundImage: `url(${placeholder})` }}
+    >
+      <div className="absolute inset-0 bg-black/40"></div>
+
+      <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] overflow-hidden">
+        {/* Left side with logo */}
+        <section className="md:w-1/2 flex flex-col justify-center items-center bg-blue-50 p-8 md:p-12">
+          <img src={trufit_logo} alt="Trufit Logo" className="w-64 mb-6" />
+          <p className="text-center text-slate-700 text-lg">
+            Create a new account to access the SQS Portal.
           </p>
+        </section>
 
-          {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold mb-6 border border-red-100">
-              ⚠️ {error}
-            </div>
-          )}
+        {/* Register form */}
+        <section className="md:w-1/2 p-6 md:p-12 flex flex-col justify-center">
+          <Card className="border-0 shadow-none">
+            <CardHeader className="space-y-2 text-center">
+              <CardTitle className="text-2xl font-bold text-slate-900">
+                Employee Registration
+              </CardTitle>
+              <CardDescription>
+                Fill in your details to create a new account
+              </CardDescription>
+            </CardHeader>
 
-          {step === 1 ? (
-            /* STEP 1: KEY VERIFICATION */
-            <form onSubmit={handleVerifyKey} className="space-y-6">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">
-                  Registration Key
-                </label>
-                <input
-                  type="text"
-                  placeholder="TRUFIT-XXXXXX"
-                  className="w-full p-4 bg-slate-100 border-none rounded-xl font-mono text-lg focus:ring-2 focus:ring-red-600 outline-none transition-all"
-                  value={regKey}
-                  onChange={(e) => setRegKey(e.target.value.toUpperCase())}
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-red-600 text-white font-black py-4 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {loading ? "VERIFYING..." : "CONTINUE"}
-              </button>
-            </form>
-          ) : (
-            /* STEP 2: ACCOUNT DETAILS */
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-3 bg-slate-100 rounded-lg outline-none focus:ring-2 focus:ring-red-600"
-                  onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-1">
-                    Password
-                  </label>
-                  <input
+            <CardContent className="flex flex-col gap-4 p-4">
+              {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-bold mb-4 border border-red-100">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              <form onSubmit={handleRegister} className="flex flex-col gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Enter username"
+                    value={formData.username}
+                    onChange={(e) =>
+                      setFormData({ ...formData, username: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label htmlFor="password">Set Password</Label>
+                  <Input
+                    id="password"
                     type="password"
-                    className="w-full p-3 bg-slate-100 rounded-lg outline-none focus:ring-2 focus:ring-red-600"
+                    placeholder="Enter password"
+                    value={formData.password}
                     onChange={(e) =>
                       setFormData({ ...formData, password: e.target.value })
                     }
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-1">
-                    Confirm
-                  </label>
-                  <input
+                <div className="space-y-1">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
                     type="password"
-                    className="w-full p-3 bg-slate-100 rounded-lg outline-none focus:ring-2 focus:ring-red-600"
+                    placeholder="Confirm password"
+                    value={formData.confirmPassword}
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -154,37 +132,32 @@ const Register: React.FC = () => {
                     required
                   />
                 </div>
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-black transition-colors mt-4"
-              >
-                {loading ? "CREATING ACCOUNT..." : "FINISH REGISTRATION"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="w-full text-slate-400 text-xs font-bold hover:text-slate-600"
-              >
-                Back to Key Entry
-              </button>
-            </form>
-          )}
-        </div>
-        <div className="bg-slate-50 p-6 text-center border-t border-slate-100">
-          <p className="text-sm text-slate-500">
-            Already have an account?{" "}
-            <Link
-              to="/webapp/login"
-              className="text-red-600 font-bold hover:underline"
-            >
-              Sign In
-            </Link>
-          </p>
-        </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-black transition-colors mt-4"
+                >
+                  {loading ? "CREATING ACCOUNT..." : "Create Account"}
+                </Button>
+              </form>
+            </CardContent>
+
+            <CardFooter className="flex flex-col gap-1 pt-6 border-t-2 border-slate-100 text-center">
+              <p className="text-sm text-slate-500">
+                Already have an account?{" "}
+                <Link
+                  to="/webapp/login"
+                  className="text-red-600 font-bold hover:underline"
+                >
+                  Sign In
+                </Link>
+              </p>
+            </CardFooter>
+          </Card>
+        </section>
       </div>
-    </div>
+    </main>
   );
 };
 

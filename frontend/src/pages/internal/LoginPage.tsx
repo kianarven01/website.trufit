@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -54,17 +54,16 @@ const LoginPage: React.FC = () => {
     <main className="h-screen w-screen bg-trufitBlue flex items-center justify-center overflow-hidden select-none">
       <div className="w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] overflow-hidden flex flex-col lg:flex-row m-6">
         <section className="lg:w-1/2 hidden lg:block relative">
-        <img
-          src={trufit_img1}
-          alt="Trufit Auto Center"
-          className="w-full h-full object-cover"
-        />
+          <img
+            src={trufit_img1}
+            alt="Trufit Auto Center"
+            className="w-full h-full object-cover"
+          />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-      </section>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        </section>
 
         <div className="lg:w-1/2 w-full p-10 flex flex-col justify-center">
-
           {/* Logo */}
           <div className="flex justify-center pt-6">
             <img
@@ -111,10 +110,8 @@ const LoginPage: React.FC = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       className="border-slate-200 focus:ring-trufitBlue focus:border-trufitBlue"
                     />
-                    <span>
-
-                    </span>
-                    </div>
+                    <span></span>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-sm mt-0">
@@ -130,26 +127,28 @@ const LoginPage: React.FC = () => {
                     Forgot Password?
                   </button>
                 </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-blue-900 hover:bg-trufitBlue text-white font-semibold h-11 transition-all mt-8"
+                >
+                  {isSubmitting ? "Authenticating..." : "Sign In to System"}
+                </Button>
               </form>
 
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-blue-900 hover:bg-trufitBlue text-white font-semibold h-11 transition-all mt-8"
-              >
-                {isSubmitting ? "Authenticating..." : "Sign In to System"}
-              </Button>
-              
               <div className="flex items-center justify-between mt-2 mb-4">
                 <p className="text-[10px] uppercase tracking-wide text-slate-600">
                   Don't have an account?
                 </p>
-                <a href="#" className="text-[14px] text-blue-900 hover:text-trufitBlue font-bold">
+                <a
+                  href="/webapp/register"
+                  className="text-[14px] text-blue-900 hover:text-trufitBlue font-bold"
+                >
                   Register Account
                 </a>
               </div>
             </CardContent>
-
 
             <CardFooter className="flex flex-col gap-1 pt-6 border-t-2 border-slate-100">
               <p className="text-[10px] uppercase tracking-wide text-slate-400 text-center">
@@ -163,7 +162,7 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-    {/*  
+      {/*  
       <Card>
         <CardHeader className="space-y-2 text-center">
           <CardTitle className="text-2xl font-bold text-slate-900">

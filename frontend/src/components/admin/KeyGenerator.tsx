@@ -1,55 +1,75 @@
-import React, { useState } from "react";
-import api from "@/api/axios"; // Using your specific alias
+import React, { useState, useEffect } from "react";
+import api from "@/api/axios";
+
+interface Role {
+  id: number;
+  name: string;
+  permissions: any;
+}
 
 const KeyGenerator: React.FC = () => {
-  const [selectedRole, setSelectedRole] = useState("2");
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRole, setSelectedRole] = useState("");
   const [generatedKey, setGeneratedKey] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch roles on component mount
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await api.get("/admin/roles");
+        setRoles(response.data.data);
+        if (response.data.data.length > 0) {
+          setSelectedRole(response.data.data[0].id.toString());
+        }
+      } catch (error) {
+        console.error("Failed to load roles", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const handleGenerate = async () => {
     try {
       const response = await api.post("/admin/generate-key", {
-        // Use parseInt to ensure we send a number, not a string
         role_id: parseInt(selectedRole),
       });
       setGeneratedKey(response.data.data.key);
     } catch (error) {
-      console.error("Key generation failed", error);
+      alert("Failed to generate key. Ensure role still exists.");
     }
   };
 
   return (
     <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
       <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">
-        Assign Department
+        Assign Dynamic Role
       </label>
+
       <select
         value={selectedRole}
         onChange={(e) => setSelectedRole(e.target.value)}
+        disabled={isLoading}
         className="w-full p-2 mb-4 border rounded bg-white text-slate-800"
       >
-        <option value="1">Admin</option>
-        <option value="2">Technician</option>
-        <option value="3">Sales</option>
-        <option value="4">Purchasing</option>
+        {roles.map((role) => (
+          <option key={role.id} value={role.id}>
+            {role.name}
+          </option>
+        ))}
       </select>
 
       <button
         onClick={handleGenerate}
-        className="w-full bg-red-600 text-white font-bold py-2 rounded shadow-lg hover:bg-red-700 transition-all"
+        disabled={isLoading || !selectedRole}
+        className="w-full bg-red-600 text-white font-bold py-2 rounded hover:bg-red-700 transition-all"
       >
-        Generate Registration Key
+        {isLoading ? "Loading Roles..." : "Generate Registration Key"}
       </button>
 
-      {generatedKey && (
-        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded animate-pulse">
-          <p className="text-[10px] text-green-600 font-bold uppercase">
-            Copy this key:
-          </p>
-          <p className="text-xl font-mono font-black text-green-800 tracking-wider">
-            {generatedKey}
-          </p>
-        </div>
-      )}
+      {/* ... Generated Key Display ... */}
     </div>
   );
 };

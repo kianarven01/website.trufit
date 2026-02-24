@@ -18,7 +18,9 @@ class AuthController extends Controller
             'password' => 'required|string'
         ]);
 
-        $user = User::with('employee.role')->where('username', $fields['username'])->first();
+        $user = User::with('employee.role')
+            ->where('username', $fields['username'])
+            ->first();
 
         if (!$user || !Hash::check($fields['password'], $user->password_hash)) {
             return response()->json([
@@ -33,9 +35,10 @@ class AuthController extends Controller
             'status' => 'success',
             'message' => 'Login successful',
             'data' => [
-                'user' => $user,
+                'user'  => $user,
                 'token' => $token,
-                'role' => $user->employee->role->name ?? 'staff'
+                'role'  => $user->employee->role->name ?? 'Staff',
+                'permissions' => $user->employee->role->permissions ?? []
             ]
         ], 200);
     }

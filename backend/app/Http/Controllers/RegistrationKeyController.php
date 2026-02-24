@@ -2,15 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use App\Models\RegistrationKey;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use App\Models\Role;
 use Illuminate\Validation\Rule;
 
 
 class RegistrationKeyController extends Controller
 {
+    public function getRoles()
+    {
+
+        $roles = Role::all(['id', 'name', 'permissions']);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $roles
+        ]);
+    }
 
     public function generate(Request $request)
     {
@@ -55,10 +66,6 @@ class RegistrationKeyController extends Controller
 
         $role = Role::find($key->role_id);
 
-        return response()->json([
-            'status'    => 'success',
-            'role_name' => $role->name,
-            'role_id'   => $role->id
-        ]);
+        return response()->json(['status' => 'success', 'data' => \App\Models\Role::all()]);
     }
 }

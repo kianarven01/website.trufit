@@ -9,7 +9,7 @@ const Navbar: React.FC = () => {
     { label: "Home", href: "home" },
     { label: "About", href: "about" },
     { label: "Services", href: "services" },
-    { label: "Contacts", href: "bookappointment" }, // use actual section id
+    { label: "Contacts", href: "book-appointment" }, // use actual section id
   ];
 
   const scrollToSection = (id: string) => {
@@ -23,7 +23,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="fixed top-0 w-full bg-white shadow-md z-50">
+    <nav className="fixed top-0 w-full bg-white shadow-md z-50 select-none">
       <div className="w-full flex items-center justify-between px-6 md:px-10 py-4">
         {/* logo */}
         <button onClick={() => scrollToSection("home")} className="flex-shrink-0">

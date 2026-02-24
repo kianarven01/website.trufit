@@ -1,13 +1,17 @@
-import React from "react";
+import React, {useState} from "react";
+import { FaEnvelope, FaFacebookF, FaMapMarkerAlt, FaPhoneAlt } from "react-icons/fa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Carousel from "@/components/ui/carousel";
 import Navbar from "@/components/ui/site-navbar";
+import Comments from "@/components/ui/comments";
 
+import picPeople from "@/assets/images/pic-people.jpg";
+import picTrufitGate from "@/assets/images/pic-trufitgate.jpg";
+import picTrufitFront from "@/assets/images/pic-trufitfront.jpeg"
 import picRedSuzuki from "@/assets/images/pic-redsuzuki.png";
 import picSuzukiLogo1 from "@/assets/images/pic-suzukilogo1.png";
 import picSuzukiLogo2 from "@/assets/images/pic-suzukilogo2.png";
 import picWurthLogo from "@/assets/images/pic-wurthlogo.png";
-import picCaltexLogo from "@/assets/images/pic-caltexlogo.png";
 import picSplitFireLogo from "@/assets/images/pic-splitfirelogo.png";
 
 import picDiagnostics from "@/assets/images/pic-diagnostics.jpg";
@@ -44,11 +48,18 @@ const promoSlides: string[] = [
 ];
 
 const Home: React.FC = () => {
+  const [trackingNumber, setTrackingNumber] = useState("");
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
       {/* Hero Section */}
-      <section id="home" className="relative h-[600px] bg-slate-900 flex items-center px-10">
+      <section id="home" 
+      className="relative h-[600px] bg-slate-900 flex items-center px-10 select-none"
+      style={{ backgroundImage: `url(${picTrufitGate})` }}>
+
+        {/* darker overlay */}
+        <div className="absolute inset-0 bg-black/80"></div>
+        
         <div className="z-10 max-w-2xl text-white">
           <h1 className="text-5xl font-bold leading-tight mb-4 italic">
             Precision That Powers Every Drive.
@@ -57,9 +68,17 @@ const Home: React.FC = () => {
             Whether you need routine maintenance or complex repairs, Trufit Auto
             Center is here to keep your vehicles in peak condition.
           </p>
-          <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded font-bold uppercase tracking-wide transition">
-            Book an Appointment
-          </button>
+        <button
+          onClick={() => {
+            const section = document.getElementById("book-appointment");
+            if (section) {
+              section.scrollIntoView({ behavior: "smooth" });
+            }
+          }}
+          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded font-bold uppercase tracking-wide transition"
+        >
+          Book an Appointment
+        </button>
         </div>
 
         {/* Red Suzuki S-Presso */}
@@ -71,7 +90,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* About Section */}
-      <section id="about" className="py-20 px-10">
+      <section id="about" className="py-20 px-10 select-none">
         <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
           About Us
         </h2>
@@ -103,7 +122,7 @@ const Home: React.FC = () => {
         </ul>
 
         {/* Suzuki Authorized Service Station Certification */}
-        <div className="flex flex-col items-center mt-10">
+        <div className="flex flex-col items-center mt-10 select-none">
           <p className="text-center font-bold text-gray-700 text-sm mb-4">
             CERTIFIED AS SUZUKI AUTHORIZED SERVICE STATION
           </p>
@@ -115,7 +134,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-20 px-10 bg-gradient-to-b from-blue-400 to-blue-900">
+      <section id="services" className="py-20 px-10 bg-gradient-to-b from-blue-400 to-blue-900 select-none">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-10 gap-4">
           <h2 className="text-4xl font-light text-white">
             Discover Our Services
@@ -277,7 +296,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Work Process Section */}
-      <section id="work-process" className="py-20 px-10">
+      <section id="work-process" className="py-20 px-10 select-none">
         <div className="w-full flex justify-center">
           <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
             Work Process
@@ -286,7 +305,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* Why Choose Us Section */}
-      <section id="why-choose-us" className="py-20 px-10">
+      <section id="why-choose-us" className="py-20 px-10 select-none">
         <div className="w-full flex justify-center">
           <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
             Why Choose Us
@@ -295,8 +314,8 @@ const Home: React.FC = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section id="testimonials" className="py-20 px-10 bg-gradient-to-b from-blue-400 to-blue-900">
-        <div className="w-full flex flex-col items-center">
+      <section id="testimonials" className="py-20 px-10 bg-gradient-to-b from-blue-400 to-blue-900 select-none">
+        <div className="w-full flex flex-col items-center mb-10">
           <h2 className="text-4xl font-semibold mb-4 text-white text-center">
             What Our Customers Say
           </h2>
@@ -304,10 +323,30 @@ const Home: React.FC = () => {
             Don't just take our word for it - hear from our satisfied customers who have experienced the Trufit Auto Center difference.
           </p>
         </div>
+
+        <div className="flex flex-col md:flex-row gap-6 justify-center items-start flex-wrap">
+          <Comments
+            name="Jane D."
+            message="Trufit Auto Center handled my car perfectly and on time! Highly recommend."
+            avatar={picPeople}
+            rating={5}
+          />
+          <Comments
+            name="Mark S."
+            message="Excellent service and friendly staff. My car has never run smoother."
+            rating={4}
+          />
+          <Comments
+            name="Lisa R."
+            message="Professional, quick, and reliable. Will definitely return!"
+            avatar={picPeople}
+            rating={5}
+          />
+        </div>
       </section>
 
       {/* Special Promotion Section */}
-      <section id="promo" className="py-20 px-10">
+      <section id="promo" className="py-20 px-10 bg-gray-100 select-none">
         <div className="w-full flex flex-col items-center">
           <h2 className="text-4xl font-semibold mb-4 text-center">
             Special Promotion
@@ -321,22 +360,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      <section id="book-appointment"
-      className="py-20 px-10 bg-gradient-to-b from-blue-400 to-blue-900">
-        <div className="w-full flex flex-col items-center">
-          <h2 className="text-4xl font-semibold mb-4 text-white text-center">
-            Book an Appointment
-          </h2>
-          <p className="text-white/80 text-center inline-block max-w-full text-lg sm:text-base md:text-lg lg:text-xl">
-            Ready to experience the Trufit Auto Center difference? Book your appointment today and let our expert team take care of all your automotive needs.
-          </p>
-          <button className="mt-6 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded font-bold uppercase tracking-wide transition">
-            Book Now
-          </button>
-        </div>
-      </section>
-      
-      <section id="trusted-brands" className="py-20 px-10">
+      <section id="trusted-brands" className="py-20 px-10 select-none">
         <div className="w-full flex flex-col items-center">
           <h2 className="text-4xl font-semibold mb-4 text-center">
             Trusted by Leading Brands
@@ -358,18 +382,183 @@ const Home: React.FC = () => {
               className="flex-1 max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
             />
             <img
-              src={picCaltexLogo}
-              alt="Caltex Logo"
-              className="flex-1 max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
-            />
-            <img
               src={picSplitFireLogo}
               alt="Split Fire Logo"
               className="flex-1 max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
             />
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* Book Appointment Section */}
+      <section
+        id="book-appointment"
+        className="relative py-20 px-10 bg-cover bg-center select-none"
+        style={{ backgroundImage: `url(${picTrufitGate})` }}
+      >
+        {/* darker overlay */}
+        <div className="absolute inset-0 bg-black/80"></div>
+
+        <div className="relative z-10 max-w-7xl mx-auto flex flex-col md:flex-row gap-16">
+
+          {/* LEFT SIDE - APPOINTMENT INPUTS (no box) */}
+          <div className="flex-1 text-white">
+
+            <h3 className="text-sm uppercase tracking-wide text-red-500 mb-2">
+              Need a hand?
+            </h3>
+            <h2 className="text-4xl font-semibold mb-8">
+              Book an appointment now!
+            </h2>
+
+            <div className="space-y-6 max-w-md">
+              <input
+                type="text"
+                placeholder="Full Name"
+                className="w-full bg-white/10 border border-white/30 rounded px-4 py-3 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            {/* Phone + Email side by side */}
+            <div className="flex gap-4">
+              <input
+                type="tel"
+                placeholder="Phone Number"
+                className="flex-1 bg-white/10 border border-white/30 rounded px-4 py-3 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <input
+                type="email"
+                placeholder="Email Address"
+                className="flex-1 bg-white/10 border border-white/30 rounded px-4 py-3 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="date"
+                className="flex-1 min-w-0 bg-white/10 border border-white/30 rounded px-4 py-3 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <input
+                type="time"
+                className="flex-1 min-w-0 bg-white/10 border border-white/30 rounded px-4 py-3 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+              <button className="w-full bg-red-600 hover:bg-red-700 transition rounded py-3 font-semibold uppercase tracking-wide">
+                Book Now
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT SIDE - IMAGE + CONTACT BOX */}
+          <div className="flex-1 max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
+
+            {/* top image */}
+            <img
+              src={picPeople}
+              alt="Trufit Location"
+              className="w-full h-48 object-cover"
+            />
+
+            {/* contact info */}
+              <div className="p-6 text-gray-800 space-y-4">
+                <h3 className="text-2xl font-semibold">Contact Us</h3>
+
+                {/* address */}
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-yellow-500 p-2 rounded-full text-white hover:scale-110 transition"
+                  >
+                    <FaMapMarkerAlt className="w-4 h-4" />
+                  </a>
+                  <span>1042 Vinsons Ave, P1 Brgy. Gahonon Daet, Camarines Norte</span>
+                </div>
+
+                {/* phone */}
+                <div className="flex items-center gap-3">
+                  <a
+                    href="tel:09187747788"
+                    className="bg-green-600 p-2 rounded-full text-white hover:scale-110 transition"
+                  >
+                    <FaPhoneAlt className="w-4 h-4" />
+                  </a>
+                  <span>0918-774-7788</span>
+                </div>
+
+                {/* email */}
+                <div className="flex items-center gap-3">
+                  <a
+                    href="mailto:trufitautocenterdaet@gmail.com"
+                    className="bg-red-500 p-2 rounded-full text-white hover:scale-110 transition"
+                  >
+                    <FaEnvelope className="w-4 h-4" />
+                  </a>
+                  <span>trufitautocenterdaet@gmail.com</span>
+                </div>
+
+                {/* facebook */}
+                <div className="flex items-center gap-3">
+                  <a
+                    href="https://www.facebook.com/ac.trufit"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-blue-600 p-2 rounded-full text-white hover:scale-110 transition"
+                  >
+                    <FaFacebookF className="w-4 h-4" />
+                  </a>
+                  <span>Trufit Daet</span>
+                </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Track Progress Section */}
+      <section id="track-progress" className="py-20 px-10 bg-gray-100 select-none">
+        <div className="max-w-6xl mx-auto flex flex-col gap-6">
+          {/* LEFT TEXT & RIGHT INPUT */}
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+            {/* LEFT TEXT */}
+            <div className="md:w-2/3 text-gray-700">
+              <h3 className="text-2xl font-semibold mb-2">Need a Status Update?</h3>
+              <p className="text-gray-600">
+                Check the current stage of your vehicle’s service anytime, anywhere.
+              </p>
+            </div>
+
+            {/* RIGHT INPUT + BUTTON */}
+            <div className="md:w-1/3 flex gap-2 flex-shrink-0">
+              <input
+                type="text"
+                placeholder="Enter your tracking number"
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                className="flex-1 bg-white border border-gray-300 rounded px-4 py-3 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <button className="bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded font-semibold transition">
+                Track
+              </button>
+            </div>
+          </div>
+
+          {/* INFO DROPDOWN */}
+          <div
+            className={`overflow-hidden transition-[max-height,opacity] duration-500 ease-in-out ${
+              trackingNumber.trim() ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            }`}
+          >
+            <div className="w-full bg-white rounded-lg p-6 text-gray-700 text-center shadow-lg mt-4">
+              Tracking information for <strong>{trackingNumber}</strong> will appear here.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <section id="footer" className="py-10 px-10 bg-slate-900 text-gray-400 text-center select-none">
+        <p>&copy; {new Date().getFullYear()} Trufit Auto Center. All rights reserved.</p>
+      </section>
     </main>
   );
 };

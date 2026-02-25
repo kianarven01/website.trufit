@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\RegistrationKeyController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\EmployeeController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-registration-key', [RegistrationKeyController::class, 'verify']);
@@ -15,6 +16,11 @@ Route::get('/admin/roles', [RoleController::class, 'index']);
 Route::post('/admin/roles', [RoleController::class, 'store']);
 Route::put('/admin/roles/{id}', [RoleController::class, 'update']);
 Route::delete('/admin/roles/{id}', [RoleController::class, 'destroy']);
+Route::post('/admin/onboard-employee', [EmployeeController::class, 'onboard']);
+
+
+// routes/api.php
+Route::get('/admin/employees', [EmployeeController::class, 'index']);
 
 Route::prefix('admin')->group(function () {
 

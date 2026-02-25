@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import KeyGenerator from "../../components/admin/KeyGenerator";
 import RoleManager from "@/components/admin/RoleManager";
+import EmployeeTable from "@/components/recruitment/EmployeeTable"; //
 import api from "@/api/axios";
 
 const Dashboard: React.FC = () => {
@@ -11,16 +12,38 @@ const Dashboard: React.FC = () => {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [expandedSetting, setExpandedSetting] = useState<string | null>(
     "roles",
-  ); // Default to 'roles' open
-
-  // Navigation State
+  );
   const [activeTab, setActiveTab] = useState("dashboard");
-
-  const isSales = role?.toLowerCase() === "sales";
-  const isPurchasing = role?.toLowerCase() === "purchasing";
-  const isAdmin = role?.toLowerCase() === "admin";
   const [roles, setRoles] = useState<any[]>([]);
   const [editingRole, setEditingRole] = React.useState<any>(null);
+
+  const isAdmin = role?.toLowerCase() === "admin";
+  const isHR = role?.toLowerCase() === "hr";
+
+  //for employee management in settings tab
+  const [employeeForm, setEmployeeForm] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    roleID: "",
+  });
+
+  const handleOnboard = async () => {
+    try {
+      const res = await api.post("/admin/onboard-employee", employeeForm);
+      alert(`Success! Give this key to the employee: ${res.data.key}`);
+      setEmployeeForm({
+        first_name: "",
+        last_name: "",
+        email: "",
+        roleID: "",
+      });
+
+      alert("Employee record created and key generated!"); // Refresh list and close modal
+    } catch (err) {
+      alert("Error creating employee record");
+    }
+  };
 
   const fetchRoles = async () => {
     try {
@@ -60,46 +83,33 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
+      {/* Sidebar - Remains as you had it */}
       <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col shadow-xl sticky top-0 h-screen">
         <h2 className="text-2xl font-black mb-10 italic text-red-600 tracking-tighter">
           TRUFIT SQS
         </h2>
-
         <nav className="flex-1 space-y-4">
           <p className="opacity-40 text-[10px] uppercase font-bold tracking-[0.2em] mb-2">
             Main Menu
           </p>
-
-          {/* Dashboard Tab */}
           <div
             onClick={() => setActiveTab("dashboard")}
-            className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg transition-all ${
-              activeTab === "dashboard"
-                ? "bg-red-600 text-white font-bold shadow-lg"
-                : "text-slate-400 hover:bg-slate-800"
-            }`}
+            className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg transition-all ${activeTab === "dashboard" ? "bg-red-600 text-white font-bold shadow-lg" : "text-slate-400 hover:bg-slate-800"}`}
           >
             <span>🏠</span>
             <span>Dashboard</span>
           </div>
 
-          {/* Recruitment Tab - Visible to Admin and HR */}
-          {(isAdmin || role?.toLowerCase() === "hr") && (
+          {(isAdmin || isHR) && (
             <div
               onClick={() => setActiveTab("recruitment")}
-              className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg transition-all ${
-                activeTab === "recruitment"
-                  ? "bg-red-600 text-white font-bold shadow-lg"
-                  : "text-slate-400 hover:bg-slate-800"
-              }`}
+              className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg transition-all ${activeTab === "recruitment" ? "bg-red-600 text-white font-bold shadow-lg" : "text-slate-400 hover:bg-slate-800"}`}
             >
               <span>📋</span>
               <span>Recruitment</span>
             </div>
           )}
 
-          {/* Settings Tab - Admin Only */}
           {isAdmin && (
             <>
               <p className="opacity-40 text-[10px] uppercase font-bold tracking-[0.2em] pt-4 mb-2">
@@ -107,11 +117,7 @@ const Dashboard: React.FC = () => {
               </p>
               <div
                 onClick={() => setActiveTab("settings")}
-                className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg transition-all ${
-                  activeTab === "settings"
-                    ? "bg-slate-800 text-white font-bold shadow-lg border-l-4 border-red-600"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
-                }`}
+                className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg transition-all ${activeTab === "settings" ? "bg-slate-800 text-white font-bold shadow-lg border-l-4 border-red-600" : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}
               >
                 <span>⚙️</span>
                 <span>Preferences</span>
@@ -119,8 +125,6 @@ const Dashboard: React.FC = () => {
             </>
           )}
         </nav>
-
-        {/* User Info & Logout */}
         <div className="pt-6 border-t border-slate-700">
           <div className="mb-4 px-2">
             <p className="text-xs text-slate-500 uppercase font-bold">{role}</p>
@@ -137,31 +141,18 @@ const Dashboard: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 p-10 overflow-y-auto">
-        {/* TAB 1: DASHBOARD VIEW (Everyone) */}
+        {/* TAB 1: DASHBOARD */}
         {activeTab === "dashboard" && (
-          <section animate-in="fade">
-            {/* ... Your existing Dashboard Header and Analytics Grid ... */}
-            <header className="mb-10 flex justify-between items-end">
-              <div>
-                <h1 className="text-4xl font-extrabold text-slate-800">
-                  System Dashboard
-                </h1>
-                <p className="text-slate-500 mt-2 text-lg">
-                  Welcome back, {user?.name}
-                </p>
-              </div>
-              <div className="text-right text-sm text-slate-400">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
+          <section className="animate-in fade-in duration-500">
+            <header className="mb-10">
+              <h1 className="text-4xl font-extrabold text-slate-800">
+                System Dashboard
+              </h1>
+              <p className="text-slate-500 mt-2 text-lg">
+                Welcome back, {user?.name}
+              </p>
             </header>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {/* ... Sales/Purchasing cards ... */}
               <div className="bg-white p-8 rounded-2xl shadow-sm border-t-8 border-red-500">
                 <h3 className="text-slate-400 text-xs font-black uppercase tracking-widest mb-4">
                   Active Job Orders
@@ -174,26 +165,39 @@ const Dashboard: React.FC = () => {
           </section>
         )}
 
-        {/* TAB 2: RECRUITMENT VIEW (Admin & HR Manager) */}
-        {activeTab === "recruitment" &&
-          (isAdmin || role?.toLowerCase() === "hr") && (
-            <section animate-in="slide-up">
-              <header className="mb-10">
-                <h1 className="text-4xl font-extrabold text-slate-800">
-                  Recruitment Portal
-                </h1>
-                <p className="text-slate-500 mt-2 text-lg">
-                  Generate onboarding keys for new staff members.
-                </p>
-              </header>
+        {/* TAB 2: RECRUITMENT VIEW */}
+        {activeTab === "recruitment" && (isAdmin || isHR) && (
+          <section className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
+            <header>
+              <h1 className="text-4xl font-extrabold text-slate-800">
+                Recruitment Portal
+              </h1>
+              <p className="text-slate-500 mt-2 text-lg">
+                Onboard new staff and manage employee records.
+              </p>
+            </header>
 
-              <div className="max-w-2xl bg-white p-8 rounded-2xl shadow-sm border-t-8 border-red-600">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
+              <div className="xl:col-span-1 bg-white p-6 rounded-2xl shadow-sm border-t-8 border-red-600">
+                <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
+                  Generate Invite Key
+                </h3>
                 <KeyGenerator />
               </div>
-            </section>
-          )}
 
-        {/* TAB 3: PREFERENCES / SETTINGS (Admin Only) */}
+              <div className="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                  <h3 className="font-bold text-slate-800">
+                    Active Employee Directory
+                  </h3>
+                </div>
+                <EmployeeTable />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* TAB 3: PREFERENCES / SETTINGS */}
         {activeTab === "settings" && isAdmin && (
           <section className="animate-in fade-in duration-500 max-w-5xl">
             <header className="mb-10">
@@ -206,7 +210,6 @@ const Dashboard: React.FC = () => {
             </header>
 
             <div className="space-y-4">
-              {/* SECTION: ROLE MANAGEMENT */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <button
                   onClick={() =>
@@ -247,90 +250,58 @@ const Dashboard: React.FC = () => {
                           setEditingRole(null);
                           setShowRoleModal(true);
                         }}
-                        className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-600 transition-all flex items-center space-x-2"
+                        className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-600 transition-all"
                       >
-                        <span>+</span> <span>Create New Role</span>
+                        + Create Role
                       </button>
                     </div>
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {roles.map((r: any) => (
-                        <div
-                          key={r.id}
-                          className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center group hover:border-red-200 transition-colors"
-                        >
-                          <div>
-                            <h5 className="font-bold text-slate-700">
-                              {r.name}
-                            </h5>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wide">
-                              ID: {r.id}
-                            </p>
+                      {/* GUARDED MAP LOGIC HERE */}
+                      {Array.isArray(roles) ? (
+                        roles.map((r: any) => (
+                          <div
+                            key={r.id}
+                            className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center group hover:border-red-200 transition-colors"
+                          >
+                            <div>
+                              <h5 className="font-bold text-slate-700">
+                                {r.name}
+                              </h5>
+                              <p className="text-[10px] text-slate-400 uppercase tracking-wide">
+                                ID: {r.id}
+                              </p>
+                            </div>
+                            <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => {
+                                  setEditingRole(r);
+                                  setShowRoleModal(true);
+                                }}
+                                className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg text-sm"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRole(r.id)}
+                                className="p-2 hover:bg-red-100 text-red-600 rounded-lg text-sm"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => {
-                                setEditingRole(r);
-                                setShowRoleModal(true);
-                              }}
-                              className="p-2 hover:bg-blue-100 text-blue-600 rounded-lg text-sm"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRole(r.id)}
-                              className="p-2 hover:bg-red-100 text-red-600 rounded-lg text-sm"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-slate-400 text-sm">
+                          Loading roles...
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* SECTION: COMPANY BRANDING (Placeholder for design consistency) */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-60">
-                <button className="w-full flex items-center justify-between p-6 cursor-not-allowed">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-blue-100 text-blue-600 p-3 rounded-xl text-xl">
-                      🏢
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-bold text-slate-800">
-                        Company Identity
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        Update logo, contact info, and tax settings.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-slate-300">▼</span>
-                </button>
-              </div>
-
-              {/* SECTION: AUDIT LOGS (Placeholder) */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden opacity-60">
-                <button className="w-full flex items-center justify-between p-6 cursor-not-allowed">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-green-100 text-green-600 p-3 rounded-xl text-xl">
-                      📜
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-bold text-slate-800">System Logs</h3>
-                      <p className="text-sm text-slate-500">
-                        Track every change made to the system records.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-slate-300">▼</span>
-                </button>
-              </div>
             </div>
 
-            {/* SHARED MODAL FOR CREATE/EDIT */}
+            {/* SHARED MODAL */}
             {showRoleModal && (
               <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                 <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -352,7 +323,7 @@ const Dashboard: React.FC = () => {
                       initialData={editingRole}
                       onComplete={() => {
                         setShowRoleModal(false);
-                        fetchRoles(); // Refresh the list after save
+                        fetchRoles();
                       }}
                     />
                   </div>

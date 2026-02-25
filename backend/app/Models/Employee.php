@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Employee extends Model
 {
-    protected $table = 'Main.Employees';
+    protected $table = 'Employees';
 
-    public function role()
-    {
-        return $this->belongsTo(Role::class, 'roleID');
-    }
+    protected $fillable = [
+        'name',
+        'email',
+        'position',
+        'roleID',
+        'status'
+    ];
 }

@@ -94,8 +94,7 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
-            'Main',
+            'search_path' => 'Main,public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 

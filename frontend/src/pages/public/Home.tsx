@@ -1,4 +1,5 @@
 import React, {useState} from "react";
+import { CarFront, Wrench, ShieldCheck, ArrowDownRight, ArrowUpRight, UserCheck, Cpu, Smile, Tag } from "lucide-react";
 import { FaEnvelope, FaFacebookF, FaMapMarkerAlt, FaPhoneAlt } from "react-icons/fa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Carousel from "@/components/ui/carousel";
@@ -9,11 +10,12 @@ import picPeople from "@/assets/images/pic-people.jpg";
 import picTrufitGate from "@/assets/images/pic-trufitgate.jpg";
 import picTrufitFront from "@/assets/images/pic-trufitfront.jpeg"
 import picRedSuzuki from "@/assets/images/pic-redsuzuki.png";
+import picDtiLogo from "@/assets/images/pic-dtilogo.png";
 import picSuzukiLogo1 from "@/assets/images/pic-suzukilogo1.png";
 import picSuzukiLogo2 from "@/assets/images/pic-suzukilogo2.png";
 import picWurthLogo from "@/assets/images/pic-wurthlogo.png";
 import picSplitFireLogo from "@/assets/images/pic-splitfirelogo.png";
-
+import picCaltexLogo from "@/assets/images/pic-caltexlogo.png";
 import picDiagnostics from "@/assets/images/pic-diagnostics.jpg";
 import picMaintenance from "@/assets/images/pic-maintenance.png";
 import picAircon from "@/assets/images/pic-aircon.png";
@@ -34,6 +36,90 @@ import picPromo5850 from "@/assets/images/pic-promo5850.png";
 import picPromo50902 from "@/assets/images/pic-promo50902.png";
 import picPromo58502 from "@/assets/images/pic-promo58502.png";
 
+const services = [
+  {
+    img: picDiagnostics,
+    title: "Diagnostic of Vehicle Electronics",
+    desc: "Our expert technicians use advanced diagnostic tools to identify and resolve issues with your vehicle's electronic systems, ensuring optimal performance and safety.",
+  },
+  {
+    img: picMaintenance,
+    title: "Maintenance and Inspection",
+    desc: "Our maintenance services include oil changes, filter replacements, and more to ensure your car runs smoothly.",
+  },
+  {
+    img: picAircon,
+    title: "Air Conditioning Services and Repair",
+    desc: "Stay cool and comfortable with our AC services including system diagnostics, refrigerant recharging, and repairs.",
+  },
+  {
+    img: picMechaRepair,
+    title: "Mechanical Repair",
+    desc: "Our skilled mechanics handle all types of mechanical repairs, from brakes and suspension to engine diagnostics.",
+  },
+  {
+    img: picUnderchassis,
+    title: "Underchassis Repair",
+    desc: "Comprehensive underchassis repair including exhaust, rust treatment, and suspension work.",
+  },
+  {
+    img: picDiesel,
+    title: "Diesel Vehicle Repair",
+    desc: "Covers fuel system diagnostics and engine repairs to keep diesel vehicles running efficiently.",
+  },
+  {
+    img: picDetailing,
+    title: "Interior and Exterior Detailing",
+    desc: "Professional cleaning services including interior detailing, exterior washing, and waxing to protect your car's finish.",
+  },
+  {
+    img: picOtherServices,
+    title: "Other Allied Services",
+    desc: "Additional services like tire rotation, battery testing, and fluid analysis to keep your vehicle in top condition.",
+  },
+];
+
+const processes = [
+  {
+    icon: CarFront,
+    title: "Comprehensive Vehicle Inspection",
+    desc: "We thoroughly inspect your vehicle to identify issues and ensure accurate diagnostics.",
+  },
+  {
+    icon: Wrench,
+    title: "Professional Repair & Servicing",
+    desc: "Our skilled technicians perform high-quality repairs and maintenance services.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Final Quality Control & Handover",
+    desc: "We conduct final checks to ensure everything is perfect before handing back your vehicle.",
+  },
+];
+
+const whyChooseUsItems = [
+  {
+    icon: UserCheck,
+    title: "Experienced and Certified Technicians",
+    desc: "Our team consists of highly skilled and certified professionals who ensure top-quality service on every vehicle.",
+  },
+  {
+    icon: Cpu,
+    title: "State-of-the-Art Equipment",
+    desc: "We use advanced diagnostic and repair tools to accurately identify issues and perform precise maintenance.",
+  },
+  {
+    icon: Smile,
+    title: "Customer Satisfaction",
+    desc: "We prioritize your experience and ensure every service exceeds expectations, making you drive away happy.",
+  },
+  {
+    icon: Tag,
+    title: "Competitive Pricing",
+    desc: "Our services are priced fairly without compromising quality, giving you the best value for your investment.",
+  },
+];
+
 const promoSlides: string[] = [
   picPromo2290,
   picPromo2940,
@@ -53,88 +139,126 @@ const Home: React.FC = () => {
     <main className="min-h-screen bg-white">
       <Navbar />
       {/* Hero Section */}
-      <section id="home" 
-      className="relative h-[600px] bg-slate-900 flex items-center px-10 select-none"
-      style={{ backgroundImage: `url(${picTrufitGate})` }}>
-
+      <section
+        id="home"
+        className="relative h-[680px] md:h-[750px] bg-slate-900 bg-cover bg-center flex items-center px-10 select-none"
+        style={{ backgroundImage: `url(${picTrufitFront})` }}
+      >
         {/* darker overlay */}
         <div className="absolute inset-0 bg-black/80"></div>
-        
+
+        {/* LEFT TEXT */}
         <div className="z-10 max-w-2xl text-white">
-          <h1 className="text-5xl font-bold leading-tight mb-4 italic">
+          <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-4 italic">
             Precision That Powers Every Drive.
           </h1>
-          <p className="text-lg text-gray-300 mb-8">
+          <p className="text-lg md:text-xl text-gray-300 mb-8">
             Whether you need routine maintenance or complex repairs, Trufit Auto
             Center is here to keep your vehicles in peak condition.
           </p>
-        <button
-          onClick={() => {
-            const section = document.getElementById("book-appointment");
-            if (section) {
-              section.scrollIntoView({ behavior: "smooth" });
-            }
-          }}
-          className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded font-bold uppercase tracking-wide transition"
-        >
-          Book an Appointment
-        </button>
+          <button
+            onClick={() => {
+              const section = document.getElementById("book-appointment");
+              if (section) {
+                section.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded font-bold uppercase tracking-wide transition"
+          >
+            Book an Appointment
+          </button>
         </div>
 
-        {/* Red Suzuki S-Presso */}
-        <div className="absolute right-10 bottom-0 w-1/2">
-          <img src={picRedSuzuki} 
-          alt="Red Suzuki S-Presso" 
-          className="w-full h-auto object-cover rounded-lg shadow-lg" />
+        {/* RIGHT CAR IMAGE */}
+        <div className="absolute right-10 bottom-0 w-1/2 md:w-2/5">
+          <img
+            src={picRedSuzuki}
+            alt="Red Suzuki S-Presso"
+            className="w-full h-auto object-cover rounded-lg shadow-lg"
+          />
         </div>
       </section>
 
       {/* About Section */}
       <section id="about" className="py-20 px-10 select-none">
-        <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
-          About Us
-        </h2>
-        <p className="text-gray-700 max-w-3xl">
-          At Trufit Auto Center, we take pride in offering a comprehensive range of top-notch automotive services to keep your vehicles running smoothly and looking their best. Our team of skilled technicians and mechanics is committed to providing the highest quality service and exceptional customer satisfaction. Trust us with your automobile needs, and we guarantee you'll drive away with a smile!
-        </p>
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-start">
 
-        {/* Quality Service Promise */}
-        <h3 className="text-2xl font-semibold border-b-4 border-red-600 inline-block mt-10 mb-4">
-          Our Quality Service Promise
-        </h3>
-        <ul className="space-y-2">
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Full safety inspection</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Precise diagnostics</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Honest, upfront pricing</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Fast, reliable service</span>
-          </li>
-        </ul>
+          {/* LEFT COLUMN — ABOUT + QUALITY */}
+          <div>
+            <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
+              About Us
+            </h2>
 
-        {/* Suzuki Authorized Service Station Certification */}
-        <div className="flex flex-col items-center mt-10 select-none">
-          <p className="text-center font-bold text-gray-700 text-sm mb-4">
-            CERTIFIED AS SUZUKI AUTHORIZED SERVICE STATION
-          </p>
-          <img src={picSuzukiLogo1} 
-          alt="Suzuki Logo 1" 
-          className="w-48 sm:w-56 md:w-64 h-auto object-contain" 
-          />
+            <p className="text-gray-700 mb-8 leading-relaxed">
+              At Trufit Auto Center, we take pride in offering a comprehensive range of
+              top-notch automotive services to keep your vehicles running smoothly
+              and looking their best. Our team of skilled technicians and mechanics
+              is committed to providing the highest quality service and exceptional
+              customer satisfaction.
+            </p>
+
+            <h3 className="text-2xl font-semibold border-b-4 border-red-600 inline-block mb-4">
+              Our Quality Service Promise
+            </h3>
+
+            <ul className="space-y-3">
+              {[
+                "Full safety inspection",
+                "Precise diagnostics",
+                "Honest, upfront pricing",
+                "Fast, reliable service",
+              ].map((item, index) => (
+                <li key={index} className="flex items-center gap-3">
+                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm">
+                    ✓
+                  </span>
+                  <span className="text-gray-700">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* RIGHT COLUMN — CERTIFICATIONS CARDS */}
+          <div className="flex flex-wrap justify-center gap-6 w-full">
+
+            {/* DTI Five-Star Certificate */}
+            <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col justify-end items-stretch gap-3 flex-1 min-w-[220px] max-w-xs sm:max-w-sm md:max-w-md">
+              <img
+                src={picDtiLogo}
+                alt="DTI Five-Star Certificate"
+                className="w-32 sm:w-40 md:w-48 h-auto object-contain mx-auto"
+              />
+              <div className="flex gap-1 justify-center">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="text-yellow-400 text-xl">★</span>
+                ))}
+              </div>
+              <div className="text-red-600 text-4xl text-center">🎖</div>
+              <p className="font-bold text-gray-700 text-sm text-center">
+                CERTIFIED BY DTI – FIVE STAR RATING
+              </p>
+            </div>
+
+            {/* Suzuki Authorized Service Certificate */}
+            <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col justify-end items-stretch gap-3 flex-1 min-w-[220px] max-w-xs sm:max-w-sm md:max-w-md">
+              <img
+                src={picSuzukiLogo2}
+                alt="Suzuki Authorized Service"
+                className="w-32 sm:w-40 md:w-48 h-auto object-contain mx-auto"
+              />
+              <div className="text-red-600 text-4xl text-center">🎖</div>
+              <p className="font-bold text-gray-700 text-sm text-center">
+                SUZUKI AUTHORIZED SERVICE STATION
+              </p>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-20 px-10 bg-gradient-to-b from-blue-400 to-blue-900 select-none">
+      <section id="services" className="py-20 px-10 bg-gray-900 select-none">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-10 gap-4">
           <h2 className="text-4xl font-light text-white">
             Discover Our Services
@@ -143,173 +267,117 @@ const Home: React.FC = () => {
             Regular maintenance is crucial to prolonging the life of your car and preventing costly breakdowns.
           </p>
         </div>
-        
         <div className="flex overflow-x-auto gap-6 py-4 
                         [&::-webkit-scrollbar]:hidden 
                         [-ms-overflow-style:none] 
                         [scrollbar-width:none]">
-
-          {/* Service Card 1: Diagnostic of Vehicle Electronics */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picDiagnostics} alt="Diagnostic of Vehicle Electronics" 
-            className="w-full h-40 object-cover"
+          {services.map((service, idx) => (
+          <Card
+            key={idx}
+            className="max-w-xs bg-white rounded-2xl rounded-t-none shadow-md overflow-hidden flex-shrink-0
+                      transform transition duration-300 hover:-translate-y-2"
+          >
+            <img
+              src={service.img}
+              alt={service.title}
+              className="w-full h-40 object-cover"
             />
-            <CardHeader className="p-4"> 
-              <CardTitle className="text-lg font-semibold">
-                Diagnostic of Vehicle Electronics
-              </CardTitle>
+            <CardHeader className="p-4 text-left">
+              <CardTitle className="text-lg font-semibold">{service.title}</CardTitle>
             </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                Our expert technicians use advanced diagnostic tools to identify and resolve issues with your vehicle's electronic systems, ensuring optimal performance and safety.
-              </CardDescription>
+            <CardContent className="p-4 text-left">
+              <CardDescription className="text-base text-gray-600">{service.desc}</CardDescription>
             </CardContent>
           </Card>
-
-          {/* Service Card 2: Maintenance and Inspection */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picMaintenance} alt="Maintenance and Inspection"
-            className="w-full h-40 object-cover"
-            />
-            <CardHeader className="p-4"> 
-              <CardTitle className="text-lg font-semibold">
-                Maintenance and Inspection
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                Regular maintenance is essential for keeping your vehicle in top condition. Our maintenance services include oil changes, filter replacements, and more to ensure your car runs smoothly.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {/* Service Card 3: Air Conditioning Services and Repair */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picAircon} alt="Air Conditioning Services and Repair"
-            className="w-full h-40 object-cover"
-            />
-            <CardHeader className="p-4"> 
-              <CardTitle className="text-lg font-semibold">
-                Air Conditioning Services and Repair
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                Stay cool and comfortable with our air conditioning services. We offer AC system diagnostics, refrigerant recharging, and repairs to keep your vehicle's climate control functioning perfectly.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {/* Service Card 4: Mechanical Repair */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picMechaRepair} alt="Mechanical Repair"
-            className="w-full h-40 object-cover"
-            />
-            <CardHeader className="p-4">
-              <CardTitle className="text-lg font-semibold">
-                Mechanical Repair
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                Our skilled mechanics handle all types of mechanical repairs, from brake and suspension work to engine diagnostics and component replacements.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {/* Service Card 5: Underchassis Repair */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picUnderchassis} alt="Underchassis Repair"
-            className="w-full h-40 object-cover"
-            />
-            <CardHeader className="p-4">
-              <CardTitle className="text-lg font-semibold">
-                Underchassis Repair
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                We provide comprehensive underchassis repair services, including exhaust system repairs, rust treatment, and suspension work to ensure your vehicle's structural integrity and performance.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {/* Service Card 6: Diesel Vehicle Repair */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picDiesel} alt="Diesel Vehicle Repair"
-            className="w-full h-40 object-cover"
-            />
-            <CardHeader className="p-4">
-              <CardTitle className="text-lg font-semibold">
-                Diesel Vehicle Repair
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                Our diesel repair services cover everything from fuel system diagnostics to engine repairs, ensuring your diesel vehicle runs efficiently and reliably.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {/* Service Card 7: Interior and Exterior Detailing */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picDetailing} alt="Interior and Exterior Detailing"
-            className="w-full h-40 object-cover"
-            />
-             <CardHeader className="p-4">
-              <CardTitle className="text-lg font-semibold">
-                Interior and Exterior Detailing
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                Keep your vehicle looking its best with our professional cleaning services, including interior detailing, exterior washing, and waxing to protect your car's finish.
-              </CardDescription>
-            </CardContent>
-          </Card>
-
-          {/* Service Card 8: Other Services */}
-          <Card className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0">
-            <img 
-            src={picOtherServices} alt="Other Allied Services"
-            className="w-full h-40 object-cover"
-            />
-             <CardHeader className="p-4">
-              <CardTitle className="text-lg font-semibold">
-                Other Allied Services
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <CardDescription className="text-sm text-gray-600">
-                We also offer a wide range of additional services to keep your vehicle in top condition, including tire rotation, battery testing, and fluid analysis.
-              </CardDescription>
-            </CardContent>
-          </Card>
+          ))}
         </div>
       </section>
 
       {/* Work Process Section */}
       <section id="work-process" className="py-20 px-10 select-none">
-        <div className="w-full flex justify-center">
-          <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
+        <div className="w-full flex flex-col items-center">
+
+          <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-12">
             Work Process
           </h2>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+
+            {processes.map((process, index) => {
+              const Icon = process.icon;
+
+              return (
+                <div key={index} className="flex items-center">
+
+                  {/* Card */}
+                  <div className="w-72 bg-white rounded-xl shadow-lg p-6 text-center
+                                  hover:-translate-y-2 transition duration-300">
+                    <div className="w-20 h-20 mx-auto mb-6 flex items-center justify-center
+                                    bg-gradient-to-br from-red-500 to-red-700
+                                    rounded-xl shadow-lg">
+                      <Icon className="w-10 h-10 text-white" strokeWidth={1.5} />
+                    </div>
+
+                    <h3 className="text-lg font-semibold mb-2">
+                      {process.title}
+                    </h3>
+
+                    <p className="text-gray-600 text-sm">
+                      {process.desc}
+                    </p>
+                  </div>
+
+                  {/* Arrow */}
+                  {index < processes.length - 1 && (
+                    <div className="hidden md:flex mx-6 items-center">
+                      {index % 2 === 0 ? (
+                        <ArrowDownRight
+                          className="w-10 h-10 text-red-600"
+                          strokeWidth={2}
+                        />
+                      ) : (
+                        <ArrowUpRight
+                          className="w-10 h-10 text-red-600"
+                          strokeWidth={2}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* Why Choose Us Section */}
-      <section id="why-choose-us" className="py-20 px-10 select-none">
+      <section id="why-choose-us" className="py-20 px-10 bg-gray-900 select-none">
         <div className="w-full flex justify-center">
-          <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
+          <h2 className="text-4xl font-bold mb-12 text-white border-b-4 border-red-600 inline-block">
             Why Choose Us
           </h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+          {whyChooseUsItems.map((item, idx) => {
+            const Icon = item.icon;
+
+            return (
+              <div
+                key={idx}
+                className="flex flex-col items-center text-center bg-white rounded-2xl p-6 shadow-lg hover:-translate-y-2 hover:shadow-2xl transition-all duration-300"
+              >
+                {/* icon circle */}
+                <div className="w-16 h-16 mb-4 flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full shadow-md">
+                  <Icon className="w-8 h-8 text-white" strokeWidth={1.5} />
+                </div>
+
+                <h3 className="text-lg font-semibold mb-2 text-gray-900">{item.title}</h3>
+                <p className="text-gray-700 text-sm">{item.desc}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -346,14 +414,8 @@ const Home: React.FC = () => {
       </section>
 
       {/* Special Promotion Section */}
-      <section id="promo" className="py-20 px-10 bg-gray-100 select-none">
+      <section id="promo" className="py-20 px-10 bg-gray-900 select-none">
         <div className="w-full flex flex-col items-center">
-          <h2 className="text-4xl font-semibold mb-4 text-center">
-            Special Promotion
-          </h2>
-          <p className="text-gray-700 text-center inline-block max-w-full text-lg sm:text-base md:text-lg lg:text-xl">
-            For a limited time! Book your appointment today and experience the exceptional care and quality that Trufit Auto Center is known for.
-          </p>
           <div className="w-full max-w-4xl mt-8">
             <Carousel slides={promoSlides} />
           </div>
@@ -370,21 +432,26 @@ const Home: React.FC = () => {
           </p>
 
           {/* horizontal logo row */}
-          <div className="flex justify-center items-center gap-6 flex-wrap w-full max-w-4xl">
+          <div className="flex justify-center items-center gap-6 flex-wrap lg:flex-nowrap w-full max-w-4xl mx-auto">
             <img
               src={picSuzukiLogo2}
               alt="Suzuki Logo 2"
-              className="flex-1 max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
+              className="max-w-[150px] sm:max-w-[180px] md:max-w-[170px] h-auto object-contain"
             />
             <img
               src={picWurthLogo}
               alt="Wurth Logo"
-              className="flex-1 max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
+              className="max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
             />
             <img
               src={picSplitFireLogo}
               alt="Split Fire Logo"
-              className="flex-1 max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
+              className="max-w-[180px] sm:max-w-[200px] md:max-w-[250px] h-auto object-contain"
+            />
+            <img
+              src={picCaltexLogo}
+              alt="Caltex Logo"
+              className="max-w-[180px] sm:max-w-[200px] md:max-w-[350px] h-auto object-contain"
             />
           </div>
         </div>

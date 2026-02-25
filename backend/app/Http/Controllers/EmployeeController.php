@@ -25,42 +25,51 @@ class EmployeeController extends Controller
     {
         $validated = $request->validate([
             'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'email' => 'required|email',
-            'role_id' => 'required|integer'
+            'last_name'  => 'required|string',
+            'email'      => 'required|email|unique:Main.Employees,email',
+            'role_id'    => 'required|integer',
+            'position'   => 'required|string' // Required by your SQL schema
         ]);
 
-        // We use DB::raw to target the table without letting Laravel's 
-        // "detective" logic try to parse the dot as a connection.
-        return DB::connection('pgsql')->transaction(function () use ($validated) {
-
-            // 1. Combine first and last name to match your "name" column
+        return DB::transaction(function () use ($validated) {
             $fullName = $validated['first_name'] . ' ' . $validated['last_name'];
 
-            // 2. Insert into Employees (using exact column names from your CREATE script)
-            $employeeId = DB::table(DB::raw('"Main"."Employees"'))->insertGetId([
+            $employeeId = DB::table('Main.Employees')->insertGetId([
                 'name'     => $fullName,
                 'email'    => $validated['email'],
-                'position' => 'Staff',        // Required 'NOT NULL' in your SQL
+                'position' => $validated['position'],
                 'roleID'   => $validated['role_id'],
-                'status'   => false,          // Boolean in your SQL
+                'status'   => false, // Pending
             ]);
 
             $keyCode = strtoupper(bin2hex(random_bytes(4)));
 
-            // 3. Insert into RegistrationKeys
-            DB::table(DB::raw('"Main"."RegistrationKeys"'))->insert([
+            DB::table('Main.RegistrationKeys')->insert([
                 'key_code'    => $keyCode,
                 'role_id'     => $validated['role_id'],
                 'employee_id' => $employeeId,
                 'is_used'     => false,
                 'created_at'  => now(),
+                'expires_at'  => now()->addHours(24), // Track expiration
             ]);
 
-            return response()->json([
-                'status' => 'success',
-                'key'    => $keyCode
-            ]);
+            return response()->json(['status' => 'success', 'key' => $keyCode]);
         });
+    }
+
+    public function getRegistrationKeys()
+    {
+        // Fetch keys and join with Employee to show names in the table
+        $keys = DB::table('Main.RegistrationKeys')
+            ->join('Main.Employees', 'Main.RegistrationKeys.employee_id', '=', 'Main.Employees.id')
+            ->select(
+                'Main.RegistrationKeys.*',
+                'Main.Employees.name as employee_name',
+                'Main.Employees.email'
+            )
+            ->orderBy('Main.RegistrationKeys.created_at', 'desc')
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $keys]);
     }
 }

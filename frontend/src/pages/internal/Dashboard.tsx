@@ -16,6 +16,7 @@ const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [roles, setRoles] = useState<any[]>([]);
   const [editingRole, setEditingRole] = React.useState<any>(null);
+  const [registrationKeys, setRegistrationKeys] = useState<any[]>([]);
 
   const isAdmin = role?.toLowerCase() === "admin";
   const isHR = role?.toLowerCase() === "hr";
@@ -27,6 +28,21 @@ const Dashboard: React.FC = () => {
     email: "",
     roleID: "",
   });
+
+  const fetchRegistrationKeys = async () => {
+    try {
+      const res = await api.get("/admin/registration-keys");
+      setRegistrationKeys(res.data.data);
+    } catch (err) {
+      console.error("Failed to fetch keys", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "recruitment") {
+      fetchRegistrationKeys();
+    }
+  }, [activeTab]);
 
   const handleOnboard = async () => {
     try {
@@ -83,7 +99,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar - Remains as you had it */}
+      {/* Sidebar - Fixed/Sticky */}
       <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col shadow-xl sticky top-0 h-screen">
         <h2 className="text-2xl font-black mb-10 italic text-red-600 tracking-tighter">
           TRUFIT SQS
@@ -131,7 +147,7 @@ const Dashboard: React.FC = () => {
             <p className="text-sm font-medium truncate">{user?.name}</p>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={logout}
             className="w-full px-4 py-2 bg-slate-800 text-red-400 border border-red-900/30 rounded font-bold hover:bg-red-600 hover:text-white transition-all"
           >
             Sign Out
@@ -178,20 +194,116 @@ const Dashboard: React.FC = () => {
             </header>
 
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 items-start">
-              <div className="xl:col-span-1 bg-white p-6 rounded-2xl shadow-sm border-t-8 border-red-600">
-                <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
-                  Generate Invite Key
-                </h3>
-                <KeyGenerator />
+              {/* Left Column: Input Form (Action) */}
+              <div className="xl:col-span-1">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border-t-8 border-red-600 sticky top-10">
+                  <h3 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6">
+                    Generate Invite Key
+                  </h3>
+                  {/* Passing refresh function to child component */}
+                  <KeyGenerator onComplete={fetchRegistrationKeys} />
+                </div>
               </div>
 
-              <div className="xl:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                  <h3 className="font-bold text-slate-800">
-                    Active Employee Directory
-                  </h3>
+              {/* Right Column: Information & Logs (Tracking) */}
+              <div className="xl:col-span-3 space-y-8">
+                {/* 1. Main Directory */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-800">
+                      Active Employee Directory
+                    </h3>
+                  </div>
+                  <EmployeeTable />
                 </div>
-                <EmployeeTable />
+
+                {/* 2. Issued Keys Registry (Below Directory) */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                    <div>
+                      <h3 className="font-bold text-slate-800">
+                        Issued Registration Keys
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Track pending and used invitation codes
+                      </p>
+                    </div>
+                    <button
+                      onClick={fetchRegistrationKeys}
+                      className="text-xs font-bold text-red-600 hover:text-red-700 transition-colors"
+                    >
+                      ↻ Refresh List
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50 text-[10px] uppercase font-black text-slate-400">
+                        <tr>
+                          <th className="px-6 py-4">Employee Recipient</th>
+                          <th className="px-6 py-4 text-center">Key Code</th>
+                          <th className="px-6 py-4 text-center">
+                            Current Status
+                          </th>
+                          <th className="px-6 py-4">Expiration Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {registrationKeys.length > 0 ? (
+                          registrationKeys.map((k: any) => (
+                            <tr
+                              key={k.id}
+                              className="hover:bg-slate-50/50 transition-colors"
+                            >
+                              <td className="px-6 py-4">
+                                <p className="font-bold text-slate-700 text-sm">
+                                  {k.employee_name}
+                                </p>
+                                <p className="text-[10px] text-slate-400 font-medium">
+                                  {k.email}
+                                </p>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <code className="bg-slate-100 px-3 py-1 rounded-lg text-red-600 font-bold font-mono border border-slate-200">
+                                  {k.key_code}
+                                </code>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                {k.is_used ? (
+                                  <span className="inline-flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                                    ● USED
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                    ● ACTIVE
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-xs text-slate-500 font-medium">
+                                {new Date(k.expires_at).toLocaleDateString(
+                                  undefined,
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  },
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="px-6 py-10 text-center text-slate-400 text-sm italic"
+                            >
+                              No keys have been generated yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -256,7 +368,6 @@ const Dashboard: React.FC = () => {
                       </button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* GUARDED MAP LOGIC HERE */}
                       {Array.isArray(roles) ? (
                         roles.map((r: any) => (
                           <div

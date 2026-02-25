@@ -6,7 +6,11 @@ interface Role {
   name: string;
 }
 
-const KeyGenerator: React.FC = () => {
+interface KeyGeneratorProps {
+  onComplete?: () => void;
+}
+
+const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -16,6 +20,7 @@ const KeyGenerator: React.FC = () => {
     last_name: "",
     email: "",
     role_id: "",
+    position: "",
   });
 
   const [generatedKey, setGeneratedKey] = useState("");
@@ -40,22 +45,12 @@ const KeyGenerator: React.FC = () => {
 
   const handleOnboard = async () => {
     try {
-      // This sends the full resume details + role to the backend
-      const response = await api.post("/admin/onboard-employee", {
-        ...formData,
-        role_id: parseInt(formData.role_id),
-      });
-
-      setGeneratedKey(response.data.key);
-      // Clear form except key
-      setFormData({
-        first_name: "",
-        last_name: "",
-        email: "",
-        role_id: roles[0]?.id.toString() || "",
-      });
-    } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to onboard employee.");
+      const res = await api.post("/admin/onboard-employee", formData);
+      setGeneratedKey(res.data.key);
+      onComplete?.();
+      alert("Employee record created and key generated!");
+    } catch (err) {
+      alert("Employee already has a record or email is in use.");
     }
   };
 

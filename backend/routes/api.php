@@ -27,6 +27,7 @@ Route::prefix('admin')->group(function () {
     Route::get('/roles', [RegistrationKeyController::class, 'getRoles']);
     Route::get('/roles', [RoleController::class, 'index']);
     Route::post('/roles', [RoleController::class, 'store']);
+    Route::get('/registration-keys', [App\Http\Controllers\EmployeeController::class, 'getRegistrationKeys']);
 });
 
 Route::middleware('auth:sanctum')->group(function () {

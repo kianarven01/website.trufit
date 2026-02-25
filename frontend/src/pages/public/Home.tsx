@@ -10,6 +10,7 @@ import picPeople from "@/assets/images/pic-people.jpg";
 import picTrufitGate from "@/assets/images/pic-trufitgate.jpg";
 import picTrufitFront from "@/assets/images/pic-trufitfront.jpeg"
 import picRedSuzuki from "@/assets/images/pic-redsuzuki.png";
+import picDtiLogo from "@/assets/images/pic-dtilogo.png";
 import picSuzukiLogo1 from "@/assets/images/pic-suzukilogo1.png";
 import picSuzukiLogo2 from "@/assets/images/pic-suzukilogo2.png";
 import picWurthLogo from "@/assets/images/pic-wurthlogo.png";
@@ -180,48 +181,79 @@ const Home: React.FC = () => {
 
       {/* About Section */}
       <section id="about" className="py-20 px-10 select-none">
-        <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
-          About Us
-        </h2>
-        <p className="text-gray-700 max-w-3xl">
-          At Trufit Auto Center, we take pride in offering a comprehensive range of top-notch automotive services to keep your vehicles running smoothly and looking their best. Our team of skilled technicians and mechanics is committed to providing the highest quality service and exceptional customer satisfaction. Trust us with your automobile needs, and we guarantee you'll drive away with a smile!
-        </p>
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-start">
 
-        {/* Quality Service Promise */}
-        <h3 className="text-2xl font-semibold border-b-4 border-red-600 inline-block mt-10 mb-4">
-          Our Quality Service Promise
-        </h3>
-        <ul className="space-y-2">
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Full safety inspection</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Precise diagnostics</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Honest, upfront pricing</span>
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="inline-block w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">✓</span>
-            <span>Fast, reliable service</span>
-          </li>
-        </ul>
-      </section>
+          {/* LEFT COLUMN — ABOUT + QUALITY */}
+          <div>
+            <h2 className="text-4xl font-semibold border-b-4 border-red-600 inline-block mb-6">
+              About Us
+            </h2>
 
-      {/* Suzuki Authorized Service Station Certification */}
-      <section id="suzuki-certification" className="py-20 px-10 select-none">
-        <div className="flex flex-col items-center">
-          <p className="text-center font-bold text-gray-700 text-sm mb-4">
-            CERTIFIED AS SUZUKI AUTHORIZED SERVICE STATION
-          </p>
-          <img 
-            src={picSuzukiLogo1} 
-            alt="Suzuki Logo 1" 
-            className="w-48 sm:w-56 md:w-64 h-auto object-contain" 
-          />
+            <p className="text-gray-700 mb-8 leading-relaxed">
+              At Trufit Auto Center, we take pride in offering a comprehensive range of
+              top-notch automotive services to keep your vehicles running smoothly
+              and looking their best. Our team of skilled technicians and mechanics
+              is committed to providing the highest quality service and exceptional
+              customer satisfaction.
+            </p>
+
+            <h3 className="text-2xl font-semibold border-b-4 border-red-600 inline-block mb-4">
+              Our Quality Service Promise
+            </h3>
+
+            <ul className="space-y-3">
+              {[
+                "Full safety inspection",
+                "Precise diagnostics",
+                "Honest, upfront pricing",
+                "Fast, reliable service",
+              ].map((item, index) => (
+                <li key={index} className="flex items-center gap-3">
+                  <span className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center text-sm">
+                    ✓
+                  </span>
+                  <span className="text-gray-700">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* RIGHT COLUMN — CERTIFICATIONS CARDS */}
+          <div className="flex flex-wrap justify-center gap-6 w-full">
+
+            {/* DTI Five-Star Certificate */}
+            <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col justify-end items-stretch gap-3 flex-1 min-w-[220px] max-w-xs sm:max-w-sm md:max-w-md">
+              <img
+                src={picDtiLogo}
+                alt="DTI Five-Star Certificate"
+                className="w-32 sm:w-40 md:w-48 h-auto object-contain mx-auto"
+              />
+              <div className="flex gap-1 justify-center">
+                {[...Array(5)].map((_, i) => (
+                  <span key={i} className="text-yellow-400 text-xl">★</span>
+                ))}
+              </div>
+              <div className="text-red-600 text-4xl text-center">🎖</div>
+              <p className="font-bold text-gray-700 text-sm text-center">
+                CERTIFIED BY DTI – FIVE STAR RATING
+              </p>
+            </div>
+
+            {/* Suzuki Authorized Service Certificate */}
+            <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col justify-end items-stretch gap-3 flex-1 min-w-[220px] max-w-xs sm:max-w-sm md:max-w-md">
+              <img
+                src={picSuzukiLogo2}
+                alt="Suzuki Authorized Service"
+                className="w-32 sm:w-40 md:w-48 h-auto object-contain mx-auto"
+              />
+              <div className="text-red-600 text-4xl text-center">🎖</div>
+              <p className="font-bold text-gray-700 text-sm text-center">
+                SUZUKI AUTHORIZED SERVICE STATION
+              </p>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
@@ -242,7 +274,7 @@ const Home: React.FC = () => {
           {services.map((service, idx) => (
           <Card
             key={idx}
-            className="max-w-xs bg-white rounded-xl shadow-md overflow-hidden flex-shrink-0
+            className="max-w-xs bg-white rounded-2xl rounded-t-none shadow-md overflow-hidden flex-shrink-0
                       transform transition duration-300 hover:-translate-y-2"
           >
             <img
@@ -251,7 +283,7 @@ const Home: React.FC = () => {
               className="w-full h-40 object-cover"
             />
             <CardHeader className="p-4 text-left">
-              <CardTitle className="text-lg font-bold">{service.title}</CardTitle>
+              <CardTitle className="text-lg font-semibold">{service.title}</CardTitle>
             </CardHeader>
             <CardContent className="p-4 text-left">
               <CardDescription className="text-base text-gray-600">{service.desc}</CardDescription>

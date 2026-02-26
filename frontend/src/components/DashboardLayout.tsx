@@ -2,10 +2,29 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
-  LayoutDashboard, ShoppingCart, Package, BarChart3, Settings,
-  ChevronDown, ChevronRight, LogOut, ClipboardList,
-  FileText, Users, CalendarDays, Truck, Box, TrendingUp,
-  ListOrdered, Activity, UserCog, Menu, X, Bell, PanelLeftClose, PanelLeft,
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  BarChart3,
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  LogOut,
+  ClipboardList,
+  FileText,
+  Users,
+  CalendarDays,
+  Truck,
+  Box,
+  TrendingUp,
+  ListOrdered,
+  Activity,
+  UserCog,
+  Menu,
+  X,
+  Bell,
+  PanelLeftClose,
+  PanelLeft,
   UserKey,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,56 +54,110 @@ interface NavItem {
   icon: React.ElementType;
   path?: string;
   roles?: string[];
-  children?: { label: string; path: string; icon: React.ElementType; roles?: string[] }[];
+  children?: {
+    label: string;
+    path: string;
+    icon: React.ElementType;
+    roles?: string[];
+  }[];
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/webapp/dashboard" },
   {
-    label: "Sales", icon: ShoppingCart,
+    label: "Sales",
+    icon: ShoppingCart,
     children: [
-      { label: "Job Orders", path: "/webapp/sales/job-orders", icon: ClipboardList },
+      {
+        label: "Job Orders",
+        path: "/webapp/sales/job-orders",
+        icon: ClipboardList,
+      },
       { label: "Quotations", path: "/webapp/sales/quotations", icon: FileText },
       { label: "Customers", path: "/webapp/sales/customers", icon: Users },
-      { label: "Appointments", path: "/webapp/sales/appointments", icon: CalendarDays },
+      {
+        label: "Appointments",
+        path: "/webapp/sales/appointments",
+        icon: CalendarDays,
+      },
     ],
   },
   {
-    label: "Purchasing", icon: Truck,
+    label: "Purchasing",
+    icon: Truck,
     children: [
-      { label: "Purchase Orders", path: "/webapp/purchasing/orders", icon: ClipboardList },
+      {
+        label: "Purchase Orders",
+        path: "/webapp/purchasing/orders",
+        icon: ClipboardList,
+      },
       { label: "Suppliers", path: "/webapp/purchasing/suppliers", icon: Users },
     ],
   },
   {
-    label: "Inventory", icon: Box,
+    label: "Inventory",
+    icon: Box,
     children: [
       { label: "Products", path: "/webapp/inventory/products", icon: Package },
     ],
   },
   {
-    label: "Reports", icon: BarChart3,
+    label: "Reports",
+    icon: BarChart3,
     children: [
-      { label: "Sales Summary", path: "/webapp/reports/sales-summary", icon: TrendingUp },
-      { label: "Sales Order List", path: "/webapp/reports/sales-orders", icon: ListOrdered },
-      { label: "Reorder & Forecast", path: "/webapp/reports/reorder-forecast", icon: BarChart3 },
+      {
+        label: "Sales Summary",
+        path: "/webapp/reports/sales-summary",
+        icon: TrendingUp,
+      },
+      {
+        label: "Sales Order List",
+        path: "/webapp/reports/sales-orders",
+        icon: ListOrdered,
+      },
+      {
+        label: "Reorder & Forecast",
+        path: "/webapp/reports/reorder-forecast",
+        icon: BarChart3,
+      },
       { label: "Audit Log", path: "/webapp/reports/audit-log", icon: Activity },
     ],
   },
   {
-    label: "Settings", icon: Settings,
+    label: "Settings",
+    icon: Settings,
     children: [
       { label: "Account", path: "/webapp/settings/account", icon: UserCog },
       { label: "Team", path: "/webapp/settings/team", icon: Users },
-      { label: "Roles and Permissions", path: "/webapp/settings/rolesandpermissions", icon: UserKey, roles: ["admin"] },
+      {
+        label: "Roles and Permissions",
+        path: "/webapp/settings/rolesandpermissions",
+        icon: UserKey,
+        roles: ["admin"],
+      },
     ],
   },
 ];
 
 const mockNotifications = [
-  { id: 1, text: "New appointment request from Juan D.", time: "5 min ago", unread: true },
-  { id: 2, text: "Low stock alert: Brake Pads", time: "1 hr ago", unread: true },
-  { id: 3, text: "Job Order #1024 completed", time: "3 hrs ago", unread: false },
+  {
+    id: 1,
+    text: "New appointment request from Juan D.",
+    time: "5 min ago",
+    unread: true,
+  },
+  {
+    id: 2,
+    text: "Low stock alert: Brake Pads",
+    time: "1 hr ago",
+    unread: true,
+  },
+  {
+    id: 3,
+    text: "Job Order #1024 completed",
+    time: "3 hrs ago",
+    unread: false,
+  },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -111,7 +184,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) =>
-      prev.includes(label) ? prev.filter((g) => g !== label) : [...prev, label]
+      prev.includes(label) ? prev.filter((g) => g !== label) : [...prev, label],
     );
   };
 
@@ -137,7 +210,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
             isActive(item.path)
               ? "bg-primary text-primary-foreground"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           )}
         >
           <item.icon className="h-4 w-4 shrink-0" />
@@ -157,12 +230,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
             groupActive
               ? "text-primary"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           )}
         >
           <item.icon className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">{item.label}</span>
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          {open ? (
+            <ChevronDown className="h-3 w-3" />
+          ) : (
+            <ChevronRight className="h-3 w-3" />
+          )}
         </button>
         {open && item.children && (
           <div className="ml-4 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-3">
@@ -174,7 +251,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   "flex w-full items-center gap-3 rounded-md px-3 py-1.5 text-sm transition-colors",
                   isActive(child.path)
                     ? "bg-primary text-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
                 <child.icon className="h-3.5 w-3.5 shrink-0" />
@@ -199,13 +276,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 "flex h-10 w-10 items-center justify-center rounded-md transition-colors mx-auto",
                 isActive(item.path)
                   ? "bg-primary text-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
               )}
             >
               <item.icon className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right" className="bg-popover text-popover-foreground border">
+          <TooltipContent
+            side="right"
+            className="bg-popover text-popover-foreground border"
+          >
             {item.label}
           </TooltipContent>
         </Tooltip>
@@ -222,14 +302,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               "flex h-10 w-10 items-center justify-center rounded-md transition-colors mx-auto",
               groupActive
                 ? "text-primary bg-sidebar-accent"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             )}
           >
             <item.icon className="h-5 w-5" />
           </button>
         </PopoverTrigger>
-        <PopoverContent side="right" align="start" className="w-48 p-1 bg-popover border z-50">
-          <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">{item.label}</p>
+        <PopoverContent
+          side="right"
+          align="start"
+          className="w-48 p-1 bg-popover border z-50"
+        >
+          <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+            {item.label}
+          </p>
           {item.children?.map((child) => (
             <button
               key={child.path}
@@ -238,7 +324,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
                 isActive(child.path)
                   ? "bg-primary text-primary-foreground"
-                  : "text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+                  : "text-popover-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
               <child.icon className="h-3.5 w-3.5 shrink-0" />
@@ -254,13 +340,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const sidebarContent = (
     <>
       <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
-        <img src={trufitLogo} alt="TruFit Auto Center" className="h-10 w-auto" />
+        <img
+          src={trufitLogo}
+          alt="TruFit Auto Center"
+          className="h-10 w-auto"
+        />
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-          {filteredNavItems.map((item) =>
-            collapsed ? renderCollapsedItem(item) : renderExpandedItem(item)
-          )}
+        {filteredNavItems.map((item) =>
+          collapsed ? renderCollapsedItem(item) : renderExpandedItem(item),
+        )}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
@@ -268,17 +358,28 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => { logout(); navigate("/"); }}
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
                 className="flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors mx-auto"
               >
                 <LogOut className="h-5 w-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-popover text-popover-foreground border">Sign Out</TooltipContent>
+            <TooltipContent
+              side="right"
+              className="bg-popover text-popover-foreground border"
+            >
+              Sign Out
+            </TooltipContent>
           </Tooltip>
         ) : (
           <button
-            onClick={() => { logout(); navigate("/"); }}
+            onClick={() => {
+              logout();
+              navigate("/");
+            }}
             className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
           >
             <LogOut className="h-4 w-4" />
@@ -295,8 +396,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">
         <img src={trufitLogo} alt="TruFit Auto Center" className="h-8 w-auto" />
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-bold text-sidebar-accent-foreground">TruFit Auto</h2>
-          <p className="truncate text-xs text-sidebar-foreground capitalize">{user?.role} Panel</p>
+          <h2 className="truncate text-sm font-bold text-sidebar-accent-foreground">
+            TruFit Auto
+          </h2>
+          <p className="truncate text-xs text-sidebar-foreground capitalize">
+            {user?.role} Panel
+          </p>
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
@@ -304,7 +409,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </nav>
       <div className="border-t border-sidebar-border p-3">
         <button
-          onClick={() => { logout(); navigate("/"); }}
+          onClick={() => {
+            logout();
+            navigate("/");
+          }}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
         >
           <LogOut className="h-4 w-4" />
@@ -321,7 +429,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <aside
           className={cn(
             "hidden md:flex md:flex-col bg-sidebar border-r border-sidebar-border shrink-0 transition-all duration-200",
-            collapsed ? "md:w-16" : "md:w-60"
+            collapsed ? "md:w-16" : "md:w-60",
           )}
         >
           {sidebarContent}
@@ -330,7 +438,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile overlay */}
         {mobileOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
-            <div className="absolute inset-0 bg-background/80" onClick={() => setMobileOpen(false)} />
+            <div
+              className="absolute inset-0 bg-background/80"
+              onClick={() => setMobileOpen(false)}
+            />
             <aside className="relative z-10 flex h-full w-64 flex-col bg-sidebar">
               <button
                 onClick={() => setMobileOpen(false)}
@@ -360,12 +471,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               className="hidden md:flex text-muted-foreground hover:text-foreground"
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              {collapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+              {collapsed ? (
+                <PanelLeft className="h-5 w-5" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" />
+              )}
             </button>
 
             <div className="flex-1" />
-
-            
 
             {/* Notifications */}
             <DropdownMenu>
@@ -379,13 +492,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 bg-popover border z-50">
+              <DropdownMenuContent
+                align="end"
+                className="w-80 bg-popover border z-50"
+              >
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {mockNotifications.map((n) => (
-                  <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 py-3 cursor-pointer">
-                    <span className={cn("text-sm", n.unread && "font-medium")}>{n.text}</span>
-                    <span className="text-xs text-muted-foreground">{n.time}</span>
+                  <DropdownMenuItem
+                    key={n.id}
+                    className="flex flex-col items-start gap-1 py-3 cursor-pointer"
+                  >
+                    <span className={cn("text-sm", n.unread && "font-medium")}>
+                      {n.text}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {n.time}
+                    </span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -399,29 +522,43 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     {user?.username?.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left">
-                    <p className="text-sm font-medium text-foreground">{user?.username}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {user?.username}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {user?.role}
+                    </p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-popover border z-50">
+              <DropdownMenuContent
+                align="end"
+                className="w-48 bg-popover border z-50"
+              >
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/settings/account")} className="cursor-pointer">
+                <DropdownMenuItem
+                  onClick={() => navigate("/settings/account")}
+                  className="cursor-pointer"
+                >
                   <UserCog className="mr-2 h-4 w-4" />
                   Account Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { logout(); navigate("/"); }} className="cursor-pointer text-destructive">
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    navigate("/");
+                  }}
+                  className="cursor-pointer text-destructive"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex-1 overflow-hidden">
-            {children}
-          </main>
+          <main className="flex-1 overflow-hidden">{children}</main>
         </div>
       </div>
     </TooltipProvider>

@@ -1,19 +1,13 @@
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { AdminDashboard } from "@/components/dashboards/AdminDashboard";
-import { SalesDashboard } from "@/components/dashboards/SalesDashboard";
-import { PurchasingDashboard } from "@/components/dashboards/PurchasingDashboard";
-import { HrDashboard } from "@/components/dashboards/HrDashboard";
+import AdminDashboard  from "@/components/dashboards/AdminDashboard";
+import SalesDashboard from "@/components/dashboards/SalesDashboard";
+import PurchasingDashboard from "@/components/dashboards/PurchasingDashboard";
+import HrDashboard from "@/components/dashboards/HrDashboard";
 
 const Dashboard = () => {
   const { user, role, loading } = useAuth();
-
-  const isAdmin = role?.toLowerCase() === "admin";
-  const isHR = role?.toLowerCase() === "hr";
-  const isSales = role?.toLowerCase() === "sales";
-  const isPurchasing = role?.toLowerCase() === "purchasing";
-
 
   // Wait until auth is loaded
   if (loading) {
@@ -47,9 +41,10 @@ const Dashboard = () => {
     case "purchasing":
       DashboardComponent = <PurchasingDashboard />;
       break;
-    case "hr":
+    case "hr manager":
       DashboardComponent = <HrDashboard />;
       break;
+    
   }
 
   return <DashboardLayout>{DashboardComponent}</DashboardLayout>;

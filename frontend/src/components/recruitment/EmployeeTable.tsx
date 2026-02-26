@@ -38,13 +38,16 @@ const EmployeeTable: React.FC = () => {
               Employee
             </th>
             <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Department
+              Position & Phone
             </th>
             <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Status
+              Role
             </th>
-            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">
-              Actions
+            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Join Date
+            </th>
+            <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Action
             </th>
           </tr>
         </thead>
@@ -52,10 +55,10 @@ const EmployeeTable: React.FC = () => {
           {employees.length === 0 ? (
             <tr>
               <td
-                colSpan={4}
+                colSpan={5}
                 className="p-10 text-center text-slate-400 italic"
               >
-                No employee records found.
+                No employees found.
               </td>
             </tr>
           ) : (
@@ -65,11 +68,21 @@ const EmployeeTable: React.FC = () => {
                 className="hover:bg-slate-50/50 transition-colors group"
               >
                 <td className="p-4">
+                  {/* Displays the single 'name' column from your updated schema */}
                   <div className="font-bold text-slate-800">
-                    {emp.first_name} {emp.last_name}
+                    {emp.name || "Unnamed Employee"}
                   </div>
-                  <div className="text-xs text-slate-400 lowercase">
+                  <div className="text-[10px] text-slate-400 lowercase font-medium">
                     {emp.email}
+                  </div>
+                </td>
+                <td className="p-4">
+                  {/* Matches the 'position' and 'phone' columns in Main.Employees */}
+                  <div className="text-xs font-bold text-slate-700">
+                    {emp.position}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {emp.phone || "No phone listed"}
                   </div>
                 </td>
                 <td className="p-4">
@@ -78,10 +91,16 @@ const EmployeeTable: React.FC = () => {
                   </span>
                 </td>
                 <td className="p-4">
-                  <span className="flex items-center text-[10px] font-black uppercase text-green-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-                    Active
-                  </span>
+                  {/* Displays the join_date column with standard formatting */}
+                  <div className="text-xs text-slate-500 font-medium">
+                    {emp.join_date
+                      ? new Date(emp.join_date).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "Pending"}
+                  </div>
                 </td>
                 <td className="p-4 text-right">
                   <button className="text-slate-300 hover:text-red-600 transition-colors text-sm font-bold">

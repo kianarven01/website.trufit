@@ -21,14 +21,16 @@ class EmployeeController extends Controller
 
     // EmployeeController.php
 
+    // Updated onboard function in EmployeeController.php
     public function onboard(Request $request)
     {
         $validated = $request->validate([
             'first_name' => 'required|string',
             'last_name'  => 'required|string',
-            'email'      => 'required|email|unique:Main.Employees,email',
+            'email'      => 'required|email|unique:pgsql.Main.Employees,email',
             'role_id'    => 'required|integer',
-            'position'   => 'required|string' // Required by your SQL schema
+            'position'   => 'required|string', // Fixed: Added missing comma
+            'phone'      => 'required|string',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -39,7 +41,8 @@ class EmployeeController extends Controller
                 'email'    => $validated['email'],
                 'position' => $validated['position'],
                 'roleID'   => $validated['role_id'],
-                'status'   => false, // Pending
+                'phone'    => $validated['phone'], // Added: Now correctly inserts phone to DB
+                'status'   => false,
             ]);
 
             $keyCode = strtoupper(bin2hex(random_bytes(4)));
@@ -50,13 +53,12 @@ class EmployeeController extends Controller
                 'employee_id' => $employeeId,
                 'is_used'     => false,
                 'created_at'  => now(),
-                'expires_at'  => now()->addHours(24), // Track expiration
+                'expires_at'  => now()->addHours(24),
             ]);
 
             return response()->json(['status' => 'success', 'key' => $keyCode]);
         });
     }
-
     public function getRegistrationKeys()
     {
         // Fetch keys and join with Employee to show names in the table

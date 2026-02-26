@@ -13,6 +13,13 @@ class Employee extends Model
         'email',
         'position',
         'roleID',
-        'status'
+        'status',
+        'phone',
+        'join_date'
     ];
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'roleID');
+    }
 }

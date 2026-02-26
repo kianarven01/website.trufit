@@ -7,7 +7,7 @@ interface Role {
 }
 
 interface KeyGeneratorProps {
-  onComplete?: () => void;
+  onComplete: () => void;
 }
 
 const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
@@ -19,10 +19,9 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
     first_name: "",
     last_name: "",
     email: "",
-    position: "",
-    roleID: "",
-    phone: "",
-    join_date: "",
+    position: "", // Match SQL
+    roleID: "", // Match SQL roleID bigint
+    phone: "", // Match SQL
   });
 
   useEffect(() => {
@@ -44,62 +43,60 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
   }, []);
 
   const handleOnboard = async () => {
+    setIsLoading(true);
     try {
-      // Mapping local state to your specific DB columns
       const payload = {
-        name: `${formData.first_name} ${formData.last_name}`,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         email: formData.email,
-        position: formData.position,
-        roleID: parseInt(formData.roleID),
-        phone: formData.phone,
-        join_date: formData.join_date,
-        status: true,
+        position: formData.position, // Required by SQL
+        phone: formData.phone, // Required by SQL
+        role_id: parseInt(formData.roleID), // Matches controller validation key
       };
 
       const response = await api.post("/admin/onboard-employee", payload);
-      setGeneratedKey(response.data.key);
 
-      // Clear form
-      setFormData({
-        first_name: "",
-        last_name: "",
-        email: "",
-        position: "",
-        roleID: roles[0]?.id.toString() || "",
-        phone: "",
-        join_date: "",
-      });
-
-      if (onComplete) onComplete(); // Refresh Dashboard lists
+      if (response.data.key) {
+        setGeneratedKey(response.data.key);
+        setFormData({
+          first_name: "",
+          last_name: "",
+          email: "",
+          position: "",
+          roleID: roles[0]?.id.toString() || "",
+          phone: "",
+        });
+        if (onComplete) onComplete();
+      }
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to onboard employee.");
+      console.error("Error generating key:", error.response?.data);
+      alert(error.response?.data?.message || "Check database configuration.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
             First Name
           </label>
           <input
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-            placeholder="Sarah"
+            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none"
             value={formData.first_name}
             onChange={(e) =>
               setFormData({ ...formData, first_name: e.target.value })
             }
           />
         </div>
-
         <div className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+          <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
             Last Name
           </label>
           <input
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-            placeholder="Johnson"
+            className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none"
             value={formData.last_name}
             onChange={(e) =>
               setFormData({ ...formData, last_name: e.target.value })
@@ -109,51 +106,24 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-          Company Email
-        </label>
-        <input
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-          placeholder="s.johnson@trufit.com"
-          type="email"
-          value={formData.email}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
           Phone Number
         </label>
         <input
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-          placeholder="+1 (555) 123-4567"
+          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+          placeholder="+1 (555) 000-0000"
           value={formData.phone}
           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
         />
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-          Join Date
+        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+          Job Position
         </label>
         <input
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-          placeholder="+1 (555) 123-4567"
-          value={formData.join_date}
-          onChange={(e) =>
-            setFormData({ ...formData, join_date: e.target.value })
-          }
-        />
-      </div>
-
-      <div className="space-y-1">
-        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-          Job Title
-        </label>
-        <input
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none transition-all"
-          placeholder="Senior Technician"
+          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+          placeholder="Service Technician"
           value={formData.position}
           onChange={(e) =>
             setFormData({ ...formData, position: e.target.value })
@@ -162,11 +132,23 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-          Access Level
+        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+          Email
+        </label>
+        <input
+          type="email"
+          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+          System Role
         </label>
         <select
-          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none appearance-none"
+          className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm appearance-none"
           value={formData.roleID}
           onChange={(e) => setFormData({ ...formData, roleID: e.target.value })}
         >
@@ -181,23 +163,23 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
       <button
         onClick={handleOnboard}
         disabled={isLoading || !formData.email || !formData.position}
-        className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl hover:bg-red-600 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+        className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-2xl hover:bg-red-600 transition-all shadow-lg active:scale-[0.98]"
       >
-        Create Record & Generate Key
+        Generate Registration Key
       </button>
 
       {generatedKey && (
         <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-2xl animate-in zoom-in-95">
-          <p className="text-[10px] font-black text-green-600 uppercase mb-2 text-center tracking-widest">
-            Key Generated Successfully
+          <p className="text-[10px] font-black text-green-600 uppercase mb-2">
+            Key Created
           </p>
-          <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-green-100">
-            <code className="text-lg font-mono font-black text-slate-800 tracking-wider">
+          <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-green-100">
+            <code className="text-lg font-mono font-black text-slate-800 tracking-tighter">
               {generatedKey}
             </code>
             <button
               onClick={() => navigator.clipboard.writeText(generatedKey)}
-              className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-lg font-bold"
+              className="text-[10px] bg-slate-900 text-white px-3 py-1.5 rounded-md font-bold hover:bg-green-600 transition-colors"
             >
               Copy
             </button>

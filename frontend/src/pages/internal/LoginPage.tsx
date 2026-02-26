@@ -18,7 +18,7 @@ import {
 
 import placeholder from "@/assets/placeholder.jpeg";
 import trufit_logo from "@/assets/trufit_logo.png";
-import { Eye, EyeOff } from "react-feather";
+import { Eye, EyeOff } from "lucide-react";
 
 const LoginPage: React.FC = () => {
   const { login, user, loading } = useAuth();
@@ -173,7 +173,7 @@ const LoginPage: React.FC = () => {
 
                   <button
                     type="button"
-                    className="text-blue-900 hover:text-trufitBlue underline"
+                    className="text-blue-900 hover:text-trufitBlue underline hover:text-popover-foreground font-semibold"
                   >
                     Forgot Password?
                   </button>
@@ -183,21 +183,18 @@ const LoginPage: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-blue-900 hover:bg-trufitBlue text-white font-semibold h-11 transition-all mt-4"
+                  className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all mt-4 "
                 >
                   {isSubmitting ? "Authenticating..." : "Sign In to System"}
                 </Button>
 
-                {/* Register Trigger */}
-                <div className="text-center mt-2">
-                  <button
+                  <Button
                     type="button"
-                    className="text-sm text-blue-900 hover:text-trufitBlue font-bold"
+                    className="text-sm text-blue-900 bg-transparent hover:text-blue-950 hover:bg-slate-50 rounded-md w-full h-11 font-semibold mb-2"
                     onClick={() => setShowRegisterModal(true)}
                   >
                     Register a New Account
-                  </button>
-                </div>
+                  </Button>
               </form>
             </CardContent>
 
@@ -241,8 +238,8 @@ const LoginPage: React.FC = () => {
                   <p className="text-red-500 text-sm">{regKeyError}</p>
                 )}
 
-                <Button
-                  type="submit"
+                <Button 
+                  type="submit" 
                   className="w-full mt-4 bg-trufitBlue text-white hover:bg-blue-950"
                   disabled={loadingState}
                 >

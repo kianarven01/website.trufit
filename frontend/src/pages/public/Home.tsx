@@ -6,6 +6,7 @@ import Carousel from "@/components/ui/carousel";
 import Navbar from "@/components/ui/site-navbar";
 import Comments from "@/components/ui/comments";
 
+import picBanner from "@/assets/images/pic-banner.jpg";
 import picPeople from "@/assets/images/pic-people.jpg";
 import picTrufitGate from "@/assets/images/pic-trufitgate.jpg";
 import picTrufitFront from "@/assets/images/pic-trufitfront.jpeg"
@@ -17,6 +18,7 @@ import picSuzukiLogo2 from "@/assets/images/pic-suzukilogo2.png";
 import picWurthLogo from "@/assets/images/pic-wurthlogo.png";
 import picSplitFireLogo from "@/assets/images/pic-splitfirelogo.png";
 import picCaltexLogo from "@/assets/images/pic-caltexlogo.png";
+
 import picDiagnostics from "@/assets/images/pic-diagnostics.jpg";
 import picMaintenance from "@/assets/images/pic-maintenance.png";
 import picAircon from "@/assets/images/pic-aircon.png";
@@ -165,7 +167,7 @@ const Home: React.FC = () => {
       <section
         id="home"
         className="relative h-[680px] md:h-[750px] bg-slate-900 bg-cover bg-center flex items-center px-10 select-none"
-        style={{ backgroundImage: `url(${picTrufitGate})` }}
+        style={{ backgroundImage: `url(${picBanner})` }}
       >
         {/* darker overlay */}
         <div className="absolute inset-0 bg-black/50"></div>

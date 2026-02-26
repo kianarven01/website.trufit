@@ -1,53 +1,41 @@
 import React from "react";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import AdminDashboard  from "@/components/dashboards/AdminDashboard";
-import SalesDashboard from "@/components/dashboards/SalesDashboard";
-import PurchasingDashboard from "@/components/dashboards/PurchasingDashboard";
-import HrDashboard from "@/components/dashboards/HrDashboard";
+import AdminDashboard from "@/components/dashboards/AdminDashboard";
+import { SalesDashboard } from "@/components/dashboards/SalesDashboard";
+import { PurchasingDashboard } from "@/components/dashboards/PurchasingDashboard";
+import { HrDashboard } from "@/components/dashboards/HrDashboard";
 
 const Dashboard = () => {
   const { user, role, loading } = useAuth();
 
-  // Wait until auth is loaded
-  if (loading) {
+  if (loading)
     return (
       <div className="flex items-center justify-center h-screen">
         <p>Loading...</p>
       </div>
     );
-  }
 
-  // If user is not logged in
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p>Please log in to access the dashboard.</p>
-      </div>
-    );
-  }
+  if (!user) return <Navigate to="/webapp/login" replace />;
 
-  // Select dashboard based on role
   const userRole = role?.toLowerCase() || "";
-  let DashboardComponent: React.ReactNode;
+  const getComponent = () => {
+    switch (userRole) {
+      case "admin":
+        return <AdminDashboard />;
+      case "hr":
+        return <HrDashboard />;
+      case "sales":
+        return <SalesDashboard />;
+      case "purchasing":
+        return <PurchasingDashboard />;
+      default:
+        return <div>Default Staff View</div>;
+    }
+  };
 
-  switch (userRole) {
-    case "admin":
-      DashboardComponent = <AdminDashboard />;
-      break;
-    case "sales":
-      DashboardComponent = <SalesDashboard />;
-      break;
-    case "purchasing":
-      DashboardComponent = <PurchasingDashboard />;
-      break;
-    case "hr manager":
-      DashboardComponent = <HrDashboard />;
-      break;
-    
-  }
-
-  return <DashboardLayout>{DashboardComponent}</DashboardLayout>;
+  return <DashboardLayout>{getComponent()}</DashboardLayout>;
 };
 
 export default Dashboard;

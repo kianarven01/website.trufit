@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\RegistrationKey;
 use App\Models\Role;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
@@ -51,21 +51,27 @@ class RegistrationKeyController extends Controller
         ]);
     }
 
+    // RegistrationKeyController.php
     public function verify(Request $request)
     {
         $request->validate(['key_code' => 'required|string']);
 
         $key = RegistrationKey::where('key_code', $request->key_code)
             ->where('is_used', false)
-            ->where('expires_at', '>', now())
             ->first();
 
         if (!$key) {
-            return response()->json(['message' => 'This key is invalid, already used, or expired.'], 422);
+            return response()->json(['message' => 'Key invalid or used.'], 422);
         }
 
-        $role = Role::find($key->role_id);
+        // IMPORTANT: Load the employee so the frontend gets the Name and Position
+        $employee = DB::table('Main.Employees')->where('id', $key->employee_id)->first();
 
-        return response()->json(['status' => 'success', 'data' => \App\Models\Role::all()]);
+        return response()->json([
+            'status' => 'success',
+            'employee_name' => $employee->name ?? 'Unknown',
+            'position' => $employee->position ?? 'Staff',
+            'validKey' => $key->key_code
+        ]);
     }
 }

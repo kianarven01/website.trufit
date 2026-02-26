@@ -5,39 +5,38 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import ProtectedRoute from "./components/ProtectedRoute"; // The bouncer
+import { AuthProvider } from "./context/AuthContext"; // Import this!
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/public/Home";
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
 import Register from "./pages/internal/Register";
-
 import PageNotFound from "./pages/PageNotFound";
 
 const App: React.FC = () => {
   return (
-    <Router>
-      <Routes>
-        {/* Public - No ID needed */}
-        <Route path="/home" element={<Home />} />
-        <Route path="/webapp/login" element={<LoginPage />} />
-        <Route path="/webapp/register" element={<Register />} />
-        
+    <AuthProvider>
+      {" "}
+      {/* Wrap everything here */}
+      <Router>
+        <Routes>
+          <Route path="/home" element={<Home />} />
+          <Route path="/webapp/login" element={<LoginPage />} />
+          <Route path="/webapp/register" element={<Register />} />
 
-        <Route element={<ProtectedRoute />}>
-          <Route path="/webapp/dashboard" element={<Dashboard />} />
-        </Route>
+          <Route element={<ProtectedRoute />}>
+            <Route path="/webapp/dashboard" element={<Dashboard />} />
+          </Route>
 
-        {/* Redirects */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
-        <Route
-          path="/webapp"
-          element={<Navigate to="/webapp/dashboard" replace />}
-        />
-
-        {/* 404 */}
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </Router>
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route
+            path="/webapp"
+            element={<Navigate to="/webapp/dashboard" replace />}
+          />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 

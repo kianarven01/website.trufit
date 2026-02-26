@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class RegistrationKey extends Model
 {
-    protected $table = 'Main.RegistrationKeys';
+    protected $table = 'RegistrationKeys';
 
     protected $fillable = [
         'key_code',

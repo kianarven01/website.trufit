@@ -1,13 +1,54 @@
 import React, { useState } from "react";
 import api from "@/api/axios";
 
-const RoleManager: React.FC = () => {
-  const [roleName, setRoleName] = useState("");
-  const [permissions, setPermissions] = useState({
-    inventory: ["read"],
-    sales: ["read"],
-    admin_panel: false,
-  });
+interface RoleManagerProps {
+  initialData?: any;
+  onComplete?: () => void;
+}
+
+const RoleManager: React.FC<RoleManagerProps> = ({
+  initialData,
+  onComplete,
+}) => {
+  // If initialData exists, we are in EDIT mode
+  const [roleName, setRoleName] = useState(initialData?.name || "");
+  const [permissions, setPermissions] = useState<any>(
+    initialData?.permissions || {
+      inventory: [],
+      hr_access: [],
+      admin_panel: false,
+    },
+  );
+
+  const handleSaveRole = async () => {
+    if (!roleName) return alert("Please enter a role name");
+
+    try {
+      if (initialData?.id) {
+        // UPDATE existing role (matching your Controller update method)
+        await api.put(`/admin/roles/${initialData.id}`, {
+          name: roleName,
+          permissions: permissions,
+        });
+      } else {
+        // CREATE new role
+        await api.post("/admin/roles", {
+          name: roleName,
+          permissions: permissions,
+        });
+      }
+
+      if (onComplete) onComplete();
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Error saving role");
+    }
+  };
+
+  const hrPermissions = [
+    { id: "create_employee", label: "Create Employee Record" },
+    { id: "manage_employees", label: "Manage Employee Records" },
+    { id: "generate_keys", label: "Generate Registration Keys" },
+  ];
 
   const togglePermission = (module: string, action: string) => {
     setPermissions((prev: any) => {
@@ -19,67 +60,75 @@ const RoleManager: React.FC = () => {
     });
   };
 
-  const handleSaveRole = async () => {
-    if (!roleName) return alert("Please enter a role name");
-    try {
-      await api.post("/admin/roles", {
-        name: roleName,
-        permissions: permissions,
-      });
-      alert("New role added to the system!");
-      setRoleName("");
-    } catch (error) {
-      console.error("Error creating role:", error);
-      alert("Failed to create role. Check if name already exists.");
-    }
-  };
-
   return (
-    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 mt-8">
-      <h3 className="text-slate-800 text-lg font-bold mb-4">
-        Add New Department Role
-      </h3>
-
-      <input
-        type="text"
-        placeholder="Role Name (e.g., Workshop Lead)"
-        className="w-full p-3 border rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 outline-none"
-        value={roleName}
-        onChange={(e) => setRoleName(e.target.value)}
-      />
+    <div className="space-y-6">
+      <div>
+        <label className="block text-sm font-bold text-slate-700 mb-2">
+          Role Name
+        </label>
+        <input
+          type="text"
+          placeholder="e.g., HR Manager"
+          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+          value={roleName}
+          onChange={(e) => setRoleName(e.target.value)}
+        />
+      </div>
 
       <div className="space-y-4">
-        <p className="text-xs font-black uppercase text-slate-400 tracking-widest">
-          Module Permissions
-        </p>
-
-        {/* Inventory Permissions */}
-        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-          <span className="text-sm font-semibold text-slate-700">
-            Inventory Access
+        {/* HR ACCESS MODULE */}
+        <div className="p-4 border border-slate-100 rounded-xl bg-slate-50">
+          <span className="text-sm font-bold text-slate-800 block mb-3 text-slate-400 uppercase text-[10px] tracking-widest">
+            HR Access
           </span>
-          <div className="space-x-4">
-            {["read", "write"].map((act) => (
-              <label key={act} className="inline-flex items-center text-xs">
+          <div className="grid grid-cols-1 gap-2">
+            {hrPermissions.map((perm) => (
+              <label
+                key={perm.id}
+                className="flex items-center space-x-3 text-sm text-slate-600 cursor-pointer"
+              >
                 <input
                   type="checkbox"
-                  className="mr-1"
-                  checked={permissions.inventory.includes(act)}
-                  onChange={() => togglePermission("inventory", act)}
+                  className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                  checked={permissions.hr_access.includes(perm.id)}
+                  onChange={() => togglePermission("hr_access", perm.id)}
                 />
-                {act.toUpperCase()}
+                <span>{perm.label}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* Admin Panel Toggle */}
-        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-          <span className="text-sm font-semibold text-slate-700">
-            Admin Dashboard Access
+        {/* INVENTORY ACCESS */}
+        <div className="p-4 border border-slate-100 rounded-xl">
+          <span className="text-sm font-bold text-slate-800 block mb-3 text-slate-400 uppercase text-[10px] tracking-widest">
+            Inventory Access
+          </span>
+          <div className="flex space-x-6">
+            {["read", "write"].map((act) => (
+              <label
+                key={act}
+                className="flex items-center space-x-2 text-sm uppercase font-bold text-slate-500 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={permissions.inventory.includes(act)}
+                  onChange={() => togglePermission("inventory", act)}
+                />
+                <span>{act}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* ADMIN DASHBOARD TOGGLE */}
+        <div className="flex items-center justify-between p-4 border border-slate-100 rounded-xl">
+          <span className="text-sm font-bold text-slate-800">
+            Can Access Admin Panel
           </span>
           <input
             type="checkbox"
+            className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
             checked={permissions.admin_panel}
             onChange={(e) =>
               setPermissions({ ...permissions, admin_panel: e.target.checked })
@@ -90,7 +139,7 @@ const RoleManager: React.FC = () => {
 
       <button
         onClick={handleSaveRole}
-        className="w-full mt-6 bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-all"
+        className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-red-600 transition-all shadow-lg"
       >
         Create Role
       </button>

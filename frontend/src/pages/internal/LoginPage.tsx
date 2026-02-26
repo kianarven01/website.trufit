@@ -64,27 +64,27 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // VERIFY REGISTRATION KEY
   const handleVerifyKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRegKeyError("");
     setLoadingState(true);
 
     try {
       const response = await api.post("/verify-registration-key", {
         key_code: regKey,
       });
-      setAssignedRole({
-        id: response.data.role_id,
-        name: response.data.role_name,
-      });
-      navigate("/webapp/register", {
-        state: { role: response.data.role_name, key: regKey },
-      });
+
+      if (response.data.status === "success") {
+        // Map the backend response to the router state
+        navigate("/webapp/register", {
+          state: {
+            validKey: regKey,
+            employeeName: response.data.employee_name, // Match backend
+            position: response.data.position, // Match backend
+          },
+        });
+      }
     } catch (err: any) {
-      setRegKeyError(
-        err.response?.data?.message || "Invalid registration key.",
-      );
+      setRegKeyError("Key not found or already used.");
     } finally {
       setLoadingState(false);
     }

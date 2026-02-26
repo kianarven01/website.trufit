@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, { useRef, useState } from "react";
 import { CarFront, Wrench, ShieldCheck, ArrowDownRight, ArrowUpRight, UserCheck, Cpu, Smile, Tag } from "lucide-react";
 import { FaEnvelope, FaFacebookF, FaMapMarkerAlt, FaPhoneAlt } from "react-icons/fa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,16 +6,19 @@ import Carousel from "@/components/ui/carousel";
 import Navbar from "@/components/ui/site-navbar";
 import Comments from "@/components/ui/comments";
 
+import picBanner from "@/assets/images/pic-banner.jpg";
 import picPeople from "@/assets/images/pic-people.jpg";
 import picTrufitGate from "@/assets/images/pic-trufitgate.jpg";
 import picTrufitFront from "@/assets/images/pic-trufitfront.jpeg"
 import picRedSuzuki from "@/assets/images/pic-redsuzuki.png";
 import picDtiLogo from "@/assets/images/pic-dtilogo.png";
+import picBagwisLogo from "@/assets/images/pic-bagwislogo.png";
 import picSuzukiLogo1 from "@/assets/images/pic-suzukilogo1.png";
 import picSuzukiLogo2 from "@/assets/images/pic-suzukilogo2.png";
 import picWurthLogo from "@/assets/images/pic-wurthlogo.png";
 import picSplitFireLogo from "@/assets/images/pic-splitfirelogo.png";
 import picCaltexLogo from "@/assets/images/pic-caltexlogo.png";
+
 import picDiagnostics from "@/assets/images/pic-diagnostics.jpg";
 import picMaintenance from "@/assets/images/pic-maintenance.png";
 import picAircon from "@/assets/images/pic-aircon.png";
@@ -135,6 +138,28 @@ const promoSlides: string[] = [
 
 const Home: React.FC = () => {
   const [trackingNumber, setTrackingNumber] = useState("");
+
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [isDown, setIsDown] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDown(true);
+    setStartX(e.pageX - (sliderRef.current?.offsetLeft || 0));
+    setScrollLeft(sliderRef.current?.scrollLeft || 0);
+  };
+
+  const handleMouseLeave = () => setIsDown(false);
+  const handleMouseUp = () => setIsDown(false);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - (sliderRef.current?.offsetLeft || 0);
+    const walk = (x - startX) * 2;
+    if (sliderRef.current) sliderRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
@@ -142,10 +167,10 @@ const Home: React.FC = () => {
       <section
         id="home"
         className="relative h-[680px] md:h-[750px] bg-slate-900 bg-cover bg-center flex items-center px-10 select-none"
-        style={{ backgroundImage: `url(${picTrufitFront})` }}
+        style={{ backgroundImage: `url(${picBanner})` }}
       >
         {/* darker overlay */}
-        <div className="absolute inset-0 bg-black/80"></div>
+        <div className="absolute inset-0 bg-black/50"></div>
 
         {/* LEFT TEXT */}
         <div className="z-10 max-w-2xl text-white">
@@ -169,13 +194,47 @@ const Home: React.FC = () => {
           </button>
         </div>
 
-        {/* RIGHT CAR IMAGE */}
-        <div className="absolute right-10 bottom-0 w-1/2 md:w-2/5">
-          <img
-            src={picRedSuzuki}
-            alt="Red Suzuki S-Presso"
-            className="w-full h-auto object-cover rounded-lg shadow-lg"
-          />
+        {/* TRUST BADGES - bottom left, bigger logos, logos bottom-aligned, text balanced */}
+        <div className="absolute left-10 bottom-8 z-10 flex items-end gap-8">
+
+          {/* Suzuki Authorized */}
+          <div className="flex flex-col items-center text-center">
+            <img
+              src={picSuzukiLogo2}
+              alt="Suzuki Authorized"
+              draggable={false}
+              className="h-20 md:h-24 w-auto object-contain opacity-90"
+            />
+            <span className="mt-2 h-6 md:h-7 text-sm md:text-base text-white/80 font-medium">
+              Authorized Service Center
+            </span>
+          </div>
+
+          {/* DTI 5 Star */}
+          <div className="flex flex-col items-center text-center">
+            <img
+              src={picDtiLogo}
+              alt="DTI 5 Star"
+              draggable={false}
+              className="h-20 md:h-24 w-auto object-contain opacity-90"
+            />
+            <span className="mt-2 h-6 md:h-7 text-sm md:text-base text-white/80 font-medium">
+              5-Star Accreditation
+            </span>
+          </div>
+
+          {/* Bagwis Seal */}
+          <div className="flex flex-col items-center text-center">
+            <img
+              src={picBagwisLogo}
+              alt="DTI Bagwis Seal"
+              draggable={false}
+              className="h-24 md:h-28 w-auto object-contain opacity-90"
+            />
+            {/* empty span to balance text heights */}
+            <span className="mt-2 h-6 md:h-7"></span>
+          </div>
+
         </div>
       </section>
 
@@ -195,6 +254,8 @@ const Home: React.FC = () => {
               and looking their best. Our team of skilled technicians and mechanics
               is committed to providing the highest quality service and exceptional
               customer satisfaction.
+
+              Text for dti accreditation
             </p>
 
             <h3 className="text-2xl font-semibold border-b-4 border-red-600 inline-block mb-4">
@@ -218,77 +279,36 @@ const Home: React.FC = () => {
             </ul>
           </div>
 
-          {/* RIGHT COLUMN — CERTIFICATIONS CARDS */}
-          <div className="flex flex-wrap justify-center gap-6 w-full">
-
-            {/* DTI Five-Star Certificate */}
-            <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col justify-end items-stretch gap-3 flex-1 min-w-[220px] max-w-xs sm:max-w-sm md:max-w-md">
-              <img
-                src={picDtiLogo}
-                alt="DTI Five-Star Certificate"
-                className="w-32 sm:w-40 md:w-48 h-auto object-contain mx-auto"
-              />
-              <div className="flex gap-1 justify-center">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400 text-xl">★</span>
-                ))}
-              </div>
-              <div className="text-red-600 text-4xl text-center">🎖</div>
-              <p className="font-bold text-gray-700 text-sm text-center">
-                CERTIFIED BY DTI – FIVE STAR RATING
-              </p>
-            </div>
-
-            {/* Suzuki Authorized Service Certificate */}
-            <div className="bg-white shadow-lg rounded-2xl p-6 flex flex-col justify-end items-stretch gap-3 flex-1 min-w-[220px] max-w-xs sm:max-w-sm md:max-w-md">
-              <img
-                src={picSuzukiLogo2}
-                alt="Suzuki Authorized Service"
-                className="w-32 sm:w-40 md:w-48 h-auto object-contain mx-auto"
-              />
-              <div className="text-red-600 text-4xl text-center">🎖</div>
-              <p className="font-bold text-gray-700 text-sm text-center">
-                SUZUKI AUTHORIZED SERVICE STATION
-              </p>
-            </div>
-
-          </div>
-
         </div>
       </section>
 
-      {/* Services Section */}
+      {/* Services Section (click & drag) */}
       <section id="services" className="py-20 px-10 bg-gray-900 select-none">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-10 gap-4">
-          <h2 className="text-4xl font-light text-white">
-            Discover Our Services
-          </h2>
+          <h2 className="text-4xl font-light text-white">Discover Our Services</h2>
           <p className="md:max-w-md text-white/80 md:text-right">
             Regular maintenance is crucial to prolonging the life of your car and preventing costly breakdowns.
           </p>
         </div>
-        <div className="flex overflow-x-auto gap-6 py-4 
-                        [&::-webkit-scrollbar]:hidden 
-                        [-ms-overflow-style:none] 
-                        [scrollbar-width:none]">
+        <div
+          ref={sliderRef}
+          className="flex overflow-x-auto gap-6 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] cursor-grab"
+          onMouseDown={handleMouseDown}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+        >
           {services.map((service, idx) => (
-          <Card
-            key={idx}
-            className="max-w-xs bg-white rounded-2xl rounded-t-none shadow-md overflow-hidden flex-shrink-0
-                      transform transition duration-300 hover:-translate-y-2"
-          >
-            <img
-              src={service.img}
-              alt={service.title}
-              className="w-full h-40 object-cover"
-            />
-            <CardHeader className="p-4 text-left">
-              <CardTitle className="text-lg font-semibold">{service.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 text-left">
-              <CardDescription className="text-base text-gray-600">{service.desc}</CardDescription>
-            </CardContent>
-          </Card>
+            <Card key={idx} className="max-w-xs bg-white rounded-2xl rounded-t-none shadow-md overflow-hidden flex-shrink-0 transform transition duration-300 hover:-translate-y-2">
+              <img src={service.img} alt={service.title} draggable={false} onContextMenu={(e) => e.preventDefault()} 
+              className="w-full h-40 object-cover pointer-events-none" />
+              <CardHeader className="p-4 text-left">
+                <CardTitle className="text-lg font-semibold">{service.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 text-left">
+                <CardDescription className="text-base text-gray-600">{service.desc}</CardDescription>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
@@ -396,7 +416,7 @@ const Home: React.FC = () => {
           <Comments
             name="Jane D."
             message="Trufit Auto Center handled my car perfectly and on time! Highly recommend."
-            avatar={picPeople}
+            avatar={picPeople} 
             rating={5}
           />
           <Comments
@@ -416,7 +436,7 @@ const Home: React.FC = () => {
       {/* Special Promotion Section */}
       <section id="promo" className="py-20 px-10 bg-gray-900 select-none">
         <div className="w-full flex flex-col items-center">
-          <div className="w-full max-w-4xl mt-8">
+          <div className="w-full max-w-7xl mt-8">
             <Carousel slides={promoSlides} />
           </div>
         </div>
@@ -436,22 +456,26 @@ const Home: React.FC = () => {
             <img
               src={picSuzukiLogo2}
               alt="Suzuki Logo 2"
-              className="max-w-[150px] sm:max-w-[180px] md:max-w-[170px] h-auto object-contain"
+              draggable={false} onContextMenu={(e) => e.preventDefault()} 
+              className="max-w-[150px] sm:max-w-[180px] md:max-w-[170px] h-auto object-contain pointer-events-none"
             />
             <img
               src={picWurthLogo}
               alt="Wurth Logo"
-              className="max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain"
+              draggable={false} onContextMenu={(e) => e.preventDefault()} 
+              className="max-w-[150px] sm:max-w-[180px] md:max-w-[200px] h-auto object-contain pointer-events-none"
             />
             <img
               src={picSplitFireLogo}
               alt="Split Fire Logo"
-              className="max-w-[180px] sm:max-w-[200px] md:max-w-[250px] h-auto object-contain"
+              draggable={false} onContextMenu={(e) => e.preventDefault()} 
+              className="max-w-[180px] sm:max-w-[200px] md:max-w-[250px] h-auto object-contain pointer-events-none"
             />
             <img
               src={picCaltexLogo}
               alt="Caltex Logo"
-              className="max-w-[180px] sm:max-w-[200px] md:max-w-[350px] h-auto object-contain"
+              draggable={false} onContextMenu={(e) => e.preventDefault()} 
+              className="max-w-[180px] sm:max-w-[200px] md:max-w-[350px] h-auto object-contain pointer-events-none"
             />
           </div>
         </div>
@@ -520,7 +544,8 @@ const Home: React.FC = () => {
             <img
               src={picPeople}
               alt="Trufit Location"
-              className="w-full h-48 object-cover"
+              draggable={false} onContextMenu={(e) => e.preventDefault()}
+              className="w-full h-48 object-cover pointer-events-none"
             />
 
             {/* contact info */}
@@ -537,7 +562,7 @@ const Home: React.FC = () => {
                   >
                     <FaMapMarkerAlt className="w-4 h-4" />
                   </a>
-                  <span>1042 Vinsons Ave, P1 Brgy. Gahonon Daet, Camarines Norte</span>
+                  <span>1042 Vinzons Ave, P1 Brgy. Gahonon Daet, Camarines Norte</span>
                 </div>
 
                 {/* phone */}

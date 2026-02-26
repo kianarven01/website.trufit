@@ -11,6 +11,8 @@ import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
 import Register from "./pages/internal/Register";
 
+import PageNotFound from "./pages/PageNotFound";
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -33,7 +35,7 @@ const App: React.FC = () => {
         />
 
         {/* 404 */}
-        <Route path="*" element={<div>404 Not Found</div>} />
+        <Route path="*" element={<PageNotFound />} />
       </Routes>
     </Router>
   );

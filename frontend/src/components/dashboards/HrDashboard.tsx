@@ -35,7 +35,7 @@ const statusColor: Record<string, string> = {
 const daysInMonth = 28;
 const today = 23;
 
-export function SalesDashboard() {
+export function HrDashboard() {
   const [requests, setRequests] = useState(appointmentRequests);
 
   const handleAction = (id: number, action: "accept" | "decline") => {

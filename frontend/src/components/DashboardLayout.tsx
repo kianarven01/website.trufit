@@ -34,7 +34,8 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   path?: string;
-  children?: { label: string; path: string; icon: React.ElementType }[];
+  roles?: string[];
+  children?: { label: string; path: string; icon: React.ElementType; roles?: string[] }[];
 }
 
 const navItems: NavItem[] = [
@@ -75,7 +76,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Account", path: "/webapp/settings/account", icon: UserCog },
       { label: "Team", path: "/webapp/settings/team", icon: Users },
-      { label: "Roles and Permissions", path: "/webapp/settings/rolesandpermissions", icon: UserKey },
+      { label: "Roles and Permissions", path: "/webapp/settings/rolesandpermissions", icon: UserKey, roles: ["admin"] },
     ],
   },
 ];
@@ -93,6 +94,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  const userRole = user?.role?.toLowerCase();
+
+  const filteredNavItems = navItems.map((item) => {
+    if (!item.children) return item;
+
+    // Filter children by roles
+    const filteredChildren = item.children.filter((child) => {
+      if (!child.roles) return true; // No restriction
+      return child.roles.includes(userRole); // Only show if role allowed
+    });
+
+    return { ...item, children: filteredChildren };
+  });
 
   const toggleGroup = (label: string) => {
     setOpenGroups((prev) =>
@@ -243,9 +258,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {navItems.map((item) =>
-          collapsed ? renderCollapsedItem(item) : renderExpandedItem(item)
-        )}
+          {filteredNavItems.map((item) =>
+            collapsed ? renderCollapsedItem(item) : renderExpandedItem(item)
+          )}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
@@ -285,7 +300,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {navItems.map(renderExpandedItem)}
+        {filteredNavItems.map(renderExpandedItem)}
       </nav>
       <div className="border-t border-sidebar-border p-3">
         <button

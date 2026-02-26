@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "react-feather";
 
 interface CarouselProps {
@@ -9,68 +9,112 @@ interface CarouselProps {
 
 export default function Carousel({
   autoSlide = true,
-  autoSlideInterval = 5000,
+  autoSlideInterval = 10000,
   slides,
 }: CarouselProps) {
-  const [curr, setCurr] = useState(0);
+  const [curr, setCurr] = useState(1);
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [isDown, setIsDown] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   const prev = () =>
-    setCurr((curr) => (curr === 0 ? slides.length - 1 : curr - 1));
+    setCurr((c) => (c === 0 ? slides.length - 1 : c - 1));
   const next = () =>
-    setCurr((curr) => (curr === slides.length - 1 ? 0 : curr + 1));
+    setCurr((c) => (c === slides.length - 1 ? 0 : c + 1));
 
+  // auto-slide effect
   useEffect(() => {
     if (!autoSlide) return;
-    const slideInterval = setInterval(next, autoSlideInterval);
-    return () => clearInterval(slideInterval);
-  }, [autoSlide, autoSlideInterval]);
+    if (!isInteracting) {
+      intervalRef.current = setInterval(next, autoSlideInterval);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [autoSlide, autoSlideInterval, isInteracting]);
+
+  // drag start
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDown(true);
+    setIsInteracting(true);
+    setStartX(e.pageX - (trackRef.current?.offsetLeft || 0));
+    setScrollLeft(trackRef.current?.scrollLeft || 0);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - (trackRef.current?.offsetLeft || 0);
+    const walk = (x - startX) * 2; // scroll speed
+    if (trackRef.current) trackRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleMouseUp = () => {
+    setIsDown(false);
+    setIsInteracting(false);
+  };
+  const handleMouseLeave = () => {
+    setIsDown(false);
+    setIsInteracting(false);
+  };
 
   return (
-    <div className="overflow-hidden relative w-full">
-      {/* slides */}
+    <div className="relative w-full overflow-hidden py-16">
+      {/* Sliding Track */}
+<div
+  className="flex items-center transition-transform duration-700 ease-in-out cursor-grab"
+  style={{ transform: `translateX(calc(50% - ${curr * 33.33}% - 16.665%))` }}
+  onMouseDown={handleMouseDown}
+  onMouseUp={handleMouseUp}
+  onMouseLeave={handleMouseLeave}
+>
+  {slides.map((img, i) => {
+    const isCenter = i === curr;
+
+    return (
       <div
-        className="flex transition-transform ease-out duration-500"
-        style={{ transform: `translateX(-${curr * 100}%)` }}
+        key={i}
+        className="w-[33.33%] flex-shrink-0 flex justify-center px-2"
       >
-        {slides.map((img) => (
-          <img
-            key={img}
-            src={img}
-            alt=""
-            className="w-full h-auto max-h-[500px] sm:max-h-[400px] md:max-h-[450px] lg:max-h-[500px] object-contain flex-shrink-0"
-          />
-        ))}
+        <img
+          src={img}
+          alt=""
+          draggable={false}
+          className={`
+            max-h-[600px] object-contain
+            transition-all duration-700
+            ${
+              isCenter
+                ? "scale-105 blur-0 brightness-100 opacity-100"
+                : "scale-95 blur-sm brightness-75 opacity-70"
+            }
+          `}
+        />
       </div>
+    );
+  })}
+</div>
 
-      {/* arrows */}
-      <div className="absolute inset-0 flex items-center justify-between p-4">
-        <button
-          onClick={prev}
-          className="p-1 rounded-full shadow bg-white/80 text-gray-800 hover:bg-white"
-        >
-          <ChevronLeft size={40} />
-        </button>
-        <button
-          onClick={next}
-          className="p-1 rounded-full shadow bg-white/80 text-gray-800 hover:bg-white"
-        >
-          <ChevronRight size={40} />
-        </button>
-      </div>
+      {/* Left Arrow */}
+      <button
+        onClick={() => { prev(); setIsInteracting(true); }}
+        className="absolute left-1 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/80 shadow hover:bg-white z-20"
+      >
+        <ChevronLeft size={30} />
+      </button>
 
-      {/* indicators */}
-      <div className="absolute bottom-4 right-0 left-0">
-        <div className="flex items-center justify-center gap-2">
-          {slides.map((_, i) => (
-            <div
-              key={i}
-              className={`transition-all w-3 h-3 bg-white rounded-full ${
-                curr === i ? "p-2" : "bg-opacity-50"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Right Arrow */}
+      <button
+        onClick={() => { next(); setIsInteracting(true); }}
+        className="absolute right-1 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/80 shadow hover:bg-white z-20"
+      >
+        <ChevronRight size={30} />
+      </button>
     </div>
   );
 }

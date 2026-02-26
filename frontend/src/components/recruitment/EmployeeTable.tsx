@@ -68,7 +68,7 @@ const EmployeeTable: React.FC = () => {
                 className="hover:bg-slate-50/50 transition-colors group"
               >
                 <td className="p-4">
-                  {/* Displays the single 'name' column from your updated schema */}
+                  {/* Uses 'name' column instead of first/last name to match updated schema */}
                   <div className="font-bold text-slate-800">
                     {emp.name || "Unnamed Employee"}
                   </div>
@@ -77,7 +77,7 @@ const EmployeeTable: React.FC = () => {
                   </div>
                 </td>
                 <td className="p-4">
-                  {/* Matches the 'position' and 'phone' columns in Main.Employees */}
+                  {/* Displaying Position and Phone from the database */}
                   <div className="text-xs font-bold text-slate-700">
                     {emp.position}
                   </div>
@@ -91,7 +91,7 @@ const EmployeeTable: React.FC = () => {
                   </span>
                 </td>
                 <td className="p-4">
-                  {/* Displays the join_date column with standard formatting */}
+                  {/* Displaying join_date column with clean formatting */}
                   <div className="text-xs text-slate-500 font-medium">
                     {emp.join_date
                       ? new Date(emp.join_date).toLocaleDateString(undefined, {

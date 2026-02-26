@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\RegistrationKey;
 use Illuminate\Validation\Rule;
@@ -43,37 +44,65 @@ class AuthController extends Controller
         ], 200);
     }
 
+
     public function register(Request $request)
     {
         $fields = $request->validate([
-            'username' => [
-                'required',
-                'string',
-                Rule::unique(User::class, 'username'),
-            ],
-            'password' => 'required|string',
-            'role_id'  => 'required|integer',
-            'key_code' => 'required|string'
+            'username' => 'required|string|unique:pgsql.Main.UserCredentials,username',
+            'password' => 'required|string|min:8',
+            'key_code' => 'required|string',
         ]);
 
-        $key = RegistrationKey::where('key_code', $fields['key_code'])
-            ->where('is_used', false)
+        return DB::transaction(function () use ($fields) {
+            // 1. Find the key and verify it hasn't been used
+            $key = DB::table('Main.RegistrationKeys')
+                ->where('key_code', $fields['key_code'])
+                ->where('is_used', false)
+                ->first();
+
+            if (!$key) {
+                return response()->json(['message' => 'Invalid or expired registration key.'], 422);
+            }
+
+            // 2. Create the UserCredentials
+            DB::table('Main.UserCredentials')->insert([
+                'employeeID'    => $key->employee_id, // Links "Paul" to these credentials
+                'username'      => $fields['username'],
+                'password_hash' => Hash::make($fields['password']),
+            ]);
+
+            // 3. Mark the key as used and update timestamp
+            DB::table('Main.RegistrationKeys')
+                ->where('id', $key->id)
+                ->update([
+                    'is_used'    => true,
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json(['status' => 'success', 'message' => 'Account linked and created.']);
+        });
+    }
+
+    public function verifyKey(Request $request)
+    {
+        $request->validate(['key_code' => 'required|string']);
+
+        $keyInfo = DB::table('Main.RegistrationKeys')
+            ->join('Main.Employees', 'Main.RegistrationKeys.employee_id', '=', 'Main.Employees.id')
+            ->where('Main.RegistrationKeys.key_code', $request->key_code)
+            ->where('Main.RegistrationKeys.is_used', false)
+            ->select('Main.Employees.name', 'Main.Employees.position')
             ->first();
 
-        if (!$key) {
-            return response()->json(['message' => 'Invalid key'], 422);
+        if (!$keyInfo) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid or used key.'], 422);
         }
 
-        // Insert into Main.UserCredentials
-        $user = User::create([
-            'username' => $fields['username'],
-            'password_hash' => Hash::make($fields['password']),
-            // Link this to the employeeID assigned to the key
-            'employeeID' => $key->employee_id
+        // Ensure the response matches these exact keys
+        return response()->json([
+            'status' => 'success',
+            'employee_name' => $keyInfo->name,
+            'position' => $keyInfo->position
         ]);
-
-        $key->update(['is_used' => true]);
-
-        return response()->json(['status' => 'success'], 201);
     }
 }

@@ -7,7 +7,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\EmployeeController;
 
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/verify-registration-key', [RegistrationKeyController::class, 'verify']);
+Route::post('/verify-registration-key', [AuthController::class, 'verifyKey']);
 Route::post('/register', [AuthController::class, 'register']);
 
 

@@ -268,15 +268,19 @@ const Dashboard: React.FC = () => {
                                 </code>
                               </td>
                               <td className="px-6 py-4 text-center">
-                                {k.is_used ? (
-                                  <span className="inline-flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100">
-                                    ● USED
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                    ● ACTIVE
-                                  </span>
-                                )}
+                                <td className="p-4">
+                                  {k.is_used ? (
+                                    <span className="flex items-center text-[10px] font-black uppercase text-slate-400">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mr-2"></span>
+                                      Used
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center text-[10px] font-black uppercase text-green-600">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2 animate-pulse"></span>
+                                      Active
+                                    </span>
+                                  )}
+                                </td>
                               </td>
                               <td className="px-6 py-4 text-xs text-slate-500 font-medium">
                                 {new Date(k.expires_at).toLocaleDateString(

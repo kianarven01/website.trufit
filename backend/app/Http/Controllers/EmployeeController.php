@@ -11,15 +11,19 @@ class EmployeeController extends Controller
 {
     public function index()
     {
+        // Changing this to a regular join filters out anyone without a UserCredentials record
         $employees = DB::table('Main.Employees')
             ->join('Main.Roles', 'Main.Employees.roleID', '=', 'Main.Roles.id')
-            ->select('Main.Employees.*', 'Main.Roles.name as role_name')
+            ->join('Main.UserCredentials', 'Main.Employees.id', '=', 'Main.UserCredentials.employeeID')
+            ->select(
+                'Main.Employees.*',
+                'Main.Roles.name as role_name'
+            )
             ->get();
 
         return response()->json(['status' => 'success', 'data' => $employees]);
     }
 
-    // EmployeeController.php
 
     // Updated onboard function in EmployeeController.php
     public function onboard(Request $request)

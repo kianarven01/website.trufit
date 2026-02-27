@@ -3,7 +3,8 @@ import logo from "@/assets/images/logo.png";
 
 const Navbar: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [show, setShow] = useState(true); // navbar visibility
+  const [show, setShow] = useState(true);
+  const [active, setActive] = useState("home");
   const [lastScrollY, setLastScrollY] = useState(0);
 
   const links = [
@@ -13,36 +14,50 @@ const Navbar: React.FC = () => {
     { label: "Contacts", href: "book-appointment" },
   ];
 
-  // handle scroll to hide/show navbar
-  const controlNavbar = () => {
-    if (window.scrollY > lastScrollY) {
-      // scrolling down → hide
-      setShow(false);
-    } else {
-      // scrolling up → show
-      setShow(true);
-    }
-    setLastScrollY(window.scrollY);
-  };
-
   useEffect(() => {
-    window.addEventListener("scroll", controlNavbar);
-    return () => window.removeEventListener("scroll", controlNavbar);
+    const handleScroll = () => {
+      const scrollPos = window.scrollY + 100; // adjust for navbar height
+
+      // detect active section
+      for (const link of links) {
+        const section = document.getElementById(link.href);
+        if (section) {
+          const top = section.offsetTop;
+          const bottom = top + section.offsetHeight;
+          if (scrollPos >= top && scrollPos < bottom) {
+            setActive(link.href);
+            break;
+          }
+        }
+      }
+
+      // hide/show navbar
+      if (window.scrollY > lastScrollY) setShow(false);
+      else setShow(true);
+      setLastScrollY(window.scrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // initial check
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
   const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      const yOffset = -80;
-      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: "smooth" });
-    }
+    const section = document.getElementById(id);
+    if (!section) return;
+
+    window.scrollTo({
+      top: section.offsetTop - 80,
+      behavior: "smooth",
+    });
+
+    setActive(id); // mark clicked link as active
     setOpen(false);
   };
 
   return (
     <nav
-      className={`fixed top-0 w-full z-50 backdrop-blur-md bg-gray-900/80 select-none transition-transform duration-300 ${
+      className={`fixed top-0 w-full z-50 backdrop-blur-md bg-white select-none transition-transform duration-300 ${
         show ? "translate-y-0" : "-translate-y-full"
       }`}
     >
@@ -54,17 +69,19 @@ const Navbar: React.FC = () => {
             alt="Trufit Auto Logo"
             className="h-14 sm:h-16 md:h-20 w-auto"
             draggable={false}
-            onContextMenu={(e) => e.preventDefault()}
           />
         </button>
 
         {/* desktop links */}
-        <div className="hidden md:flex items-center justify-center divide-x divide-white/30">
+        <div className="hidden md:flex items-center justify-center">
           {links.map((link) => (
             <button
               key={link.href}
               onClick={() => scrollToSection(link.href)}
-              className="px-6 text-xl text-white hover:text-red-600 transition font-semibold"
+              className={`px-6 pb-1 text-xl font-semibold transition-all duration-300
+                ${active === link.href ? "text-red-600 border-b-2 border-red-600" : "text-black border-b-0"}
+                hover:text-red-600 hover:border-b-2 hover:border-red-600
+              `}
             >
               {link.label}
             </button>
@@ -73,14 +90,8 @@ const Navbar: React.FC = () => {
 
         {/* mobile hamburger */}
         <div className="md:hidden flex items-center">
-          <button onClick={() => setOpen(!open)} className="focus:outline-none">
-            <svg
-              className="w-6 h-6 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
+          <button onClick={() => setOpen(!open)}>
+            <svg className="w-6 h-6 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {open ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               ) : (
@@ -93,12 +104,15 @@ const Navbar: React.FC = () => {
 
       {/* mobile menu */}
       {open && (
-        <div className="md:hidden bg-white/20 backdrop-blur-md border-t border-white/20">
+        <div className="md:hidden bg-white border-t border-gray-200">
           {links.map((link) => (
             <button
               key={link.href}
               onClick={() => scrollToSection(link.href)}
-              className="block w-full text-left px-6 py-3 text-white hover:bg-red-50/20 transition"
+              className={`block w-full text-left px-6 py-3 transition
+                ${active === link.href ? "text-red-600 border-b-2 border-red-600" : "text-black border-b-0"}
+                hover:text-red-600 hover:border-b-2 hover:border-red-600
+              `}
             >
               {link.label}
             </button>

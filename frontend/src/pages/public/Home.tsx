@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import { CarFront, Wrench, ShieldCheck, ArrowDownRight, ArrowUpRight, UserCheck, Cpu, Smile, Tag } from "lucide-react";
 import { FaEnvelope, FaFacebookF, FaMapMarkerAlt, FaPhoneAlt } from "react-icons/fa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import picPromo5740 from "@/assets/images/pic-promo5740.png";
 import picPromo5850 from "@/assets/images/pic-promo5850.png";
 import picPromo50902 from "@/assets/images/pic-promo50902.png";
 import picPromo58502 from "@/assets/images/pic-promo58502.png";
+import Footer from "@/components/ui/site-footer";
 
 const services = [
   {
@@ -136,9 +138,11 @@ const promoSlides: string[] = [
   picPromo58502,
 ];
 
-const Home: React.FC = () => {
-  const [trackingNumber, setTrackingNumber] = useState("");
 
+const Home: React.FC = () => {
+  useDocumentTitle("Home");
+
+  const [trackingNumber, setTrackingNumber] = useState("");
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDown, setIsDown] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -646,11 +650,7 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <section id="footer" className="py-10 px-10 bg-slate-900 text-gray-400 text-center select-none">
-        <p>&copy; {new Date().getFullYear()} Trufit Auto Center. All rights reserved.</p>
-      </section>
+      <Footer />
     </main>
   );
 };

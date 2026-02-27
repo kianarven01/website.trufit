@@ -32,9 +32,6 @@ const Employees: React.FC = () => {
       try {
         const roleRes = await api.get("/admin/roles");
         setRoles(roleRes.data.data);
-
-        const positionRes = await api.get("/admin/positions"); // Assuming this endpoint exists
-        setPositions(positionRes.data.data);
       } catch (error) {
         console.error("Failed to load filters", error);
       }
@@ -80,7 +77,6 @@ const Employees: React.FC = () => {
         <EmployeeTable />
         <div className="my-6 border-t border-slate-200" />
         <OnboardingTable />
-
       </PageShell>
 
       <AddEmployeeModal

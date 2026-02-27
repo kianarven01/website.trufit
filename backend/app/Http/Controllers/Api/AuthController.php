@@ -66,7 +66,7 @@ class AuthController extends Controller
 
             // 2. Create the UserCredentials
             DB::table('Main.UserCredentials')->insert([
-                'employeeID'    => $key->employee_id, // Links "Paul" to these credentials
+                'employeeID'    => $key->employee_id,
                 'username'      => $fields['username'],
                 'password_hash' => Hash::make($fields['password']),
             ]);

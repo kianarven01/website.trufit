@@ -27,14 +27,10 @@ interface Role {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSuccess?: () => void; 
+  onSuccess?: () => void;
 }
 
-const AddEmployeeModal: React.FC<Props> = ({
-  open,
-  onClose,
-  onSuccess,
-}) => {
+const AddEmployeeModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [generatedKey, setGeneratedKey] = useState("");
@@ -48,7 +44,6 @@ const AddEmployeeModal: React.FC<Props> = ({
     position: "",
     roleID: "",
   });
-
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -71,47 +66,27 @@ const AddEmployeeModal: React.FC<Props> = ({
     if (open) fetchRoles();
   }, [open]);
 
-  // ✅ Submit to backend
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const payload = {
+      const res = await api.post("/admin/onboard-employee", {
         first_name: form.first_name,
         last_name: form.last_name,
         email: form.email,
         phone: form.phone,
+        address: form.address,
         position: form.position,
-        role_id: parseInt(form.roleID),
-      };
+        role_id: form.roleID,
+      });
 
-      const response = await api.post(
-        "/admin/onboard-employee",
-        payload
-      );
-
-      const key = response.data.key;
-
-      if (key) {
-        setGeneratedKey(key);
-        toast.success("Employee onboarded successfully!");
-
-        
-        setForm({
-          first_name: "",
-          last_name: "",
-          address: "",
-          phone: "",
-          email: "",
-          position: "",
-          roleID: roles[0]?.id.toString() || "",
-        });
-
-        onSuccess?.();
+      // Add these lines to show the key and refresh the table
+      if (res.data.status === "success") {
+        setGeneratedKey(res.data.key); // This matches your Controller's return
+        toast.success("Employee added successfully!");
+        if (onSuccess) onSuccess();
       }
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || "Failed to onboard employee"
-      );
+    } catch (err) {
+      toast.error("Failed to add employee");
     } finally {
       setIsLoading(false);
     }
@@ -125,7 +100,9 @@ const AddEmployeeModal: React.FC<Props> = ({
             Add New Employee
           </DialogTitle>
           <DialogDescription>
-            Enter employee information to create their profile and assign a system role. A secure registration key will be generated for account activation.
+            Enter employee information to create their profile and assign a
+            system role. A secure registration key will be generated for account
+            activation.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,9 +123,7 @@ const AddEmployeeModal: React.FC<Props> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-muted-foreground text-xs">
-                Last Name
-              </Label>
+              <Label className="text-muted-foreground text-xs">Last Name</Label>
               <Input
                 className="bg-background border-border focus-visible:ring-ring"
                 value={form.last_name}
@@ -167,9 +142,7 @@ const AddEmployeeModal: React.FC<Props> = ({
             <Input
               className="bg-background border-border focus-visible:ring-ring"
               value={form.address}
-              onChange={(e) =>
-                setForm({ ...form, address: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
           </div>
 
@@ -180,9 +153,7 @@ const AddEmployeeModal: React.FC<Props> = ({
             <Input
               className="bg-background border-border focus-visible:ring-ring"
               value={form.phone}
-              onChange={(e) =>
-                setForm({ ...form, phone: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
           </div>
 
@@ -194,9 +165,7 @@ const AddEmployeeModal: React.FC<Props> = ({
               type="email"
               className="bg-background border-border focus-visible:ring-ring"
               value={form.email}
-              onChange={(e) =>
-                setForm({ ...form, email: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </div>
 
@@ -208,9 +177,7 @@ const AddEmployeeModal: React.FC<Props> = ({
               <Input
                 className="bg-background border-border focus-visible:ring-ring"
                 value={form.position}
-                onChange={(e) =>
-                  setForm({ ...form, position: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, position: e.target.value })}
               />
             </div>
 
@@ -220,36 +187,27 @@ const AddEmployeeModal: React.FC<Props> = ({
               </Label>
               <Select
                 value={form.roleID}
-                onValueChange={(value) =>
-                  setForm({ ...form, roleID: value })
-                }
+                onValueChange={(value) => setForm({ ...form, roleID: value })}
               >
                 <SelectTrigger className="bg-background border-border focus:ring-ring">
                   <SelectValue placeholder="Select System Role" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
                   {roles.map((role) => (
-                    <SelectItem
-                      key={role.id}
-                      value={role.id.toString()}
-                    >
+                    <SelectItem key={role.id} value={role.id.toString()}>
                       {role.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div> 
+            </div>
           </div>
-
 
           {/* Submit Button */}
           <Button
             onClick={handleSubmit}
             disabled={
-              isLoading ||
-              !form.email ||
-              !form.position ||
-              !form.roleID
+              isLoading || !form.email || !form.position || !form.roleID
             }
             className="w-full bg-primary text-primary-foreground hover:opacity-90 transition"
           >
@@ -273,9 +231,7 @@ const AddEmployeeModal: React.FC<Props> = ({
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() =>
-                    navigator.clipboard.writeText(generatedKey)
-                  }
+                  onClick={() => navigator.clipboard.writeText(generatedKey)}
                 >
                   Copy
                 </Button>
@@ -285,7 +241,7 @@ const AddEmployeeModal: React.FC<Props> = ({
         </div>
       </DialogContent>
     </Dialog>
-    );
-  };
+  );
+};
 
 export default AddEmployeeModal;

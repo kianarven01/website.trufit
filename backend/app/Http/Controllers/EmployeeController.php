@@ -11,7 +11,6 @@ class EmployeeController extends Controller
 {
     public function index()
     {
-        // Changing this to a regular join filters out anyone without a UserCredentials record
         $employees = DB::table('Main.Employees')
             ->join('Main.Roles', 'Main.Employees.roleID', '=', 'Main.Roles.id')
             ->join('Main.UserCredentials', 'Main.Employees.id', '=', 'Main.UserCredentials.employeeID')
@@ -24,48 +23,53 @@ class EmployeeController extends Controller
         return response()->json(['status' => 'success', 'data' => $employees]);
     }
 
-
-    // Updated onboard function in EmployeeController.php
     public function onboard(Request $request)
     {
         $validated = $request->validate([
             'first_name' => 'required|string',
-            'last_name'  => 'required|string',
-            'email'      => 'required|email|unique:pgsql.Main.Employees,email',
-            'role_id'    => 'required|integer',
-            'position'   => 'required|string', // Fixed: Added missing comma
-            'phone'      => 'required|string',
+            'last_name' => 'required|string',
+            'email' => 'required|email|unique:pgsql.Main.Employees,email',
+            'role_id' => 'required|integer',
+            'position' => 'required|string',
+            'phone' => 'required|string',
+            'address' => 'required|string', // Ensure this is validated
         ]);
 
         return DB::transaction(function () use ($validated) {
             $fullName = $validated['first_name'] . ' ' . $validated['last_name'];
 
-            $employeeId = DB::table('Main.Employees')->insertGetId([
-                'name'     => $fullName,
-                'email'    => $validated['email'],
+            // Use the Model to trigger the random ID generation
+            $employee = \App\Models\Employee::create([
+                'name' => $fullName,
+                'email' => $validated['email'],
                 'position' => $validated['position'],
-                'roleID'   => $validated['role_id'],
-                'phone'    => $validated['phone'], // Added: Now correctly inserts phone to DB
-                'status'   => false,
+                'roleID' => $validated['role_id'],
+                'phone' => $validated['phone'],
+                'address' => $validated['address'],
+                'status' => false,
+                'join_date' => now()->toDateString(),
             ]);
 
             $keyCode = strtoupper(bin2hex(random_bytes(4)));
 
+            // Link the key to the new random 8-digit employee ID
             DB::table('Main.RegistrationKeys')->insert([
-                'key_code'    => $keyCode,
-                'role_id'     => $validated['role_id'],
-                'employee_id' => $employeeId,
-                'is_used'     => false,
-                'created_at'  => now(),
-                'expires_at'  => now()->addHours(24),
+                'key_code' => $keyCode,
+                'role_id' => $validated['role_id'],
+                'employee_id' => $employee->id,
+                'is_used' => false,
+                'created_at' => now(),
+                'expires_at' => now()->addHours(24),
             ]);
 
             return response()->json(['status' => 'success', 'key' => $keyCode]);
         });
     }
+
+
     public function getRegistrationKeys()
     {
-        // Fetch keys and join with Employee to show names in the table
+
         $keys = DB::table('Main.RegistrationKeys')
             ->join('Main.Employees', 'Main.RegistrationKeys.employee_id', '=', 'Main.Employees.id')
             ->select(

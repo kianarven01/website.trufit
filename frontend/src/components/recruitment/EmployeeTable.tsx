@@ -38,7 +38,10 @@ const EmployeeTable: React.FC = () => {
               Employee
             </th>
             <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Position & Phone
+              Contact & Address
+            </th>
+            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              Position
             </th>
             <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
               Role
@@ -77,14 +80,18 @@ const EmployeeTable: React.FC = () => {
                   </div>
                 </td>
                 <td className="p-4">
-                  {/* Displaying Position and Phone from the database */}
+                  {/* Displaying address if available */}
+                  <div className="text-xs text-slate-400">
+                    {emp.address || "No address listed"}
+                  </div>
+                </td>
+                <td className="p-4">
                   <div className="text-xs font-bold text-slate-700">
                     {emp.position}
                   </div>
-                  <div className="text-[10px] text-slate-400">
-                    {emp.phone || "No phone listed"}
-                  </div>
+                  <div className="text-[10px] text-slate-400"></div>
                 </td>
+
                 <td className="p-4">
                   <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase">
                     {emp.role_name}

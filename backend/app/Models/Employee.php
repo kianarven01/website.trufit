@@ -10,13 +10,12 @@ class Employee extends Model
     use HasFactory;
 
     protected $table = 'Main.Employees';
-    // Tell Laravel the ID is not auto-incrementing
+
     public $incrementing = false;
     protected $keyType = 'int';
     protected $primaryKey = 'id';
     public $timestamps = false;
 
-    // Add 'id' and 'address' so they can be saved
     protected $fillable = [
         'id',
         'name',
@@ -34,7 +33,6 @@ class Employee extends Model
         return $this->belongsTo(Role::class, 'roleID');
     }
 
-    // The logic to generate the random 8-digit ID
     protected static function booted()
     {
         static::creating(function ($employee) {

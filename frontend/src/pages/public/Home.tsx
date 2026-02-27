@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import useDocumentTitle from "@/hooks/useDocumentTitle";
 import { CarFront, Wrench, ShieldCheck, ArrowDownRight, ArrowUpRight, UserCheck, Cpu, Smile, Tag } from "lucide-react";
-import { FaEnvelope, FaFacebookF, FaMapMarkerAlt, FaPhoneAlt } from "react-icons/fa";
+import { FaEnvelope, FaFacebookF, FaMapMarkerAlt, FaPhoneAlt, FaCalendarAlt } from "react-icons/fa";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Carousel from "@/components/ui/carousel";
 import Navbar from "@/components/ui/site-navbar";
@@ -142,6 +142,7 @@ const promoSlides: string[] = [
 const Home: React.FC = () => {
   useDocumentTitle("Home");
 
+  const [isOpen, setIsOpen] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
   const sliderRef = useRef<HTMLDivElement>(null);
   const [isDown, setIsDown] = useState(false);
@@ -167,6 +168,71 @@ const Home: React.FC = () => {
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
+ {/* Floating Button with Message Bubble */}
+      <div className="fixed bottom-20 right-6 z-50 group">
+        {/* Message Bubble */}
+        <div className="absolute right-full bottom-1/2 translate-y-1/2 mr-3 hidden group-hover:flex items-center">
+          <div className="bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg text-sm max-w-xs break-words">
+            Welcome! Make an Appointment
+          </div>
+          {/* small triangle pointer */}
+          <div className="w-0 h-0 border-t-8 border-t-transparent border-b-8 border-b-transparent border-l-8 border-l-white"></div>
+        </div>
+
+        {/* Bigger Circle Button */}
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-20 h-20 bg-red-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-red-500 transition transform hover:scale-110"
+        >
+          <FaCalendarAlt className="text-3xl" />
+        </button>
+      </div>
+
+      {/* Modal / Booking Form */}
+      {isOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Book Appointment</h2>
+            <form className="space-y-3">
+              <input
+                type="text"
+                placeholder="Name"
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <input
+                type="text"
+                placeholder="Phone"
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <input
+                type="text"
+                placeholder="Service Needed"
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-500 transition"
+                >
+                  Book Now
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Hero Section */}
       <section
         id="home"

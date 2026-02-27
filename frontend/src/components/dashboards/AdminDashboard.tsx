@@ -75,7 +75,7 @@ const statusColor: Record<string, string> = {
   Queued: "bg-secondary text-secondary-foreground",
 };
 
-export function AdminDashboard() {
+const AdminDashboard: React.FC = () =>  {
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-4">
       {/* Stats row */}
@@ -100,4 +100,3 @@ export function AdminDashboard() {
 
 export default AdminDashboard;
 
-export default AdminDashboard;

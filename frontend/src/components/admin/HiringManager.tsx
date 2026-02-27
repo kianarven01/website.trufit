@@ -21,7 +21,6 @@ const HiringManager: React.FC = () => {
           </h3>
           <KeyGenerator />
         </div>
-        <RoleManager />
       </div>
     </div>
   );

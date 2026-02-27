@@ -15,3 +15,5 @@ const Preferences = () => (
     </div>
   </div>
 );
+
+export default Preferences;

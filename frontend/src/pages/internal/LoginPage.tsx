@@ -240,7 +240,7 @@ const LoginPage: React.FC = () => {
 
                 <Button 
                   type="submit" 
-                  className="w-full mt-4 bg-trufitBlue text-white hover:bg-blue-950"
+                  className="w-full mt-4 bg-blue-900 text-white hover:bg-blue-950"
                   disabled={loadingState}
                 >
                   {loadingState ? "VERIFYING..." : "Verify"}

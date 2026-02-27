@@ -3,9 +3,9 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import AdminDashboard from "@/components/dashboards/AdminDashboard";
-import { SalesDashboard } from "@/components/dashboards/SalesDashboard";
-import { PurchasingDashboard } from "@/components/dashboards/PurchasingDashboard";
-import { HrDashboard } from "@/components/dashboards/HrDashboard";
+import SalesDashboard from "@/components/dashboards/SalesDashboard";
+import PurchasingDashboard from "@/components/dashboards/PurchasingDashboard";
+import HrDashboard from "@/components/dashboards/HrDashboard";
 
 const Dashboard = () => {
   const { user, role, loading } = useAuth();

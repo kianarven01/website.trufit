@@ -75,24 +75,7 @@ const statusColor: Record<string, string> = {
   Queued: "bg-secondary text-secondary-foreground",
 };
 
-const AdminDashboard: React.FC = () => {
-  const [roles, setRoles] = useState<any[]>([]);
-  const [showRoleModal, setShowRoleModal] = useState(false);
-  const [editingRole, setEditingRole] = useState<any>(null);
-
-  const fetchRoles = async () => {
-    try {
-      const res = await api.get("/admin/roles");
-      setRoles(res.data.data);
-    } catch (err) {
-      console.error("Failed to fetch roles", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchRoles();
-  }, []);
-
+const AdminDashboard: React.FC = () =>  {
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-4">
       {/* Stats row */}
@@ -116,3 +99,4 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default AdminDashboard;
+

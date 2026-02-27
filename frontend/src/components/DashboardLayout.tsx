@@ -124,11 +124,11 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: "Settings",
-    icon: Settings,
+    label: "Employee Management",
+    icon: UserCog,
     children: [
-      { label: "Account", path: "/webapp/settings/account", icon: UserCog },
-      { label: "Team", path: "/webapp/settings/team", icon: Users },
+      { label: "Employees", path: "/webapp/employee-management/employees", icon: Users },
+      { label: "Employee Accounts", path: "/webapp/employee-management/accounts", icon: Users },
       {
         label: "Roles and Permissions",
         path: "/webapp/settings/rolesandpermissions",

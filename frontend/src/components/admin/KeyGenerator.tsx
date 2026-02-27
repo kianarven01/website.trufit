@@ -18,10 +18,11 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
+    phone: "", // Match SQL
     email: "",
+    address: "", //added attribute
     position: "", // Match SQL
     roleID: "", // Match SQL roleID bigint
-    phone: "", // Match SQL
   });
 
   useEffect(() => {
@@ -62,9 +63,10 @@ const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {
           first_name: "",
           last_name: "",
           email: "",
-          position: "",
-          roleID: roles[0]?.id.toString() || "",
           phone: "",
+          address: "",
+          position: "",
+          roleID: roles[0]?.id.toString() || ""  
         });
         if (onComplete) onComplete();
       }

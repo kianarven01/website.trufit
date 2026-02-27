@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/public/Home";
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
+import Employees from "./pages/internal/HR/Employees"
 import Register from "./pages/internal/Register";
 import PageNotFound from "./pages/PageNotFound";
 
@@ -26,6 +27,7 @@ const App: React.FC = () => {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/webapp/dashboard" element={<Dashboard />} />
+            <Route path="/webapp/employee-management/employees" element={<Employees />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/home" replace />} />

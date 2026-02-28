@@ -30,6 +30,7 @@ const Dashboard = () => {
         return <SalesDashboard />;
       case "purchasing":
         return <PurchasingDashboard />;
+
       default:
         return <div>Default Staff View</div>;
     }

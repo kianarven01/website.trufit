@@ -10,9 +10,10 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify-registration-key', [AuthController::class, 'verifyKey']);
 Route::post('/register', [AuthController::class, 'register']);
 
-Route::get('/test', function() {
+//test route to check if backend is working, can be removed later
+/*Route::get('/test', function() {
     return response()->json(['message' => 'Backend is reached!']);
-});
+});*/ 
 
 
 //for admin role management CRUD

@@ -19,9 +19,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-    'https://website-trufit-frontend-7oqw76jt4-kianarven01s-projects.vercel.app', 
-    'https://www.trufitautocenter.com', 
+   'allowed_origins' => [
+    'https://trufitautocenter.com',                
+    'https://www.trufitautocenter.com',            
+    'https://website-trufit-frontend.vercel.app', 
     'http://localhost:5173', 
     ],
 

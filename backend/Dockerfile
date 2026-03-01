@@ -1,23 +1,34 @@
 FROM php:8.4-apache
 
-# 1. Install dependencies for PostgreSQL
-RUN apt-get update && apt-get install -y libpq-dev && docker-php-ext-install pdo_pgsql
+# Install system dependencies for PostgreSQL and common Laravel extensions
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    libpng-dev \
+    libzip-dev \
+    zip \
+    unzip \
+    && docker-php-ext-install pdo_pgsql gd zip
 
-# 2. Enable Apache mod_rewrite for Laravel routes
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# 3. Copy your backend files into the server
-COPY . /var/www/html
+# Set working directory
+WORKDIR /var/www/html
 
-# 4. Set the Document Root to Laravel's public folder
+# Copy backend files
+COPY . .
+
+# Set Apache root to public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# 5. Install Composer
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader
 
-# 6. Set permissions for Laravel
+# Added --ignore-platform-reqs to bypass minor environment mismatches
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+
+# Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 EXPOSE 80

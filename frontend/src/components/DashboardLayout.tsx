@@ -6,7 +6,6 @@ import {
   ShoppingCart,
   Package,
   BarChart3,
-  Settings,
   ChevronDown,
   ChevronRight,
   LogOut,
@@ -64,43 +63,20 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/webapp/dashboard" },
+  { label: "Appointments", icon: CalendarDays, path: "/webapp/sales/appointments" },
   {
     label: "Sales",
     icon: ShoppingCart,
     children: [
-      {
-        label: "Job Orders",
-        path: "/webapp/sales/job-orders",
-        icon: ClipboardList,
-      },
-      { label: "Quotations", path: "/webapp/sales/quotations", icon: FileText },
+      { label: "Job Orders", path: "/webapp/sales/job-orders", icon: ClipboardList},
+      { label: "Estimates", path: "/webapp/sales/estimates", icon: FileText },
       { label: "Customers", path: "/webapp/sales/customers", icon: Users },
-      {
-        label: "Appointments",
-        path: "/webapp/sales/appointments",
-        icon: CalendarDays,
-      },
     ],
   },
   {
-    label: "Purchasing",
-    icon: Truck,
-    children: [
-      {
-        label: "Purchase Orders",
-        path: "/webapp/purchasing/orders",
-        icon: ClipboardList,
-      },
-      { label: "Suppliers", path: "/webapp/purchasing/suppliers", icon: Users },
-    ],
-  },
-  {
-    label: "Inventory",
-    icon: Box,
-    children: [
-      { label: "Products", path: "/webapp/inventory/products", icon: Package },
-    ],
-  },
+    label: "Purchase Orders", path: "/webapp/purchasing", icon: Truck,},
+  { label: "Inventory", path: "/webapp/inventory", icon: Box },
+  { label: "Products", path: "/webapp/products", icon: Package },
   {
     label: "Reports",
     icon: BarChart3,
@@ -127,16 +103,8 @@ const navItems: NavItem[] = [
     label: "Employee Management",
     icon: UserCog,
     children: [
-      {
-        label: "Employees",
-        path: "/webapp/employee-management/employees",
-        icon: Users,
-      },
-      {
-        label: "Employee Accounts",
-        path: "/webapp/employee-management/accounts",
-        icon: Users,
-      },
+      { label: "Current Employees", path: "/webapp/employee-management/current-employees", icon: Users },
+      { label: "Onboarding Employees", path: "/webapp/employee-management/onboarding-employees", icon: Users },
       {
         label: "Roles and Permissions",
         path: "/webapp/settings/rolesandpermissions",
@@ -272,7 +240,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     );
   };
 
-  /* ---- Collapsed sidebar nav item (icon only + hover popover) ---- */
+  /* Collapsed sidebar nav item */
   const renderCollapsedItem = (item: NavItem) => {
     if (item.path) {
       return (
@@ -360,45 +328,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           collapsed ? renderCollapsedItem(item) : renderExpandedItem(item),
         )}
       </nav>
-
-      <div className="border-t border-sidebar-border p-3">
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => {
-                  logout();
-                  navigate("/");
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors mx-auto"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              className="bg-popover text-popover-foreground border"
-            >
-              Sign Out
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <button
-            onClick={() => {
-              logout();
-              navigate("/");
-            }}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
-          </button>
-        )}
-      </div>
     </>
   );
 
-  /* ---- Mobile sidebar (always expanded) ---- */
+  /* ---- Mobile sidebar ---- */
   const mobileSidebar = (
     <>
       <div className="flex items-center gap-3 border-b border-sidebar-border px-4 py-4">

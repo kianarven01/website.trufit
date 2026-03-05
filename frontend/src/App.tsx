@@ -14,7 +14,17 @@ import Services from "./pages/public/Services";
 import Products from "./pages/public/Products";
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
+
+import Customers from "./pages/internal/Sales/Customers";
+import Appointments from "./pages/internal/Sales/Appointments";
+import JobOrders from "./pages/internal/Sales/JobOrders";
+import Estimates from "./pages/internal/Sales/Estimates";
+
+import AvailableProducts from "./pages/internal/Products";
+
 import Employees from "./pages/internal/HR/Employees"
+import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
+
 import Register from "./pages/internal/Register";
 import PageNotFound from "./pages/PageNotFound";
 
@@ -35,7 +45,16 @@ const App: React.FC = () => {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/webapp/dashboard" element={<Dashboard />} />
-            <Route path="/webapp/employee-management/employees" element={<Employees />} />
+            <Route path="/webapp/sales/customers" element={<Customers />} />
+            <Route path="/webapp/sales/appointments" element={<Appointments />} />
+            <Route path="/webapp/sales/job-orders" element={<JobOrders />} />
+            <Route path="/webapp/sales/estimates" element={<Estimates />} />
+
+            <Route path="/webapp/products" element={<AvailableProducts />} />
+
+            <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
+            <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />
+
           </Route>
 
           <Route path="/" element={<Navigate to="/home" replace />} />

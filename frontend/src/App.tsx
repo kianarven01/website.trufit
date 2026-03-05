@@ -20,7 +20,7 @@ import Appointments from "./pages/internal/Sales/Appointments";
 import JobOrders from "./pages/internal/Sales/JobOrders";
 import Estimates from "./pages/internal/Sales/Estimates";
 
-import Products from "./pages/internal/Products";
+import AvailableProducts from "./pages/internal/Products";
 
 import Employees from "./pages/internal/HR/Employees"
 import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
@@ -50,7 +50,7 @@ const App: React.FC = () => {
             <Route path="/webapp/sales/job-orders" element={<JobOrders />} />
             <Route path="/webapp/sales/estimates" element={<Estimates />} />
 
-            <Route path="/webapp/products" element={<Products />} />
+            <Route path="/webapp/products" element={<AvailableProducts />} />
 
             <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
             <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />

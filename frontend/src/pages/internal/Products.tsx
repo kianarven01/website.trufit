@@ -14,7 +14,7 @@ interface Product {
   unit: string;
 }
 
-const Products: React.FC = () => {
+const AvailableProducts: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([
     {
       id: 1,
@@ -141,4 +141,4 @@ const Products: React.FC = () => {
   );
 };
 
-export default Products;
+export default AvailableProducts;

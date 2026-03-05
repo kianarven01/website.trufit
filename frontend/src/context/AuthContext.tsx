@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "@/api/axios";
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 interface AuthContextType {
   user: any;
@@ -37,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password: inputPass,
       });
 
-      const { data: apiResponse } = response.data;
+      const apiResponse = response.data.data;
 
       const userData = {
         username: apiResponse.user.username,

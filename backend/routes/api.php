@@ -1,11 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Auth\Http\Controllers\LoginController;
-use App\Domains\Sales\Http\Controllers\SaleController;
 
-//for system initialization check
-Route::middleware(['system.initialized'])->group(function () {
-    Route::post('/login', LoginController::class);
-
-});
+// Automatically load routes from all Domains
+foreach (glob(app_path('Domains/*/routes.php')) as $routeFile) {
+    Route::group([], function () use ($routeFile) {
+        require $routeFile;
+    });
+}

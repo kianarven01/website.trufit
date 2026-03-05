@@ -12,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['system.initialized' => \App\Http\Middleware\EnsureSystemInitialized::class]);
+        //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

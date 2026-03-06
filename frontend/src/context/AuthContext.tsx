@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "@/api/axios";
 
-const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 interface AuthContextType {
   user: any;
@@ -30,11 +31,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLoading(false);
   }, []);
 
-  const login = async (inputUsername: string, inputPass: string) => {
+  const login = async (
+    inputUsername: string,
+    inputPass: string,
+    rememberMe: boolean = false,
+  ) => {
     try {
       const response = await api.post("/login", {
         username: inputUsername,
         password: inputPass,
+        remember: rememberMe, // Send 'remember' to match the DTO
       });
 
       const { data: apiResponse } = response.data;

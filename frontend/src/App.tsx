@@ -17,13 +17,18 @@ import Dashboard from "./pages/internal/Dashboard";
 
 import Customers from "./pages/internal/Sales/Customers";
 import Appointments from "./pages/internal/Sales/Appointments";
-import JobOrders from "./pages/internal/Sales/JobOrders";
+
+import JobOrder from "./pages/internal/Services/JobOrder";
+import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
+
+import SalesOrder from "./pages/internal/Sales/SalesOrder";
 import Estimates from "./pages/internal/Sales/Estimates";
 
 import AvailableProducts from "./pages/internal/Products";
 
 import Employees from "./pages/internal/HR/Employees"
 import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
+import RolesandPermissions from "./pages/internal/HR/RolesandPermissions";
 
 import Register from "./pages/internal/Register";
 import PageNotFound from "./pages/PageNotFound";
@@ -45,15 +50,20 @@ const App: React.FC = () => {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/webapp/dashboard" element={<Dashboard />} />
-            <Route path="/webapp/sales/customers" element={<Customers />} />
-            <Route path="/webapp/sales/appointments" element={<Appointments />} />
-            <Route path="/webapp/sales/job-orders" element={<JobOrders />} />
+            <Route path="/webapp/customers" element={<Customers />} />
+            <Route path="/webapp/appointments" element={<Appointments />} />
+
+            <Route path="/webapp/services/job-orders" element={<JobOrder />} />
+            <Route path="/webapp/services/service-catalog" element={<ServiceCatalog />} />
+
+            <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
             <Route path="/webapp/sales/estimates" element={<Estimates />} />
 
             <Route path="/webapp/products" element={<AvailableProducts />} />
 
             <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
             <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />
+            <Route path="/webapp/settings/roles-and-permissions" element={<RolesandPermissions />} />
 
           </Route>
 

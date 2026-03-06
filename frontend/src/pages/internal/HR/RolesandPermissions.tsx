@@ -1,12 +1,15 @@
-import RoleManager from "@/components/admin/RoleManager";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import Preferences from "@/components/admin/Preferences";
 
-const rolesandpermissions: React.FC = () => {
+const RolesandPermissions: React.FC = () => {
   return (
     <div>
-      <p>rolesandpermissions</p>
-      <RoleManager />
+      <DashboardLayout>
+        <Preferences />
+      
+      </DashboardLayout>
     </div>
   );
 }
 
-export default rolesandpermissions;
+export default RolesandPermissions;

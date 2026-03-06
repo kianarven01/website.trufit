@@ -3,19 +3,23 @@
 namespace App\Domains\Auth\Domain\Exceptions;
 
 use Exception;
+use Illuminate\Http\JsonResponse;
 
 class AccountNotLinkedException extends Exception
 {
     protected $message = 'This user account is not linked to an active employee record.';
     protected $code = 403;
 
-    public function render($request)
+    /**
+     * This method is automatically called by Laravel 
+     * when this exception is thrown and not caught.
+     */
+    public function render($request): JsonResponse
     {
         return response()->json([
-            'error' => 'Account Not Linked',
+            'status' => 'error',
             'message' => $this->message,
-            'exception' => AccountNotLinkedException::class,
+            'code' => 'ACCOUNT_NOT_LINKED' 
         ], $this->code);
     }
-
 }

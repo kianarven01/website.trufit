@@ -17,56 +17,41 @@ class AuthenticateUser
 
     public function execute(LoginDTO $dto): array
     {
-        $password = new Password($dto->password); 
-
-        // Super Admin Check with Password Verification
-        if ($dto->username === env('SUPER_ADMIN_USERNAME')) {
-            // Securely check the password against the env hash
-            if (!Hash::check($dto->password, env('SUPER_ADMIN_PASSWORD'))) {
-                throw ValidationException::withMessages(['username' => 'Invalid credentials.']);
-            }
-
-             return $this->formatResult('super_admin', [
-                 'username' => $dto->username,
-                 'employeeID' => 0,
-                 'name' => 'System Admin'
-             ], 'SA_TOKEN_' . bin2hex(random_bytes(10)));
-        }
-
-        // Fetch User via Repository (Eager loads employee and role)
+        // Fetch User 
         $user = $this->userRepo->findByUsername($dto->username);
 
-        // Credential Validation
+        // Validate Credentials FIRST (The Shield)
+        $password = new Password($dto->password); 
         if (!$user || !$password->verify($user->password_hash)) {
             throw ValidationException::withMessages(['username' => ['Invalid credentials.']]);
         }
 
-        // Domain Guards (Checking the links in the chain)
+        // Domain Guards (Check Links)
         if (!$user->employee) {
-            //throw new Exception("Account Error: User not linked to an Employee record.");
             throw new AccountNotLinkedException();
         }
 
-        if (!$user->employee->role) {
-            throw new Exception("RBAC Error: Employee has no assigned Role in the database.");
-        }
+        // NOW it is safe to delete tokens (The Sword)
+        // We only reach this point if the password was CORRECT.
+        $user->tokens()->delete(); 
 
-        // DYNAMIC ROLE: Pull name directly from DB instead of Enum
-        // This allows your Role CRUD to work without code changes
+        // Create the new session
+        $newToken = $user->createToken('auth')->plainTextToken;
+
         $roleName = $user->employee->role->name; 
 
         return $this->formatResult(
             $roleName, 
             new UserResource($user), 
-            $user->createToken('auth')->plainTextToken
+            $newToken 
         );
     }
 
-    private function formatResult(string $role, mixed $user, string $token): array
+    private function formatResult(string $role, mixed $user, string $newToken): array
     {
         return [
             'user' => $user,
-            'token' => $token,
+            'token' => $newToken,
             'role' => $role
         ];
     }

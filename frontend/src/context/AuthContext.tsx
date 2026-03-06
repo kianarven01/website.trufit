@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import api from "@/api/axios";
 
 const API_URL =
@@ -21,7 +21,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
+    // 3. Only run if we haven't checked yet
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initAuth = async () => {
+      const token = localStorage.getItem("trufit_token");
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await api.get("/auth/verify");
+
+        if (
+          response.data.status === "success" ||
+          response.data.status === "authenticated"
+        ) {
+          const serverUser = response.data.data.user;
+
+          // CRITICAL: Ensure we include the role so the dashboard doesn't reset
+          setUser({
+            ...serverUser,
+            role: serverUser.role || "Admin", // Use fallback or server data
+          });
+        }
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          logout();
+          window.location.replace("/login?reason=session_expired");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []); // Keep this empty array
+
+  /*useEffect(() => {
     const savedUser = localStorage.getItem("trufit_user");
     const token = localStorage.getItem("trufit_token");
 
@@ -29,11 +72,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
-  }, []);
+  }, []);*/
 
   const login = async (inputUsername: string, inputPass: string) => {
     try {
-      const response = await api.post("/login", {
+      const response = await api.post("auth/login", {
         username: inputUsername,
         password: inputPass,
       });

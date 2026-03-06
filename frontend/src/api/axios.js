@@ -21,15 +21,17 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const isLoginPage = window.location.pathname === "/login";
+    const isLoginPage = window.location.pathname === "/webapp/login";
 
     if (error.response?.status === 401 && !isLoginPage) {
       console.warn("Unauthorized! Clearing session...");
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+
+      // Use the standardized trufit_ keys
+      localStorage.removeItem("trufit_token");
+      localStorage.removeItem("trufit_user");
 
       // Use replace so the user can't "Go Back" to the broken dashboard
-      window.location.replace("/login?reason=expired");
+      window.location.replace("/webapp/login?reason=expired");
     }
     return Promise.reject(error);
   },

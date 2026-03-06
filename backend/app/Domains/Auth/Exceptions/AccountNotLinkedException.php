@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Auth\Domain\Exceptions;
+namespace App\Domains\Auth\Exceptions;
 
 use Exception;
 use Illuminate\Http\JsonResponse;

@@ -24,7 +24,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const hasInitialized = useRef(false);
 
   useEffect(() => {
-    // 3. Only run if we haven't checked yet
     if (hasInitialized.current) return;
     hasInitialized.current = true;
 
@@ -45,7 +44,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         ) {
           const serverUser = response.data.data.user;
 
-          // CRITICAL: Ensure we include the role so the dashboard doesn't reset
           setUser({
             ...serverUser,
             role: serverUser.role || "Admin", // Use fallback or server data

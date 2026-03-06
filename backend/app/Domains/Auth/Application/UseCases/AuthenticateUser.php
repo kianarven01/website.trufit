@@ -6,7 +6,8 @@ use App\Domains\Auth\Application\DTOs\LoginDTO;
 use App\Domains\Auth\Domain\ValueObjects\Password;
 use App\Domains\Auth\Http\Resources\UserResource;
 use App\Domains\Auth\Infrastructure\Repositories\UserRepository;
-use App\Domains\Auth\Domain\Exceptions\AccountNotLinkedException;
+use App\Domains\Auth\Exceptions\AccountNotLinkedException;
+use App\Domains\Shared\Exceptions\InvalidCredentialsException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Exception;
@@ -23,7 +24,8 @@ class AuthenticateUser
         // Validate Credentials FIRST (The Shield)
         $password = new Password($dto->password); 
         if (!$user || !$password->verify($user->password_hash)) {
-            throw ValidationException::withMessages(['username' => ['Invalid credentials.']]);
+            //throw ValidationException::withMessages(['username' => ['Invalid credentials.']]);
+            throw new InvalidCredentialsException();
         }
 
         // Domain Guards (Check Links)

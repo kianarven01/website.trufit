@@ -35,18 +35,16 @@ import PageNotFound from "./pages/PageNotFound";
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      {" "}
-      {/* Wrap everything here */}
-      <Router>
-        <Routes>
-          <Route path="/home" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/contacts" element={<Contacts />} />
-          <Route path="/webapp/login" element={<LoginPage />} />
-          <Route path="/webapp/register" element={<Register />} />
+    //wrap everything here
+    <Router>
+      <Routes>
+        <Route path="/home" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/contacts" element={<Contacts />} />
+        <Route path="/webapp/login" element={<LoginPage />} />
+        <Route path="/webapp/register" element={<Register />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/webapp/dashboard" element={<Dashboard />} />
@@ -59,7 +57,7 @@ const App: React.FC = () => {
             <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
             <Route path="/webapp/sales/estimates" element={<Estimates />} />
 
-            <Route path="/webapp/products" element={<AvailableProducts />} />
+          <Route path="/webapp/products" element={<AvailableProducts />} />
 
             <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
             <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />
@@ -67,15 +65,14 @@ const App: React.FC = () => {
 
           </Route>
 
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route
-            path="/webapp"
-            element={<Navigate to="/webapp/dashboard" replace />}
-          />
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route
+          path="/webapp"
+          element={<Navigate to="/webapp/dashboard" replace />}
+        />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </Router>
   );
 };
 

@@ -22,50 +22,52 @@ import Estimates from "./pages/internal/Sales/Estimates";
 
 import AvailableProducts from "./pages/internal/Products";
 
-import Employees from "./pages/internal/HR/Employees"
-import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
+import Employees from "./pages/internal/HR/Employees";
+import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee";
 
 import Register from "./pages/internal/Register";
 import PageNotFound from "./pages/PageNotFound";
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      {" "}
-      {/* Wrap everything here */}
-      <Router>
-        <Routes>
-          <Route path="/home" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/contacts" element={<Contacts />} />
-          <Route path="/webapp/login" element={<LoginPage />} />
-          <Route path="/webapp/register" element={<Register />} />
+    //wrap everything here
+    <Router>
+      <Routes>
+        <Route path="/home" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/contacts" element={<Contacts />} />
+        <Route path="/webapp/login" element={<LoginPage />} />
+        <Route path="/webapp/register" element={<Register />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/webapp/dashboard" element={<Dashboard />} />
-            <Route path="/webapp/sales/customers" element={<Customers />} />
-            <Route path="/webapp/sales/appointments" element={<Appointments />} />
-            <Route path="/webapp/sales/job-orders" element={<JobOrders />} />
-            <Route path="/webapp/sales/estimates" element={<Estimates />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/webapp/dashboard" element={<Dashboard />} />
+          <Route path="/webapp/sales/customers" element={<Customers />} />
+          <Route path="/webapp/sales/appointments" element={<Appointments />} />
+          <Route path="/webapp/sales/job-orders" element={<JobOrders />} />
+          <Route path="/webapp/sales/estimates" element={<Estimates />} />
 
-            <Route path="/webapp/products" element={<AvailableProducts />} />
+          <Route path="/webapp/products" element={<AvailableProducts />} />
 
-            <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
-            <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />
-
-          </Route>
-
-          <Route path="/" element={<Navigate to="/home" replace />} />
           <Route
-            path="/webapp"
-            element={<Navigate to="/webapp/dashboard" replace />}
+            path="/webapp/employee-management/current-employees"
+            element={<Employees />}
           />
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+          <Route
+            path="/webapp/employee-management/onboarding-employees"
+            element={<OnboardingEmployees />}
+          />
+        </Route>
+
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route
+          path="/webapp"
+          element={<Navigate to="/webapp/dashboard" replace />}
+        />
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </Router>
   );
 };
 

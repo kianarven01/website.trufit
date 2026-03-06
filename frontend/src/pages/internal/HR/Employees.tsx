@@ -1,5 +1,9 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { MasterDetailPanel, FilterOption, ColumnDef } from "@/components/MasterDetailPanel";
+import {
+  MasterDetailPanel,
+  FilterOption,
+  ColumnDef,
+} from "@/components/MasterDetailPanel";
 import { useEffect, useState, useMemo } from "react";
 import api from "@/api/axios";
 import { toast } from "sonner";
@@ -17,7 +21,9 @@ interface Employee {
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({
     role: "all",
@@ -70,13 +76,23 @@ const Employees: React.FC = () => {
 
   // Generate dynamic role and position options
   const roleOptions = useMemo(() => {
-    const roles = Array.from(new Set(employees.map((e) => e.role_name).filter(Boolean)));
-    return roles.map((role) => ({ value: role as string, label: role as string }));
+    const roles = Array.from(
+      new Set(employees.map((e) => e.role_name).filter(Boolean)),
+    );
+    return roles.map((role) => ({
+      value: role as string,
+      label: role as string,
+    }));
   }, [employees]);
 
   const positionOptions = useMemo(() => {
-    const positions = Array.from(new Set(employees.map((e) => e.position).filter(Boolean)));
-    return positions.map((pos) => ({ value: pos as string, label: pos as string }));
+    const positions = Array.from(
+      new Set(employees.map((e) => e.position).filter(Boolean)),
+    );
+    return positions.map((pos) => ({
+      value: pos as string,
+      label: pos as string,
+    }));
   }, [employees]);
 
   const filterOptions: FilterOption[] = [
@@ -91,8 +107,12 @@ const Employees: React.FC = () => {
       label: "Employee",
       render: (emp) => (
         <div>
-          <div className="font-bold text-slate-800">{emp.name || "Unnamed"}</div>
-          <div className="text-[10px] text-slate-400 lowercase">{emp.email}</div>
+          <div className="font-bold text-slate-800">
+            {emp.name || "Unnamed"}
+          </div>
+          <div className="text-[10px] text-slate-400 lowercase">
+            {emp.email}
+          </div>
         </div>
       ),
     },
@@ -130,7 +150,9 @@ const Employees: React.FC = () => {
         {selectedEmployee && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">{selectedEmployee.name}</h2>
-            <p className="text-sm text-muted-foreground">{selectedEmployee.email}</p>
+            <p className="text-sm text-muted-foreground">
+              {selectedEmployee.email}
+            </p>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

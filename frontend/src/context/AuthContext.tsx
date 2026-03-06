@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const response = await api.post("auth/login", {
         username: inputUsername,
         password: inputPass,
-        remember: rememberMe, // Send 'remember' to match the DTO
+        remember: rememberMe,
       });
 
       const apiResponse = response.data.data;

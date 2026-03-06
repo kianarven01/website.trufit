@@ -31,6 +31,7 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [remember, setRemember] = useState(false);
 
   // Registration modal state
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -51,7 +52,7 @@ const LoginPage: React.FC = () => {
     setLoginError("");
 
     try {
-      const result = await login(username, password);
+      const result = await login(username, password, remember);
       if (result.success) {
         navigate("/webapp/dashboard");
       } else {
@@ -97,18 +98,18 @@ const LoginPage: React.FC = () => {
     >
       <div className="absolute inset-0 bg-black/40"></div>
 
-      <div className="  relative z-10 w-full max-w-6xl flex flex-col md:flex-row
+      <div
+        className="  relative z-10 w-full max-w-6xl flex flex-col md:flex-row
       bg-white/10
         border-[2px] border-white/30
         backdrop-blur-md
         shadow-[inset_0_0_8px_1px_rgba(255,255,255,0.2)]
         rounded-2xl
         overflow-hidden
-      ">
-
+      "
+      >
         {/* LEFT: Logo */}
         <section className="relative md:w-1/2 flex flex-col justify-center items-center p-10 text-white overflow-hidden">
-
           {/* Base Gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-blue-950 to-gray-800"></div>
 
@@ -123,7 +124,6 @@ const LoginPage: React.FC = () => {
 
           {/* Content */}
           <div className="relative z-10 flex flex-col items-center text-center">
-
             <img
               src={trufit_logo}
               alt="Trufit Logo"
@@ -131,12 +131,11 @@ const LoginPage: React.FC = () => {
             />
 
             <p className="text-blue-100 text-lg max-w-sm leading-relaxed">
-              Welcome to the <span className="font-semibold text-white">SQS Portal</span>.  
+              Welcome to the{" "}
+              <span className="font-semibold text-white">SQS Portal</span>.
               Manage employees, service quality, and operations in one system.
             </p>
-
           </div>
-
         </section>
 
         {/* RIGHT: Login Form */}
@@ -155,7 +154,12 @@ const LoginPage: React.FC = () => {
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 {/* Username */}
                 <div className="space-y-1">
-                  <Label htmlFor="username" className="text-slate-100 font-semibold tracking-wide">Username</Label>
+                  <Label
+                    htmlFor="username"
+                    className="text-slate-100 font-semibold tracking-wide"
+                  >
+                    Username
+                  </Label>
                   <Input
                     id="username"
                     type="text"
@@ -169,7 +173,12 @@ const LoginPage: React.FC = () => {
 
                 {/* Password */}
                 <div className="space-y-1">
-                  <Label htmlFor="password" className="text-slate-100 font-semibold tracking-wide">Password</Label>
+                  <Label
+                    htmlFor="password"
+                    className="text-slate-100 font-semibold tracking-wide"
+                  >
+                    Password
+                  </Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -196,12 +205,19 @@ const LoginPage: React.FC = () => {
 
                 {/* Login Error */}
                 {loginError && (
-                  <p className="text-red-600 text-sm font-medium">{loginError}</p>
+                  <p className="text-red-600 text-sm font-medium">
+                    {loginError}
+                  </p>
                 )}
 
                 <div className="flex items-center justify-between text-sm">
                   <label className="flex items-center gap-2 cursor-pointer text-gray-50">
-                    <input type="checkbox" className="accent-blue-600" />
+                    <input
+                      type="checkbox"
+                      className="accent-blue-600"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)} // 3. Bind the value
+                    />
                     Remember Me
                   </label>
 
@@ -222,13 +238,13 @@ const LoginPage: React.FC = () => {
                   {isSubmitting ? "Authenticating..." : "Sign In to System"}
                 </Button>
 
-                  <Button
-                    type="button"
-                    className="text-sm text-slate-100 bg-transparent font-normal border border-white/30 hover:bg-white/10 hover:font-semibold rounded-md w-full h-11 mb-2"
-                    onClick={() => setShowRegisterModal(true)}
-                  >
-                    Register a New Account
-                  </Button>
+                <Button
+                  type="button"
+                  className="text-sm text-slate-100 bg-transparent font-normal border border-white/30 hover:bg-white/10 hover:font-semibold rounded-md w-full h-11 mb-2"
+                  onClick={() => setShowRegisterModal(true)}
+                >
+                  Register a New Account
+                </Button>
               </form>
             </CardContent>
 
@@ -246,11 +262,11 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Registration Verification Modal */}
-      
+
       {showRegisterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-
-          <Card className="
+          <Card
+            className="
             relative w-[420px] p-8
             bg-white/10
             border border-white/20
@@ -258,8 +274,8 @@ const LoginPage: React.FC = () => {
             rounded-2xl
             shadow-[0_20px_60px_rgba(0,0,0,0.6)]
             overflow-hidden
-          ">
-
+          "
+          >
             {/* Glow accents */}
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
@@ -276,7 +292,6 @@ const LoginPage: React.FC = () => {
 
             <CardContent className="relative">
               <form onSubmit={handleVerifyKey} className="flex flex-col gap-5">
-
                 <div className="space-y-2">
                   <Label
                     htmlFor="registrationCode"
@@ -311,7 +326,6 @@ const LoginPage: React.FC = () => {
                 )}
 
                 <div className="flex flex-col gap-3 pt-2">
-
                   <Button
                     type="submit"
                     disabled={loadingState}
@@ -342,7 +356,6 @@ const LoginPage: React.FC = () => {
                   >
                     Cancel
                   </Button>
-
                 </div>
               </form>
             </CardContent>

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Employee\Application\UseCase;
+namespace App\Domains\Employee\Application\UseCases;
 
 use App\Domains\Employee\Infrastructure\Repositories\EmployeeRepository;
 use App\Domains\Employee\Http\Resources\EmployeeResource;

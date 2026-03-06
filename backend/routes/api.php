@@ -17,4 +17,5 @@ Route::prefix('auth')->group(function () {
 // Moving this OUTSIDE the auth group makes the URL /api/admin/employees
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/admin/employees', [EmployeeController::class, 'index']);
+    Route::get('/admin/registration-keys', [EmployeeController::class, 'onboarding']);
 });

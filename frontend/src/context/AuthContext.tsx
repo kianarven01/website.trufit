@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (
     u: string,
     p: string,
+    remember: boolean,
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }

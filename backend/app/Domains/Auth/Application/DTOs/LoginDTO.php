@@ -8,7 +8,8 @@ readonly class LoginDTO
 {
     public function __construct(
         public string $username,
-        public string $password
+        public string $password,
+        public bool $remember = false 
     ) {}
 
     /**
@@ -18,7 +19,9 @@ readonly class LoginDTO
     {
         return new self(
             username: $request->validated('username'),
-            password: $request->validated('password')
+            password: $request->validated('password'),
+            // Map the 'remember' field from the request
+            remember: (bool) $request->input('remember', false) 
         );
     }
 }

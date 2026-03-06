@@ -8,8 +8,6 @@ use App\Domains\Auth\Http\Resources\UserResource;
 use App\Domains\Auth\Infrastructure\Repositories\UserRepository;
 use App\Domains\Auth\Exceptions\AccountNotLinkedException;
 use App\Domains\Shared\Exceptions\InvalidCredentialsException;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 use Exception;
 
 class AuthenticateUser
@@ -20,6 +18,8 @@ class AuthenticateUser
     {
         // Fetch User 
         $user = $this->userRepo->findByUsername($dto->username);
+        $expiration = $dto->remember ? now()->addDays(30) : now()->addHours(8);
+    
 
         // Validate Credentials FIRST (The Shield)
         $password = new Password($dto->password); 
@@ -38,7 +38,8 @@ class AuthenticateUser
         $user->tokens()->delete(); 
 
         // Create the new session
-        $newToken = $user->createToken('auth')->plainTextToken;
+        $tokenResult = $user->createToken('auth', ['*'], $expiration);
+        $newToken = $tokenResult->plainTextToken;
 
         $roleName = $user->employee->role->name; 
 

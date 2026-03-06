@@ -92,11 +92,14 @@ const AvailableProducts: React.FC = () => {
   // Table columns
   const columns: ColumnDef<Product>[] = [
     {
-      key: "image",
-      label: "Image",
-      render: (p) => <img src={p.image} alt={p.name} className="h-8 w-8 object-cover rounded" />,
+      key: "product",
+      label: "Product",
+      render: (p) => 
+      <div>
+        <img src={p.image} alt={p.name} className="h-8 w-8 object-cover rounded" />
+        <span>{p.name}</span>
+      </div>,
     },
-    { key: "name", label: "Product Name", render: (p) => p.name },
     { key: "sku", label: "SKU", render: (p) => p.sku },
     { key: "category", label: "Category", render: (p) => p.category },
     { key: "description", label: "Description", render: (p) => p.description },
@@ -125,14 +128,20 @@ const AvailableProducts: React.FC = () => {
         {selectedProduct && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">{selectedProduct.name}</h2>
-            <img src={selectedProduct.image} alt={selectedProduct.name} className="h-20 w-20 object-cover rounded" />
+            <img src={selectedProduct.image} alt={selectedProduct.name} className="h-60 w-60 object-cover rounded border border-black" />
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><span className="font-semibold">SKU:</span> {selectedProduct.sku}</div>
               <div><span className="font-semibold">Category:</span> {selectedProduct.category}</div>
+              <div><span className="font-semibold">Part No.:</span> ---</div>
+              <div><span className="font-semibold">Engine No.:</span> ---</div>
               <div><span className="font-semibold">Description:</span> {selectedProduct.description}</div>
               <div><span className="font-semibold">Barcode:</span> {selectedProduct.barcode}</div>
-              <div><span className="font-semibold">Manufacturer:</span> {selectedProduct.manufacturer}</div>
               <div><span className="font-semibold">Unit:</span> {selectedProduct.unit}</div>
+              <div><span className="font-semibold">Supplier:</span> ryjfhjy</div>
+              <div><span className="font-semibold">Cost:</span> -----</div>
+              <div><span className="font-semibold">VAT:</span> -----</div>
+              <div><span className="font-semibold">Selling Price:</span> -----</div>
+
             </div>
           </div>
         )}

@@ -10,11 +10,14 @@ import {
   ChevronRight,
   LogOut,
   ClipboardList,
+  Wrench,
+  BadgeDollarSign,
   FileText,
   Users,
   CalendarDays,
   Truck,
   Box,
+  ShelvingUnit,
   TrendingUp,
   ListOrdered,
   Activity,
@@ -64,19 +67,40 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/webapp/dashboard" },
   { label: "Appointments", icon: CalendarDays, path: "/webapp/sales/appointments" },
+  { label: "Customers", path: "/webapp/customers", icon: Users },
+  { label: "Services",
+    icon: Activity,
+    children: [
+      { label: "Job Orders", path: "/webapp/services/job-orders", icon: ClipboardList},
+      { label: "Service Catalog", path: "/webapp/services/service-catalog", icon: Wrench },
+    ],
+  },
   {
     label: "Sales",
     icon: ShoppingCart,
     children: [
-      { label: "Job Orders", path: "/webapp/sales/job-orders", icon: ClipboardList},
+      { label: "Sales Orders", path: "/webapp/sales/sales-orders", icon: BadgeDollarSign },
       { label: "Estimates", path: "/webapp/sales/estimates", icon: FileText },
-      { label: "Customers", path: "/webapp/sales/customers", icon: Users },
     ],
   },
-  {
-    label: "Purchase Orders", path: "/webapp/purchasing", icon: Truck,},
-  { label: "Inventory", path: "/webapp/inventory", icon: Box },
+  { 
+    label: "Purchasing",
+    icon: ShoppingCart,
+    children: [
+      { label: "Purchase Orders", path: "/webapp/purchasing/purchase-orders", icon: Truck },
+      { label: "Vendors", path: "/webapp/purchasing/vendors", icon: Users },
+    ],
+  },
   { label: "Products", path: "/webapp/products", icon: Package },
+  { 
+    label: "Inventory", 
+    icon: Box, 
+    children: [
+      { label: "Inventory List", path: "/webapp/inventory/inventory-list", icon: Box },
+      { label: "Stock Movement", path: "/webapp/inventory/stock-movement", icon: Truck },
+      { label: "Warehouse", path: "/webapp/inventory/warehouse", icon: ShelvingUnit },
+    ],
+  },
   {
     label: "Reports",
     icon: BarChart3,
@@ -107,7 +131,7 @@ const navItems: NavItem[] = [
       { label: "Onboarding Employees", path: "/webapp/employee-management/onboarding-employees", icon: Users },
       {
         label: "Roles and Permissions",
-        path: "/webapp/settings/rolesandpermissions",
+        path: "/webapp/settings/roles-and-permissions",
         icon: UserKey,
         roles: ["admin"],
       },

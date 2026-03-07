@@ -17,15 +17,16 @@ const OnboardingTable: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState<number | null>(null);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (status: string = "all") => {
     setLoading(true);
     try {
-      const res = await api.get("/admin/registration-keys");
+      // 2. Pass the status to the backend KeyController
+      const res = await api.get(`/admin/registration-keys?status=${status}`);
       if (res.data && res.data.status === "success") {
         setEmployees(res.data.data);
       }
     } catch (err) {
-      toast.error("Failed to load keys");
+      toast.error("Failed to load registration keys");
     } finally {
       setLoading(false);
     }
@@ -110,8 +111,11 @@ const OnboardingTable: React.FC = () => {
             employees.map((emp: any) => {
               const isExpired = new Date(emp.expires_at) < new Date();
               let status = "pending";
-              if (emp.is_used) status = "registered";
-              else if (isExpired) status = "expired";
+              if (emp.is_used === true || emp.is_used === 1) {
+                status = "registered";
+              } else if (isExpired) {
+                status = "expired";
+              }
 
               return (
                 <tr

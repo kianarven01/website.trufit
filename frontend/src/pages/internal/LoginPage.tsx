@@ -16,7 +16,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 
-import placeholder from "@/assets/placeholder.jpeg";
+import temporary_bg from "@/assets/temporary_bg.jpeg";
 import trufit_logo from "@/assets/trufit_logo.png";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -31,6 +31,7 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [remember, setRemember] = useState(false);
 
   // Registration modal state
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -51,7 +52,7 @@ const LoginPage: React.FC = () => {
     setLoginError("");
 
     try {
-      const result = await login(username, password);
+      const result = await login(username, password, remember);
       if (result.success) {
         navigate("/webapp/dashboard");
       } else {
@@ -73,13 +74,14 @@ const LoginPage: React.FC = () => {
         key_code: regKey,
       });
 
-      if (response.data.status === "success") {
-        // Map the backend response to the router state
+      const employeeData = response.data.data.data || response.data.data;
+
+      if (response.data.status === "success" || response.status === 200) {
         navigate("/webapp/register", {
           state: {
             validKey: regKey,
-            employeeName: response.data.employee_name, // Match backend
-            position: response.data.position, // Match backend
+            employeeName: employeeData.employee_name,
+            position: employeeData.position,
           },
         });
       }
@@ -93,27 +95,58 @@ const LoginPage: React.FC = () => {
   return (
     <main
       className="h-screen w-screen flex items-center justify-center bg-cover bg-center bg-no-repeat overflow-hidden select-none p-4"
-      style={{ backgroundImage: `url(${placeholder})` }}
+      style={{ backgroundImage: `url(${temporary_bg})` }}
     >
       <div className="absolute inset-0 bg-black/40"></div>
 
-      <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row bg-white rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.25)] overflow-hidden">
+      <div
+        className="  relative z-10 w-full max-w-6xl flex flex-col md:flex-row
+      bg-white/10
+        border-[2px] border-white/30
+        backdrop-blur-md
+        shadow-[inset_0_0_8px_1px_rgba(255,255,255,0.2)]
+        rounded-2xl
+        overflow-hidden
+      "
+      >
         {/* LEFT: Logo */}
-        <section className="md:w-1/2 flex flex-col justify-center items-center bg-blue-50 p-8 md:p-12">
-          <img src={trufit_logo} alt="Trufit Logo" className="w-64 mb-6" />
-          <p className="text-center text-slate-700 text-lg">
-            Welcome to Trufit Auto Center SQS Portal. Please login to continue.
-          </p>
+        <section className="relative md:w-1/2 flex flex-col justify-center items-center p-10 text-white overflow-hidden">
+          {/* Base Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-blue-950 to-gray-800"></div>
+
+          {/* Blue Glow */}
+          <div className="absolute -top-20 -right-20 w-96 h-96 bg-blue-600/30 blur-3xl rounded-full"></div>
+
+          {/* Red Glow */}
+          <div className="absolute -bottom-20 -left-20 w-96 h-96 bg-red-500/30 blur-3xl rounded-full"></div>
+
+          {/* Subtle Tech Grid */}
+          <div className="absolute inset-0 opacity-[0.07] bg-[linear-gradient(rgba(255,255,255,0.3)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.3)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center text-center">
+            <img
+              src={trufit_logo}
+              alt="Trufit Logo"
+              className="w-72 mb-8 drop-shadow-[0_15px_40px_rgba(0,0,0,0.6)]"
+            />
+
+            <p className="text-blue-100 text-lg max-w-sm leading-relaxed">
+              Welcome to the{" "}
+              <span className="font-semibold text-white">SQS Portal</span>.
+              Manage employees, service quality, and operations in one system.
+            </p>
+          </div>
         </section>
 
         {/* RIGHT: Login Form */}
         <section className="md:w-1/2 p-6 md:p-12 flex flex-col justify-center">
-          <Card className="border-0 shadow-none">
+          <Card className="border-0 shadow-none bg-transparent">
             <CardHeader className="space-y-2 text-center">
-              <CardTitle className="text-2xl font-bold text-slate-900">
+              <CardTitle className="text-3xl font-bold text-blue-100 tracking-wide">
                 Employee Login
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-200 font-light tracking-wide">
                 Enter your credentials to access the SQS Portal
               </CardDescription>
             </CardHeader>
@@ -122,7 +155,12 @@ const LoginPage: React.FC = () => {
               <form onSubmit={handleLogin} className="flex flex-col gap-4">
                 {/* Username */}
                 <div className="space-y-1">
-                  <Label htmlFor="username">Username</Label>
+                  <Label
+                    htmlFor="username"
+                    className="text-slate-100 font-semibold tracking-wide"
+                  >
+                    Username
+                  </Label>
                   <Input
                     id="username"
                     type="text"
@@ -130,13 +168,18 @@ const LoginPage: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
-                    className="border-slate-200 focus:ring-trufitBlue focus:border-trufitBlue"
+                    className="border-white/30 bg-white/10 text-white placeholder:text-white/70 focus:ring-blue-400 focus:border-blue-400"
                   />
                 </div>
 
                 {/* Password */}
                 <div className="space-y-1">
-                  <Label htmlFor="password">Password</Label>
+                  <Label
+                    htmlFor="password"
+                    className="text-slate-100 font-semibold tracking-wide"
+                  >
+                    Password
+                  </Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -145,11 +188,12 @@ const LoginPage: React.FC = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter your password"
                       required
+                      className="border-white/30 bg-white/10 text-white placeholder:text-white/70 focus:ring-blue-400 focus:border-blue-400"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -162,18 +206,25 @@ const LoginPage: React.FC = () => {
 
                 {/* Login Error */}
                 {loginError && (
-                  <p className="text-red-500 text-sm">{loginError}</p>
+                  <p className="text-red-600 text-sm font-medium">
+                    {loginError}
+                  </p>
                 )}
 
                 <div className="flex items-center justify-between text-sm">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="accent-blue-900" />
+                  <label className="flex items-center gap-2 cursor-pointer text-gray-50">
+                    <input
+                      type="checkbox"
+                      className="accent-blue-600"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)} // 3. Bind the value
+                    />
                     Remember Me
                   </label>
 
                   <button
                     type="button"
-                    className="text-blue-900 hover:text-trufitBlue underline hover:text-popover-foreground font-semibold"
+                    className="text-slate-50 hover:text-blue-400 underline hover:text-popover-foreground font-semibold tracking-wide"
                   >
                     Forgot Password?
                   </button>
@@ -188,22 +239,22 @@ const LoginPage: React.FC = () => {
                   {isSubmitting ? "Authenticating..." : "Sign In to System"}
                 </Button>
 
-                  <Button
-                    type="button"
-                    className="text-sm text-blue-900 bg-transparent hover:text-blue-950 hover:bg-slate-50 rounded-md w-full h-11 font-semibold mb-2"
-                    onClick={() => setShowRegisterModal(true)}
-                  >
-                    Register a New Account
-                  </Button>
+                <Button
+                  type="button"
+                  className="text-sm text-slate-100 bg-transparent font-normal border border-white/30 hover:bg-white/10 hover:font-semibold rounded-md w-full h-11 mb-2"
+                  onClick={() => setShowRegisterModal(true)}
+                >
+                  Register a New Account
+                </Button>
               </form>
             </CardContent>
 
             {/* Footer */}
             <CardFooter className="flex flex-col gap-1 pt-6 border-t-2 border-slate-100">
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-slate-100 text-center">
                 Authorized Personnel Only
               </p>
-              <p className="text-[10px] uppercase tracking-wide text-slate-400 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-slate-100 text-center">
                 Unauthorized access is strictly monitored
               </p>
             </CardFooter>
@@ -212,46 +263,101 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Registration Verification Modal */}
+
       {showRegisterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-96 p-6 bg-white">
-            <CardHeader className="text-center">
-              <CardTitle>Register New Account</CardTitle>
-              <CardDescription>
-                Enter your registration key to proceed
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <Card
+            className="
+            relative w-[420px] p-8
+            bg-white/10
+            border border-white/20
+            backdrop-blur-xl
+            rounded-2xl
+            shadow-[0_20px_60px_rgba(0,0,0,0.6)]
+            overflow-hidden
+          "
+          >
+            {/* Glow accents */}
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
+
+            <CardHeader className="relative text-center space-y-2 pb-6">
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">
+                Verify Registration
+              </CardTitle>
+
+              <CardDescription className="text-gray-300 text-sm">
+                Enter your employee registration key to create an account.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleVerifyKey} className="flex flex-col gap-4">
-                <Label htmlFor="registrationCode">Registration Key</Label>
-                <Input
-                  id="registrationCode"
-                  type="text"
-                  placeholder="TRUFIT-XXXXXX"
-                  value={regKey}
-                  onChange={(e) => setRegKey(e.target.value.toUpperCase())}
-                  required
-                />
 
-                {/* Registration Key Error */}
+            <CardContent className="relative">
+              <form onSubmit={handleVerifyKey} className="flex flex-col gap-5">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="registrationCode"
+                    className="text-gray-200 font-semibold"
+                  >
+                    Registration Key
+                  </Label>
+
+                  <Input
+                    id="registrationCode"
+                    type="text"
+                    placeholder="TRUFIT-XXXXXX"
+                    value={regKey}
+                    onChange={(e) => setRegKey(e.target.value.toUpperCase())}
+                    required
+                    className="
+                      bg-white/10
+                      border-white/30
+                      text-white
+                      placeholder:text-gray-400
+                      focus:border-blue-400
+                      focus:ring-blue-400
+                    "
+                  />
+                </div>
+
+                {/* Error */}
                 {regKeyError && (
-                  <p className="text-red-500 text-sm">{regKeyError}</p>
+                  <p className="text-red-400 text-sm font-medium">
+                    {regKeyError}
+                  </p>
                 )}
 
-                <Button 
-                  type="submit" 
-                  className="w-full mt-4 bg-blue-900 text-white hover:bg-blue-950"
-                  disabled={loadingState}
-                >
-                  {loadingState ? "VERIFYING..." : "Verify"}
-                </Button>
-                <Button
-                  type="button"
-                  className="w-full bg-gray-200 text-gray-800 hover:bg-gray-300"
-                  onClick={() => setShowRegisterModal(false)}
-                >
-                  Cancel
-                </Button>
+                <div className="flex flex-col gap-3 pt-2">
+                  <Button
+                    type="submit"
+                    disabled={loadingState}
+                    className="
+                      w-full
+                      bg-blue-900
+                      hover:bg-blue-950
+                      text-white
+                      font-semibold
+                      h-11
+                    "
+                  >
+                    {loadingState ? "Verifying..." : "Verify Key"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="
+                      w-full
+                      border-white/30
+                      text-white
+                      hover:text-white
+                      hover:bg-white/10
+                      bg-transparent
+                    "
+                    onClick={() => setShowRegisterModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>

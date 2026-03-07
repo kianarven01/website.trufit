@@ -7,7 +7,8 @@ const EmployeeTable: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await api.get("/admin/employees");
+      // Update this endpoint to your filtered backend route (e.g., status=active)
+      const res = await api.get("/admin/employees?status=active");
       if (res.data && res.data.status === "success") {
         setEmployees(res.data.data);
       }
@@ -30,95 +31,77 @@ const EmployeeTable: React.FC = () => {
     );
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse">
-        <thead className="bg-slate-50 border-b border-slate-100">
-          <tr>
-            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Employee
-            </th>
-            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Contact & Address
-            </th>
-            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Position
-            </th>
-            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Role
-            </th>
-            <th className="p-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Join Date
-            </th>
-            <th className="p-4 text-right text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Action
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-50">
-          {employees.length === 0 ? (
-            <tr>
-              <td
-                colSpan={5}
-                className="p-10 text-center text-slate-400 italic"
-              >
-                No employees found.
-              </td>
-            </tr>
-          ) : (
-            employees.map((emp) => (
-              <tr
-                key={emp.id}
-                className="hover:bg-slate-50/50 transition-colors group"
-              >
-                <td className="p-4">
-                  {/* Uses 'name' column instead of first/last name to match updated schema */}
-                  <div className="font-bold text-slate-800">
-                    {emp.name || "Unnamed Employee"}
-                  </div>
-                  <div className="text-[10px] text-slate-400 lowercase font-medium">
-                    {emp.email}
-                  </div>
-                </td>
-                <td className="p-4">
-                  {/* Displaying address if available */}
-                  <div className="text-xs text-slate-400">
-                    {emp.address || "No address listed"}
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="text-xs font-bold text-slate-700">
-                    {emp.position}
-                  </div>
-                  <div className="text-[10px] text-slate-400"></div>
-                </td>
+    <div className="space-y-2">
+      {/* Column Header */}
+      <div className="hidden md:grid grid-cols-6 gap-6 px-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <div>Employee</div>
+        <div>Contact & Address</div>
+        <div>Position</div>
+        <div>Role</div>
+        <div>Join Date</div>
+        <div className="text-right">Action</div>
+      </div>
 
-                <td className="p-4">
-                  <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-[10px] font-bold uppercase">
-                    {emp.role_name}
-                  </span>
-                </td>
-                <td className="p-4">
-                  {/* Displaying join_date column with clean formatting */}
-                  <div className="text-xs text-slate-500 font-medium">
-                    {emp.join_date
-                      ? new Date(emp.join_date).toLocaleDateString(undefined, {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })
-                      : "Pending"}
-                  </div>
-                </td>
-                <td className="p-4 text-right">
-                  <button className="text-slate-300 hover:text-red-600 transition-colors text-sm font-bold">
-                    View Details →
-                  </button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      {/* Rows */}
+      {employees.length === 0 ? (
+        <div className="p-10 text-center text-slate-400 italic border rounded-xl">
+          No employees found.
+        </div>
+      ) : (
+        employees.map((emp) => (
+          <div
+            key={emp.id}
+            className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-5"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-center">
+              <div>
+                <div className="font-bold text-slate-800">
+                  {emp.name || "Unnamed Employee"}
+                </div>
+                <div className="text-[10px] text-slate-400 lowercase font-medium">
+                  {emp.email}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs text-slate-400">
+                  {emp.address || "No address listed"}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-bold text-slate-700">
+                  {emp.position}
+                </div>
+              </div>
+
+              <div>
+                <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase">
+                  {emp.role_name}
+                </span>
+              </div>
+
+              <div>
+                <div className="text-xs text-slate-500 font-medium">
+                  {emp.join_date
+                    ? new Date(emp.join_date).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "Pending"}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <button className="text-slate-400 hover:text-red-600 transition-colors text-sm font-bold">
+                  View Details →
+                </button>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 };

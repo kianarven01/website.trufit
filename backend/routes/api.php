@@ -1,44 +1,41 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\RegistrationKeyController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\EmployeeController;
+use App\Domains\Auth\Http\Controllers\AuthController;
+use App\Domains\KeyManagement\Http\Controllers\KeyController;
+/*
+|--------------------------------------------------------------------------
+| Authentication Domain
+|--------------------------------------------------------------------------
+*/
+Route::prefix('auth')->group(function () {
+    // Public & Private Auth Routes (Login, Register, Logout)
+    require app_path('Domains/Auth/routes.php');
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/verify-registration-key', [AuthController::class, 'verifyKey']);
-Route::post('/register', [AuthController::class, 'register']);
-
-//test route to check if backend is working, can be removed later
-/*Route::get('/test', function() {
-    return response()->json(['message' => 'Backend is reached!']);
-});*/ 
-
-
-//for admin role management CRUD
-Route::get('/admin/roles', [RoleController::class, 'index']);
-Route::post('/admin/roles', [RoleController::class, 'store']);
-Route::put('/admin/roles/{id}', [RoleController::class, 'update']);
-Route::delete('/admin/roles/{id}', [RoleController::class, 'destroy']);
-Route::post('/admin/onboard-employee', [EmployeeController::class, 'onboard']);
-
-
-// routes/api.php
-Route::get('/admin/employees', [EmployeeController::class, 'index']);
-
-Route::prefix('admin')->group(function () {
-
-    Route::get('/roles', [RegistrationKeyController::class, 'getRoles']);
-    Route::get('/roles', [RoleController::class, 'index']);
-    Route::post('/roles', [RoleController::class, 'store']);
-    Route::get('/registration-keys', [App\Http\Controllers\EmployeeController::class, 'getRegistrationKeys']);
+    // Identity Verification
+    Route::middleware('auth:sanctum')->get('/verify', [AuthController::class, 'verify']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    //for admin
-    Route::post('/admin/generate-key', [RegistrationKeyController::class, 'generate'])->middleware('permission:admin_panel,write');
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 
-    /*Route::post('/inventory', [InventoryController::class, 'store'])
-        ->middleware('permission:inventory,write');*/
+Route::post('/verify-registration-key', [KeyController::class, 'verify']);
+Route::post('/register', [KeyController::class, 'register']);
+
+/*
+|--------------------------------------------------------------------------
+| Admin & Management Domains (Protected)
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth:sanctum')->group(function () {
+    
+    // Employee & Key Management Domain
+    require app_path('Domains/Employee/routes.php');
+    require app_path('Domains/KeyManagement/routes.php');
+    // Future Domains will go here:
+    // require app_path('Domains/Inventory/routes.php');
+    // require app_path('Domains/Sales/routes.php');
 });

@@ -1,88 +1,182 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import EmployeeTable from "@/components/recruitment/EmployeeTable";
-import OnboardingTable from "@/components/recruitment/OnboardingTable";
-import { PageShell } from "@/components/PageShell";
-import { useEffect, useState } from "react";
-import AddEmployeeModal from "@/components/popupModal/addEmployee";
+import {
+  MasterDetailPanel,
+  FilterOption,
+  ColumnDef,
+} from "@/components/MasterDetailPanel";
+import { useEffect, useState, useMemo } from "react";
 import api from "@/api/axios";
+import { toast } from "sonner";
 
-interface Role {
+interface Employee {
   id: number;
   name: string;
-}
-
-interface Position {
-  id: number;
-  name: string;
+  email: string;
+  address?: string;
+  position?: string;
+  role_name?: string;
+  join_date?: string;
 }
 
 const Employees: React.FC = () => {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-
-  const [filters, setFilters] = useState({
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({
     role: "all",
     position: "all",
   });
 
-  // Fetch roles and positions from backend
-  useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const roleRes = await api.get("/admin/roles");
-        setRoles(roleRes.data.data);
-      } catch (error) {
-        console.error("Failed to load filters", error);
+  // Fetch employees
+  const fetchEmployees = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/admin/employees");
+      if (res.data?.status === "success") {
+        setEmployees(res.data.data);
       }
-    };
+    } catch {
+      toast.error("Failed to load employees");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchFilters();
+  useEffect(() => {
+    fetchEmployees();
   }, []);
 
-  // Prepare dynamic filters for PageShell
-  const filterOptions = [
+  // Filter + search logic
+  const filteredEmployees = useMemo(() => {
+    return employees
+      .filter((e) => {
+        if (filters.role && filters.role !== "all") {
+          return e.role_name === filters.role;
+        }
+        return true;
+      })
+      .filter((e) => {
+        if (filters.position && filters.position !== "all") {
+          return e.position === filters.position;
+        }
+        return true;
+      })
+      .filter((e) => {
+        const query = searchQuery.toLowerCase();
+        return (
+          e.name?.toLowerCase().includes(query) ||
+          e.email?.toLowerCase().includes(query) ||
+          e.position?.toLowerCase().includes(query)
+        );
+      });
+  }, [employees, filters.role, filters.position, searchQuery]);
+
+  // Generate dynamic role and position options
+  const roleOptions = useMemo(() => {
+    const roles = Array.from(
+      new Set(employees.map((e) => e.role_name).filter(Boolean)),
+    );
+    return roles.map((role) => ({
+      value: role as string,
+      label: role as string,
+    }));
+  }, [employees]);
+
+  const positionOptions = useMemo(() => {
+    const positions = Array.from(
+      new Set(employees.map((e) => e.position).filter(Boolean)),
+    );
+    return positions.map((pos) => ({
+      value: pos as string,
+      label: pos as string,
+    }));
+  }, [employees]);
+
+  const filterOptions: FilterOption[] = [
+    { key: "role", label: "Role", options: roleOptions },
+    { key: "position", label: "Position", options: positionOptions },
+  ];
+
+  // Table columns
+  const columns: ColumnDef<Employee>[] = [
     {
-      key: "role",
-      label: "Role",
-      options: [
-        { value: "all", label: "All" },
-        ...roles.map((r) => ({ value: r.id.toString(), label: r.name })),
-      ],
+      key: "name",
+      label: "Employee",
+      render: (emp) => (
+        <div>
+          <div className="font-bold text-slate-800">
+            {emp.name || "Unnamed"}
+          </div>
+          <div className="text-[10px] text-slate-400 lowercase">
+            {emp.email}
+          </div>
+        </div>
+      ),
     },
     {
       key: "position",
       label: "Position",
-      options: [
-        { value: "all", label: "All" },
-        ...positions.map((p) => ({ value: p.id.toString(), label: p.name })),
-      ],
+      render: (emp) => emp.position || "-",
+    },
+    {
+      key: "role",
+      label: "Role",
+      render: (emp) => emp.role_name || "-",
     },
   ];
 
   return (
     <DashboardLayout>
-      <PageShell
-        title="Employees"
-        description="List of all employees"
-        searchPlaceholder="Search by name, username, role..."
+      <MasterDetailPanel<Employee>
+        title="Current Employees"
+        description="Manage all employee details"
+        items={filteredEmployees}
+        selectedItem={selectedEmployee}
+        onSelect={setSelectedEmployee}
+        getItemId={(emp) => emp.id.toString()}
+        columns={columns}
         filters={filterOptions}
         activeFilters={filters}
         onFilterChange={(key, value) =>
           setFilters((prev) => ({ ...prev, [key]: value }))
         }
-        onAdd={() => setShowAddModal(true)}
+        searchPlaceholder="Search employees..."
+        onSearch={(query) => setSearchQuery(query)}
         addLabel="Add Employee"
       >
-        <EmployeeTable />
-        <div className="my-6 border-t border-slate-200" />
-        <OnboardingTable />
-      </PageShell>
+        {selectedEmployee && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">{selectedEmployee.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {selectedEmployee.email}
+            </p>
 
-      <AddEmployeeModal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-      />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="font-semibold">Address:</span>{" "}
+                {selectedEmployee.address || "No address"}
+              </div>
+              <div>
+                <span className="font-semibold">Position:</span>{" "}
+                {selectedEmployee.position || "-"}
+              </div>
+              <div>
+                <span className="font-semibold">Role:</span>{" "}
+                {selectedEmployee.role_name || "-"}
+              </div>
+              <div>
+                <span className="font-semibold">Join Date:</span>{" "}
+                {selectedEmployee.join_date
+                  ? new Date(selectedEmployee.join_date).toLocaleDateString()
+                  : "Pending"}
+              </div>
+            </div>
+          </div>
+        )}
+      </MasterDetailPanel>
     </DashboardLayout>
   );
 };

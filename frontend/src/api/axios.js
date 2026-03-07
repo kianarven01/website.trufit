@@ -1,8 +1,6 @@
 import axios from "axios";
 
 const api = axios.create({
-  // This tells Vite to use the Vercel variable if it exists, 
-  // otherwise fallback to localhost for your local development
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
   headers: {
     "Content-Type": "application/json",
@@ -10,6 +8,7 @@ const api = axios.create({
   },
 });
 
+// REQUEST INTERCEPTOR: Attach the token to every "outgoing" call
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("trufit_token");
   if (token) {
@@ -17,5 +16,25 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// RESPONSE INTERCEPTOR: Handle the "incoming" 401 errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const isLoginPage = window.location.pathname === "/webapp/login";
+
+    if (error.response?.status === 401 && !isLoginPage) {
+      console.warn("Unauthorized! Clearing session...");
+
+      // Use the standardized trufit_ keys
+      localStorage.removeItem("trufit_token");
+      localStorage.removeItem("trufit_user");
+
+      // Use replace so the user can't "Go Back" to the broken dashboard
+      window.location.replace("/webapp/login?reason=expired");
+    }
+    return Promise.reject(error);
+  },
+);
 
 export default api;

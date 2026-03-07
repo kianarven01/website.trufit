@@ -75,14 +75,13 @@ const LoginPage: React.FC = () => {
       });
 
       if (response.data.status === "success") {
-        // Access the nested 'data' object from your Resource
         const employee = response.data.data;
 
         navigate("/webapp/register", {
           state: {
             validKey: regKey,
-            employeeName: employee.employee_name, // Access nested name
-            position: employee.position, // Access nested position
+            employeeName: employee.employee_name,
+            position: employee.position,
           },
         });
       }

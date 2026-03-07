@@ -75,12 +75,14 @@ const LoginPage: React.FC = () => {
       });
 
       if (response.data.status === "success") {
-        // Map the backend response to the router state
+        // Access the nested 'data' object from your Resource
+        const employee = response.data.data;
+
         navigate("/webapp/register", {
           state: {
             validKey: regKey,
-            employeeName: response.data.employee_name, // Match backend
-            position: response.data.position, // Match backend
+            employeeName: employee.employee_name, // Access nested name
+            position: employee.position, // Access nested position
           },
         });
       }

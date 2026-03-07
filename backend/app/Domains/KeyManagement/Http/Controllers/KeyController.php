@@ -47,6 +47,7 @@ class KeyController extends Controller
                 'employee_name' => $key->employee->name ?? 'Unknown',
                 'email'         => $key->employee->email ?? 'Unknown',
                 'key_code'      => $key->key_code,
+                'is_used'       => (bool) $key->is_used,
                 'status'        => $key->is_used ? 'used' : 'pending',
                 'expires_at'    => $key->expires_at->format('n/j/Y'),
                 'role_name'     => $key->role->name ?? 'N/A',

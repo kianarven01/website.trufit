@@ -4,6 +4,7 @@ namespace App\Domains\KeyManagement\Application\Services;
 
 use Illuminate\Support\Facades\DB;
 use App\Domains\KeyManagement\Infrastructure\Repositories\RegistrationKeyRepository;
+use App\Domains\KeyManagement\Domain\Models\RegistrationKey;
 use App\Domains\Employee\Domain\Models\Employee;
 use Illuminate\Support\Str;
 
@@ -43,6 +44,30 @@ class KeyService
             ]);
 
             return $keyCode;
+        });
+    }
+
+    public function regenerateKey($employeeId)
+    {
+        return DB::transaction(function () use ($employeeId) {
+            $registrationKey = RegistrationKey::where('employee_id', $employeeId)
+                ->where('is_used', false)
+                ->firstOrFail();
+
+            // 1. Generate a fresh code
+            $newCode = 'TRUFIT-' . strtoupper(Str::random(6));
+
+            // 2. Update the record (this triggers updated_at)
+            $registrationKey->update([
+                'key_code' => $newCode,
+                'expires_at' => now()->addDays(7) // Reset the expiration timer
+            ]);
+
+             // 3. TODO: Trigger Email/SMS Service
+             // $this->notificationService->send($registrationKey->employee, $newCode);
+
+
+            return $newCode;
         });
     }
 }

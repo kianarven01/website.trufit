@@ -7,10 +7,18 @@ use App\Domains\Employee\Domain\Models\Employee;
 
 class EmployeeRepository
 {
-    public function getAllActive(): Collection
+    public function getAllActive()
+    {
+        // Only return employees where status is TRUE (Active)
+        return Employee::where('status', true)
+            ->orderBy('name', 'asc')
+            ->get();
+    }
+
+    public function getActiveEmployees()
         {
-            // 'role' refers to the relationship method name in your Employee model
-            return Employee::with('role')->get(); 
+            // Only fetch employees who have completed onboarding
+            return Employee::where('status', true)->get();
         }
 }
 

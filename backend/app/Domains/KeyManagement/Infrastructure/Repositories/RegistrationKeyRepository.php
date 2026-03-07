@@ -31,13 +31,14 @@ class RegistrationKeyRepository
         ]);
     }
 
-    public function getAllPending()
+   public function getAllPending()
     {
-        return RegistrationKey::with(['employee', 'role']) // Eager load relationships
-            ->where('is_used', false)
+        return RegistrationKey::with(['employee', 'role'])
+            ->whereHas('employee', function ($query) {
+                $query->where('status', false); // Only show those not yet active
+            })
+            ->where('is_used', false) // Only show unused keys
             ->orderBy('created_at', 'desc')
             ->get();
     }
-
-
 }

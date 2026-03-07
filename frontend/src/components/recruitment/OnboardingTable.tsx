@@ -20,12 +20,13 @@ const OnboardingTable: React.FC = () => {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/admin/registration-keys");
+      // Explicitly request pending registration records
+      const res = await api.get("/admin/registration-keys?status=pending");
       if (res.data && res.data.status === "success") {
         setEmployees(res.data.data);
       }
     } catch (err) {
-      toast.error("Failed to load keys");
+      toast.error("Failed to load onboarding list");
     } finally {
       setLoading(false);
     }

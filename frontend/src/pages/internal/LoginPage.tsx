@@ -74,14 +74,14 @@ const LoginPage: React.FC = () => {
         key_code: regKey,
       });
 
-      if (response.data.status === "success") {
-        const employee = response.data.data;
+      const employeeData = response.data.data.data || response.data.data;
 
+      if (response.data.status === "success" || response.status === 200) {
         navigate("/webapp/register", {
           state: {
             validKey: regKey,
-            employeeName: employee.employee_name,
-            position: employee.position,
+            employeeName: employeeData.employee_name,
+            position: employeeData.position,
           },
         });
       }

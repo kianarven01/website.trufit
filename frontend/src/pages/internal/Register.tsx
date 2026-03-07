@@ -47,13 +47,16 @@ const Register: React.FC = () => {
     setError("");
 
     try {
-      await api.post("/register", {
+      const response = await api.post("/register", {
         username: formData.username,
         password: formData.password,
         key_code: validKey,
       });
-      alert(`Account created! Welcome to the team, ${employeeName}.`);
-      navigate("/webapp/login");
+
+      if (response.data.status === "success") {
+        alert(`Account created! Welcome to the team, ${employeeName}.`);
+        navigate("/webapp/login");
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed.");
     } finally {

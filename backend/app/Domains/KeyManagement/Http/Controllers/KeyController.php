@@ -6,8 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Domains\KeyManagement\Http\Requests\GenerateKeyRequest;
 use App\Domains\KeyManagement\Application\DTOs\GenerateKeyDTO;
 use App\Domains\KeyManagement\Application\Services\KeyService;
-use App\Domains\Keymanagement\Infrastructure\Repositories\RegistrationKeyRepository;
+use App\Domains\KeyManagement\Application\UseCases\VerifyRegistrationKey;
+use App\Domains\KeyManagement\Http\Resources\RegistrationKeyResource;
+use App\Domains\KeyManagement\Application\UseCases\ListRegistrationKeys;
+use App\Domains\KeyManagement\Application\DTOs\CompleteRegistrationDTO;
+use App\Domains\KeyManagement\Application\UseCases\CompleteRegistration;
 use Illuminate\Support\Facades\Log;
+
 use Illuminate\Http\Request;
 
 
@@ -34,24 +39,56 @@ class KeyController extends Controller
         }
     }
 
-    public function index(Request $request, RegistrationKeyRepository $repository)
+    public function index(Request $request, ListRegistrationKeys $useCase)
     {
-        // Capture the 'status' from the URL (e.g., /admin/registration-keys?status=all)
+        // Capture the filter from the URL (?status=pending)
         $status = $request->query('status', 'all'); 
-        $keys = $repository->getAll($status);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $keys->map(fn($key) => [
-                'id'            => $key->id,
-                'employee_name' => $key->employee->name ?? 'Unknown',
-                'email'         => $key->employee->email ?? 'Unknown',
-                'key_code'      => $key->key_code,
-                'is_used'       => (bool) $key->is_used,
-                'status'        => $key->is_used ? 'used' : 'pending',
-                'expires_at'    => $key->expires_at->format('n/j/Y'),
-                'role_name'     => $key->role->name ?? 'N/A',
-            ])
-        ]);
+        // Execute the UseCase with the filter
+        // eturn the array response already formatted by the Resource in the UseCase
+        return response()->json($useCase->execute($status));
     }
+
+    public function verify(Request $request, VerifyRegistrationKey $useCase)
+    {
+        // The DTO/Validation happens first
+        $request->validate(['key_code' => 'required|string']);
+
+        try {
+            // The UseCase handles the logic of finding and validating the key
+            $keyRecord = $useCase->execute($request->key_code);
+
+            // The Controller uses the Resource to return the specific data the UI needs
+            return (new RegistrationKeyResource($keyRecord))
+            ->additional(['status' => 'success']);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Key not found or already used.' 
+            ], 404);
+        }
+    }
+
+    public function register(Request $request, CompleteRegistration $useCase)
+    {
+        $validated = $request->validate([
+            'username' => 'required|unique:UserCredentials,username',
+            'password' => 'required|min:8',
+            'key_code' => 'required'
+        ]);
+
+        try {
+            $dto = CompleteRegistrationDTO::fromRequest($validated);
+            $useCase->execute($dto);
+
+            return response()->json(['status' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()//'Registration failed. Please try again.'
+            ], 500);
+        }
+    }
+
 }

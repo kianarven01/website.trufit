@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Domains\Auth\Http\Controllers\AuthController;
-
+use App\Domains\KeyManagement\Http\Controllers\KeyController;
 /*
 |--------------------------------------------------------------------------
 | Authentication Domain
@@ -15,6 +15,15 @@ Route::prefix('auth')->group(function () {
     // Identity Verification
     Route::middleware('auth:sanctum')->get('/verify', [AuthController::class, 'verify']);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/verify-registration-key', [KeyController::class, 'verify']);
+Route::post('/register', [KeyController::class, 'register']);
 
 /*
 |--------------------------------------------------------------------------

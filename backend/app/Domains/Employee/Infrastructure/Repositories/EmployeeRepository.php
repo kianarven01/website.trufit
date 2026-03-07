@@ -20,5 +20,12 @@ class EmployeeRepository
             // Only fetch employees who have completed onboarding
             return Employee::where('status', true)->get();
         }
+
+    public function activateEmployee(int $id) {
+    return Employee::where('id', $id)->update([
+        'status' => true,
+        'join_date' => now()
+    ]);
+}
 }
 

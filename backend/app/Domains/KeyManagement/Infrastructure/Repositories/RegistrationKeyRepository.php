@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 class RegistrationKeyRepository
 {
-    public function getAll($status = 'all')
+    public function getAll(string $status = 'all')
     {
         $query = RegistrationKey::with(['employee', 'role']);
 
@@ -17,7 +17,7 @@ class RegistrationKeyRepository
             $query->where('is_used', true);
         }
 
-        return $query->orderBy('created_at', 'desc')->get();
+        return $query->get();
     }
 
     public function create(array $data)
@@ -40,5 +40,13 @@ class RegistrationKeyRepository
             ->where('is_used', false) // Only show unused keys
             ->orderBy('created_at', 'desc')
             ->get();
+    }
+
+    public function findByCode(string $code) {
+        return RegistrationKey::where('key_code', $code)->first();
+    }
+
+    public function markAsUsed(int $id) {
+        return RegistrationKey::where('id', $id)->update(['is_used' => true]);
     }
 }

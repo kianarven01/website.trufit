@@ -23,6 +23,7 @@ class RegistrationKey extends Model
     }
 
     protected $table = 'Main.RegistrationKeys';
+    public $timestamps = false;
 
     protected $fillable = [
         'employee_id',

@@ -1,21 +1,32 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Employee\Http\Controllers\EmployeeController;
 use App\Domains\Auth\Http\Controllers\AuthController;
 
-// 1. Auth Group (Prefix: /api/auth)
+/*
+|--------------------------------------------------------------------------
+| Authentication Domain
+|--------------------------------------------------------------------------
+*/
 Route::prefix('auth')->group(function () {
-    // Load the Domain routes (Login, Register, etc.)
+    // Public & Private Auth Routes (Login, Register, Logout)
     require app_path('Domains/Auth/routes.php');
 
-    // The Verify Route (Protected by Sanctum)
+    // Identity Verification
     Route::middleware('auth:sanctum')->get('/verify', [AuthController::class, 'verify']);
-}); // <--- Make sure this closing brace is HERE
+});
 
-// 2. Admin/Employee Group (Prefix: /api)
-// Moving this OUTSIDE the auth group makes the URL /api/admin/employees
+/*
+|--------------------------------------------------------------------------
+| Admin & Management Domains (Protected)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/admin/employees', [EmployeeController::class, 'index']);
-    Route::get('/admin/registration-keys', [EmployeeController::class, 'onboarding']);
+    
+    // Employee & Key Management Domain
+    require app_path('Domains/Employee/routes.php');
+    require app_path('Domains/KeyManagement/routes.php');
+    // Future Domains will go here:
+    // require app_path('Domains/Inventory/routes.php');
+    // require app_path('Domains/Sales/routes.php');
 });

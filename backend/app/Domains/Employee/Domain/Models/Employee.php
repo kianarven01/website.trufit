@@ -8,13 +8,21 @@ use App\Domains\Role\Domain\Models\Role;
 class Employee extends Model
 {
     protected $table = 'Main.Employees';
+    public $timestamps = false;
+
+    public $incrementing = false;
+    protected $keyType = 'int';
 
     protected $fillable = [
-        'first_name', 
-        'last_name', 
-        'email', 
-        'roleID' 
-    ];
+            'id',
+            'name',
+            'email',
+            'address',
+            'phone',
+            'position',
+            'roleID',
+            'status'
+        ];
 
     public function role(): BelongsTo
     {

@@ -7,18 +7,36 @@ use Illuminate\Database\Eloquent\Collection;
 
 class RegistrationKeyRepository
 {
-    public function getAll(): Collection
+    public function getAll($status = 'all')
     {
-        return RegistrationKey::with('employee')
+        $query = RegistrationKey::with(['employee', 'role']);
+
+        if ($status === 'pending') {
+            $query->where('is_used', false);
+        } elseif ($status === 'used') {
+            $query->where('is_used', true);
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
+    }
+
+    public function create(array $data)
+    {
+        return RegistrationKey::create([
+            'employee_id' => $data['employee_id'],
+            'key_code'    => $data['key_code'],
+            'role_id'     => $data['role_id'], 
+            'expires_at'  => $data['expires_at'],
+            'is_used'     => false,
+        ]);
+    }
+
+    public function getAllPending()
+    {
+        return RegistrationKey::with(['employee', 'role']) // Eager load relationships
+            ->where('is_used', false)
             ->orderBy('created_at', 'desc')
             ->get();
-    }
-    // used in LoginPage to verify logic
-    public function findByCode(string $code)
-    {
-        return RegistrationKey::where('key_code', $code)
-            ->where('is_used', false)
-            ->first();
     }
 
 

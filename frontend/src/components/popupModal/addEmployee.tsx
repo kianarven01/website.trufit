@@ -70,23 +70,18 @@ const AddEmployeeModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
     setIsLoading(true);
     try {
       const res = await api.post("/admin/onboard-employee", {
-        first_name: form.first_name,
-        last_name: form.last_name,
-        email: form.email,
-        phone: form.phone,
-        address: form.address,
-        position: form.position,
+        ...form,
         role_id: form.roleID,
       });
 
-      // Add these lines to show the key and refresh the table
       if (res.data.status === "success") {
-        setGeneratedKey(res.data.key); // This matches your Controller's return
+        setGeneratedKey(res.data.key);
         toast.success("Employee added successfully!");
         if (onSuccess) onSuccess();
       }
-    } catch (err) {
-      toast.error("Failed to add employee");
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || "Failed to add employee";
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

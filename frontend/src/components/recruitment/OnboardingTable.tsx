@@ -111,8 +111,11 @@ const OnboardingTable: React.FC = () => {
             employees.map((emp: any) => {
               const isExpired = new Date(emp.expires_at) < new Date();
               let status = "pending";
-              if (emp.is_used) status = "registered";
-              else if (isExpired) status = "expired";
+              if (emp.is_used === true || emp.is_used === 1) {
+                status = "registered";
+              } else if (isExpired) {
+                status = "expired";
+              }
 
               return (
                 <tr

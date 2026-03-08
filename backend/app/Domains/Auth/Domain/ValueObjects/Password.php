@@ -2,15 +2,15 @@
 
 namespace App\Domains\Auth\Domain\ValueObjects;
 
-use App\Shared\Exceptions\PasswordInvalidException;
-use InvalidArgumentException;
+use App\Domains\Shared\Exceptions\InvalidCredentialsException;
+
 
 readonly class Password
 {
     public function __construct(public string $value)
     {
         if (empty($value)) {
-            throw new PasswordInvalidException();
+            throw new InvalidCredentialsException();
         }
     }
 

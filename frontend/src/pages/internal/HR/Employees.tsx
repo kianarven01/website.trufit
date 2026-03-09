@@ -1,9 +1,5 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import {
-  MasterDetailPanel,
-  FilterOption,
-  ColumnDef,
-} from "@/components/MasterDetailPanel";
+import { PageShell, FilterOption, ColumnDef } from "@/components/PageShell";
 import { useEffect, useState, useMemo } from "react";
 import api from "@/api/axios";
 import { MoreVertical } from "lucide-react";
@@ -22,9 +18,7 @@ interface Employee {
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null,
-  );
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -80,6 +74,7 @@ const Employees: React.FC = () => {
     const roles = Array.from(
       new Set(employees.map((e) => e.role_name).filter(Boolean)),
     );
+
     return roles.map((role) => ({
       value: role as string,
       label: role as string,
@@ -90,6 +85,7 @@ const Employees: React.FC = () => {
     const positions = Array.from(
       new Set(employees.map((e) => e.position).filter(Boolean)),
     );
+
     return positions.map((pos) => ({
       value: pos as string,
       label: pos as string,
@@ -150,12 +146,10 @@ const Employees: React.FC = () => {
       label: "Employee",
       render: (emp) => (
         <div>
-          <div className="font-bold text-slate-800">
+          <div className="font-semibold uppercase tracking-tight">
             {emp.name || "Unnamed"}
           </div>
-          <div className="text-[10px] text-slate-400 lowercase">
-            {emp.email}
-          </div>
+          <div className="text-[10px] text-muted-foreground">{emp.email}</div>
         </div>
       ),
     },
@@ -196,12 +190,10 @@ const Employees: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <MasterDetailPanel<Employee>
+      <PageShell<Employee>
         title="Employees"
         description="Manage company employees."
         items={filteredEmployees}
-        selectedItem={selectedEmployee}
-        onSelect={setSelectedEmployee}
         columns={columns}
         getItemId={(emp) => emp.id.toString()}
         filters={filterOptions}

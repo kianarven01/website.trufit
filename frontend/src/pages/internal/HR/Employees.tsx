@@ -7,11 +7,13 @@ import {
 import { useEffect, useState, useMemo } from "react";
 import api from "@/api/axios";
 import { toast } from "sonner";
+import { MoreVertical } from "lucide-react";
 
 interface Employee {
   id: number;
   name: string;
   email: string;
+  phone: string;
   address?: string;
   position?: string;
   role_name?: string;
@@ -25,16 +27,17 @@ const Employees: React.FC = () => {
     null,
   );
   const [searchQuery, setSearchQuery] = useState("");
+
   const [filters, setFilters] = useState<Record<string, string>>({
     role: "all",
     position: "all",
   });
 
-  // Fetch employees
   const fetchEmployees = async () => {
     setLoading(true);
     try {
       const res = await api.get("/admin/employees");
+
       if (res.data?.status === "success") {
         setEmployees(res.data.data);
       }
@@ -49,32 +52,31 @@ const Employees: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  // Filter + search logic
   const filteredEmployees = useMemo(() => {
     return employees
       .filter((e) => {
-        if (filters.role && filters.role !== "all") {
+        if (filters.role !== "all") {
           return e.role_name === filters.role;
         }
         return true;
       })
       .filter((e) => {
-        if (filters.position && filters.position !== "all") {
+        if (filters.position !== "all") {
           return e.position === filters.position;
         }
         return true;
       })
       .filter((e) => {
-        const query = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase();
+
         return (
-          e.name?.toLowerCase().includes(query) ||
-          e.email?.toLowerCase().includes(query) ||
-          e.position?.toLowerCase().includes(query)
+          e.name?.toLowerCase().includes(q) ||
+          e.email?.toLowerCase().includes(q) ||
+          e.position?.toLowerCase().includes(q)
         );
       });
   }, [employees, filters.role, filters.position, searchQuery]);
 
-  // Generate dynamic role and position options
   const roleOptions = useMemo(() => {
     const roles = Array.from(
       new Set(employees.map((e) => e.role_name).filter(Boolean)),
@@ -100,10 +102,52 @@ const Employees: React.FC = () => {
     { key: "position", label: "Position", options: positionOptions },
   ];
 
-  // Table columns
+  const ActionDropdown: React.FC<{ emp: Employee }> = ({ emp }) => {
+    const [open, setOpen] = useState(false);
+
+    const handleEdit = () => {
+      toast(`Edit ${emp.name}`);
+      setOpen(false);
+    };
+
+    const handleDeactivate = () => {
+      toast(`Deactivate ${emp.name}`);
+      setOpen(false);
+    };
+
+    return (
+      <div className="relative flex justify-end">
+        <button
+          onClick={() => setOpen(!open)}
+          className="p-1 rounded hover:bg-muted"
+        >
+          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+        </button>
+
+        {open && (
+          <div className="absolute right-0 mt-1 w-40 bg-popover border border-border rounded-md shadow-lg z-10">
+            <button
+              onClick={handleEdit}
+              className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground text-sm"
+            >
+              Edit
+            </button>
+
+            <button
+              onClick={handleDeactivate}
+              className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground text-sm text-red-500"
+            >
+              Terminate
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const columns: ColumnDef<Employee>[] = [
     {
-      key: "name",
+      key: "employee",
       label: "Employee",
       render: (emp) => (
         <div>
@@ -117,27 +161,48 @@ const Employees: React.FC = () => {
       ),
     },
     {
+      key: "phone",
+      label: "Phone",
+      render: (emp) => emp.phone || "-",
+    },
+    {
+      key: "address",
+      label: "Address",
+      render: (emp) => emp.address || "-",
+    },
+    {
       key: "position",
       label: "Position",
       render: (emp) => emp.position || "-",
     },
     {
       key: "role",
-      label: "Role",
+      label: " System Role",
       render: (emp) => emp.role_name || "-",
+    },
+    {
+      key: "join_date",
+      label: "Join Date",
+      render: (emp) =>
+        emp.join_date
+          ? new Date(emp.join_date).toLocaleDateString()
+          : "Pending",
+    },
+    {
+      key: "actions",
+      label: "",
+      render: (emp) => <ActionDropdown emp={emp} />,
     },
   ];
 
   return (
     <DashboardLayout>
-      <MasterDetailPanel<Employee>
-        title="Current Employees"
-        description="Manage all employee details"
+      <PageShell<Employee>
+        title="Employees"
+        description="Manage company employees."
         items={filteredEmployees}
-        selectedItem={selectedEmployee}
-        onSelect={setSelectedEmployee}
-        getItemId={(emp) => emp.id.toString()}
         columns={columns}
+        getItemId={(emp) => emp.id.toString()}
         filters={filterOptions}
         activeFilters={filters}
         onFilterChange={(key, value) =>

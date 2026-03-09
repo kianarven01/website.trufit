@@ -78,6 +78,7 @@ const Products: React.FC = () => {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
+
   const [filters, setFilters] = useState<Record<string, string>>({
     category: "all",
     supplier: "all",

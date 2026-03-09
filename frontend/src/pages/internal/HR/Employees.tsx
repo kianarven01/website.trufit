@@ -6,7 +6,6 @@ import {
 } from "@/components/MasterDetailPanel";
 import { useEffect, useState, useMemo } from "react";
 import api from "@/api/axios";
-import { toast } from "sonner";
 import { MoreVertical } from "lucide-react";
 
 interface Employee {
@@ -42,7 +41,7 @@ const Employees: React.FC = () => {
         setEmployees(res.data.data);
       }
     } catch {
-      toast.error("Failed to load employees");
+      alert("Failed to load employees");
     } finally {
       setLoading(false);
     }
@@ -106,12 +105,12 @@ const Employees: React.FC = () => {
     const [open, setOpen] = useState(false);
 
     const handleEdit = () => {
-      toast(`Edit ${emp.name}`);
+      alert(`Edit ${emp.name}`);
       setOpen(false);
     };
 
     const handleDeactivate = () => {
-      toast(`Deactivate ${emp.name}`);
+      alert(`Deactivate ${emp.name}`);
       setOpen(false);
     };
 
@@ -213,37 +212,9 @@ const Employees: React.FC = () => {
         searchPlaceholder="Search employees..."
         onSearch={(query) => setSearchQuery(query)}
         addLabel="Add Employee"
-      >
-        {selectedEmployee && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">{selectedEmployee.name}</h2>
-            <p className="text-sm text-muted-foreground">
-              {selectedEmployee.email}
-            </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-semibold">Address:</span>{" "}
-                {selectedEmployee.address || "No address"}
-              </div>
-              <div>
-                <span className="font-semibold">Position:</span>{" "}
-                {selectedEmployee.position || "-"}
-              </div>
-              <div>
-                <span className="font-semibold">Role:</span>{" "}
-                {selectedEmployee.role_name || "-"}
-              </div>
-              <div>
-                <span className="font-semibold">Join Date:</span>{" "}
-                {selectedEmployee.join_date
-                  ? new Date(selectedEmployee.join_date).toLocaleDateString()
-                  : "Pending"}
-              </div>
-            </div>
-          </div>
-        )}
-      </MasterDetailPanel>
+        onAdd={() => alert("Open Add Employee Modal")}
+        loading={loading}
+      />
     </DashboardLayout>
   );
 };

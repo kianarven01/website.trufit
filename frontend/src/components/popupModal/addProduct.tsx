@@ -1,197 +1,199 @@
-import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Badge } from "@/components/ui/badge";
 import { X, ImagePlus } from "lucide-react";
+import { toast } from "sonner";
+import api from "@/api/axios";
 
-/* ---------------- LOCAL TYPES ---------------- */
+interface CategoryOption {
+  id: number;
+  name: string;
+  code: string;
+}
 
-type ProductStatus = "in-stock" | "low-stock" | "out-of-stock";
+interface UnitOption {
+  id: string;
+  name: string;
+}
 
-interface Product {
+interface SupplierOption {
+  id: string;
+  CompanyName: string;
+  supplier_code: string;
+}
+
+interface ProductModalItem {
   id: string;
   image: string;
   name: string;
-  category: string;
   sku: string;
-  barcode: string;
-  partNumber: string;
-  unit: string;
+  category: string;
   description: string;
-  suppliers: string[];
   cost: number;
-
+  partNumber: string;
+  barcode: string;
+  supplierName: string;
+  unit: string;
+  categoryId?: number | null;
+  supplierCode: string;
 }
-
-/* ---------------- MOCK STORE ---------------- */
-
-let PRODUCTS: Product[] = [];
-
-const genProductId = () => `PRD-${Date.now()}`;
-
-const addProduct = (p: Product) => {
-  PRODUCTS.push(p);
-};
-
-const updateProduct = (id: string, data: Product) => {
-  PRODUCTS = PRODUCTS.map(p => (p.id === id ? data : p));
-};
-
-/* ---------------- SIMPLE TOAST ---------------- */
-
-const toast = {
-  success: (msg: string) => console.log("SUCCESS:", msg),
-  error: (msg: string) => console.error("ERROR:", msg),
-};
-
-/* ---------------- COMPONENT ---------------- */
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product?: Product | null;
-  onSaved?: () => void;
+  product?: ProductModalItem | null;
+  categories: CategoryOption[];
+  units: UnitOption[];
+  suppliers: SupplierOption[];
+  onSaved: () => void | Promise<void>;
 }
 
-const SUPPLIER_OPTIONS = ["AutoParts Inc.", "BrakeWorld PH", "Oil Masters", "TirePro Corp.", "FilterKing"];
-const CATEGORY_OPTIONS = ["Lubricants", "Brakes", "Filters", "Ignition", "Tires", "Accessories", "Suspension", "Electrical"];
-
-export function ProductModal({ open, onOpenChange, product, onSaved }: Props) {
+export function ProductModal({
+  open,
+  onOpenChange,
+  product,
+  categories,
+  units,
+  suppliers,
+  onSaved,
+}: Props) {
   const isEdit = !!product;
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [sku, setSku] = useState("");
   const [barcode, setBarcode] = useState("");
   const [partNumber, setPartNumber] = useState("");
-  const [unit, setUnit] = useState("");
+  const [unitId, setUnitId] = useState("");
   const [description, setDescription] = useState("");
-  const [suppliers, setSuppliers] = useState<string[]>([]);
-  const [cost, setCost] = useState(0);
-  const [stock, setStock] = useState(0);
-  const [reorderPt, setReorderPt] = useState(10);
-  const [image, setImage] = useState("");
-  const [supplierInput, setSupplierInput] = useState("");
+  const [supplierId, setSupplierId] = useState("");
+  const [cost, setCost] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open && product) {
-      setName(product.name);
-      setCategory(product.category);
-      setSku(product.sku);
-      setBarcode(product.barcode);
-      setPartNumber(product.partNumber);
-      setUnit(product.unit);
-      setDescription(product.description);
-      setSuppliers([...product.suppliers]);
-      setCost(product.cost);
-      setImage(product.image);
-    } else if (open) {
+    if (!open) return;
+
+    if (product) {
+      setName(product.name ?? "");
+      setCategoryId(product.categoryId != null ? String(product.categoryId) : "");
+      setSku(product.sku ?? "");
+      setBarcode(product.barcode ?? "");
+      setPartNumber(product.partNumber ?? "");
+      setUnitId(product.unit ?? "");
+      setDescription(product.description ?? "");
+      setSupplierId(product.supplierCode ?? "");
+      setCost(product.cost != null ? String(product.cost) : "");
+      setImageUrl(product.image ?? "");
+    } else {
       setName("");
-      setCategory("");
+      setCategoryId("");
       setSku("");
       setBarcode("");
       setPartNumber("");
-      setUnit("Piece");
+      setUnitId("");
       setDescription("");
-      setSuppliers([]);
-      setCost(0);
-      setStock(0);
-      setReorderPt(10);
-      setImage("");
-      setSupplierInput("");
+      setSupplierId("");
+      setCost("");
+      setImageUrl("");
     }
   }, [open, product]);
-
-  const addSupplier = (s: string) => {
-    const trimmed = s.trim();
-    if (trimmed && !suppliers.includes(trimmed)) {
-      setSuppliers(prev => [...prev, trimmed]);
-    }
-    setSupplierInput("");
-  };
-
-  const removeSupplier = (s: string) =>
-    setSuppliers(prev => prev.filter(x => x !== s));
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
+      toast.error("Please select an image file.");
       return;
     }
 
     const reader = new FileReader();
-
-    reader.onload = () => setImage(reader.result as string);
-
+    reader.onload = () => setImageUrl(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const getStatus = (stk: number, rp: number): ProductStatus => {
-    if (stk <= 0) return "out-of-stock";
-    if (stk <= rp) return "low-stock";
-    return "in-stock";
-  };
-
-  const handleSave = () => {
-    if (!name.trim() || !sku.trim()) {
-      toast.error("Product name and SKU are required");
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast.error("Product name is required.");
       return;
     }
 
-    const data: Product = {
-      id: product?.id || genProductId(),
-      image,
-      name: name.trim(),
-      category,
-      sku: sku.trim(),
-      barcode,
-      partNumber,
-      unit,
-      description,
-      suppliers,
-      cost,
-    };
-
-    if (isEdit) {
-      updateProduct(data.id, data);
-      toast.success("Product updated");
-    } else {
-      addProduct(data);
-      toast.success("Product added");
+    if (!partNumber.trim()) {
+      toast.error("Part number is required.");
+      return;
     }
 
-    onSaved?.();
-    onOpenChange(false);
-  };
+    if (!unitId) {
+      toast.error("Unit of measure is required.");
+      return;
+    }
 
-  const filteredSuggestions = SUPPLIER_OPTIONS.filter(s =>
-    !suppliers.includes(s) &&
-    s.toLowerCase().includes(supplierInput.toLowerCase())
-  );
+    if (!supplierId) {
+      toast.error("Supplier is required.");
+      return;
+    }
+
+    if (!cost || Number.isNaN(Number(cost))) {
+      toast.error("Valid cost is required.");
+      return;
+    }
+
+    const payload = {
+      name: name.trim(),
+      SKU: sku.trim() || null,
+      cost: Number(cost),
+      description: description.trim() || null,
+      image_URL: imageUrl.trim() || null,
+      category_id: categoryId ? Number(categoryId) : null,
+      unit: unitId,
+      barcode: barcode.trim() || null,
+      part_number: partNumber.trim(),
+      supplier_code: supplierId,
+    };
+
+    setIsSaving(true);
+
+    try {
+      if (isEdit && product?.id) {
+        await api.put(`/products/${product.id}`, payload);
+        toast.success("Product updated successfully.");
+      } else {
+        await api.post("/products", payload);
+        toast.success("Product added successfully.");
+      }
+
+      await onSaved();
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error("Failed to save product:", err?.response?.data || err);
+      toast.error(err?.response?.data?.message || "Failed to save product.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] p-0">
-
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>{isEdit ? "Edit Product" : "Add Product"}</DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[68vh]">
-
           <div className="px-6 pb-4 space-y-4">
-
-            {/* Image Upload */}
-
             <div>
-
               <Label className="text-xs">Product Image</Label>
 
               <input
@@ -202,17 +204,17 @@ export function ProductModal({ open, onOpenChange, product, onSaved }: Props) {
                 onChange={handleImageUpload}
               />
 
-              {image ? (
+              {imageUrl ? (
                 <div className="relative w-full h-32 rounded-md border border-border overflow-hidden bg-muted">
                   <img
-                    src={image}
+                    src={imageUrl}
                     alt="Product"
                     className="w-full h-full object-contain"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      setImage("");
+                      setImageUrl("");
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
                     className="absolute top-1 right-1 bg-background/80 rounded-full p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
@@ -232,41 +234,40 @@ export function ProductModal({ open, onOpenChange, product, onSaved }: Props) {
                   </span>
                 </button>
               )}
-
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-
               <div className="col-span-2">
                 <Label className="text-xs">Product Name *</Label>
                 <Input
                   value={name}
-                  onChange={e => setName(e.target.value)}
-                  placeholder="Engine Oil 5W-30"
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter product name"
                 />
               </div>
 
               <div>
                 <Label className="text-xs">Category</Label>
-                <Input
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
-                  placeholder="Lubricants"
-                  list="cat-list"
-                />
-                <datalist id="cat-list">
-                  {CATEGORY_OPTIONS.map(c => (
-                    <option key={c} value={c} />
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div>
-                <Label className="text-xs">SKU *</Label>
+                <Label className="text-xs">SKU</Label>
                 <Input
                   value={sku}
-                  onChange={e => setSku(e.target.value)}
-                  placeholder="LUB-001"
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="SKU"
                 />
               </div>
 
@@ -274,140 +275,95 @@ export function ProductModal({ open, onOpenChange, product, onSaved }: Props) {
                 <Label className="text-xs">Barcode</Label>
                 <Input
                   value={barcode}
-                  onChange={e => setBarcode(e.target.value)}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  placeholder="Barcode"
                 />
               </div>
 
               <div>
-                <Label className="text-xs">Part Number</Label>
+                <Label className="text-xs">Part Number *</Label>
                 <Input
                   value={partNumber}
-                  onChange={e => setPartNumber(e.target.value)}
+                  onChange={(e) => setPartNumber(e.target.value)}
+                  placeholder="Part number"
                 />
               </div>
 
               <div>
-                <Label className="text-xs">Unit</Label>
-                <Input
-                  value={unit}
-                  onChange={e => setUnit(e.target.value)}
-                  placeholder="Piece"
-                />
+                <Label className="text-xs">Unit *</Label>
+                <select
+                  value={unitId}
+                  onChange={(e) => setUnitId(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select unit</option>
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <Label className="text-xs">Cost (₱)</Label>
+                <Label className="text-xs">Supplier *</Label>
+                <select
+                  value={supplierId}
+                  onChange={(e) => setSupplierId(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select supplier</option>
+                  {suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.CompanyName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <Label className="text-xs">Cost (₱) *</Label>
                 <Input
                   type="number"
-                  value={cost || ""}
-                  onChange={e => setCost(Number(e.target.value))}
+                  min="0"
+                  step="0.01"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  placeholder="0.00"
                 />
               </div>
+            </div>
 
-              <div>
-                <Label className="text-xs">Reorder Point</Label>
-                <Input
-                  type="number"
-                  value={reorderPt || ""}
-                  onChange={e => setReorderPt(Number(e.target.value))}
-                />
-              </div>
-
+            <div>
+              <Label className="text-xs">Image URL</Label>
+              <Input
+                value={imageUrl.startsWith("data:") ? "" : imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+              />
             </div>
 
             <div>
               <Label className="text-xs">Description</Label>
-              <Input
+              <textarea
                 value={description}
-                onChange={e => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Product description..."
+                className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
-
-            {/* Suppliers */}
-
-            <div>
-
-              <Label className="text-xs">Suppliers</Label>
-
-              <div className="flex flex-wrap gap-1.5 mb-2">
-
-                {suppliers.map(s => (
-
-                  <Badge key={s} variant="secondary" className="gap-1 pr-1">
-
-                    {s}
-
-                    <button
-                      onClick={() => removeSupplier(s)}
-                      className="ml-0.5 hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-
-                  </Badge>
-
-                ))}
-
-              </div>
-
-              <div className="relative">
-
-                <Input
-                  value={supplierInput}
-                  onChange={e => setSupplierInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addSupplier(supplierInput);
-                    }
-                  }}
-                  placeholder="Type supplier name & press Enter"
-                />
-
-                {supplierInput && filteredSuggestions.length > 0 && (
-
-                  <div className="absolute z-10 top-full left-0 right-0 bg-popover border border-border rounded-md mt-1 shadow-md max-h-32 overflow-auto">
-
-                    {filteredSuggestions.map(s => (
-
-                      <button
-                        key={s}
-                        onClick={() => addSupplier(s)}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
-                      >
-                        {s}
-                      </button>
-
-                    ))}
-
-                  </div>
-
-                )}
-
-              </div>
-
-            </div>
-
           </div>
-
         </ScrollArea>
 
         <DialogFooter className="px-6 pb-6 pt-2">
-
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
             Cancel
           </Button>
 
-          <Button onClick={handleSave}>
-            {isEdit ? "Update" : "Add Product"}
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : isEdit ? "Update" : "Add Product"}
           </Button>
-
         </DialogFooter>
-
       </DialogContent>
     </Dialog>
   );

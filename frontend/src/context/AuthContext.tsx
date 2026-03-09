@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import api from "@/api/axios";
 
 const API_URL =
@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (
     u: string,
     p: string,
+    remember: boolean,
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
@@ -21,7 +22,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const hasInitialized = useRef(false);
+
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initAuth = async () => {
+      const token = localStorage.getItem("trufit_token");
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await api.get("/auth/verify");
+
+        if (
+          response.data.status === "success" ||
+          response.data.status === "authenticated"
+        ) {
+          const serverUser = response.data.data.user;
+
+          setUser({
+            ...serverUser,
+            role: serverUser.role || "Admin", // Use fallback or server data
+          });
+        }
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          logout();
+          window.location.replace("/login?reason=session_expired");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+  }, []); // Keep this empty array
+
+  /*useEffect(() => {
     const savedUser = localStorage.getItem("trufit_user");
     const token = localStorage.getItem("trufit_token");
 
@@ -29,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(JSON.parse(savedUser));
     }
     setLoading(false);
-  }, []);
+  }, []);*/
 
   const login = async (
     inputUsername: string,
@@ -37,13 +79,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     rememberMe: boolean = false,
   ) => {
     try {
-      const response = await api.post("/login", {
+      const response = await api.post("auth/login", {
         username: inputUsername,
         password: inputPass,
         remember: rememberMe,
       });
 
-      const { data: apiResponse } = response.data;
+      const apiResponse = response.data.data;
 
       const userData = {
         username: apiResponse.user.username,

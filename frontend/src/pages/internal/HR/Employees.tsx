@@ -2,7 +2,6 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { PageShell, FilterOption, ColumnDef } from "@/components/PageShell";
 import { useEffect, useState, useMemo } from "react";
 import api from "@/api/axios";
-import { toast } from "sonner";
 import { MoreVertical } from "lucide-react";
 
 interface Employee {
@@ -36,7 +35,7 @@ const Employees: React.FC = () => {
         setEmployees(res.data.data);
       }
     } catch {
-      toast.error("Failed to load employees");
+      alert("Failed to load employees");
     } finally {
       setLoading(false);
     }
@@ -102,12 +101,12 @@ const Employees: React.FC = () => {
     const [open, setOpen] = useState(false);
 
     const handleEdit = () => {
-      toast(`Edit ${emp.name}`);
+      alert(`Edit ${emp.name}`);
       setOpen(false);
     };
 
     const handleDeactivate = () => {
-      toast(`Deactivate ${emp.name}`);
+      alert(`Deactivate ${emp.name}`);
       setOpen(false);
     };
 
@@ -205,7 +204,7 @@ const Employees: React.FC = () => {
         searchPlaceholder="Search employees..."
         onSearch={(query) => setSearchQuery(query)}
         addLabel="Add Employee"
-        onAdd={() => toast("Open Add Employee Modal")}
+        onAdd={() => alert("Open Add Employee Modal")}
         loading={loading}
       />
     </DashboardLayout>

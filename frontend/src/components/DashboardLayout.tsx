@@ -66,7 +66,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/webapp/dashboard" },
-  { label: "Appointments", icon: CalendarDays, path: "/webapp/sales/appointments" },
+  { label: "Appointments", icon: CalendarDays, path: "/webapp/appointments" },
   { label: "Customers", path: "/webapp/customers", icon: Users },
   { label: "Services",
     icon: Activity,
@@ -503,7 +503,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => navigate("/settings/account")}
+                  onClick={() => navigate("/webapp/settings/account")}
                   className="cursor-pointer"
                 >
                   <UserCog className="mr-2 h-4 w-4" />

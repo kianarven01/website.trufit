@@ -5,6 +5,14 @@ import { ProductModal } from "@/components/popupModal/addProduct";
 import { useState, useMemo } from "react";
 import { Printer } from "lucide-react";
 
+interface StockMovement {
+  id: string;
+  date: string;
+  type: "IN" | "OUT";
+  qty: number;
+  reference: string;
+}
+
 interface Product {
   id: string;
   image: string;
@@ -14,15 +22,19 @@ interface Product {
   description: string;
   price: number;
   cost: number;
-  partNumber: string; 
+  partNumber: string;
   engineNo: string;
   barcode: string;
-  suppliers: string[]; 
+  suppliers: string[];
   unit: string;
-  reorderPt?: number;
+
+  minStock: number;
+  currentStock: number;
+
+  movements: StockMovement[];
 }
 
-const AvailableProducts: React.FC = () => {
+const InventoryList: React.FC = () => {
   const [products] = useState<Product[]>([]);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -60,22 +72,43 @@ const AvailableProducts: React.FC = () => {
     { key: "category", label: "Category", options: categoryOptions },
   ];
 
-  const columns: ColumnDef<Product>[] = [
-    {
-      key: "product",
-      label: "Product",
-      render: (p) => (
-        <div className="flex items-center gap-3">
-          <img src={p.image} alt={p.name} className="h-9 w-9 rounded border object-cover" />
-          <span className="font-medium">{p.name}</span>
-        </div>
-      ),
-    },
-    { key: "sku", label: "SKU", render: (p) => p.sku },
-    { key: "category", label: "Category", render: (p) => p.category },
-    { key: "unit", label: "Unit", render: (p) => p.unit },
-    { key: "barcode", label: "Barcode", render: (p) => p.barcode },
-  ];
+const columns: ColumnDef<Product>[] = [
+  {
+    key: "product",
+    label: "Product Name",
+    render: (p) => (
+      <div className="flex items-center gap-3">
+        <img src={p.image} alt={p.name} className="h-9 w-9 rounded border object-cover" />
+        <span className="font-medium">{p.name}</span>
+      </div>
+    ),
+  },
+  { key: "sku", label: "SKU", render: (p) => p.sku },
+
+  { key: "unit", label: "Unit", render: (p) => p.unit },
+
+  {
+    key: "minStock",
+    label: "Min Stock",
+    render: (p) => p.minStock,
+  },
+
+  {
+    key: "currentStock",
+    label: "Current Stock",
+    render: (p) => (
+      <span
+        className={`font-medium ${
+          p.currentStock <= p.minStock
+            ? "text-red-600"
+            : "text-green-600"
+        }`}
+      >
+        {p.currentStock}
+      </span>
+    ),
+  },
+];
 
   return (
     <DashboardLayout>
@@ -94,31 +127,39 @@ const AvailableProducts: React.FC = () => {
         }
         searchPlaceholder="Search products..."
         onSearch={(query) => setSearchQuery(query)}
-        addLabel="Add Product"
-        onAdd={() => {
-          setEditingProduct(null);
-          setModalOpen(true)
-        }}
       >
         {selectedProduct && (
           <div className="space-y-6 select-none">
 
-            {/* HEADER */}
-            <div className="border-b pb-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-semibold">{selectedProduct.name}</h2>
-                <p className="text-sm text-gray-500">SKU: {selectedProduct.sku}</p>    
-              </div> 
-              <Button 
-                variant="outline" 
+          {/* HEADER */}
+          <div className="border-b pb-4 flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">{selectedProduct.name}</h2>
+              <p className="text-sm text-gray-500">SKU: {selectedProduct.sku}</p>    
+            </div> 
+            <div className="flex gap-2">
+              {/* RESTOCK */}
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
-                  setEditingProduct(selectedProduct); 
-                  setModalOpen(true);
+                  console.log("Restock product", selectedProduct);
                 }}
               >
-                Edit
+                Restock
               </Button>
+
+              {/* USE PRODUCT */}
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  console.log("Use product", selectedProduct);
+                }}
+              >
+                Use Product
+              </Button>
+              </div>
             </div>
 
             {/* MAIN GRID */}
@@ -237,6 +278,52 @@ const AvailableProducts: React.FC = () => {
                 </div>
               </div>
 
+              {/* MOVEMENT HISTORY */}
+                <div className="col-span-2 border rounded-lg bg-white">
+                <div className="px-4 py-3 border-b font-semibold text-sm text-gray-600">
+                    Movement History
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                        <tr>
+                        <th className="px-4 py-2 text-left">Date</th>
+                        <th className="px-4 py-2 text-left">Type</th>
+                        <th className="px-4 py-2 text-left">Qty</th>
+                        <th className="px-4 py-2 text-left">Reference</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {selectedProduct.movements.map((m) => (
+                        <tr key={m.id} className="border-t">
+                            <td className="px-4 py-2">{m.date}</td>
+
+                            <td className="px-4 py-2">
+                            <span
+                                className={`px-2 py-1 rounded text-xs ${
+                                m.type === "IN"
+                                    ? "bg-green-100 text-green-700"
+                                    : m.type === "OUT"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-gray-100 text-gray-700"
+                                }`}
+                            >
+                                {m.type}
+                            </span>
+                            </td>
+
+                            <td className="px-4 py-2">{m.qty}</td>
+
+                            <td className="px-4 py-2">{m.reference}</td>
+                        </tr>
+                        ))}
+                    </tbody>
+                    </table>
+                </div>
+                </div>
+
             </div>
           </div>
         )}
@@ -254,4 +341,4 @@ const AvailableProducts: React.FC = () => {
   );
 };
 
-export default AvailableProducts;
+export default InventoryList;

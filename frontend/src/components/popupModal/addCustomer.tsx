@@ -124,32 +124,56 @@ const addCustomer: React.FC<Props> = ({ open, onOpenChange, customer, onSaved }:
 
                 <div className="col-span-2">
                   <Label className="text-xs">Name *</Label>
-                  <Input value={name} onChange={(e)=>setName(e.target.value)} placeholder="Full name"/>
+                  <Input 
+                    value={name} 
+                    onChange={(e)=>setName(e.target.value)} 
+                    placeholder="Full name"
+                  />
                 </div>
 
                 <div className="col-span-2">
                   <Label className="text-xs">Address</Label>
-                  <Input value={address} onChange={(e)=>setAddress(e.target.value)} placeholder="Street, City"/>
+                  <Input 
+                    value={address} 
+                    onChange={(e)=>setAddress(e.target.value)} 
+                    placeholder="Current Home Address"
+                  />
                 </div>
 
                 <div>
                   <Label className="text-xs">Mobile *</Label>
-                  <Input value={mobile} onChange={(e)=>setMobile(e.target.value)} placeholder="0917XXXXXXX"/>
+                  <Input 
+                    value={mobile} 
+                    onChange={(e)=>setMobile(e.target.value)} 
+                    placeholder="09XXXXXXXXX"
+                  />
                 </div>
 
                 <div>
                   <Label className="text-xs">Landline</Label>
-                  <Input value={landline} onChange={(e)=>setLandline(e.target.value)} placeholder="02XXXXXXX"/>
+                  <Input 
+                    value={landline} 
+                    onChange={(e)=>setLandline(e.target.value)} 
+                    placeholder="02XXXXXXX"
+                  />
                 </div>
 
                 <div>
                   <Label className="text-xs">Email</Label>
-                  <Input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="email@example.com"/>
+                  <Input 
+                    value={email} 
+                    onChange={(e)=>setEmail(e.target.value)} 
+                    placeholder="email@example.com"
+                  />
                 </div>
 
                 <div>
                   <Label className="text-xs">Business Number</Label>
-                  <Input value={businessNo} onChange={(e)=>setBusinessNo(e.target.value)} placeholder="Optional"/>
+                  <Input 
+                    value={businessNo} 
+                    onChange={(e)=>setBusinessNo(e.target.value)} 
+                    placeholder="Optional"
+                  />
                 </div>
 
               </div>

@@ -25,10 +25,13 @@ import SalesOrder from "./pages/internal/Sales/SalesOrder";
 import Estimates from "./pages/internal/Sales/Estimates";
 
 import AvailableProducts from "./pages/internal/Products";
+import InventoryList from "./pages/internal/Inventory/InventoryList";
 
 import Employees from "./pages/internal/HR/Employees"
 import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
 import RolesandPermissions from "./pages/internal/HR/RolesandPermissions";
+
+import AccountSettings from "./pages/internal/AccountSettings";
 
 import Register from "./pages/internal/Register";
 import PageNotFound from "./pages/PageNotFound";
@@ -57,11 +60,14 @@ const App: React.FC = () => {
             <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
             <Route path="/webapp/sales/estimates" element={<Estimates />} />
 
-          <Route path="/webapp/products" element={<AvailableProducts />} />
+            <Route path="/webapp/products" element={<AvailableProducts />} />
+            <Route path="/webapp/inventory/inventory-list" element={<InventoryList />} />
 
             <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
             <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />
             <Route path="/webapp/settings/roles-and-permissions" element={<RolesandPermissions />} />
+
+            <Route path="/webapp/settings/account" element={<AccountSettings />} />
 
           </Route>
 

@@ -2,10 +2,13 @@ import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MasterDetailPanel, ColumnDef } from "@/components/MasterDetailPanel";
 
-import CustomerModal from "@/components/popupModal/addCustomer"; // Fixed import
+import CustomerModal from "@/components/popupModal/addCustomer";
+import AddVehicle from "@/components/popupModal/addVehicle";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+
 import { Car, Edit } from "lucide-react";
 
 interface Vehicle {
@@ -28,72 +31,61 @@ interface Customer {
   vehicles: Vehicle[];
 }
 
-const dummyCustomers: Customer[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    address: "123 Main St, Springfield",
-    mobileNumber: "+1 555 123 456",
-    landline: "555-0001",
-    email: "john@example.com",
-    businessPhone: undefined,
-    vehicles: [
-      {
-        yearMakeModel: "2020 Toyota Camry",
-        color: "White",
-        plateNo: "ABC1234",
-        vin: "1HGCM82633A004352",
-        kilometers: 15000,
-        engineNo: "ENG123456",
-      },
-      {
-        yearMakeModel: "2018 Honda Civic",
-        color: "Black",
-        plateNo: "XYZ5678",
-        vin: "2HGFB2F50FH004352",
-        kilometers: 30000,
-        engineNo: "ENG987654",
-      },
-    ],
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    address: "456 Elm St, Metropolis",
-    mobileNumber: "+1 555 987 654",
-    landline: "555-0002",
-    email: "jane@example.com",
-    businessPhone: "+1 555 888 777",
-    vehicles: [
-      {
-        yearMakeModel: "2019 Ford F-150",
-        color: "Blue",
-        plateNo: "TRK1234",
-        vin: "1FTFW1E50KFA00432",
-        kilometers: 20000,
-        engineNo: "ENG654321",
-      },
-    ],
-  },
-];
+function Detail({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {children || <p className="font-medium text-foreground">{value}</p>}
+    </div>
+  );
+}
 
 const Customers: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>(dummyCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+
   const handleCustomerSaved = (customer: Customer) => {
     setCustomers((prev) => {
       const exists = prev.find((c) => c.id === customer.id);
+
       if (exists) {
         return prev.map((c) => (c.id === customer.id ? customer : c));
       }
+
       return [...prev, customer];
     });
+
     setSelectedCustomer(customer);
+  };
+
+  const handleVehiclesSaved = (vehicles: Vehicle[]) => {
+    if (!selectedCustomer) return;
+
+    const updatedCustomer = {
+      ...selectedCustomer,
+      vehicles: [...selectedCustomer.vehicles, ...vehicles],
+    };
+
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === updatedCustomer.id ? updatedCustomer : c))
+    );
+
+    setSelectedCustomer(updatedCustomer);
   };
 
   const columns: ColumnDef<Customer>[] = [
@@ -195,7 +187,9 @@ const Customers: React.FC = () => {
               />
               <Detail label="Address" value={selectedCustomer.address} />
               <Detail label="Vehicles">
-                <Badge variant="outline">{selectedCustomer.vehicles.length}</Badge>
+                <Badge variant="outline">
+                  {selectedCustomer.vehicles.length}
+                </Badge>
               </Detail>
             </div>
 
@@ -204,11 +198,16 @@ const Customers: React.FC = () => {
             {/* Vehicles */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-3">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                   <Car className="h-4 w-4 text-muted-foreground" />
                   Registered Vehicles ({selectedCustomer.vehicles.length})
                 </p>
-                <Button variant="outline" size="sm">
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVehicleModalOpen(true)}
+                >
                   Add Vehicle
                 </Button>
               </div>
@@ -219,7 +218,10 @@ const Customers: React.FC = () => {
                     key={index}
                     className="rounded-lg border border-border p-3 bg-muted/30 text-sm"
                   >
-                    <p className="font-medium text-foreground">{v.yearMakeModel}</p>
+                    <p className="font-medium text-foreground">
+                      {v.yearMakeModel}
+                    </p>
+
                     <div className="grid grid-cols-2 gap-1 mt-1 text-xs text-muted-foreground">
                       <span>Color: {v.color}</span>
                       <span>Plate: {v.plateNo}</span>
@@ -247,25 +249,14 @@ const Customers: React.FC = () => {
         customer={editingCustomer}
         onSaved={handleCustomerSaved}
       />
+
+      <AddVehicle
+        open={vehicleModalOpen}
+        onOpenChange={setVehicleModalOpen}
+        onSaved={handleVehiclesSaved}
+      />
     </DashboardLayout>
   );
 };
 
 export default Customers;
-
-function Detail({
-  label,
-  value,
-  children,
-}: {
-  label: string;
-  value?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      {children || <p className="font-medium text-foreground">{value}</p>}
-    </div>
-  );
-}

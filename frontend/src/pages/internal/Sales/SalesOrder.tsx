@@ -36,16 +36,19 @@ interface Part {
 interface Customer {
   name: string;
   email: string;
-  phone: string;
+  mobileNumber: string;
+  landline?: string;
+  businessPhone?: string;
   address: string;
 }
 
 interface Vehicle {
-  make: string;
-  model: string;
-  year: string;
+  yearMakeModel: string;
   color: string;
   plateNo: string;
+  vin: string;
+  kilometers: number;
+  engineNo: string;
 }
 
 interface SalesOrder {
@@ -70,15 +73,16 @@ const dummySO: SalesOrder[] = [
     customer: {
       name: "John Doe",
       email: "john@gmail.com",
-      phone: "09123456789",
-      address: "Manila",
+      mobileNumber: "09123456789",
+      address: "Somewhere in Manila",
     },
     vehicle: {
-      make: "Toyota",
-      model: "Vios",
-      year: "2019",
+      yearMakeModel: "2020 Toyota Camry",
       color: "White",
       plateNo: "ABC-1234",
+      vin: "1HGCM82633A004352",
+      kilometers: 15000,
+      engineNo: "ENG123456",
     },
     parts: [
       {
@@ -108,6 +112,23 @@ const dummySO: SalesOrder[] = [
   },
 ];
 
+function Detail({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {children || <p className="font-medium text-foreground">{value}</p>}
+    </div>
+  );
+}
+
 const SalesOrder: React.FC = () => {
   const [items, setItems] = useState<SalesOrder[]>(dummySO);
   const [selected, setSelected] = useState<SalesOrder | null>(null);
@@ -133,15 +154,20 @@ const SalesOrder: React.FC = () => {
     },
     {
       key: "customer",
-      label: "Customer / Plate",
+      label: "Customer",
       render: (s) => (
         <div>
           <div className="font-medium">{s.customer.name}</div>
           <div className="text-xs text-muted-foreground">
-            {s.vehicle.plateNo}
+            {s.customer.email}
           </div>
         </div>
       ),
+    },
+    {
+      key: "plateNo",
+      label: "Plate No.",
+      render: (s) => s.vehicle.plateNo,
     },
     {
       key: "parts",
@@ -191,7 +217,6 @@ const SalesOrder: React.FC = () => {
     if (!selected || !paymentAmount) return;
 
     const amount = Number(paymentAmount);
-
     const newRemaining = balance - amount;
 
     const newPayment: Payment = {
@@ -211,8 +236,6 @@ const SalesOrder: React.FC = () => {
     setPaymentAmount("");
   };
 
-
-
   return (
     <DashboardLayout>
       <MasterDetailPanel<SalesOrder>
@@ -231,110 +254,119 @@ const SalesOrder: React.FC = () => {
 
             {/* HEADER */}
             <div className="flex justify-between items-center">
-              <div>
+              <div className="flex items-center gap-3">
                 <h2 className="text-lg font-bold">{selected.soNo}</h2>
-                <p className="text-sm text-muted-foreground">
-                  Date: {selected.date}
-                </p>
+
+                <Badge
+                  className={
+                    paymentStatus === "paid"
+                      ? "bg-green-100 text-green-700"
+                      : paymentStatus === "partial"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-red-100 text-red-700"
+                  }
+                >
+                  {paymentStatus}
+                </Badge>
               </div>
 
-              <Button>
-                Generate Invoice
-              </Button>
+              <Button>Generate Invoice</Button>
             </div>
 
             {/* CUSTOMER + VEHICLE */}
-            <div className="grid grid-cols-2 gap-6 border rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-20 border rounded-lg p-4">
+
               <div>
-                <h3 className="font-semibold mb-2">Customer Details</h3>
-                <p>{selected.customer.name}</p>
-                <p className="text-sm">{selected.customer.email}</p>
-                <p className="text-sm">{selected.customer.phone}</p>
-                <p className="text-sm">{selected.customer.address}</p>
+                <h3 className="font-semibold mb-3">Customer Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <Detail label="Name" value={selected.customer.name} />
+                  <Detail label="Mobile" value={selected.customer.mobileNumber} />
+                  <Detail label="Landline" value={selected.customer.landline || "—"} />
+                  <Detail label="Email" value={selected.customer.email} />
+                  <Detail label="Business Phone" value={selected.customer.businessPhone || "—"} />
+                  <Detail label="Address" value={selected.customer.address} />
+                </div>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2">Vehicle Details</h3>
-                <p>
-                  {selected.vehicle.year} {selected.vehicle.make}{" "}
-                  {selected.vehicle.model}
-                </p>
-                <p className="text-sm">Color: {selected.vehicle.color}</p>
-                <p className="text-sm">Plate: {selected.vehicle.plateNo}</p>
+                <h3 className="font-semibold mb-3">Vehicle Details</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <Detail label="Year Make Model" value={selected.vehicle.yearMakeModel} />
+                  <Detail label="Color" value={selected.vehicle.color} />
+                  <Detail label="Plate" value={selected.vehicle.plateNo} />
+                  <Detail label="VIN" value={selected.vehicle.vin} />
+                  <Detail label="Engine No" value={selected.vehicle.engineNo} />
+                  <Detail label="Kilometers" value={`${selected.vehicle.kilometers} km`} />
+                </div>
               </div>
+
             </div>
 
-            {/* PARTS TABLE */}
-            
-            <Table>
-              <TableHeader>
-            {/* ACTIONS */}
-                <div className="flex gap-2">
-                <button className="border rounded-md px-3 py-1">
-                    Add Parts
-                </button>
-                <button className="border rounded-md px-3 py-1">
-                    Scan to Add
-                </button>
-                </div>
-                <TableRow>
-                  <TableHead>Part</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                </TableRow>
-              </TableHeader>
+            {/* PARTS */}
+            <div className="space-y-3">
 
-              <TableBody>
-                {selected.parts.map((p, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium">
-                      <div className="flex gap-4">
-                        <img
-                          src={placeholder}
-                          className="w-10 h-10 rounded"
-                        />
-                        <div>
-                          <p className="font-semibold">{p.name}</p>
-                          <span className="text-xs text-muted-foreground">
-                            In stock: 82pcs
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">Parts</h3>
+                <Button variant="outline" size="sm">
+                  Edit Parts
+                </Button>
+              </div>
 
-                    <TableCell>
-                      {p.sku}
-                    </TableCell>
-
-                    <TableCell>
-                      {p.quantity} {p.unit}
-                    </TableCell>
-
-                    <TableCell>${p.price}</TableCell>
-
-                    <TableCell className="text-right">
-                      ${(p.quantity * p.price).toFixed(2)}
-                    </TableCell>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Part</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+
+                <TableBody>
+                  {selected.parts.map((p, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="flex gap-4 items-center">
+                          <img
+                            src={placeholder}
+                            alt={p.name}
+                            className="w-10 h-10 rounded"
+                          />
+                          <div>
+                            <p className="font-semibold">{p.name}</p>
+                            <span className="text-xs text-muted-foreground">
+                              In stock: 82 pcs
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>{p.sku}</TableCell>
+                      <TableCell>{p.quantity} {p.unit}</TableCell>
+                      <TableCell>${p.price}</TableCell>
+
+                      <TableCell className="text-right">
+                        ${(p.quantity * p.price).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+            </div>
 
             {/* PAYMENT + SUMMARY */}
             <div className="grid grid-cols-2 gap-6">
 
               {/* PAYMENT HISTORY */}
               <div className="border rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold">Payment History</h3>
-                </div>
+                <h3 className="font-semibold">Payment History</h3>
 
                 {selected.payments.map((p, i) => (
                   <div
                     key={i}
-                    className="flex justify-between text-sm border-b pb-1"
+                    className="flex justify-between text-sm border-b pb-2"
                   >
                     <span>{p.date}</span>
                     <span>${p.amount}</span>
@@ -344,20 +376,17 @@ const SalesOrder: React.FC = () => {
                   </div>
                 ))}
 
-                {/* ADD PAYMENT */}
                 <div className="flex gap-2 pt-2">
                   <Input
                     placeholder="Payment amount"
                     value={paymentAmount}
-                    onChange={(e) =>
-                      setPaymentAmount(e.target.value)
-                    }
+                    onChange={(e) => setPaymentAmount(e.target.value)}
                   />
                   <Button onClick={addPayment}>Add</Button>
                 </div>
               </div>
 
-              {/* BILLING SUMMARY */}
+              {/* SUMMARY */}
               <div className="border rounded-lg p-4 space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
@@ -383,20 +412,10 @@ const SalesOrder: React.FC = () => {
                   <span>Balance</span>
                   <span>${balance.toFixed(2)}</span>
                 </div>
-
-                <Badge
-                  className={
-                    paymentStatus === "paid"
-                      ? "bg-green-100 text-green-700"
-                      : paymentStatus === "partial"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-red-100 text-red-700"
-                  }
-                >
-                  {paymentStatus}
-                </Badge>
               </div>
+
             </div>
+
           </div>
         )}
       </MasterDetailPanel>

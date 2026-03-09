@@ -9,7 +9,7 @@ use App\Domains\Supplier\Domain\Models\Supplier;
 
 class Product extends Model
 {
-    protected $table = 'Products';
+    protected $table = 'Main.Products';
 
     protected $fillable = [
         'name',

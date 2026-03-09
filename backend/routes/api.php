@@ -9,11 +9,11 @@ use App\Domains\Supplier\Http\Controllers\SupplierController;
 
 /*
 |--------------------------------------------------------------------------
-| Product Reference Routes
+| Supplier Reference Routes
 |--------------------------------------------------------------------------
 */
 
-Route::get('/products/suppliers', [SupplierController::class, 'index']);
+
 
 /*
 |--------------------------------------------------------------------------
@@ -26,7 +26,7 @@ Route::prefix('products')->group(function () {
 
     Route::get('/categories', [ProductReferenceController::class, 'categories']);
     Route::get('/units', [ProductReferenceController::class, 'units']);
-    Route::get('/suppliers', [ProductReferenceController::class, 'suppliers']);
+    Route::get('/suppliers', [SupplierController::class, 'index']);
 
 });
 /*

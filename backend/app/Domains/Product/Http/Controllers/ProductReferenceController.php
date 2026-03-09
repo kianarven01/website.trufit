@@ -5,28 +5,28 @@ namespace App\Domains\Product\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Unit;
-use App\Domains\Product\Domain\Models\Supplier;
 
 class ProductReferenceController extends Controller
 {
     public function categories()
     {
+        $categories = Category::select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
         return response()->json([
-            'data' => Category::select('id','name')->get()
+            'data' => $categories
         ]);
     }
 
     public function units()
     {
-        return response()->json([
-            'data' => Unit::select('id','name')->get()
-        ]);`
-    }
+        $units = Unit::select('id', 'name')
+            ->orderBy('name')
+            ->get();
 
-    public function suppliers()
-    {
         return response()->json([
-            'data' => Supplier::select('id','CompanyName')->get()
+            'data' => $units
         ]);
     }
 }

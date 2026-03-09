@@ -197,10 +197,12 @@ const Employees: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <PageShell<Employee>
+      <MasterDetailPanel<Employee>
         title="Employees"
         description="Manage company employees."
         items={filteredEmployees}
+        selectedItem={selectedEmployee}
+        onSelect={setSelectedEmployee}
         columns={columns}
         getItemId={(emp) => emp.id.toString()}
         filters={filterOptions}

@@ -31,7 +31,7 @@ api.interceptors.response.use(
       localStorage.removeItem("trufit_user");
 
       // Use replace so the user can't "Go Back" to the broken dashboard
-      window.location.replace("/webapp/login?reason=expired");
+      window.location.replace("/webapp/login?session=expired");
     }
     return Promise.reject(error);
   },

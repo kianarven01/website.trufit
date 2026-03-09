@@ -7,7 +7,8 @@ const EmployeeTable: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const res = await api.get("/admin/employees");
+      // Update this endpoint to your filtered backend route (e.g., status=active)
+      const res = await api.get("/admin/employees?status=active");
       if (res.data && res.data.status === "success") {
         setEmployees(res.data.data);
       }
@@ -31,7 +32,6 @@ const EmployeeTable: React.FC = () => {
 
   return (
     <div className="space-y-2">
-
       {/* Column Header */}
       <div className="hidden md:grid grid-cols-6 gap-6 px-5 text-[10px] font-black uppercase tracking-widest text-slate-400">
         <div>Employee</div>
@@ -54,7 +54,6 @@ const EmployeeTable: React.FC = () => {
             className="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 p-5"
           >
             <div className="grid grid-cols-1 md:grid-cols-6 gap-6 items-center">
-
               <div>
                 <div className="font-bold text-slate-800">
                   {emp.name || "Unnamed Employee"}
@@ -63,7 +62,7 @@ const EmployeeTable: React.FC = () => {
                   {emp.email}
                 </div>
               </div>
-          
+
               <div>
                 <div className="text-xs text-slate-400">
                   {emp.address || "No address listed"}

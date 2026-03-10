@@ -10,6 +10,8 @@ use App\Domains\Auth\Http\Requests\ForgotPasswordRequest;
 use App\Domains\Auth\Http\Requests\ResetPasswordRequest;
 use Illuminate\Http\Request;
 
+use App\Domains\Auth\Exceptions\AuthDomainException;
+
 class AuthController extends Controller
 {
     protected $getAuthenticatedUser;
@@ -28,23 +30,36 @@ class AuthController extends Controller
 
     public function verify(Request $request)
     {
-        $result = $this->getAuthenticatedUser->execute($request);
-        return response()->json($result);
+        try {
+            $result = $this->getAuthenticatedUser->execute($request);
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
     }
 
     public function forgotPassword(ForgotPasswordRequest $request)
     {
-        $result = $this->forgotPassword->execute($request->validated('email'));
-        return response()->json($result);
+        try {
+            $result = $this->forgotPassword->execute($request->validated('email'));
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            $status = ($e instanceof \App\Domains\Auth\Exceptions\UnverifiedAccountException) ? 'unverified' : 'error';
+            return response()->json(['status' => $status, 'message' => $e->getMessage()], $e->getStatusCode());
+        }
     }
 
     public function resetPassword(ResetPasswordRequest $request)
     {
-        $result = $this->resetPassword->execute(
-            $request->validated('email'),
-            $request->validated('code'),
-            $request->validated('password')
-        );
-        return response()->json($result);
+        try {
+            $result = $this->resetPassword->execute(
+                $request->validated('email'),
+                $request->validated('code'),
+                $request->validated('password')
+            );
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
     }
 }

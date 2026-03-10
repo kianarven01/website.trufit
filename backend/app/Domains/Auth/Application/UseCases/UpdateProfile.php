@@ -8,8 +8,17 @@ use Illuminate\Support\Facades\DB;
 
 class UpdateProfile
 {
-    protected $table = 'Main.UserCredentials';
-    
+    protected $employeeRepository;
+    protected $userRepository;
+
+    public function __construct(
+        EmployeeRepositoryInterface $employeeRepository,
+        UserRepositoryInterface $userRepository
+    ) {
+        $this->employeeRepository = $employeeRepository;
+        $this->userRepository = $userRepository;
+    }
+
     public function execute(User $user, UpdateProfileDTO $dto): array
     {
         $employee = $user->employee;
@@ -24,15 +33,13 @@ class UpdateProfile
         try {
             DB::beginTransaction();
 
-            $employee->update([
-                'name' => $dto->name,
-                'address' => $dto->address ?? $employee->address,
-                'phone' => $dto->phone ?? $employee->phone,
-            ]);
+            $employee->name = $dto->name;
+            $employee->address = $dto->address ?? $employee->address;
+            $employee->phone = $dto->phone ?? $employee->phone;
+            $this->employeeRepository->save($employee);
 
-            $user->update([
-                'username' => $dto->username,
-            ]);
+            $user->username = $dto->username;
+            $this->userRepository->save($user);
 
             DB::commit();
 

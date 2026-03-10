@@ -29,17 +29,24 @@ class SendVerificationCode
             throw new AccountNotFoundException('Employee record not found.');
         }
 
-        // Generate code and expiry (10 minutes)
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = Carbon::now()->addMinutes(10);
+        // Check if a valid code already exists (e.g., has > 3 mins left)
+        $existingCode = $employee->verification_code;
+        $isStillValid = $employee->email_verification_expires_at && Carbon::now()->addMinutes(3)->lt($employee->email_verification_expires_at);
 
-        $employee->verification_code = $code;
-        $employee->email_verification_expires_at = $expiresAt;
-        $this->employeeRepository->save($employee);
+        if ($existingCode && $isStillValid) {
+            $code = $existingCode;
+        } else {
+            // Generate code and expiry (10 minutes)
+            $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $expiresAt = Carbon::now()->addMinutes(10);
+
+            $employee->verification_code = $code;
+            $employee->email_verification_expires_at = $expiresAt;
+            $this->employeeRepository->save($employee);
+        }
 
         try {
-            $this->mailService->sendVerificationCode($employee->email, $code, $employee->name);
-            return [
+            $this->mailService->sendVerificationCode($employee->email, $code, $employee->name);            return [
                 'status' => 'success',
                 'message' => 'Verification code sent to ' . $employee->email,
             ];

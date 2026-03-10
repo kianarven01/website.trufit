@@ -15,7 +15,7 @@ class UpdateEmailRequest extends FormRequest
     {
         $employeeId = $this->user()->employeeID;
         return [
-            'email' => 'required|email|max:255|unique:Main.Employees,email,' . $employeeId,
+            'email' => 'required|email|max:255|unique:Employees,email,' . $employeeId,
         ];
     }
 }

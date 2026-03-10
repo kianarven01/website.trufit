@@ -373,6 +373,22 @@ const LoginPage: React.FC = () => {
                 </div>
                 <div className="flex flex-col gap-3 pt-2">
                   <Button type="submit" disabled={forgotLoading} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{forgotLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Code"}</Button>
+                  
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (!forgotEmail) {
+                        toast.error("Please enter your email first.");
+                        return;
+                      }
+                      setShowForgotModal(false);
+                      setShowResetModal(true);
+                    }}
+                    className="text-xs text-blue-300 hover:text-white underline"
+                  >
+                    Already have a reset code?
+                  </button>
+
                   <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowForgotModal(false)}>Cancel</Button>
                 </div>
               </form>

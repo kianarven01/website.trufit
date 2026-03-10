@@ -1,21 +1,14 @@
 <?php
 namespace App\Domains\Auth\Application\UseCases;
 
-use Illuminate\Http\Request;
+use App\Domains\Auth\Domain\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class UpdatePassword
 {
-    public function execute(Request $request): array
+    public function execute(User $user, string $currentPassword, string $newPassword): array
     {
-        $user = $request->user();
-
-        $request->validate([
-            'current_password' => 'required',
-            'password' => 'required|min:8|confirmed',
-        ]);
-
-        if (!Hash::check($request->current_password, $user->getAuthPassword())) {
+        if (!Hash::check($currentPassword, $user->getAuthPassword())) {
             return [
                 'status' => 'error',
                 'message' => 'The provided password does not match your current password.'
@@ -23,7 +16,7 @@ class UpdatePassword
         }
 
         $user->update([
-            'password_hash' => Hash::make($request->password),
+            'password_hash' => Hash::make($newPassword),
         ]);
 
         return [

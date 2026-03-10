@@ -1,7 +1,8 @@
 <?php
 namespace App\Domains\Auth\Application\UseCases;
 
-use Illuminate\Http\Request;
+use App\Domains\Auth\Application\DTOs\UpdateProfileDTO;
+use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Auth\Http\Resources\UserResource;
 use Illuminate\Support\Facades\DB;
 
@@ -9,9 +10,8 @@ class UpdateProfile
 {
     protected $table = 'Main.UserCredentials';
     
-    public function execute(Request $request): array
+    public function execute(User $user, UpdateProfileDTO $dto): array
     {
-        $user = $request->user();
         $employee = $user->employee;
 
         if (!$employee) {
@@ -21,24 +21,17 @@ class UpdateProfile
             ];
         }
 
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'address' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'username' => 'required|string|max:255|unique:Main.UserCredentials,username,' . $user->id,
-        ]);
-
         try {
             DB::beginTransaction();
 
             $employee->update([
-                'name' => $validatedData['name'],
-                'address' => $validatedData['address'] ?? $employee->address,
-                'phone' => $validatedData['phone'] ?? $employee->phone,
+                'name' => $dto->name,
+                'address' => $dto->address ?? $employee->address,
+                'phone' => $dto->phone ?? $employee->phone,
             ]);
 
             $user->update([
-                'username' => $validatedData['username'],
+                'username' => $dto->username,
             ]);
 
             DB::commit();

@@ -1,8 +1,8 @@
 <?php
 namespace App\Domains\Auth\Application\UseCases;
 
+use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Auth\Domain\Services\MailServiceInterface;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class SendVerificationCode
@@ -14,9 +14,8 @@ class SendVerificationCode
         $this->mailService = $mailService;
     }
 
-    public function execute(Request $request): array
+    public function execute(User $user): array
     {
-        $user = $request->user();
         $employee = $user->employee;
 
         if (!$employee) {
@@ -28,7 +27,7 @@ class SendVerificationCode
 
         // Generate a 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        
+
         $employee->update([
             'verification_code' => $code
         ]);
@@ -49,11 +48,10 @@ class SendVerificationCode
             ];
         } catch (\Exception $e) {
             Log::error("Failed to send verification email to {$employee->email}: " . $e->getMessage());
-            
-            // Still return success for now in dev, but log the error
+
             return [
                 'status' => 'error',
-                'message' => 'Failed to send verification code. Please try again later.' 
+                'message' => 'Failed to send verification code. Please try again later.'
             ];
         }
     }

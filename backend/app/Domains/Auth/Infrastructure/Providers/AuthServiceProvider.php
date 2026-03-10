@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Auth;
+namespace App\Domains\Auth\Infrastructure\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use App\Domains\Auth\Domain\Services\MailServiceInterface;

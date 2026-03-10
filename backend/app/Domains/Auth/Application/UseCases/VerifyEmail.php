@@ -1,15 +1,14 @@
 <?php
 namespace App\Domains\Auth\Application\UseCases;
 
-use Illuminate\Http\Request;
+use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Auth\Http\Resources\UserResource;
 use Carbon\Carbon;
 
 class VerifyEmail
 {
-    public function execute(Request $request): array
+    public function execute(User $user, string $code): array
     {
-        $user = $request->user();
         $employee = $user->employee;
 
         if (!$employee) {
@@ -19,11 +18,7 @@ class VerifyEmail
             ];
         }
 
-        $request->validate([
-            'code' => 'required|string|size:6',
-        ]);
-
-        if ($employee->verification_code !== $request->code) {
+        if ($employee->verification_code !== $code) {
             return [
                 'status' => 'error',
                 'message' => 'Invalid verification code.'

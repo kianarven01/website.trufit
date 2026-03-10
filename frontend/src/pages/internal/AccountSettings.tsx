@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { User, Lock, Sun, Mail, ShieldCheck, Loader2, AlertCircle } from "lucide-react";
+import { User, Lock, Sun, Mail, ShieldCheck, Loader2, AlertCircle, Phone } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -31,8 +31,9 @@ const AccountSettings: React.FC = function () {
 
   const [loading, setLoading] = useState(false);
 
-  // Email status
+  // Verification status
   const [isVerified, setIsVerified] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
   // Sync state with user data
   useEffect(() => {
@@ -44,6 +45,7 @@ const AccountSettings: React.FC = function () {
       setUsername(user.username || "");
       setJobPosition(user.position || "");
       setIsVerified(!!user.is_verified);
+      setIsPhoneVerified(!!user.is_phone_verified);
     }
   }, [user]);
 
@@ -56,6 +58,12 @@ const AccountSettings: React.FC = function () {
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verifyLoading, setVerifyLoading] = useState(false);
+
+  // Phone verification dialogs
+  const [phoneVerifyDialogOpen, setPhoneVerifyDialogOpen] = useState(false);
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState("");
+  const [phoneVerifyLoading, setPhoneVerifyLoading] = useState(false);
+  const [phoneSendingLoading, setPhoneSendingLoading] = useState(false);
 
   // Password
   const [pwDialogOpen, setPwDialogOpen] = useState(false);
@@ -137,12 +145,30 @@ const AccountSettings: React.FC = function () {
       if (response.data.status === "success") {
         toast.success(`Verification code sent to ${email}`);
         setVerifyDialogOpen(true);
-      } else {        toast.error(response.data.message || "Failed to send code");
+      } else {
+        toast.error(response.data.message || "Failed to send code");
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Error sending verification code");
     } finally {
       setEmailLoading(false);
+    }
+  };
+
+  const handleSendPhoneVerification = async () => {
+    setPhoneSendingLoading(true);
+    try {
+      const response = await api.post("/auth/phone/resend");
+      if (response.data.status === "success") {
+        toast.success(`Verification code sent to ${phone}`);
+        setPhoneVerifyDialogOpen(true);
+      } else {
+        toast.error(response.data.message || "Failed to send code");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error sending verification code");
+    } finally {
+      setPhoneSendingLoading(false);
     }
   };
 
@@ -169,9 +195,6 @@ const AccountSettings: React.FC = function () {
         setChangeEmailOpen(false);
         setNewEmail("");
         setVerifyDialogOpen(true);
-        if (response.data.code) {
-            console.log("DEV: Verification Code is", response.data.code);
-         }
       } else {
         toast.error(response.data.message || "Failed to update email");
       }
@@ -202,6 +225,29 @@ const AccountSettings: React.FC = function () {
       toast.error(error.response?.data?.message || "Error during verification");
     } finally {
       setVerifyLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneCode = async () => {
+    if (phoneVerificationCode.length !== 6) {
+      toast.error("Please enter a 6-digit code.");
+      return;
+    }
+    setPhoneVerifyLoading(true);
+    try {
+      const response = await api.post("/auth/phone/verify", { code: phoneVerificationCode });
+      if (response.data.status === "success") {
+        updateUser(response.data.data.user);
+        toast.success("Phone number verified successfully!");
+        setPhoneVerifyDialogOpen(false);
+        setPhoneVerificationCode("");
+      } else {
+        toast.error(response.data.message || "Verification failed");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error during verification");
+    } finally {
+      setPhoneVerifyLoading(false);
     }
   };
 
@@ -272,9 +318,33 @@ const AccountSettings: React.FC = function () {
                   </div>
                 </div>
 
+                {/* Phone Number with verification */}
                 <div className="space-y-1.5">
                   <Label htmlFor="phone" className="text-xs">Phone Number</Label>
-                  <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8" />
+                  <div className="flex items-center gap-2">
+                    <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8 flex-1" />
+                    {isPhoneVerified ? (
+                      <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+                        <ShieldCheck className="h-3 w-3" /> Verified
+                      </Badge>
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 shrink-0 gap-1 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-50" 
+                        onClick={handleSendPhoneVerification}
+                        disabled={phoneSendingLoading}
+                      >
+                        {phoneSendingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Phone className="h-3 w-3" />} 
+                        Verify Phone
+                      </Button>
+                    )}
+                  </div>
+                  {!isPhoneVerified && phone && (
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setPhoneVerifyDialogOpen(true)}>
+                      Enter verification code
+                    </Button>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -436,6 +506,40 @@ const AccountSettings: React.FC = function () {
             <Button variant="ghost" onClick={() => setVerifyDialogOpen(false)} disabled={verifyLoading}>Cancel</Button>
             <Button onClick={handleVerifyCode} disabled={verifyLoading}>
               {verifyLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Verify Code
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verify Phone Dialog (Code Input) */}
+      <Dialog open={phoneVerifyDialogOpen} onOpenChange={setPhoneVerifyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Verify Your Phone Number</DialogTitle>
+            <DialogDescription className="text-xs">
+              Enter the 6-digit code sent to <span className="font-medium">{phone}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="phoneCode" className="text-xs">Verification Code</Label>
+              <Input 
+                id="phoneCode" 
+                placeholder="000000" 
+                value={phoneVerificationCode} 
+                onChange={(e) => setPhoneVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                className="h-10 text-center text-lg tracking-widest font-bold" 
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Didn't receive the code? <button className="text-primary hover:underline" onClick={handleSendPhoneVerification} disabled={phoneSendingLoading}>Resend</button>
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setPhoneVerifyDialogOpen(false)} disabled={phoneVerifyLoading}>Cancel</Button>
+            <Button onClick={handleVerifyPhoneCode} disabled={phoneVerifyLoading}>
+              {phoneVerifyLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Verify Code
             </Button>
           </DialogFooter>

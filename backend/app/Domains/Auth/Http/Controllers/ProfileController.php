@@ -15,6 +15,9 @@ use App\Domains\Auth\Http\Requests\UpdatePasswordRequest;
 use App\Domains\Auth\Http\Requests\UpdateEmailRequest;
 use App\Domains\Auth\Http\Requests\VerifyEmailRequest;
 use App\Domains\Auth\Application\DTOs\UpdateProfileDTO;
+use App\Domains\Auth\Application\UseCases\SendPhoneVerificationCode;
+use App\Domains\Auth\Application\UseCases\VerifyPhone;
+use App\Domains\Auth\Http\Requests\VerifyPhoneRequest;
 
 class ProfileController extends Controller
 {
@@ -23,19 +26,25 @@ class ProfileController extends Controller
     protected $updateEmail;
     protected $sendVerificationCode;
     protected $verifyEmail;
+    protected $sendPhoneVerification;
+    protected $verifyPhone;
 
     public function __construct(
         UpdateProfile $updateProfile,
         UpdatePassword $updatePassword,
         UpdateEmail $updateEmail,
         SendVerificationCode $sendVerificationCode,
-        VerifyEmail $verifyEmail
+        VerifyEmail $verifyEmail,
+        SendPhoneVerificationCode $sendPhoneVerification,
+        VerifyPhone $verifyPhone
     ) {
         $this->updateProfile = $updateProfile;
         $this->updatePassword = $updatePassword;
         $this->updateEmail = $updateEmail;
         $this->sendVerificationCode = $sendVerificationCode;
         $this->verifyEmail = $verifyEmail;
+        $this->sendPhoneVerification = $sendPhoneVerification;
+        $this->verifyPhone = $verifyPhone;
     }
 
     public function update(UpdateProfileRequest $request)
@@ -73,6 +82,21 @@ class ProfileController extends Controller
     public function verifyEmail(VerifyEmailRequest $request)
     {
         $result = $this->verifyEmail->execute(
+            $request->user(),
+            $request->validated('code')
+        );
+        return response()->json($result);
+    }
+
+    public function resendPhoneVerificationCode(Request $request)
+    {
+        $result = $this->sendPhoneVerification->execute($request->user());
+        return response()->json($result);
+    }
+
+    public function verifyPhone(VerifyPhoneRequest $request)
+    {
+        $result = $this->verifyPhone->execute(
             $request->user(),
             $request->validated('code')
         );

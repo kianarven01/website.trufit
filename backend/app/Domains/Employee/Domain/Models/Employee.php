@@ -21,6 +21,8 @@ class Employee extends Model
             'verification_code',
             'address',
             'phone',
+            'phone_verified_at',
+            'phone_verification_code',
             'position',
             'roleID',
             'status'
@@ -28,12 +30,18 @@ class Employee extends Model
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'phone_verified_at' => 'datetime',
         'status' => 'boolean',
     ];
 
     public function hasVerifiedEmail(): bool
     {
         return ! is_null($this->email_verified_at);
+    }
+
+    public function hasVerifiedPhone(): bool
+    {
+        return ! is_null($this->phone_verified_at);
     }
 
     public function role(): BelongsTo

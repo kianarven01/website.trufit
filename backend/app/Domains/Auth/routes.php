@@ -14,6 +14,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/email', [ProfileController::class, 'updateEmail']);
     Route::post('/email/resend', [ProfileController::class, 'resendVerificationCode']);
     Route::post('/email/verify', [ProfileController::class, 'verifyEmail']);
+    Route::post('/phone/resend', [ProfileController::class, 'resendPhoneVerificationCode']);
+    Route::post('/phone/verify', [ProfileController::class, 'verifyPhone']);
 });
 
 

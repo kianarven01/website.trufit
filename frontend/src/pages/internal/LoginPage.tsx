@@ -328,6 +328,7 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Registration Verification Modal */}
+
       {showRegisterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <Card className="relative w-[420px] p-8 bg-white/10 border border-white/20 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">

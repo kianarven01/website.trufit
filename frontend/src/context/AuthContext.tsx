@@ -14,6 +14,7 @@ interface AuthContextType {
     remember: boolean,
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  updateUser: (userData: any) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -45,10 +46,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         ) {
           const serverUser = response.data.data.user;
 
-          setUser({
+          const userData = {
             ...serverUser,
-            role: serverUser.role || "Admin", // Use fallback or server data
-          });
+            role: serverUser.role || "Admin",
+          };
+          setUser(userData);
+          localStorage.setItem("trufit_user", JSON.stringify(userData));
         }
       } catch (error: any) {
         if (error.response?.status === 401) {
@@ -61,17 +64,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     initAuth();
-  }, []); // Keep this empty array
-
-  /*useEffect(() => {
-    const savedUser = localStorage.getItem("trufit_user");
-    const token = localStorage.getItem("trufit_token");
-
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
-  }, []);*/
+  }, []);
 
   const login = async (
     inputUsername: string,
@@ -88,9 +81,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const apiResponse = response.data.data;
 
       const userData = {
-        username: apiResponse.user.username,
-        employeeID: apiResponse.user.employeeID,
-        name: apiResponse.user.name || apiResponse.user.username,
+        ...apiResponse.user,
         role: apiResponse.role,
       };
 
@@ -125,6 +116,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("User logged out successfully");
   };
 
+  const updateUser = (userData: any) => {
+    setUser(userData);
+    localStorage.setItem("trufit_user", JSON.stringify(userData));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -132,6 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         role: user?.role || null,
         login,
         logout,
+        updateUser,
         loading,
       }}
     >

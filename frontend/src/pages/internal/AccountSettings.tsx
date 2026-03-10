@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { User, Lock, Bell, Sun, Mail, ShieldCheck } from "lucide-react";
+import { User, Lock, Sun, Mail, ShieldCheck, Loader2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -16,21 +15,36 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import api from "@/api/axios";
+import { toast } from "sonner";
 
 const AccountSettings: React.FC = function () {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
 
   // Profile fields
-  const [firstName, setFirstName] = useState("Juan");
-  const [lastName, setLastName] = useState("Dela Cruz");
-  const [address, setAddress] = useState("123 Main St, Quezon City");
-  const [email, setEmail] = useState(`${user?.username || "user"}@autoserv.ph`);
-  const [phone, setPhone] = useState("+63 912 345 6789");
-  const [username, setUsername] = useState(user?.username || "");
-  const jobPosition = "Sales Associate";
+  const [fullName, setFullName] = useState("");
+  const [address, setAddress] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [username, setUsername] = useState("");
+  const [jobPosition, setJobPosition] = useState("");
 
-  // Email verification
-  const [emailVerified, setEmailVerified] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Sync state with user data
+  useEffect(() => {
+    if (user) {
+      setFullName(user.name || "");
+      setAddress(user.address || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || "");
+      setUsername(user.username || "");
+      setJobPosition(user.position || "");
+    }
+  }, [user]);
+
+  // Email verification (UI only for now)
+  const [emailVerified, setEmailVerified] = useState(true);
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
@@ -41,52 +55,92 @@ const AccountSettings: React.FC = function () {
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
-  const handleSave = () => {
-    alert({ title: "Settings saved", description: "Your account settings have been updated." });
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const response = await api.put("/auth/profile", {
+        name: fullName,
+        address,
+        phone,
+        username,
+      });
+
+      if (response.data.status === "success") {
+        updateUser(response.data.data.user);
+        toast.success("Profile updated successfully");
+      } else {
+        toast.error(response.data.message || "Failed to update profile");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "An error occurred while updating profile");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChangePassword = () => {
     if (newPw !== confirmPw) {
-      alert({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
+      toast.error("Passwords do not match.");
       return;
     }
     if (!currentPw || !newPw) {
-      alert({ title: "Error", description: "Please fill in all password fields.", variant: "destructive" });
+      toast.error("Please fill in all password fields.");
+      return;
+    }
+    if (newPw.length < 8) {
+      toast.error("New password must be at least 8 characters.");
       return;
     }
     setConfirmOpen(true);
   };
 
-  const handleConfirmPassword = () => {
+  const handleConfirmPassword = async () => {
     setConfirmOpen(false);
-    setPwDialogOpen(false);
-    setCurrentPw("");
-    setNewPw("");
-    setConfirmPw("");
-    alert({ title: "Password changed", description: "Your password has been updated successfully." });
+    setPwLoading(true);
+    try {
+      const response = await api.post("/auth/change-password", {
+        current_password: currentPw,
+        password: newPw,
+        password_confirmation: confirmPw,
+      });
+
+      if (response.data.status === "success") {
+        toast.success("Password updated successfully");
+        setPwDialogOpen(false);
+        setCurrentPw("");
+        setNewPw("");
+        setConfirmPw("");
+      } else {
+        toast.error(response.data.message || "Failed to change password");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "An error occurred while changing password");
+    } finally {
+      setPwLoading(false);
+    }
   };
 
   const handleSendVerification = () => {
     setEmailVerified(true);
-    alert({ title: "Verification sent", description: `A verification email has been sent to ${email}.` });
+    toast.info(`A verification email has been sent to ${email}.`);
   };
 
   const handleChangeEmail = () => {
     if (!newEmail) {
-      alert({ title: "Error", description: "Please enter a new email address.", variant: "destructive" });
+      toast.error("Please enter a new email address.");
       return;
     }
     setEmailConfirmOpen(true);
   };
 
   const handleConfirmEmailChange = () => {
-    setEmail(newEmail);
+    // Note: Backend doesn't have email change endpoint yet
+    toast.warning("Email change is currently not available on the server.");
     setNewEmail("");
-    setEmailVerified(false);
     setEmailConfirmOpen(false);
     setChangeEmailOpen(false);
-    alert({ title: "Email updated", description: "A verification email has been sent to your new address." });
   };
 
   return (
@@ -112,16 +166,9 @@ const AccountSettings: React.FC = function () {
                 <CardDescription className="text-xs">Update your personal details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {/* Name row */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="firstName" className="text-xs">First Name</Label>
-                    <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-8" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="lastName" className="text-xs">Last Name</Label>
-                    <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-8" />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName" className="text-xs">Full Name</Label>
+                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-8" />
                 </div>
 
                 <div className="space-y-1.5">
@@ -133,7 +180,7 @@ const AccountSettings: React.FC = function () {
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-xs">Email</Label>
                   <div className="flex items-center gap-2">
-                    <Input id="email" type="email" value={email} disabled className="h-8 flex-1" />
+                    <Input id="email" type="email" value={email} disabled className="h-8 flex-1 bg-muted/50" />
                     {emailVerified ? (
                       <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
                         <ShieldCheck className="h-3 w-3" /> Verified
@@ -189,7 +236,10 @@ const AccountSettings: React.FC = function () {
               </CardContent>
             </Card>
 
-            <Button onClick={handleSave} className="w-full sm:w-auto">Save Changes</Button>
+            <Button onClick={handleSave} className="w-full sm:w-auto" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
           </div>
         </div>
       </div>
@@ -216,8 +266,11 @@ const AccountSettings: React.FC = function () {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setPwDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleChangePassword}>Change Password</Button>
+            <Button variant="ghost" onClick={() => setPwDialogOpen(false)} disabled={pwLoading}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={pwLoading}>
+              {pwLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Change Password
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -230,8 +283,8 @@ const AccountSettings: React.FC = function () {
             <AlertDialogDescription className="text-xs">Are you sure you want to change your password?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmPassword}>Confirm</AlertDialogAction>
+            <AlertDialogCancel disabled={pwLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmPassword} disabled={pwLoading}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

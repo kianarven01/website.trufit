@@ -23,6 +23,7 @@ class Employee extends Model
             'phone',
             'phone_verified_at',
             'phone_verification_code',
+            'password_reset_code',
             'position',
             'roleID',
             'status'

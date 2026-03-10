@@ -18,7 +18,8 @@ import {
 
 import temporary_bg from "@/assets/temporary_bg.jpeg";
 import trufit_logo from "@/assets/trufit_logo.png";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const LoginPage: React.FC = () => {
   const { login, user, loading } = useAuth();
@@ -36,8 +37,18 @@ const LoginPage: React.FC = () => {
   // Registration modal state
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [regKey, setRegKey] = useState("");
-  const [assignedRole, setAssignedRole] = useState({ id: null, name: "" });
   const [regKeyError, setRegKeyError] = useState("");
+
+  // Forgot Password state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
@@ -89,6 +100,59 @@ const LoginPage: React.FC = () => {
       setRegKeyError("Key not found or already used.");
     } finally {
       setLoadingState(false);
+    }
+  };
+
+  // FORGOT PASSWORD
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotLoading(true);
+    try {
+      const response = await api.post("/auth/forgot-password", { email: forgotEmail });
+      if (response.data.status === "success") {
+        toast.success(response.data.message);
+        setShowForgotModal(false);
+        setShowResetModal(true);
+      } else if (response.data.status === "unverified") {
+        toast.error(response.data.message, { duration: 6000 });
+      } else {
+        toast.error(response.data.message || "Something went wrong.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Error requesting password reset.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const response = await api.post("/auth/reset-password", {
+        email: forgotEmail,
+        code: resetCode,
+        password: newPassword,
+        password_confirmation: confirmPassword
+      });
+      if (response.data.status === "success") {
+        toast.success(response.data.message);
+        setShowResetModal(false);
+        setForgotEmail("");
+        setResetCode("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        toast.error(response.data.message || "Failed to reset password.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Error resetting password.");
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -224,6 +288,7 @@ const LoginPage: React.FC = () => {
 
                   <button
                     type="button"
+                    onClick={() => setShowForgotModal(true)}
                     className="text-slate-50 hover:text-blue-400 underline hover:text-popover-foreground font-semibold tracking-wide"
                   >
                     Forgot Password?
@@ -263,100 +328,85 @@ const LoginPage: React.FC = () => {
       </div>
 
       {/* Registration Verification Modal */}
-
       {showRegisterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <Card
-            className="
-            relative w-[420px] p-8
-            bg-white/10
-            border border-white/20
-            backdrop-blur-xl
-            rounded-2xl
-            shadow-[0_20px_60px_rgba(0,0,0,0.6)]
-            overflow-hidden
-          "
-          >
-            {/* Glow accents */}
+          <Card className="relative w-[420px] p-8 bg-white/10 border border-white/20 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
-
             <CardHeader className="relative text-center space-y-2 pb-6">
-              <CardTitle className="text-2xl font-bold text-white tracking-wide">
-                Verify Registration
-              </CardTitle>
-
-              <CardDescription className="text-gray-300 text-sm">
-                Enter your employee registration key to create an account.
-              </CardDescription>
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">Verify Registration</CardTitle>
+              <CardDescription className="text-gray-300 text-sm">Enter your employee registration key to create an account.</CardDescription>
             </CardHeader>
-
             <CardContent className="relative">
               <form onSubmit={handleVerifyKey} className="flex flex-col gap-5">
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="registrationCode"
-                    className="text-gray-200 font-semibold"
-                  >
-                    Registration Key
-                  </Label>
-
-                  <Input
-                    id="registrationCode"
-                    type="text"
-                    placeholder="TRUFIT-XXXXXX"
-                    value={regKey}
-                    onChange={(e) => setRegKey(e.target.value.toUpperCase())}
-                    required
-                    className="
-                      bg-white/10
-                      border-white/30
-                      text-white
-                      placeholder:text-gray-400
-                      focus:border-blue-400
-                      focus:ring-blue-400
-                    "
-                  />
+                  <Label htmlFor="registrationCode" className="text-gray-200 font-semibold">Registration Key</Label>
+                  <Input id="registrationCode" type="text" placeholder="TRUFIT-XXXXXX" value={regKey} onChange={(e) => setRegKey(e.target.value.toUpperCase())} required className="bg-white/10 border-white/30 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400" />
                 </div>
-
-                {/* Error */}
-                {regKeyError && (
-                  <p className="text-red-400 text-sm font-medium">
-                    {regKeyError}
-                  </p>
-                )}
-
+                {regKeyError && <p className="text-red-400 text-sm font-medium">{regKeyError}</p>}
                 <div className="flex flex-col gap-3 pt-2">
-                  <Button
-                    type="submit"
-                    disabled={loadingState}
-                    className="
-                      w-full
-                      bg-blue-900
-                      hover:bg-blue-950
-                      text-white
-                      font-semibold
-                      h-11
-                    "
-                  >
-                    {loadingState ? "Verifying..." : "Verify Key"}
-                  </Button>
+                  <Button type="submit" disabled={loadingState} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{loadingState ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Verify Key"}</Button>
+                  <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowRegisterModal(false)}>Cancel</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="
-                      w-full
-                      border-white/30
-                      text-white
-                      hover:text-white
-                      hover:bg-white/10
-                      bg-transparent
-                    "
-                    onClick={() => setShowRegisterModal(false)}
-                  >
-                    Cancel
-                  </Button>
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <Card className="relative w-[420px] p-8 bg-white/10 border border-white/20 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
+            <CardHeader className="relative text-center space-y-2 pb-6">
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">Forgot Password</CardTitle>
+              <CardDescription className="text-gray-300 text-sm">Enter your email address to receive a 6-digit reset code.</CardDescription>
+            </CardHeader>
+            <CardContent className="relative">
+              <form onSubmit={handleForgotPassword} className="flex flex-col gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="forgotEmail" className="text-gray-200 font-semibold">Email Address</Label>
+                  <Input id="forgotEmail" type="email" placeholder="email@example.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required className="bg-white/10 border-white/30 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400" />
+                </div>
+                <div className="flex flex-col gap-3 pt-2">
+                  <Button type="submit" disabled={forgotLoading} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{forgotLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Code"}</Button>
+                  <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowForgotModal(false)}>Cancel</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <Card className="relative w-[420px] p-8 bg-white/10 border border-white/20 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
+            <CardHeader className="relative text-center space-y-2 pb-6">
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">Reset Password</CardTitle>
+              <CardDescription className="text-gray-300 text-sm">Enter the code sent to {forgotEmail} and your new password.</CardDescription>
+            </CardHeader>
+            <CardContent className="relative">
+              <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="resetCode" className="text-gray-200 font-semibold">Verification Code</Label>
+                  <Input id="resetCode" placeholder="000000" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required className="bg-white/10 border-white/30 text-white text-center tracking-widest font-bold h-11" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword" className="text-gray-200 font-semibold">New Password</Label>
+                  <Input id="newPassword" type="password" placeholder="Min. 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="bg-white/10 border-white/30 text-white h-11" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className="text-gray-200 font-semibold">Confirm Password</Label>
+                  <Input id="confirmPassword" type="password" placeholder="Confirm your new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="bg-white/10 border-white/30 text-white h-11" />
+                </div>
+                <div className="flex flex-col gap-3 pt-4">
+                  <Button type="submit" disabled={resetLoading} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Reset Password"}</Button>
+                  <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowResetModal(false)}>Cancel</Button>
                 </div>
               </form>
             </CardContent>

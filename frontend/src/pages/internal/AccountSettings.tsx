@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { User, Lock, Sun, Mail, ShieldCheck, Loader2 } from "lucide-react";
+import { User, Lock, Sun, Mail, ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -31,6 +31,9 @@ const AccountSettings: React.FC = function () {
 
   const [loading, setLoading] = useState(false);
 
+  // Email status
+  const [isVerified, setIsVerified] = useState(false);
+
   // Sync state with user data
   useEffect(() => {
     if (user) {
@@ -40,14 +43,19 @@ const AccountSettings: React.FC = function () {
       setPhone(user.phone || "");
       setUsername(user.username || "");
       setJobPosition(user.position || "");
+      setIsVerified(!!user.is_verified);
     }
   }, [user]);
 
-  // Email verification (UI only for now)
-  const [emailVerified, setEmailVerified] = useState(true);
+  // Email verification dialogs
   const [changeEmailOpen, setChangeEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
   // Password
   const [pwDialogOpen, setPwDialogOpen] = useState(false);
@@ -122,9 +130,20 @@ const AccountSettings: React.FC = function () {
     }
   };
 
-  const handleSendVerification = () => {
-    setEmailVerified(true);
-    toast.info(`A verification email has been sent to ${email}.`);
+  const handleSendVerification = async () => {
+    setEmailLoading(true);
+    try {
+      const response = await api.post("/auth/email/resend");
+      if (response.data.status === "success") {
+        toast.success(`Verification code sent to ${email}`);
+        setVerifyDialogOpen(true);
+      } else {        toast.error(response.data.message || "Failed to send code");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error sending verification code");
+    } finally {
+      setEmailLoading(false);
+    }
   };
 
   const handleChangeEmail = () => {
@@ -132,15 +151,58 @@ const AccountSettings: React.FC = function () {
       toast.error("Please enter a new email address.");
       return;
     }
+    if (newEmail === email) {
+      toast.error("New email must be different from the current one.");
+      return;
+    }
     setEmailConfirmOpen(true);
   };
 
-  const handleConfirmEmailChange = () => {
-    // Note: Backend doesn't have email change endpoint yet
-    toast.warning("Email change is currently not available on the server.");
-    setNewEmail("");
+  const handleConfirmEmailChange = async () => {
     setEmailConfirmOpen(false);
-    setChangeEmailOpen(false);
+    setEmailLoading(true);
+    try {
+      const response = await api.put("/auth/email", { email: newEmail });
+      if (response.data.status === "success") {
+        updateUser(response.data.data.user);
+        toast.success("Email updated. Please check for verification code.");
+        setChangeEmailOpen(false);
+        setNewEmail("");
+        setVerifyDialogOpen(true);
+        if (response.data.code) {
+            console.log("DEV: Verification Code is", response.data.code);
+         }
+      } else {
+        toast.error(response.data.message || "Failed to update email");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error updating email");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) {
+      toast.error("Please enter a 6-digit code.");
+      return;
+    }
+    setVerifyLoading(true);
+    try {
+      const response = await api.post("/auth/email/verify", { code: verificationCode });
+      if (response.data.status === "success") {
+        updateUser(response.data.data.user);
+        toast.success("Email verified successfully!");
+        setVerifyDialogOpen(false);
+        setVerificationCode("");
+      } else {
+        toast.error(response.data.message || "Verification failed");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Error during verification");
+    } finally {
+      setVerifyLoading(false);
+    }
   };
 
   return (
@@ -181,19 +243,33 @@ const AccountSettings: React.FC = function () {
                   <Label htmlFor="email" className="text-xs">Email</Label>
                   <div className="flex items-center gap-2">
                     <Input id="email" type="email" value={email} disabled className="h-8 flex-1 bg-muted/50" />
-                    {emailVerified ? (
+                    {isVerified ? (
                       <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
                         <ShieldCheck className="h-3 w-3" /> Verified
                       </Badge>
                     ) : (
-                      <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 text-xs" onClick={handleSendVerification}>
-                        <Mail className="h-3 w-3" /> Verify
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 shrink-0 gap-1 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-50" 
+                        onClick={handleSendVerification}
+                        disabled={emailLoading}
+                      >
+                        {emailLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertCircle className="h-3 w-3" />} 
+                        Verify Now
                       </Button>
                     )}
                   </div>
-                  <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setChangeEmailOpen(true)}>
-                    Change email address
-                  </Button>
+                  <div className="flex gap-4">
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setChangeEmailOpen(true)}>
+                      Change email address
+                    </Button>
+                    {!isVerified && (
+                       <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setVerifyDialogOpen(true)}>
+                        Enter code
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -294,7 +370,7 @@ const AccountSettings: React.FC = function () {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-sm">Change Email Address</DialogTitle>
-            <DialogDescription className="text-xs">Enter your new email. A verification link will be sent.</DialogDescription>
+            <DialogDescription className="text-xs">Enter your new email. A verification code will be sent.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-1.5">
@@ -307,8 +383,11 @@ const AccountSettings: React.FC = function () {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setChangeEmailOpen(false)}>Cancel</Button>
-            <Button onClick={handleChangeEmail}>Update Email</Button>
+            <Button variant="ghost" onClick={() => setChangeEmailOpen(false)} disabled={emailLoading}>Cancel</Button>
+            <Button onClick={handleChangeEmail} disabled={emailLoading}>
+              {emailLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Email
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -319,15 +398,49 @@ const AccountSettings: React.FC = function () {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-sm">Confirm Email Change</AlertDialogTitle>
             <AlertDialogDescription className="text-xs">
-              Change your email from <span className="font-medium">{email}</span> to <span className="font-medium">{newEmail}</span>? A verification link will be sent to the new address.
+              Change your email from <span className="font-medium">{email}</span> to <span className="font-medium">{newEmail}</span>? You will need to verify the new address.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmEmailChange}>Confirm</AlertDialogAction>
+            <AlertDialogCancel disabled={emailLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmEmailChange} disabled={emailLoading}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Verify Email Dialog (Code Input) */}
+      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Verify Your Email</DialogTitle>
+            <DialogDescription className="text-xs">
+              Enter the 6-digit code sent to <span className="font-medium">{email}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="code" className="text-xs">Verification Code</Label>
+              <Input 
+                id="code" 
+                placeholder="000000" 
+                value={verificationCode} 
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                className="h-10 text-center text-lg tracking-widest font-bold" 
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Didn't receive the code? <button className="text-primary hover:underline" onClick={handleSendVerification} disabled={emailLoading}>Resend</button>
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setVerifyDialogOpen(false)} disabled={verifyLoading}>Cancel</Button>
+            <Button onClick={handleVerifyCode} disabled={verifyLoading}>
+              {verifyLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Verify Code
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

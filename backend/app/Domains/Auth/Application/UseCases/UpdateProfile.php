@@ -25,7 +25,7 @@ class UpdateProfile
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'username' => 'required|string|max:255|unique:UserCredentials,username,' . $user->id,
+            'username' => 'required|string|max:255|unique:Main.UserCredentials,username,' . $user->id,
         ]);
 
         try {

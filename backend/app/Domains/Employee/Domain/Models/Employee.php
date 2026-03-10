@@ -17,12 +17,24 @@ class Employee extends Model
             'id',
             'name',
             'email',
+            'email_verified_at',
+            'verification_code',
             'address',
             'phone',
             'position',
             'roleID',
             'status'
         ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'status' => 'boolean',
+    ];
+
+    public function hasVerifiedEmail(): bool
+    {
+        return ! is_null($this->email_verified_at);
+    }
 
     public function role(): BelongsTo
     {

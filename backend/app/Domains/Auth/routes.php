@@ -7,17 +7,17 @@ use App\Domains\Auth\Http\Controllers\AuthController;
 
 
 // for login and auth
-Route::post('/login', LoginController::class);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/login', LoginController::class)->middleware('throttle:auth');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [ProfileController::class, 'update']);
-    Route::post('/change-password', [ProfileController::class, 'changePassword']);
+    Route::post('/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:auth');
     Route::put('/email', [ProfileController::class, 'updateEmail']);
-    Route::post('/email/resend', [ProfileController::class, 'resendVerificationCode']);
+    Route::post('/email/resend', [ProfileController::class, 'resendVerificationCode'])->middleware('throttle:verification');
     Route::post('/email/verify', [ProfileController::class, 'verifyEmail']);
-    Route::post('/phone/resend', [ProfileController::class, 'resendPhoneVerificationCode']);
+    Route::post('/phone/resend', [ProfileController::class, 'resendPhoneVerificationCode'])->middleware('throttle:verification');
     Route::post('/phone/verify', [ProfileController::class, 'verifyPhone']);
 });
 

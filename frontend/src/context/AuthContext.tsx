@@ -15,6 +15,7 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   updateUser: (userData: any) => void;
+  finalizeLogin: (authPayload: any) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -79,15 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       const apiResponse = response.data.data;
-
-      const userData = {
-        ...apiResponse.user,
-        role: apiResponse.role,
-      };
-
-      setUser(userData);
-      localStorage.setItem("trufit_user", JSON.stringify(userData));
-      localStorage.setItem("trufit_token", apiResponse.token);
+      finalizeLogin(apiResponse);
 
       return { success: true };
     } catch (error: any) {
@@ -121,6 +114,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem("trufit_user", JSON.stringify(userData));
   };
 
+  const finalizeLogin = (authPayload: any) => {
+    const userData = {
+      ...authPayload.user,
+      role: authPayload.role,
+    };
+
+    setUser(userData);
+    localStorage.setItem("trufit_user", JSON.stringify(userData));
+    localStorage.setItem("trufit_token", authPayload.token);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -129,6 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login,
         logout,
         updateUser,
+        finalizeLogin,
         loading,
       }}
     >

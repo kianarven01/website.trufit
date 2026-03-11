@@ -18,17 +18,26 @@ class VerifyPhone
             ];
         }
 
-        if ($employee->phone_verification_code !== $code) {
+        $security = $employee->security;
+
+        if (!$security || $security->phone_verification_code !== $code) {
             return [
                 'status' => 'error',
                 'message' => 'Invalid verification code.'
             ];
         }
 
-        $employee->update([
-            'phone_verified_at' => Carbon::now(),
-            'phone_verification_code' => null,
-        ]);
+        if ($security->phone_verification_expires_at && Carbon::now()->gt($security->phone_verification_expires_at)) {
+            return [
+                'status' => 'error',
+                'message' => 'Verification code expired.'
+            ];
+        }
+
+        $security->phone_verified_at = Carbon::now();
+        $security->phone_verification_code = null;
+        $security->phone_verification_expires_at = null;
+        $security->save();
 
         return [
             'status' => 'success',

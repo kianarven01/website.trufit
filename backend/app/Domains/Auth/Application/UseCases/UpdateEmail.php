@@ -26,8 +26,12 @@ class UpdateEmail
 
         $employee->update([
             'email' => $newEmail,
+        ]);
+
+        $security = $employee->security()->firstOrCreate(['employee_id' => $employee->id]);
+        $security->update([
             'email_verified_at' => null,
-            'verification_code' => null,
+            'email_verification_code' => null,
         ]);
 
         // Automatically trigger a new verification code send

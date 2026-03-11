@@ -33,18 +33,20 @@ class ForgotPassword
             throw new UnverifiedAccountException('Your email is not verified. Please contact your administrator for assistance.');
         }
 
+        $security = $employee->security()->firstOrCreate(['employee_id' => $employee->id]);
+
         // Check if a valid code already exists (e.g., has > 5 mins left)
-        $existingCode = $employee->password_reset_code;
-        $isStillValid = $employee->password_reset_expires_at && Carbon::now()->addMinutes(5)->lt($employee->password_reset_expires_at);
+        $existingCode = $security->password_reset_code;
+        $isStillValid = $security->password_reset_expires_at && Carbon::now()->addMinutes(5)->lt($security->password_reset_expires_at);
 
         if ($existingCode && $isStillValid) {
             $code = $existingCode;
         } else {
             // Generate new code only if none exists or it's near expiry
             $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $employee->password_reset_code = $code;
-            $employee->password_reset_expires_at = Carbon::now()->addMinutes(15);
-            $this->employeeRepository->save($employee);
+            $security->password_reset_code = $code;
+            $security->password_reset_expires_at = Carbon::now()->addMinutes(15);
+            $security->save();
         }
 
         try {

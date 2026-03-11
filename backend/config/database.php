@@ -97,6 +97,7 @@ return [
             'search_path' => 'Main,public',
             'sslmode' => 'prefer',
             'prepare' => false,
+            'timezone' => 'Asia/Manila',
         ],
 
         'sqlsrv' => [

@@ -29,9 +29,11 @@ class SendVerificationCode
             throw new AccountNotFoundException('Employee record not found.');
         }
 
+        $security = $employee->security()->firstOrCreate(['employee_id' => $employee->id]);
+
         // Check if a valid code already exists (e.g., has > 3 mins left)
-        $existingCode = $employee->verification_code;
-        $isStillValid = $employee->email_verification_expires_at && Carbon::now()->addMinutes(3)->lt($employee->email_verification_expires_at);
+        $existingCode = $security->email_verification_code;
+        $isStillValid = $security->email_verification_expires_at && Carbon::now()->addMinutes(3)->lt($security->email_verification_expires_at);
 
         if ($existingCode && $isStillValid) {
             $code = $existingCode;
@@ -40,9 +42,9 @@ class SendVerificationCode
             $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $expiresAt = Carbon::now()->addMinutes(10);
 
-            $employee->verification_code = $code;
-            $employee->email_verification_expires_at = $expiresAt;
-            $this->employeeRepository->save($employee);
+            $security->email_verification_code = $code;
+            $security->email_verification_expires_at = $expiresAt;
+            $security->save();
         }
 
         try {

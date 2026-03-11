@@ -7,7 +7,8 @@ use App\Domains\Auth\Http\Controllers\AuthController;
 
 
 // for login and auth
-Route::post('/login', LoginController::class)->middleware('throttle:auth');
+Route::post('/login', [LoginController::class, 'login'])->middleware('throttle:auth');
+Route::post('/login/verify-challenge', [LoginController::class, 'verifyChallenge'])->middleware('throttle:verification');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth');
 

@@ -3,6 +3,7 @@
 namespace App\Domains\Auth\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateEmailRequest extends FormRequest
 {
@@ -15,7 +16,12 @@ class UpdateEmailRequest extends FormRequest
     {
         $employeeId = $this->user()->employeeID;
         return [
-            'email' => 'required|email|max:255|unique:Employees,email,' . $employeeId,
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('Employees', 'email')->ignore($employeeId)
+            ],
         ];
     }
 }

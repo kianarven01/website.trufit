@@ -25,12 +25,14 @@ class SendPhoneVerificationCode
             ];
         }
 
+        $security = $employee->security()->firstOrCreate(['employee_id' => $employee->id]);
+
         // Generate a 6-digit code
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         
-        $employee->update([
-            'phone_verification_code' => $code
-        ]);
+        $security->phone_verification_code = $code;
+        $security->phone_verification_expires_at = Carbon::now()->addMinutes(10);
+        $security->save();
 
         try {
             $this->smsService->sendVerificationCode($employee->phone, $code);

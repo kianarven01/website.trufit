@@ -3,6 +3,7 @@
 namespace App\Domains\Auth\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateProfileRequest extends FormRequest
 {
@@ -24,7 +25,12 @@ class UpdateProfileRequest extends FormRequest
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'username' => 'required|string|max:255|unique:Main.UserCredentials,username,' . $user->id,
+            'username' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('UserCredentials', 'username')->ignore($user->id)
+            ],
         ];
     }
 }

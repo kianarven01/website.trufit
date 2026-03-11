@@ -18,11 +18,11 @@ import {
 
 import temporary_bg from "@/assets/temporary_bg.jpeg";
 import trufit_logo from "@/assets/trufit_logo.png";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 const LoginPage: React.FC = () => {
-  const { login, user, loading } = useAuth();
+  const { login, user, loading, finalizeLogin } = useAuth();
   const navigate = useNavigate();
   const [loadingState, setLoadingState] = useState(false);
 
@@ -50,6 +50,14 @@ const LoginPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Identity Challenge State
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [challengeCode, setChallengeCode] = useState("");
+  const [challengeLoading, setChallengeLoading] = useState(false);
+  const [challengeEmail, setChallengeEmail] = useState("");
+  const [challengePassed, setChallengePassed] = useState(false);
+  const [authPayload, setAuthPayload] = useState<any>(null);
+
   useEffect(() => {
     if (!loading && user) {
       navigate("/webapp/dashboard", { replace: true });
@@ -63,16 +71,62 @@ const LoginPage: React.FC = () => {
     setLoginError("");
 
     try {
-      const result = await login(username, password, remember);
-      if (result.success) {
-        navigate("/webapp/dashboard");
-      } else {
-        setLoginError("Unauthorized: Check your Username or Password.");
+      // We manually call API here because our login flow now has multiple outcomes
+      const response = await api.post("auth/login", {
+        username,
+        password,
+        remember
+      });
+
+      if (response.data.status === "success") {
+        // Use the auth context logic to save session
+        const result = await login(username, password, remember);
+        if (result.success) navigate("/webapp/dashboard");
+      } else if (response.data.status === "requires_verification") {
+        setChallengeEmail(response.data.email);
+        setShowChallengeModal(true);
+        toast.warning("Identity verification required due to multiple failed attempts.");
+      } else if (response.data.status === "account_locked") {
+        toast.error(response.data.message, { duration: 10000 });
+      } else if (response.data.status === "contact_admin") {
+        toast.error(response.data.message, { duration: 10000 });
       }
-    } catch {
-      setLoginError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setLoginError("Invalid Username or Password.");
+      } else {
+        setLoginError("Something went wrong. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyChallenge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChallengeLoading(true);
+    try {
+      const response = await api.post("auth/login/verify-challenge", {
+        username,
+        code: challengeCode,
+        remember
+      });
+
+      if (response.data.status === "success") {
+        setChallengePassed(true);
+        setAuthPayload(response.data.auth_payload);
+        if (response.data.can_reset) {
+          setResetCode(response.data.recovery_code);
+          setForgotEmail(challengeEmail || "");
+        }
+        toast.success("Identity Verified!");
+      } else {
+        toast.error(response.data.message || "Verification failed.");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Invalid verification code.");
+    } finally {
+      setChallengeLoading(false);
     }
   };
 
@@ -327,8 +381,84 @@ const LoginPage: React.FC = () => {
         </section>
       </div>
 
-      {/* Registration Verification Modal */}
+      {/* Identity Challenge Modal (Google-like verification) */}
+      {showChallengeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <Card className="relative w-[420px] p-8 bg-white/10 border border-white/20 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">
+            <div className="absolute -top-20 -right-20 w-60 h-60 bg-amber-600/20 blur-3xl rounded-full"></div>
+            <CardHeader className="relative text-center space-y-2 pb-6">
+              <div className="flex justify-center mb-2">
+                <ShieldAlert className="h-12 w-12 text-amber-400 animate-pulse" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">
+                {challengePassed ? "Identity Verified" : "Identity Verification"}
+              </CardTitle>
+              <CardDescription className="text-gray-300 text-sm">
+                {challengePassed 
+                  ? "Your account is unblocked. Since there were multiple failures, we recommend updating your password."
+                  : `We've noticed unusual activity on your account. Please enter the code sent to ${challengeEmail} to continue.`
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="relative">
+              {!challengePassed ? (
+                <form onSubmit={handleVerifyChallenge} className="flex flex-col gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="challengeCode" className="text-gray-200 font-semibold">Verification Code</Label>
+                    <Input 
+                      id="challengeCode" 
+                      placeholder="000000" 
+                      value={challengeCode} 
+                      onChange={(e) => setChallengeCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
+                      required 
+                      className="bg-white/10 border-white/30 text-white text-center tracking-widest font-bold h-12 text-xl" 
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 pt-2">
+                    <Button type="submit" disabled={challengeLoading} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold h-11 transition-all">
+                      {challengeLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Verify Identity"}
+                    </Button>
+                    <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => {
+                      setShowChallengeModal(false);
+                      setChallengePassed(false);
+                      setAuthPayload(null);
+                    }}>Cancel</Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-11"
+                    onClick={() => {
+                      if (authPayload) {
+                        finalizeLogin(authPayload);
+                        navigate("/webapp/dashboard");
+                      }
+                      setShowChallengeModal(false);
+                      setChallengePassed(false);
+                    }}
+                  >
+                    Enter Dashboard
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent"
+                    onClick={() => {
+                      setShowChallengeModal(false);
+                      setChallengePassed(false);
+                      setShowResetModal(true);
+                    }}
+                  >
+                    Reset Password Now
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
+      {/* Registration Verification Modal */}
       {showRegisterModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <Card className="relative w-[420px] p-8 bg-white/10 border border-white/20 backdrop-blur-xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">

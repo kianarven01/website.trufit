@@ -5,6 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Domains\Role\Domain\Models\Role;
 
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 class Employee extends Model
 {
     protected $table = 'Main.Employees';
@@ -17,32 +19,30 @@ class Employee extends Model
             'id',
             'name',
             'email',
-            'email_verified_at',
-            'verification_code',
             'address',
             'phone',
-            'phone_verified_at',
-            'phone_verification_code',
-            'password_reset_code',
             'position',
             'roleID',
             'status'
         ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
-        'phone_verified_at' => 'datetime',
         'status' => 'boolean',
     ];
 
+    public function security(): HasOne
+    {
+        return $this->hasOne(EmployeeSecurity::class, 'employee_id', 'id');
+    }
+
     public function hasVerifiedEmail(): bool
     {
-        return ! is_null($this->email_verified_at);
+        return ! is_null($this->security?->email_verified_at);
     }
 
     public function hasVerifiedPhone(): bool
     {
-        return ! is_null($this->phone_verified_at);
+        return ! is_null($this->security?->phone_verified_at);
     }
 
     public function role(): BelongsTo

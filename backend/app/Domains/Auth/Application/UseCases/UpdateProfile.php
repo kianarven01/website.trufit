@@ -3,6 +3,8 @@ namespace App\Domains\Auth\Application\UseCases;
 
 use App\Domains\Auth\Application\DTOs\UpdateProfileDTO;
 use App\Domains\Auth\Domain\Models\User;
+use App\Domains\Auth\Domain\Repositories\EmployeeRepositoryInterface;
+use App\Domains\Auth\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Auth\Http\Resources\UserResource;
 use Illuminate\Support\Facades\DB;
 

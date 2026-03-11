@@ -31,11 +31,13 @@ class ResetPassword
             throw new AccountNotFoundException('Employee record not found.');
         }
 
-        if (!$employee->password_reset_code || $employee->password_reset_code !== $code) {
+        $security = $employee->security;
+
+        if (!$security || !$security->password_reset_code || $security->password_reset_code !== $code) {
             throw new InvalidVerificationCodeException('Invalid reset code.');
         }
 
-        if ($employee->password_reset_expires_at && Carbon::now()->gt($employee->password_reset_expires_at)) {
+        if ($security->password_reset_expires_at && Carbon::now()->gt($security->password_reset_expires_at)) {
             throw new VerificationCodeExpiredException('The reset code has expired.');
         }
 
@@ -48,9 +50,9 @@ class ResetPassword
         $user->password_hash = Hash::make($newPassword);
         $this->userRepository->save($user);
 
-        $employee->password_reset_code = null;
-        $employee->password_reset_expires_at = null;
-        $this->employeeRepository->save($employee);
+        $security->password_reset_code = null;
+        $security->password_reset_expires_at = null;
+        $security->save();
 
         return [
             'status' => 'success',

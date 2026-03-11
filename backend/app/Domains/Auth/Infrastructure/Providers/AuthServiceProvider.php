@@ -35,11 +35,11 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('auth', function (Request $request) {
-            return Limit::perMinute(5)->by($request->ip());
+            return Limit::perMinute(20)->by($request->ip());
         });
 
         RateLimiter::for('verification', function (Request $request) {
-            return Limit::perMinute(3)->by($request->ip());
+            return Limit::perMinute(10)->by($request->ip());
         });
     }
 }

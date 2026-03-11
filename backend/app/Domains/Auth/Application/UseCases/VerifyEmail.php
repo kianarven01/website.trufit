@@ -26,19 +26,20 @@ class VerifyEmail
             throw new AccountNotFoundException('Employee record not found.');
         }
 
-        if ($employee->verification_code !== $code) {
+        $security = $employee->security;
+
+        if (!$security || $security->email_verification_code !== $code) {
             throw new InvalidVerificationCodeException();
         }
 
-        if ($employee->email_verification_expires_at && Carbon::now()->gt($employee->email_verification_expires_at)) {
+        if ($security->email_verification_expires_at && Carbon::now()->gt($security->email_verification_expires_at)) {
             throw new VerificationCodeExpiredException();
         }
 
-        $employee->email_verified_at = Carbon::now();
-        $employee->verification_code = null;
-        $employee->email_verification_expires_at = null;
-        
-        $this->employeeRepository->save($employee);
+        $security->email_verified_at = Carbon::now();
+        $security->email_verification_code = null;
+        $security->email_verification_expires_at = null;
+        $security->save();
 
         return [
             'status' => 'success',

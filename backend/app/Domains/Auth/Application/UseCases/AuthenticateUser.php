@@ -8,13 +8,15 @@ use App\Domains\Auth\Http\Resources\UserResource;
 use App\Domains\Auth\Infrastructure\Repositories\UserRepository;
 use App\Domains\Auth\Exceptions\AccountNotLinkedException;
 use App\Domains\Shared\Exceptions\InvalidCredentialsException;
+use App\Domains\Shared\Domain\Services\AuditServiceInterface;
 use Exception;
 
 class AuthenticateUser
 {
     public function __construct(
         protected UserRepository $userRepo,
-        protected SendVerificationCode $sendVerificationCode
+        protected SendVerificationCode $sendVerificationCode,
+        protected AuditServiceInterface $auditService
     ) {}
 
     public function execute(LoginDTO $dto): array
@@ -42,6 +44,8 @@ class AuthenticateUser
                 // Trigger a verification code to the owner's email
                 $this->sendVerificationCode->execute($user);
                 
+                $this->auditService->logSecurity('LOGIN_CHALLENGED', $employee->id);
+
                 return [
                     'status' => 'requires_verification',
                     'message' => 'Too many failed attempts. A verification code has been sent to your registered email to prove your identity.',
@@ -63,11 +67,16 @@ class AuthenticateUser
                     $security->failed_login_attempts = 0;
                     $security->lockout_until = null;
                     $security->save();
+                    
+                    $this->auditService->logSecurity('LOCKOUT_AUTO_EXPIRED', $employee->id);
                 }
             } else {
                 // Set the lockout timer if not already set
                 $security->lockout_until = now()->addMinutes(15);
                 $security->save();
+
+                $this->auditService->logSecurity('ACCOUNT_LOCKED', $employee->id, ['reason' => 'unverified_fails']);
+
                 return [
                     'status' => 'account_locked',
                     'message' => 'Too many failed login attempts. Since your email is not verified, you must wait 15 minutes before trying again.'
@@ -96,6 +105,9 @@ class AuthenticateUser
             // Set lockout on the 5th failure
             if ($security->failed_login_attempts >= 5) {
                 $security->lockout_until = now()->addMinutes(15);
+                $this->auditService->logSecurity('ACCOUNT_LOCKED', $employee->id);
+            } else {
+                $this->auditService->logSecurity('LOGIN_FAILED_ATTEMPT', $employee->id, ['count' => $security->failed_login_attempts]);
             }
             
             $security->save();
@@ -103,9 +115,16 @@ class AuthenticateUser
         }
 
         // 3. Login Success: Reset everything immediately
+        if ($security->failed_login_attempts > 0 || $security->lockout_until) {
+            $this->auditService->logSecurity('ACCOUNT_UNLOCKED_BY_LOGIN', $employee->id);
+        }
+
         $security->failed_login_attempts = 0;
         $security->lockout_until = null;
         $security->save();
+
+        // Audit standard login
+        $this->auditService->log('AUTH', 'LOGIN_SUCCESS', $employee->id);
 
         // NOW it is safe to delete tokens
         $user->tokens()->delete(); 

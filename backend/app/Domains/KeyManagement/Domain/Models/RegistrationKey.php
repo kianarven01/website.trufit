@@ -42,5 +42,7 @@ class RegistrationKey extends Model
     protected $casts = [
         'is_used' => 'boolean',
         'expires_at' => 'datetime',
+        'address' => 'encrypted',
+        'phone' => 'encrypted',
     ];
 }

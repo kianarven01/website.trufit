@@ -35,7 +35,7 @@ class KeyController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to generate registration key. Please check database constraints.'
+                'message' => 'Failed to generate registration key: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -108,10 +108,21 @@ class KeyController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy($id, AuditServiceInterface $auditService)
     {
         try {
             $key = RegistrationKey::findOrFail($id);
+            
+            // Audit before deleting
+            $auditService->log(
+                'ONBOARDING', 
+                'REGISTRATION_CANCELLED', 
+                null, 
+                RegistrationKey::class, 
+                (string)$id,
+                ['employee_name' => $key->employee_name, 'email' => $key->email]
+            );
+
             $key->delete();
             return response()->json(['status' => 'success']);
         } catch (\Exception $e) {

@@ -6,20 +6,17 @@ use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Auth\Domain\Repositories\EmployeeRepositoryInterface;
 use App\Domains\Auth\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Auth\Http\Resources\UserResource;
+use App\Domains\Shared\Domain\Services\AuditServiceInterface;
+use App\Domains\Employee\Domain\Models\Employee;
 use Illuminate\Support\Facades\DB;
 
 class UpdateProfile
 {
-    protected $employeeRepository;
-    protected $userRepository;
-
     public function __construct(
-        EmployeeRepositoryInterface $employeeRepository,
-        UserRepositoryInterface $userRepository
-    ) {
-        $this->employeeRepository = $employeeRepository;
-        $this->userRepository = $userRepository;
-    }
+        protected EmployeeRepositoryInterface $employeeRepository,
+        protected UserRepositoryInterface $userRepository,
+        protected AuditServiceInterface $auditService
+    ) {}
 
     public function execute(User $user, UpdateProfileDTO $dto): array
     {
@@ -32,16 +29,38 @@ class UpdateProfile
             ];
         }
 
+        // Capture old values for audit
+        $oldValues = [
+            'name' => $employee->name,
+            'address' => $employee->address,
+            'phone' => $employee->phone,
+            'username' => $user->username,
+        ];
+
         try {
             DB::beginTransaction();
 
             $employee->name = $dto->name;
-            $employee->address = $dto->address ?? $employee->address;
-            $employee->phone = $dto->phone ?? $employee->phone;
+            $employee->address = $dto->address ?: null;
+            $employee->phone = $dto->phone ?: null;
             $this->employeeRepository->save($employee);
 
             $user->username = $dto->username;
             $this->userRepository->save($user);
+
+            // Log the change
+            $this->auditService->logDataChange(
+                Employee::class,
+                (string)$employee->id,
+                $oldValues,
+                [
+                    'name' => $dto->name,
+                    'address' => $employee->address,
+                    'phone' => $employee->phone,
+                    'username' => $dto->username,
+                ],
+                $employee->id
+            );
 
             DB::commit();
 

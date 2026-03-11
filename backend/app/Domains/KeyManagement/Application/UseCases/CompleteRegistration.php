@@ -7,13 +7,15 @@ use App\Domains\KeyManagement\Infrastructure\Repositories\RegistrationKeyReposit
 use App\Domains\Employee\Domain\Models\Employee;
 use App\Domains\Employee\Domain\Models\EmployeeSecurity;
 use App\Domains\Auth\Domain\Models\User;
+use App\Domains\Shared\Domain\Services\AuditServiceInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class CompleteRegistration
 {
     public function __construct(
-        protected RegistrationKeyRepository $keyRepository
+        protected RegistrationKeyRepository $keyRepository,
+        protected AuditServiceInterface $auditService
     ) {}
 
     public function execute(CompleteRegistrationDTO $dto): void
@@ -63,31 +65,15 @@ class CompleteRegistration
                 'is_used' => true,
                 'employee_id' => $employee->id // Link the key to the newly created employee for audit
             ]);
+
+            // 6. Audit the registration
+            $this->auditService->log(
+                'ONBOARDING', 
+                'REGISTRATION_COMPLETED', 
+                $employee->id, 
+                Employee::class, 
+                (string)$employee->id
+            );
         });
     }
 }
-    /*public function execute(CompleteRegistrationDTO $dto): void
-    {
-        DB::transaction(function () use ($dto) {
-            // 1. Find and consume the key
-            $keyRecord = RegistrationKey::where('key_code', $dto->key_code)
-                ->where('is_used', false)
-                ->firstOrFail();
-
-            $keyRecord->update(['is_used' => true]);
-
-            // 2. Activate the Employee
-            $employee = Employee::findOrFail($keyRecord->employee_id);
-            $employee->update([
-                'status' => true,
-                'join_date' => now()
-            ]);
-
-            // 3. Create Login Credentials
-            User::create([
-                'employeeID' => $employee->id,
-                'username'    => $dto->username,
-                'password_hash'    => Hash::make($dto->password),
-            ]);
-        });
-    }*/

@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Employee & Key Management Domain
     require app_path('Domains/Employee/routes.php');
     require app_path('Domains/KeyManagement/routes.php');
+    require app_path('Domains/Audit/routes.php');
     // Future Domains will go here:
     // require app_path('Domains/Inventory/routes.php');
     // require app_path('Domains/Sales/routes.php');

@@ -18,7 +18,7 @@ class RegistrationKeyMail extends Mailable implements ShouldQueue
 
     public function build()
     {
-        return $this->subject('Welcome to TruFit - Your Registration Key')
+        return $this->subject('Welcome to Trufit Auto Center - Your Registration Key')
                     ->html("
                         <h1>Welcome to the Team, {$this->name}!</h1>
                         <p>An administrator has created an onboarding profile for you.</p>

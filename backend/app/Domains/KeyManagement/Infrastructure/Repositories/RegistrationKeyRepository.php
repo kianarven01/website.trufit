@@ -9,7 +9,8 @@ class RegistrationKeyRepository
 {
     public function getAll(string $status = 'all')
     {
-        $query = RegistrationKey::with(['employee', 'role']);
+        // Use Eager Loading to prevent N+1 queries
+        $query = RegistrationKey::with(['employee.security', 'role']);
 
         if ($status === 'pending') {
             $query->where('is_used', false);
@@ -20,7 +21,7 @@ class RegistrationKeyRepository
         return $query->get();
     }
 
-    public function create(array $data)
+    public function create(array $data): RegistrationKey
     {
         return RegistrationKey::create([
             'employee_name' => $data['employee_name'],
@@ -37,7 +38,8 @@ class RegistrationKeyRepository
 
    public function getAllPending()
     {
-        return RegistrationKey::with(['role'])
+        // Eager load role and security via employee relationship
+        return RegistrationKey::with(['role', 'employee.security'])
             ->where('is_used', false)
             ->whereNull('employee_id') // Pending keys now have no employee record yet
             ->orderBy('created_at', 'desc')

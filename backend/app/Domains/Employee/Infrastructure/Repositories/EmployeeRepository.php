@@ -9,17 +9,19 @@ class EmployeeRepository
 {
     public function getAllActive()
     {
-        // Only return employees where status is TRUE (Active)
-        return Employee::where('status', true)
+        // Use Eager Loading to prevent N+1 on security relationship
+        return Employee::with(['security', 'role'])
+            ->where('status', true)
             ->orderBy('name', 'asc')
             ->get();
     }
 
     public function getActiveEmployees()
-        {
-            // Only fetch employees who have completed onboarding
-            return Employee::where('status', true)->get();
-        }
+    {
+        return Employee::with(['security', 'role'])
+            ->where('status', true)
+            ->get();
+    }
 
     public function activateEmployee(int $id) {
     return Employee::where('id', $id)->update([

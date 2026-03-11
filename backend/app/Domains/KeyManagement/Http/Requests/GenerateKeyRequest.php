@@ -23,11 +23,16 @@ class GenerateKeyRequest extends FormRequest
         return [
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
-            'email'      => 'required|email|unique:pgsql.Main.Employees,email', //
+            'email'      => [
+                'required',
+                'email',
+                'unique:Employees,email',
+                'unique:RegistrationKeys,email,NULL,id,is_used,0' // Email must be unique among UNUSED keys
+            ],
             'phone'      => 'nullable|string',
             'address'    => 'nullable|string',
             'position'   => 'required|string',
-            'role_id'    => 'required|exists:pgsql.Main.Roles,id', //
+            'role_id'    => 'required|exists:Roles,id',
         ];
     }
 
@@ -37,7 +42,7 @@ class GenerateKeyRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.unique' => 'This email is already registered to an employee.',
+            'email.unique' => 'This email is already registered or has a pending registration key.',
             'role_id.exists' => 'The selected system role is invalid.',
         ];
     }

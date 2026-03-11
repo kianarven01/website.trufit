@@ -28,6 +28,8 @@ class Employee extends Model
 
     protected $casts = [
         'status' => 'boolean',
+        'address' => 'encrypted',
+        'phone' => 'encrypted',
     ];
 
     public function security(): HasOne

@@ -1,26 +1,25 @@
 import React, { useEffect, useState } from "react";
 import api from "@/api/axios";
 import { toast } from "sonner";
+import { Loader2, Send, Trash2 } from "lucide-react";
 
 interface OnboardingEmployee {
   id: number;
-  name: string;
+  employee_name: string;
   email: string;
-  position: string;
-  role_name: string;
-  registration_key: string;
-  account_status: "pending" | "expired";
+  key_code: string;
+  is_used: boolean;
+  expires_at: string;
 }
 
 const OnboardingTable: React.FC = () => {
   const [employees, setEmployees] = useState<OnboardingEmployee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [workingId, setWorkingId] = useState<number | null>(null);
 
   const fetchEmployees = async (status: string = "all") => {
     setLoading(true);
     try {
-      // 2. Pass the status to the backend KeyController
       const res = await api.get(`/admin/registration-keys?status=${status}`);
       if (res.data && res.data.status === "success") {
         setEmployees(res.data.data);
@@ -32,31 +31,47 @@ const OnboardingTable: React.FC = () => {
     }
   };
 
-  const regenerateKey = async (employeeId: number) => {
-    setRegenerating(employeeId);
+  const handleResendKey = async (id: number) => {
+    setWorkingId(id);
     try {
-      const res = await api.post(
-        `/admin/onboarding-employees/${employeeId}/regenerate`,
-      );
-      const updatedKey = res.data.key;
-
-      setEmployees((prev) =>
-        prev.map((emp) =>
-          emp.id === employeeId
-            ? {
-                ...emp,
-                registration_key: updatedKey,
-                account_status: "pending",
-              }
-            : emp,
-        ),
-      );
-      toast.success("Registration key regenerated");
+      const res = await api.post(`/admin/registration-keys/${id}/regenerate`);
+      if (res.data.status === "success") {
+        const updatedKey = res.data.key;
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            emp.id === id
+              ? {
+                  ...emp,
+                  key_code: updatedKey,
+                }
+              : emp,
+          ),
+        );
+        toast.success("New registration key sent to employee email.");
+      }
     } catch (err) {
-      console.error("Error regenerating key:", err);
-      toast.error("Failed to regenerate key");
+      toast.error("Failed to resend key");
     } finally {
-      setRegenerating(null);
+      setWorkingId(null);
+    }
+  };
+
+  const handleCancelRegistration = async (id: number) => {
+    if (!window.confirm("Are you sure you want to cancel this onboarding? This will delete the registration key.")) {
+      return;
+    }
+    
+    setWorkingId(id);
+    try {
+      const res = await api.delete(`/admin/registration-keys/${id}`);
+      if (res.data.status === "success") {
+        setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+        toast.success("Onboarding registration cancelled.");
+      }
+    } catch (err) {
+      toast.error("Failed to cancel registration");
+    } finally {
+      setWorkingId(null);
     }
   };
 
@@ -67,6 +82,7 @@ const OnboardingTable: React.FC = () => {
   if (loading)
     return (
       <div className="p-10 text-center text-slate-400">
+        <Loader2 className="animate-spin h-8 w-8 mx-auto mb-2" />
         Loading onboarding employees...
       </div>
     );
@@ -108,10 +124,10 @@ const OnboardingTable: React.FC = () => {
               </td>
             </tr>
           ) : (
-            employees.map((emp: any) => {
+            employees.map((emp) => {
               const isExpired = new Date(emp.expires_at) < new Date();
               let status = "pending";
-              if (emp.is_used === true || emp.is_used === 1) {
+              if (emp.is_used) {
                 status = "registered";
               } else if (isExpired) {
                 status = "expired";
@@ -157,13 +173,26 @@ const OnboardingTable: React.FC = () => {
 
                   <td className="p-4 text-right">
                     {!emp.is_used ? (
-                      <button
-                        onClick={() => regenerateKey(emp.id)}
-                        disabled={regenerating === emp.id}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        {regenerating === emp.id ? "Working..." : "Regenerate"}
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleResendKey(emp.id)}
+                          disabled={workingId === emp.id}
+                          title="Resend Key Email"
+                          className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-600 hover:text-blue-800 transition-all"
+                        >
+                          {workingId === emp.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                          Resend
+                        </button>
+                        <button
+                          onClick={() => handleCancelRegistration(emp.id)}
+                          disabled={workingId === emp.id}
+                          title="Cancel Registration"
+                          className="flex items-center gap-1 text-[10px] font-black uppercase text-red-500 hover:text-red-700 transition-all"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Cancel
+                        </button>
+                      </div>
                     ) : (
                       <span className="text-[10px] font-bold text-slate-300 italic">
                         Completed

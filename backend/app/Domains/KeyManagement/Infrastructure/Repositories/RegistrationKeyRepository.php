@@ -23,25 +23,26 @@ class RegistrationKeyRepository
     public function create(array $data)
     {
         return RegistrationKey::create([
-            'employee_id' => $data['employee_id'],
-            'key_code'    => $data['key_code'],
-            'role_id'     => $data['role_id'], 
-            'expires_at'  => $data['expires_at'],
-            'is_used'     => false,
+            'employee_name' => $data['employee_name'],
+            'email'         => $data['email'],
+            'address'       => $data['address'],
+            'phone'         => $data['phone'],
+            'position'      => $data['position'],
+            'key_code'      => $data['key_code'],
+            'role_id'       => $data['role_id'], 
+            'expires_at'    => $data['expires_at'],
+            'is_used'       => false,
         ]);
     }
 
    public function getAllPending()
     {
-        return RegistrationKey::with(['employee', 'role'])
-            ->whereHas('employee', function ($query) {
-                $query->where('status', false); // Only show those not yet active
-            })
-            ->where('is_used', false) // Only show unused keys
+        return RegistrationKey::with(['role'])
+            ->where('is_used', false)
+            ->whereNull('employee_id') // Pending keys now have no employee record yet
             ->orderBy('created_at', 'desc')
             ->get();
     }
-
     public function findByCode(string $code) {
         return RegistrationKey::where('key_code', $code)->first();
     }

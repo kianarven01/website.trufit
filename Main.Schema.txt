@@ -83,6 +83,21 @@ CREATE TABLE Main.Customers (
   email character varying,
   business character varying
 );
+CREATE TABLE Main.EmployeeSecurity (
+  employee_id integer NOT NULL,
+  email_verified_at timestamp without time zone,
+  email_verification_code character varying,
+  email_verification_expires_at timestamp without time zone,
+  phone_verified_at timestamp without time zone,
+  phone_verification_code character varying,
+  phone_verification_expires_at timestamp without time zone,
+  password_reset_code character varying,
+  password_reset_expires_at timestamp without time zone,
+  failed_login_attempts integer NOT NULL DEFAULT 0,
+  lockout_until timestamp without time zone,
+  CONSTRAINT EmployeeSecurity_pkey PRIMARY KEY (employee_id),
+  CONSTRAINT main_employeesecurity_employee_id_foreign FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)
+);
 CREATE TABLE Main.Employees (
   id integer NOT NULL,
   name character varying NOT NULL,
@@ -207,7 +222,6 @@ CREATE TABLE Main.PartRequests (
 CREATE TABLE Main.Parts (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL UNIQUE,
-  part_code text UNIQUE,
   category_id uuid,
   description text,
   is_active boolean NOT NULL DEFAULT true,
@@ -342,6 +356,8 @@ CREATE TABLE Main.RegistrationKeys (
   updated_at timestamp without time zone,
   expires_at timestamp without time zone,
   employee_id integer,
+  address character varying,
+  phone character varying,
   CONSTRAINT RegistrationKeys_pkey PRIMARY KEY (id),
   CONSTRAINT main_registrationkeys_role_id_foreign FOREIGN KEY (role_id) REFERENCES Main.Roles(id),
   CONSTRAINT RegistrationKeys_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)

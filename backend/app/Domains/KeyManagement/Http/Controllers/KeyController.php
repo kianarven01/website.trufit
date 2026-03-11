@@ -11,6 +11,7 @@ use App\Domains\KeyManagement\Http\Resources\RegistrationKeyResource;
 use App\Domains\KeyManagement\Application\UseCases\ListRegistrationKeys;
 use App\Domains\KeyManagement\Application\DTOs\CompleteRegistrationDTO;
 use App\Domains\KeyManagement\Application\UseCases\CompleteRegistration;
+use App\Domains\KeyManagement\Domain\Models\RegistrationKey;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Http\Request;
@@ -87,6 +88,36 @@ class KeyController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()//'Registration failed. Please try again.'
+            ], 500);
+        }
+    }
+
+    public function regenerate($id, KeyService $service)
+    {
+        try {
+            $newCode = $service->regenerateKey($id);
+            return response()->json([
+                'status' => 'success',
+                'key' => $newCode
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to regenerate key.'
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $key = RegistrationKey::findOrFail($id);
+            $key->delete();
+            return response()->json(['status' => 'success']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete registration.'
             ], 500);
         }
     }

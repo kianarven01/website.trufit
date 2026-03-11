@@ -9,14 +9,14 @@ class RegistrationKeyResource extends JsonResource
     {
         return [
             'id'            => $this->id,
-            'employee_name' => $this->employee->name ?? 'Unknown',
-            'email'         => $this->employee->email ?? 'Unknown',
+            'employee_name' => $this->employee_name ?? $this->employee->name ?? 'Unknown',
+            'email'         => $this->email ?? $this->employee->email ?? 'Unknown',
             'key_code'      => $this->key_code,
-            'is_used'       => (bool) $this->is_used, // Crucial for your status logic
+            'is_used'       => (bool) $this->is_used,
             'status'        => $this->is_used ? 'used' : 'pending',
-            'expires_at'    => $this->expires_at->format('n/j/Y'), // Matches Onboarding UI format
+            'expires_at'    => $this->expires_at->format('n/j/Y'),
             'role_name'     => $this->role->name ?? 'N/A',
-            'position'      => $this->employee->position ?? 'N/A', // Needed for LoginPage verification
+            'position'      => $this->position ?? $this->employee->position ?? 'N/A',
         ];
     }
 }

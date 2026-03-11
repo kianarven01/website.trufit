@@ -29,6 +29,8 @@ class RegistrationKey extends Model
         'employee_id',
         'employee_name',
         'email',
+        'address',
+        'phone',
         'key_code',
         'is_used',
         'expires_at',

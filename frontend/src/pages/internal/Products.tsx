@@ -20,11 +20,19 @@ interface ProductApiItem {
   barcode?: string | null;
   part_number: string;
   category_id?: number | null;
-  unit: string;
-  supplier_code: string;
   category_name?: string | null;
+  unit: string;
   unit_name?: string | null;
+
+  // Newer schema-friendly flattened fields
+  part_id?: string | null;
+  part_name?: string | null;
+  brand_id?: string | null;
+  brand_name?: string | null;
+  supplier_code?: string | null;
   supplier_name?: string | null;
+  quantity_on_hand?: number | null;
+  is_active?: boolean;
 }
 
 interface Product {
@@ -41,6 +49,10 @@ interface Product {
   unit: string;
   categoryId?: number | null;
   supplierCode: string;
+  partName: string;
+  brandName: string;
+  quantityOnHand: number;
+  isActive: boolean;
 }
 
 interface CategoryOption {
@@ -74,7 +86,11 @@ const mapProduct = (item: ProductApiItem): Product => {
     supplierName: item.supplier_name || "-",
     unit: item.unit_name || item.unit || "-",
     categoryId: item.category_id ?? null,
-    supplierCode: item.supplier_code,
+    supplierCode: item.supplier_code || "",
+    partName: item.part_name || "-",
+    brandName: item.brand_name || "-",
+    quantityOnHand: Number(item.quantity_on_hand ?? 0),
+    isActive: item.is_active ?? true,
   };
 };
 
@@ -174,6 +190,8 @@ const AvailableProducts: React.FC = () => {
           p.sku.toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q) ||
           p.partNumber.toLowerCase().includes(q) ||
+          p.partName.toLowerCase().includes(q) ||
+          p.brandName.toLowerCase().includes(q) ||
           p.barcode.toLowerCase().includes(q)
         );
       });
@@ -201,13 +219,21 @@ const AvailableProducts: React.FC = () => {
             alt={p.name}
             className="h-9 w-9 rounded border object-cover"
           />
-          <span className="font-medium">{p.name}</span>
+          <div className="flex flex-col">
+            <span className="font-medium">{p.name}</span>
+            <span className="text-xs text-slate-500">{p.brandName}</span>
+          </div>
         </div>
       ),
     },
     { key: "sku", label: "SKU", render: (p: Product) => p.sku || "-" },
     { key: "category", label: "Category", render: (p: Product) => p.category || "-" },
     { key: "unit", label: "Unit", render: (p: Product) => p.unit || "-" },
+    {
+      key: "stock",
+      label: "Stock",
+      render: (p: Product) => p.quantityOnHand.toString(),
+    },
     { key: "barcode", label: "Barcode", render: (p: Product) => p.barcode || "-" },
   ];
 
@@ -291,6 +317,16 @@ const AvailableProducts: React.FC = () => {
                     </tr>
 
                     <tr className="border-b">
+                      <td className="px-4 py-2 font-medium border-r">Part</td>
+                      <td className="px-4 py-2">{selectedProduct.partName}</td>
+                    </tr>
+
+                    <tr className="border-b">
+                      <td className="px-4 py-2 font-medium border-r">Brand</td>
+                      <td className="px-4 py-2">{selectedProduct.brandName}</td>
+                    </tr>
+
+                    <tr className="border-b">
                       <td className="px-4 py-2 font-medium border-r">Unit</td>
                       <td className="px-4 py-2">{selectedProduct.unit}</td>
                     </tr>
@@ -303,10 +339,22 @@ const AvailableProducts: React.FC = () => {
                     </tr>
 
                     <tr className="border-b">
+                      <td className="px-4 py-2 font-medium border-r">Stock</td>
+                      <td className="px-4 py-2">{selectedProduct.quantityOnHand}</td>
+                    </tr>
+
+                    <tr className="border-b">
                       <td className="px-4 py-2 font-medium border-r">
                         Part No.
                       </td>
                       <td className="px-4 py-2">{selectedProduct.partNumber}</td>
+                    </tr>
+
+                    <tr className="border-b">
+                      <td className="px-4 py-2 font-medium border-r">Status</td>
+                      <td className="px-4 py-2">
+                        {selectedProduct.isActive ? "Active" : "Inactive"}
+                      </td>
                     </tr>
 
                     <tr className="border-t">
@@ -323,7 +371,7 @@ const AvailableProducts: React.FC = () => {
 
               <div className="col-span-2 border rounded-lg bg-white">
                 <div className="px-4 py-3 border-b font-semibold text-sm text-gray-600">
-                  Supplier
+                  Preferred Supplier
                 </div>
 
                 <div className="p-4 flex flex-wrap gap-3">

@@ -203,8 +203,6 @@ const Employees: React.FC = () => {
         }
         searchPlaceholder="Search employees..."
         onSearch={(query) => setSearchQuery(query)}
-        addLabel="Add Employee"
-        onAdd={() => alert("Open Add Employee Modal")}
         loading={loading}
       />
     </DashboardLayout>

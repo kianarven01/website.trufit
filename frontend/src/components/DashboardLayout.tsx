@@ -91,14 +91,14 @@ const navItems: NavItem[] = [
       { label: "Vendors", path: "/webapp/purchasing/vendors", icon: Users },
     ],
   },
-  { label: "Products", path: "/webapp/products", icon: Package },
   { 
-    label: "Inventory", 
-    icon: Box, 
+    label: "Products", 
+    icon: Package, 
     children: [
-      { label: "Inventory List", path: "/webapp/inventory/inventory-list", icon: Box },
-      { label: "Stock Movement", path: "/webapp/inventory/stock-movement", icon: Truck },
-      { label: "Warehouse", path: "/webapp/inventory/warehouse", icon: ShelvingUnit },
+      { label: "Product Catalog", path: "/webapp/products/product-catalog", icon: Package },
+      { label: "Inventory", path: "/webapp/products/inventory", icon: Box },
+      { label: "Stock Movement", path: "/webapp/products/stock-movement", icon: Truck },
+      { label: "Warehouse", path: "/webapp/products/warehouse", icon: ShelvingUnit },
     ],
   },
   {

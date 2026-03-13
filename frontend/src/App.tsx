@@ -24,8 +24,8 @@ import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
 import SalesOrder from "./pages/internal/Sales/SalesOrder";
 import Estimates from "./pages/internal/Sales/Estimates";
 
-import AvailableProducts from "./pages/internal/Products";
-import InventoryList from "./pages/internal/Inventory/InventoryList";
+import ProductCatalog from "./pages/internal/Products/Products";
+import InventoryList from "./pages/internal/Products/InventoryList";
 
 import Employees from "./pages/internal/HR/Employees"
 import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
@@ -60,8 +60,8 @@ const App: React.FC = () => {
             <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
             <Route path="/webapp/sales/estimates" element={<Estimates />} />
 
-            <Route path="/webapp/products" element={<AvailableProducts />} />
-            <Route path="/webapp/inventory/inventory-list" element={<InventoryList />} />
+            <Route path="/webapp/products/product-catalog" element={<ProductCatalog />} />
+            <Route path="/webapp/products/inventory-list" element={<InventoryList />} />
 
             <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
             <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />

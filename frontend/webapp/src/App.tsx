@@ -7,11 +7,11 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; // Import this!
 import ProtectedRoute from "./components/ProtectedRoute";
-import Home from "./pages/public/Home";
-import About from "./pages/public/About";
-import Contacts from "./pages/public/Contacts";
-import Services from "./pages/public/Services";
-import Products from "./pages/public/Products";
+// import Home from "./pages/public/Home";
+// import About from "./pages/public/About";
+// import Contacts from "./pages/public/Contacts";
+// import Services from "./pages/public/Services";
+// import Products from "./pages/public/Products";
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
 
@@ -41,11 +41,11 @@ const App: React.FC = () => {
     //wrap everything here
     <Router>
       <Routes>
-        <Route path="/home" element={<Home />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/contacts" element={<Contacts />} />
+       {/* <Route path="/home" element={<Home />} /> */}
+       {/* <Route path="/about" element={<About />} /> */}
+       {/* <Route path="/services" element={<Services />} /> */}
+       {/* <Route path="/products" element={<Products />} /> */}
+       {/* <Route path="/contacts" element={<Contacts />} /> */}
         <Route path="/webapp/login" element={<LoginPage />} />
         <Route path="/webapp/register" element={<Register />} />
 

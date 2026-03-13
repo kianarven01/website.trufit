@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 60% — Neutral base surfaces */
+    --background: 210 20% 98%;
+    --foreground: 220 25% 18%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 18%;
+
+    /* 30% — Secondary / muted tones */
+    --secondary: 216 18% 91%;
+    --secondary-foreground: 220 20% 30%;
+
+    --muted: 216 14% 94%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 216 20% 93%;
+    --accent-foreground: 220 20% 30%;
+
+    --border: 216 16% 87%;
+    --input: 216 16% 87%;
+
+    /* 10% — Primary accent (used sparingly) */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --ring: 221 83% 53%;
+
+    /* Semantic status — used only for badges/alerts */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 64% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 25% 18%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar — dark shell */
+    --sidebar-background: 222 30% 14%;
+    --sidebar-foreground: 216 15% 62%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 22% 20%;
+    --sidebar-accent-foreground: 210 30% 92%;
+    --sidebar-border: 222 18% 22%;
+    --sidebar-ring: 217 91% 60%;
+
+    --chart-1: 221 83% 53%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 142 64% 38%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 0 72% 51%;
+  }
+
+  .dark {
+    /* 60% — Dark neutrals */
+    --background: 224 40% 10%;
+    --foreground: 210 30% 92%;
+
+    --card: 224 30% 14%;
+    --card-foreground: 210 30% 92%;
+
+    --popover: 224 30% 14%;
+    --popover-foreground: 210 30% 92%;
+
+    /* 30% — Muted dark tones */
+    --secondary: 224 18% 20%;
+    --secondary-foreground: 210 25% 85%;
+
+    --muted: 224 16% 18%;
+    --muted-foreground: 216 15% 58%;
+
+    --accent: 224 20% 20%;
+    --accent-foreground: 210 25% 85%;
+
+    --border: 224 16% 22%;
+    --input: 224 16% 22%;
+
+    /* 10% — Primary accent */
+    --primary: 217 91% 60%;
+    --primary-foreground: 224 40% 10%;
+
+    --ring: 217 91% 60%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 30% 92%;
+
+    --success: 142 64% 38%;
+    --success-foreground: 210 30% 92%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 224 40% 10%;
+
+    --sidebar-background: 224 40% 7%;
+    --sidebar-foreground: 216 15% 58%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 18% 15%;
+    --sidebar-accent-foreground: 210 30% 92%;
+    --sidebar-border: 224 16% 18%;
+    --sidebar-ring: 217 91% 60%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 142 64% 38%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 0 72% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}

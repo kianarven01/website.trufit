@@ -1,5 +1,6 @@
 <?php
 
 return [
-    App\Providers\AppServiceProvider::class,
+    App\Domains\Auth\Infrastructure\Providers\AuthServiceProvider::class,
+    App\Domains\Audit\Infrastructure\Providers\AuditServiceProvider::class,
 ];

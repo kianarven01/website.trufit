@@ -11,7 +11,11 @@ export default function HeroSlider() {
   const [progress, setProgress] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // function to start auto-slide interval
+  // touch state
+  const touchStartX = useRef(0)
+  const touchEndX = useRef(0)
+  const minSwipeDistance = 50 // minimum distance to trigger swipe
+
   const startInterval = () => {
     if (intervalRef.current) clearInterval(intervalRef.current)
     intervalRef.current = setInterval(() => {
@@ -20,7 +24,6 @@ export default function HeroSlider() {
     }, intervalTime)
   }
 
-  // start auto-slide on mount
   useEffect(() => {
     startInterval()
     return () => {
@@ -28,7 +31,6 @@ export default function HeroSlider() {
     }
   }, [slideCount])
 
-  // animate progress for current slide
   useEffect(() => {
     setProgress(0)
     const progressInterval = setInterval(() => {
@@ -37,15 +39,43 @@ export default function HeroSlider() {
     return () => clearInterval(progressInterval)
   }, [index, intervalTime])
 
-  // handle click on progress bar
   const handleClick = (i: number) => {
     setIndex(i)
     setProgress(0)
-    startInterval() // reset interval after manual click
+    startInterval()
+  }
+
+  // handle swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX
+  }
+
+  const handleTouchEnd = () => {
+    const distance = touchStartX.current - touchEndX.current
+    if (Math.abs(distance) > minSwipeDistance) {
+      if (distance > 0) {
+        // swipe left → next slide
+        setIndex((prev) => (prev + 1) % slideCount)
+      } else {
+        // swipe right → previous slide
+        setIndex((prev) => (prev - 1 + slideCount) % slideCount)
+      }
+      setProgress(0)
+      startInterval()
+    }
   }
 
   return (
-    <div className="relative w-full">
+    <div
+      className="relative w-full overflow-hidden"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <HeroSlide slide={slides[index]} />
 
       {/* clickable rectangle progress bars */}

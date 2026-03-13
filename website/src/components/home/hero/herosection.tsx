@@ -2,7 +2,7 @@ import HeroSlider from "./heroslider"
 
 export default function HeroSection() {
   return (
-    <section>
+    <section id="hero">
       <HeroSlider />
     </section>
   )

@@ -71,7 +71,7 @@ const App: React.FC = () => {
 
           </Route>
 
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/" element={<Navigate to="/webapp/login" replace />} />
         <Route
           path="/webapp"
           element={<Navigate to="/webapp/dashboard" replace />}

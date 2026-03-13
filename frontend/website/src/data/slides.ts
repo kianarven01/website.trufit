@@ -2,6 +2,13 @@ import { Slide } from "@/types/slide"
 
 export const slides: Slide[] = [
   {
+    image: "/images/hero/heroslide2.webp",
+    title: "Service You Can Trust",
+    subtitle: "Expert diagnostics, premium parts, and quality repair. We keep your vehicle performing at its best with excellence and precision.",
+    buttonText: "Our Services",
+    buttonLink: "/services",
+  },
+  {
     image: "/images/hero/heroslide1.webp",
     title: "Vehicle Electronic Diagnostics",
     subtitle: "Advanced scanning to detect vehicle issues.",

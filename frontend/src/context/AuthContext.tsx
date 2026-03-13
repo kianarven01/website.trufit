@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import api from "@/api/axios";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
 
 interface AuthContextType {
   user: any;
@@ -10,8 +11,11 @@ interface AuthContextType {
   login: (
     u: string,
     p: string,
+    remember: boolean,
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  updateUser: (userData: any) => void;
+  finalizeLogin: (authPayload: any) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -20,35 +24,63 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const savedUser = localStorage.getItem("trufit_user");
-    const token = localStorage.getItem("trufit_token");
+  const hasInitialized = useRef(false);
 
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    const initAuth = async () => {
+      const token = localStorage.getItem("trufit_token");
+
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await api.get("/auth/verify");
+
+        if (
+          response.data.status === "success" ||
+          response.data.status === "authenticated"
+        ) {
+          const serverUser = response.data.data.user;
+
+          const userData = {
+            ...serverUser,
+            role: serverUser.role || "Admin",
+          };
+          setUser(userData);
+          localStorage.setItem("trufit_user", JSON.stringify(userData));
+        }
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          logout();
+          window.location.replace("/login?reason=session_expired");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
-  const login = async (inputUsername: string, inputPass: string) => {
+  const login = async (
+    inputUsername: string,
+    inputPass: string,
+    rememberMe: boolean = false,
+  ) => {
     try {
-      const response = await api.post("/login", {
+      const response = await api.post("auth/login", {
         username: inputUsername,
         password: inputPass,
+        remember: rememberMe,
       });
 
-      const { data: apiResponse } = response.data;
-
-      const userData = {
-        username: apiResponse.user.username,
-        employeeID: apiResponse.user.employeeID,
-        name: apiResponse.user.name || apiResponse.user.username,
-        role: apiResponse.role,
-      };
-
-      setUser(userData);
-      localStorage.setItem("trufit_user", JSON.stringify(userData));
-      localStorage.setItem("trufit_token", apiResponse.token);
+      const apiResponse = response.data.data;
+      finalizeLogin(apiResponse);
 
       return { success: true };
     } catch (error: any) {
@@ -77,6 +109,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("User logged out successfully");
   };
 
+  const updateUser = (userData: any) => {
+    setUser(userData);
+    localStorage.setItem("trufit_user", JSON.stringify(userData));
+  };
+
+  const finalizeLogin = (authPayload: any) => {
+    const userData = {
+      ...authPayload.user,
+      role: authPayload.role,
+    };
+
+    setUser(userData);
+    localStorage.setItem("trufit_user", JSON.stringify(userData));
+    localStorage.setItem("trufit_token", authPayload.token);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -84,6 +132,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         role: user?.role || null,
         login,
         logout,
+        updateUser,
+        finalizeLogin,
         loading,
       }}
     >

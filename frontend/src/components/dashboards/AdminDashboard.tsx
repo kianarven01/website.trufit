@@ -14,7 +14,6 @@ import {
   Plus,
 } from "lucide-react";
 
-// 1. Static data stays OUTSIDE the component (this is fine)
 const stats = [
   { label: "Vehicles in Service", value: "12", icon: Car, change: "+3 today" },
   {
@@ -75,7 +74,7 @@ const statusColor: Record<string, string> = {
   Queued: "bg-secondary text-secondary-foreground",
 };
 
-const AdminDashboard: React.FC = () =>  {
+const AdminDashboard: React.FC = () => {
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-4">
       {/* Stats row */}
@@ -99,4 +98,3 @@ const AdminDashboard: React.FC = () =>  {
 };
 
 export default AdminDashboard;
-

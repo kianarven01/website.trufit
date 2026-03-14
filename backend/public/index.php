@@ -1,5 +1,18 @@
 <?php
 
+// FORCE CORS HEADERS FOR DEBUGGING
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header("Access-Control-Allow-Origin: $origin");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN");
+header("Access-Control-Allow-Credentials: true");
+
+// If it's an OPTIONS preflight request, exit immediately with a 200 OK.
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 

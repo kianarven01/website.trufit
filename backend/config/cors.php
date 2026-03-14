@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['localhost:5173', 'https://website-trufit-backend.onrender.com'],
+    'allowed_origins' => [
+        'http://localhost:5173', 
+        'https://website-trufit-backend.onrender.com', // <-- Replace this with your actual Vercel URL
+        // '*', // Uncomment this to allow all domains
+    ],
 
     'allowed_origins_patterns' => [],
 

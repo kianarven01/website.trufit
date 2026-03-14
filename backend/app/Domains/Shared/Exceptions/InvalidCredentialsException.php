@@ -7,7 +7,7 @@ use Exception;
 
 class InvalidCredentialsException extends Exception
 {
-    protected $message = "Invalid Credentials.";
+    protected $message = "Invalid credentials. Please try again.";
     protected $code = 401; // Unauthorized
 
     public function render($request): JsonResponse

@@ -95,7 +95,9 @@ const LoginPage: React.FC = () => {
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setLoginError("Invalid Username or Password.");
+        setLoginError(err.response.data.message || "Invalid Username or Password.");
+      } else if (err.response?.data?.message) {
+        setLoginError(err.response.data.message);
       } else {
         setLoginError("Something went wrong. Please try again.");
       }

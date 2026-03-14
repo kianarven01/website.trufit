@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export function middleware() {
-  // If you are running 'npm run dev', this will be 'development'
-  // If it's live on Vercel, it will be 'production'
+export function middleware(req: NextRequest) {
+  // Only trigger on production (Vercel)
   const isMaintenanceMode = process.env.NODE_ENV === 'production';
 
   if (isMaintenanceMode) {
-    return NextResponse.rewrite(new URL('/index.html', 'https://example.com'))
+    // This points to YOUR domain's /index.html file
+    return NextResponse.rewrite(new URL('/index.html', req.nextUrl.origin))
   }
 
   return NextResponse.next()

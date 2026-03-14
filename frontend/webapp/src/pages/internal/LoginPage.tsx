@@ -80,8 +80,8 @@ const LoginPage: React.FC = () => {
 
       if (response.data.status === "success") {
         // Use the auth context logic to save session
-        const result = await login(username, password, remember);
-        if (result.success) navigate("/webapp/dashboard");
+        finalizeLogin(response.data.data);
+        navigate("/webapp/dashboard");
       } else if (response.data.status === "requires_verification") {
         setChallengeEmail(response.data.email);
         setShowChallengeModal(true);

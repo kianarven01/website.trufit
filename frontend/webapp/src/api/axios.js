@@ -24,7 +24,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const isLoginPage = window.location.pathname === "/webapp/login";
+    const isLoginPage = window.location.pathname.includes("/login");
 
     if (error.response?.status === 401 && !isLoginPage) {
       console.warn("Unauthorized! Clearing session...");

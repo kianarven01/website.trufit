@@ -20,7 +20,7 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:5173', 
+        'http://localhost:5173', //remove when development is finished
         'https://app.trufitautocenter.com',
         'https://website-trufit-webapp-anakwhwdc-kianarven01s-projects.vercel.app',
         // '*', // Uncomment this to allow all domains

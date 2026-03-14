@@ -21,7 +21,8 @@ return [
 
     'allowed_origins' => [
         'http://localhost:5173', 
-        'https://website-trufit-backend.onrender.com', // <-- Replace this with your actual Vercel URL
+        'https://app.trufitautocenter.com',
+        'https://website-trufit-webapp-anakwhwdc-kianarven01s-projects.vercel.app',
         // '*', // Uncomment this to allow all domains
     ],
 

@@ -55,7 +55,7 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
   ).length;
 
   return (
-    <div className="bg-slate-200 rounded-lg px-3 py-2 space-y-2">
+    <div className="border bg-white rounded-lg px-3 py-2 space-y-2">
 
       {/* TOP ROW */}
       <div className="flex items-center justify-between gap-3">

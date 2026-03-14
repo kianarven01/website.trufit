@@ -1,64 +1,212 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import temporary_bg from "@/assets/temporary_bg.jpeg";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
+import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
+import { Edit, Trash2, ChevronRight } from "lucide-react"; 
+
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 
 interface Vehicles {
   id: string;
   make: string;
   model: string;
+  image?: string;
+  variants?: string[];
 }
 
-const Vehicles: React.FC = () => {
+interface MakeOption {
+  id: string;
+  name: string;
+}
+
+// Helper to capitalize first letter
+const capitalize = (str: string) =>
+  str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
+const VehiclesPage: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicles[]>([]);
+  const [makers, setMakers] = useState<MakeOption[]>([]);
+  const [filters, setFilters] = useState<Record<string, string>>({ make: "all" });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicles | null>(null);
 
-  const [filters, setFilters] = useState<Record<string, string>>({
-    make: "all",
-  });
+  // Load makers
+  useEffect(() => {
+    const savedMakers = localStorage.getItem("makers");
+    setMakers(
+      savedMakers
+        ? JSON.parse(savedMakers).map((m: MakeOption) => ({
+            ...m,
+            name: capitalize(m.name),
+          }))
+        : []
+    );
+  }, []);
 
+  useEffect(() => {
+    localStorage.setItem("makers", JSON.stringify(makers));
+  }, [makers]);
+
+  // Toolbar filter options
   const filterOptions: FilterOption[] = [
     {
       key: "make",
       label: "Make",
-      options: [
-        { label: "Toyota", value: "toyota" },
-        { label: "Honda", value: "honda" },
-        { label: "Nissan", value: "nissan" },
-      ],
+      options: makers.map((m) => ({ label: capitalize(m.name), value: m.name })),
     },
   ];
 
-  return (
-    <div className="w-full h-full bg-slate-400 p-4">
+  const handleSaveVehicle = (vehicle: any) => {
+    let makerExists = makers.find(
+      (m) => m.name.toLowerCase() === vehicle.makeId.toLowerCase()
+    );
+    const capitalizedName = capitalize(vehicle.makeId);
 
+    if (!makerExists) {
+      const newMaker: MakeOption = { id: vehicle.makeId, name: capitalizedName };
+      setMakers((prev) => [...prev, newMaker]);
+      makerExists = newMaker;
+    }
+
+    const makeName = makerExists ? makerExists.name : capitalizedName;
+
+    setVehicles((prev) => {
+      const exists = prev.find((v) => v.id === vehicle.id);
+      const newVehicle: Vehicles = {
+        id: vehicle.id,
+        make: makeName,
+        model: vehicle.model,
+        image: vehicle.image,
+        variants: vehicle.variants || [],
+      };
+      return exists ? prev.map((v) => (v.id === vehicle.id ? newVehicle : v)) : [...prev, newVehicle];
+    });
+  };
+
+  return (
+    <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Vehicles</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search Vehicles..."
-        onSearch={(value) => console.log(value)}
-
+        onSearch={(value) => console.log("Search:", value)}
         filters={filterOptions}
         activeFilters={filters}
-        onFilterChange={(key, value) =>
-          setFilters((prev) => ({ ...prev, [key]: value }))
-        }
-
-        onAdd={() => console.log("Add Vehicle")}
+        onFilterChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
+        onAdd={() => {
+          setEditingVehicle(null);
+          setModalOpen(true);
+        }}
         addLabel="Add Vehicle"
       />
 
-      <h2 className="text-xl font-semibold mb-4">Vehicles</h2>
+      {/* No Vehicle Record */}
+      {vehicles.length === 0 && (
+        <div className="w-full flex items-center justify-center py-12">
+          <p className="text-lg font-medium uppercase text-gray-700 text-center">
+            No vehicle record available. Add a new vehicle using the toolbar above.
+          </p>
+        </div>
+      )}
 
-      <div className="w-80 h-52 p-4 rounded-xl space-y-2 flex flex-col items-center justify-center bg-gray-50">
-        <img
-          src={temporary_bg}
-          alt=""
-          className="w-64 h-32 object-cover rounded"
-        />
-        <p className="text-md font-light uppercase">
-          Toyota Hilux
-        </p>
-      </div>
+      {/* Vehicles Grid */}
+      {vehicles.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {vehicles.map((v) => (
+            <div
+              key={v.id}
+              className="rounded-xl border bg-gray-50 cursor-pointer overflow-hidden relative group flex flex-col transition-transform duration-300 hover:shadow-xl hover:-translate-y-1"
+            >
+              {/* Upper Part: Image */}
+              <div className="w-full h-40 relative overflow-hidden">
+                <img
+                  src={v.image || temporary_bg}
+                  alt={`${v.make} ${v.model}`}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-30 transition-opacity"></div>
 
+                {/* Edit/Delete Buttons */}
+                <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingVehicle(v);
+                      setModalOpen(true);
+                    }}
+                    className="p-1 rounded bg-white/90 hover:bg-white text-gray-800"
+                    title="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Delete ${v.make} ${v.model}?`)) {
+                        setVehicles((prev) => prev.filter((veh) => veh.id !== v.id));
+                      }
+                    }}
+                    className="p-1 rounded bg-white/90 hover:bg-white text-red-600"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Lower Part: Info */}
+              <div className="flex justify-between items-center px-4 py-2 bg-white transition-colors duration-200 group-hover:bg-gray-900">
+                <div className="flex flex-col">
+                  <p className="text-gray-900 font-semibold text-sm group-hover:text-white">
+                    {v.make}
+                  </p>
+                  <p className="text-gray-700 text-sm group-hover:text-white">
+                    {v.model}
+                  </p>
+                </div>
+                <div className="flex items-center text-gray-500 text-xs font-medium group-hover:text-white">
+                  {v.variants ? v.variants.length : 0} <ChevronRight className="ml-1 w-4 h-4" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Vehicle Modal */}
+      <VehicleModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        vehicle={
+          editingVehicle
+            ? {
+                id: editingVehicle.id,
+                makeId: editingVehicle.make,
+                model: editingVehicle.model,
+                image: editingVehicle.image || "",
+              }
+            : null
+        }
+        makerList={makers}
+        onSaved={(vehicle) => handleSaveVehicle(vehicle)}
+      />
     </div>
   );
 };
 
-export default Vehicles;
+export default VehiclesPage;

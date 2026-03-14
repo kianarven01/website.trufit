@@ -90,6 +90,8 @@ const LoginPage: React.FC = () => {
         toast.error(response.data.message, { duration: 10000 });
       } else if (response.data.status === "contact_admin") {
         toast.error(response.data.message, { duration: 10000 });
+      } else if (response.data.status === "error") {
+        setLoginError(response.data.message || "Invalid credentials. Please try again.");
       }
     } catch (err: any) {
       if (err.response?.status === 401) {

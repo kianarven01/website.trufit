@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     localStorage.removeItem("trufit_user");
     localStorage.removeItem("trufit_token");
-    console.log("User logged out successfully");
+    //console.log("User logged out successfully");
   };
 
   const updateUser = (userData: any) => {

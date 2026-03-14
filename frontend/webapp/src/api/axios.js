@@ -1,14 +1,10 @@
 import axios from "axios";
 
-let baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
-
-// Ensure baseURL always ends with /api
-if (baseURL && !baseURL.endsWith('/api') && !baseURL.endsWith('/api/')) {
-  baseURL = baseURL.endsWith('/') ? `${baseURL}api` : `${baseURL}/api`;
-}
-
+// When we use just `/api`, Axios will send requests to whatever domain the frontend is on
+// (e.g., https://app.trufitautocenter.com/api or http://localhost:5173/api)
+// Vercel and Vite will then PROXY that request to the real Render backend.
 const api = axios.create({
-  baseURL,
+  baseURL: "/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",

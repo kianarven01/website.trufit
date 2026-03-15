@@ -11,7 +11,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.10.1",
         "predis/predis": "*",
-        "resend/resend-laravel": "^0.11.0"
+        "resend/resend-php": "^0.10.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

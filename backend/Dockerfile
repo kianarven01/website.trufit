@@ -1,14 +1,15 @@
 FROM php:8.4-apache
 
-# Install dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     libpng-dev \
     libzip-dev \
+    libicu-dev \
     zip \
     unzip \
     git \
-    && docker-php-ext-install pdo_pgsql gd zip
+    && docker-php-ext-install pdo_pgsql gd zip bcmath intl pcntl
 
 # Enable Apache rewrite
 RUN a2enmod rewrite
@@ -25,19 +26,14 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-av
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Install dependencies
+# Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# Permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Startup script
-RUN echo '#!/bin/bash \n\
-php artisan queue:work --sleep=3 --tries=3 --timeout=90 & \n\
-apache2-foreground' > /start.sh
-
-RUN chmod +x /start.sh
+# Copy and set up the startup script
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
 
 EXPOSE 80
 
-CMD ["/start.sh"]
+# Use the startup script
+CMD ["/usr/local/bin/start.sh"]

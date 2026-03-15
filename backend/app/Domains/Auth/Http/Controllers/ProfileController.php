@@ -1,0 +1,134 @@
+<?php
+
+namespace App\Domains\Auth\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Domains\Auth\Application\UseCases\UpdateProfile;
+use App\Domains\Auth\Application\UseCases\UpdatePassword;
+use App\Domains\Auth\Application\UseCases\UpdateEmail;
+use App\Domains\Auth\Application\UseCases\SendVerificationCode;
+use App\Domains\Auth\Application\UseCases\VerifyEmail;
+use Illuminate\Http\Request;
+
+use App\Domains\Auth\Http\Requests\UpdateProfileRequest;
+use App\Domains\Auth\Http\Requests\UpdatePasswordRequest;
+use App\Domains\Auth\Http\Requests\UpdateEmailRequest;
+use App\Domains\Auth\Http\Requests\VerifyEmailRequest;
+use App\Domains\Auth\Application\DTOs\UpdateProfileDTO;
+use App\Domains\Auth\Application\UseCases\SendPhoneVerificationCode;
+use App\Domains\Auth\Application\UseCases\VerifyPhone;
+use App\Domains\Auth\Http\Requests\VerifyPhoneRequest;
+use App\Domains\Auth\Exceptions\AuthDomainException;
+
+class ProfileController extends Controller
+{
+    protected $updateProfile;
+    protected $updatePassword;
+    protected $updateEmail;
+    protected $sendVerificationCode;
+    protected $verifyEmail;
+    protected $sendPhoneVerification;
+    protected $verifyPhone;
+
+    public function __construct(
+        UpdateProfile $updateProfile,
+        UpdatePassword $updatePassword,
+        UpdateEmail $updateEmail,
+        SendVerificationCode $sendVerificationCode,
+        VerifyEmail $verifyEmail,
+        SendPhoneVerificationCode $sendPhoneVerification,
+        VerifyPhone $verifyPhone
+    ) {
+        $this->updateProfile = $updateProfile;
+        $this->updatePassword = $updatePassword;
+        $this->updateEmail = $updateEmail;
+        $this->sendVerificationCode = $sendVerificationCode;
+        $this->verifyEmail = $verifyEmail;
+        $this->sendPhoneVerification = $sendPhoneVerification;
+        $this->verifyPhone = $verifyPhone;
+    }
+
+    public function update(UpdateProfileRequest $request)
+    {
+        try {
+            $dto = UpdateProfileDTO::fromRequest($request);
+            $result = $this->updateProfile->execute($request->user(), $dto);
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+
+    public function changePassword(UpdatePasswordRequest $request)
+    {
+        try {
+            $result = $this->updatePassword->execute(
+                $request->user(),
+                $request->validated('current_password'),
+                $request->validated('password')
+            );
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+
+    public function updateEmail(UpdateEmailRequest $request)
+    {
+        try {
+            $result = $this->updateEmail->execute(
+                $request->user(),
+                $request->validated('email')
+            );
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+
+    public function resendVerificationCode(Request $request)
+    {
+        try {
+            $result = $this->sendVerificationCode->execute($request->user());
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+
+    public function verifyEmail(VerifyEmailRequest $request)
+    {
+        try {
+            $result = $this->verifyEmail->execute(
+                $request->user(),
+                $request->validated('code')
+            );
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+
+    public function resendPhoneVerificationCode(Request $request)
+    {
+        try {
+            $result = $this->sendPhoneVerification->execute($request->user());
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+
+    public function verifyPhone(VerifyPhoneRequest $request)
+    {
+        try {
+            $result = $this->verifyPhone->execute(
+                $request->user(),
+                $request->validated('code')
+            );
+            return response()->json($result);
+        } catch (AuthDomainException $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], $e->getStatusCode());
+        }
+    }
+}

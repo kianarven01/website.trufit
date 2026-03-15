@@ -8,64 +8,84 @@ use App\Domains\KeyManagement\Domain\Models\RegistrationKey;
 use App\Domains\Employee\Domain\Models\Employee;
 use Illuminate\Support\Str;
 
+use App\Domains\Auth\Domain\Services\MailServiceInterface;
+
+use App\Domains\Shared\Domain\Services\AuditServiceInterface;
+
 class KeyService
 //for key generation and employee ID generation
 {
-    public function __construct(protected RegistrationKeyRepository $repository) {}
+    public function __construct(
+        protected RegistrationKeyRepository $repository,
+        protected MailServiceInterface $mailService,
+        protected AuditServiceInterface $auditService
+    ) {}
 
     public function generateForNewEmployee($dto): string
     {
         return DB::transaction(function () use ($dto) {
-            // 1. Generate 8-digit random ID
-            $randomId = rand(10000000, 99999999);
-
-            // 2. Create Employee
-            $employee = Employee::create([
-                'id'       => $randomId,
-                'name'     => "{$dto->firstName} {$dto->lastName}",
-                'email'    => $dto->email,
-                'address'  => $dto->address,
-                'phone'    => $dto->phone,
-                'position' => $dto->position,
-                'roleID'   => $dto->roleId, // Main.Employees column
-                'status'   => false, 
-            ]);
-
-            // 3. Generate Key
+            // 1. Generate Key
             $keyCode = 'TRUFIT-' . strtoupper(Str::random(6));
+            $employeeName = "{$dto->firstName} {$dto->lastName}";
 
-            // 4. Save Key via Repository
-            // If this fails, the Employee created above is deleted (rolled back)
-            $this->repository->create([
-                'employee_id' => $employee->id,
-                'key_code'    => $keyCode,
-                'role_id'     => $dto->roleId, // Main.RegistrationKeys column
-                'expires_at'  => now()->addDays(7)
+            // 2. Save Key via Repository
+            $key = $this->repository->create([
+                'employee_name' => $employeeName,
+                'email'         => $dto->email,
+                'address'       => $dto->address,
+                'phone'         => $dto->phone,
+                'position'      => $dto->position,
+                'role_id'       => $dto->roleId,
+                'key_code'      => $keyCode,
+                'expires_at'    => now()->addDays(7)
             ]);
+
+            // 3. Audit the action
+            $this->auditService->log(
+                'ONBOARDING', 
+                'KEY_GENERATED', 
+                null, 
+                RegistrationKey::class, 
+                (string)$key->id,
+                null,
+                ['employee_name' => $employeeName, 'email' => $dto->email]
+            );
+            // 4. Send Email
+            $this->mailService->sendRegistrationKey($dto->email, $keyCode, $employeeName);
 
             return $keyCode;
         });
     }
 
-    public function regenerateKey($employeeId)
+    public function regenerateKey($id)
     {
-        return DB::transaction(function () use ($employeeId) {
-            $registrationKey = RegistrationKey::where('employee_id', $employeeId)
-                ->where('is_used', false)
-                ->firstOrFail();
+        return DB::transaction(function () use ($id) {
+            $registrationKey = RegistrationKey::findOrFail($id);
+
+            $oldCode = $registrationKey->key_code;
 
             // 1. Generate a fresh code
             $newCode = 'TRUFIT-' . strtoupper(Str::random(6));
 
-            // 2. Update the record (this triggers updated_at)
+            // 2. Update the record
             $registrationKey->update([
                 'key_code' => $newCode,
-                'expires_at' => now()->addDays(7) // Reset the expiration timer
+                'expires_at' => now()->addDays(7)
             ]);
 
-             // 3. TODO: Trigger Email/SMS Service
-             // $this->notificationService->send($registrationKey->employee, $newCode);
+            // 3. Audit the action
+            $this->auditService->log(
+                'ONBOARDING', 
+                'KEY_REGENERATED', 
+                null, 
+                RegistrationKey::class, 
+                (string)$id,
+                ['key_code' => $oldCode],
+                ['key_code' => $newCode]
+            );
 
+             // 4. Send Email
+             $this->mailService->sendRegistrationKey($registrationKey->email, $newCode, $registrationKey->employee_name);
 
             return $newCode;
         });

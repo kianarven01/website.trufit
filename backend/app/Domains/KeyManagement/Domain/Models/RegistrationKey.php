@@ -29,6 +29,8 @@ class RegistrationKey extends Model
         'employee_id',
         'employee_name',
         'email',
+        'address',
+        'phone',
         'key_code',
         'is_used',
         'expires_at',
@@ -40,5 +42,7 @@ class RegistrationKey extends Model
     protected $casts = [
         'is_used' => 'boolean',
         'expires_at' => 'datetime',
+        'address' => 'encrypted',
+        'phone' => 'encrypted',
     ];
 }

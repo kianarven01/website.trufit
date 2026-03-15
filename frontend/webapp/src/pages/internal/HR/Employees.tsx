@@ -72,7 +72,7 @@ const Employees: React.FC = () => {
 
   const roleOptions = useMemo(() => {
     const roles = Array.from(
-      new Set(employees.map((e) => e.role_name).filter(Boolean))
+      new Set(employees.map((e) => e.role_name).filter(Boolean)),
     );
 
     return roles.map((role) => ({
@@ -83,8 +83,9 @@ const Employees: React.FC = () => {
 
   const positionOptions = useMemo(() => {
     const positions = Array.from(
-      new Set(employees.map((e) => e.position).filter(Boolean))
+      new Set(employees.map((e) => e.position).filter(Boolean)),
     );
+
     return positions.map((pos) => ({
       value: pos as string,
       label: pos as string,
@@ -146,7 +147,6 @@ const Employees: React.FC = () => {
       render: (emp) => (
         <div>
           <div className="font-semibold uppercase tracking-tight">
-          <div className="font-semibold uppercase tracking-tight">
             {emp.name || "Unnamed"}
           </div>
           <div className="text-[10px] text-muted-foreground">{emp.email}</div>
@@ -191,7 +191,6 @@ const Employees: React.FC = () => {
   return (
     <DashboardLayout>
       <PageShell<Employee>
-      <PageShell<Employee>
         title="Employees"
         description="Manage company employees."
         items={filteredEmployees}
@@ -204,8 +203,6 @@ const Employees: React.FC = () => {
         }
         searchPlaceholder="Search employees..."
         onSearch={(query) => setSearchQuery(query)}
-        addLabel="Add Employee"
-        onAdd={() => alert("Open Add Employee Modal")}
         loading={loading}
       />
     </DashboardLayout>

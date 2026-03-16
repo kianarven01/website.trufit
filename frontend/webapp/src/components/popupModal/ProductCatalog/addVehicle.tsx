@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scrollArea"
 import { X, ImagePlus } from "lucide-react"
 import { toast } from "sonner"
 
-import MakeCombobox from "@/components/ui/combobox"
+import Combobox from "@/components/ui/combobox"
 
 interface MakeOption {
   id: string
@@ -176,7 +176,7 @@ export function VehicleModal({
             {/* MAKE */}
             <div>
               <Label className="text-xs">Make *</Label>
-              <MakeCombobox
+              <Combobox
                 value={makeName}
                 onChange={setMakeName}
                 makes={makerList.map((m) => capitalize(m.name))}

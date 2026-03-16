@@ -12,7 +12,7 @@ interface MakeComboboxProps {
   placeholder?: string;
 }
 
-const MakeCombobox: FC<MakeComboboxProps> = ({ value, onChange, makes, placeholder }) => {
+const Combobox: FC<MakeComboboxProps> = ({ value, onChange, makes, placeholder }) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,4 +85,4 @@ const MakeCombobox: FC<MakeComboboxProps> = ({ value, onChange, makes, placehold
   );
 };
 
-export default MakeCombobox;
+export default Combobox;

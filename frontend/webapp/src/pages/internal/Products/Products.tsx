@@ -1,15 +1,12 @@
-import { PageShell } from "@/components/PageShell";
-import Vehicles from "./ProductCatalog/Vehicles";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { Outlet } from "react-router-dom";
 
 const ProductCatalog: React.FC = () => {
   return (
-    <div>
-      <DashboardLayout>
-        <Vehicles/>
-      </DashboardLayout>
-    </div>
+    <DashboardLayout>
+       <Outlet />
+    </DashboardLayout>
   );
-}
+};
 
 export default ProductCatalog;

@@ -1,7 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MasterDetailPanel, FilterOption, ColumnDef } from "@/components/MasterDetailPanel";
 import { Button } from "@/components/ui/button";
-import { ProductModal } from "@/components/popupModal/addProduct";
+import { ProductModal } from "@/components/popupModal/ProductCatalog/addProduct";
 import { useState, useMemo } from "react";
 import { Printer } from "lucide-react";
 

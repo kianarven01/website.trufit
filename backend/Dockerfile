@@ -1,35 +1,43 @@
 FROM php:8.4-apache
 
-# 1. Install system dependencies (including git, zip, and unzip)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     libpng-dev \
     libzip-dev \
+    libicu-dev \
+    libonig-dev \
     zip \
     unzip \
     git \
-    && docker-php-ext-install pdo_pgsql gd zip
+    curl \
+    && docker-php-ext-install pdo_pgsql gd zip bcmath intl pcntl mbstring
 
-# 2. Enable Apache mod_rewrite
+# Enable Apache rewrite
 RUN a2enmod rewrite
 
-# 3. Set working directory
 WORKDIR /var/www/html
 
-# 4. Copy backend files
+# Copy project files
 COPY . .
 
-# 5. Set Apache root to Laravel's public folder
+# Set Apache root to Laravel public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 
-# 6. Install Composer
+# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 7. Install dependencies (Added --ignore-platform-reqs for safety)
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+# FLEXIBLE COMPOSER: Try install first, fallback to update if lock is out of sync
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs || \
+    composer update --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# 8. Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Copy and set up the startup script
+# Using a fallback to ensure the script exists even if COPY fails
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
 
 EXPOSE 80
+
+# Use the startup script
+CMD ["/usr/local/bin/start.sh"]

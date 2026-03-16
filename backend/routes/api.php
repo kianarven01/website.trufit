@@ -14,12 +14,12 @@ use App\Domains\Supplier\Http\Controllers\SupplierController;
 */
 
 
-
 /*
 |--------------------------------------------------------------------------
 | Product Reference Routes
 |--------------------------------------------------------------------------
 */
+
 Route::prefix('products')->group(function () {
 
     Route::get('/', [ProductController::class, 'index']);
@@ -27,7 +27,6 @@ Route::prefix('products')->group(function () {
     Route::get('/categories', [ProductReferenceController::class, 'categories']);
     Route::get('/units', [ProductReferenceController::class, 'units']);
     Route::get('/suppliers', [SupplierController::class, 'index']);
-
 });
 /*
 |--------------------------------------------------------------------------
@@ -57,7 +56,7 @@ Route::post('/register', [KeyController::class, 'register']);
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     // Employee & Key Management Domain
     require app_path('Domains/Employee/routes.php');
     require app_path('Domains/KeyManagement/routes.php');

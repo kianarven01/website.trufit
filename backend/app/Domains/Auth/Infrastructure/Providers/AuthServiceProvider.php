@@ -8,6 +8,7 @@ use App\Domains\Auth\Domain\Services\SmsServiceInterface;
 use App\Domains\Auth\Domain\Repositories\EmployeeRepositoryInterface;
 use App\Domains\Auth\Domain\Repositories\UserRepositoryInterface;
 use App\Domains\Auth\Infrastructure\Services\LaravelMailService;
+use App\Domains\Auth\Infrastructure\Services\RateLimitedMailService;
 use App\Domains\Auth\Infrastructure\Services\LogSmsService;
 use App\Domains\Auth\Infrastructure\Repositories\EloquentEmployeeRepository;
 use App\Domains\Auth\Infrastructure\Repositories\EloquentUserRepository;
@@ -23,7 +24,13 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(MailServiceInterface::class, LaravelMailService::class);
+        $this->app->bind(MailServiceInterface::class, function ($app) {
+            return new RateLimitedMailService(
+                inner: $app->make(LaravelMailService::class),
+                dailyLimit: (int) env('MAIL_DAILY_LIMIT', 80),
+                monthlyLimit: (int) env('MAIL_MONTHLY_LIMIT', 2500),
+            );
+        });
         $this->app->bind(SmsServiceInterface::class, LogSmsService::class);
         $this->app->bind(EmployeeRepositoryInterface::class, EloquentEmployeeRepository::class);
         $this->app->bind(UserRepositoryInterface::class, EloquentUserRepository::class);

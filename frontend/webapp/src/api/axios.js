@@ -1,7 +1,10 @@
 import axios from "axios";
 
+// When we use just `/api`, Axios will send requests to whatever domain the frontend is on
+// (e.g., https://app.trufitautocenter.com/api or http://localhost:5173/api)
+// Vercel and Vite will then PROXY that request to the real Render backend.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api",
+  baseURL: "/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -21,7 +24,7 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const isLoginPage = window.location.pathname === "/webapp/login";
+    const isLoginPage = window.location.pathname.includes("/login");
 
     if (error.response?.status === 401 && !isLoginPage) {
       console.warn("Unauthorized! Clearing session...");

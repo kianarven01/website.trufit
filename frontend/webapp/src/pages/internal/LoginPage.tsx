@@ -80,8 +80,8 @@ const LoginPage: React.FC = () => {
 
       if (response.data.status === "success") {
         // Use the auth context logic to save session
-        const result = await login(username, password, remember);
-        if (result.success) navigate("/webapp/dashboard");
+        finalizeLogin(response.data.data);
+        navigate("/webapp/dashboard");
       } else if (response.data.status === "requires_verification") {
         setChallengeEmail(response.data.email);
         setShowChallengeModal(true);
@@ -90,10 +90,14 @@ const LoginPage: React.FC = () => {
         toast.error(response.data.message, { duration: 10000 });
       } else if (response.data.status === "contact_admin") {
         toast.error(response.data.message, { duration: 10000 });
+      } else if (response.data.status === "error") {
+        setLoginError(response.data.message || "Invalid credentials. Please try again.");
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setLoginError("Invalid Username or Password.");
+        setLoginError(err.response.data.message || "Invalid credentials. Please try again.");
+      } else if (err.response?.data?.message) {
+        setLoginError(err.response.data.message);
       } else {
         setLoginError("Something went wrong. Please try again.");
       }
@@ -218,14 +222,7 @@ const LoginPage: React.FC = () => {
       <div className="absolute inset-0 bg-black/40"></div>
 
       <div
-        className="  relative z-10 w-full max-w-6xl flex flex-col md:flex-row
-      bg-white/10
-        border-[2px] border-white/30
-        backdrop-blur-md
-        shadow-[inset_0_0_8px_1px_rgba(255,255,255,0.2)]
-        rounded-2xl
-        overflow-hidden
-      "
+        className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row bg-white/10 border-[2px] border-white/30 backdrop-blur-md shadow-[inset_0_0_8px_1px_rgba(255,255,255,0.2)] rounded-2xl overflow-hidden"
       >
         {/* LEFT: Logo */}
         <section className="relative md:w-1/2 flex flex-col justify-center items-center p-10 text-white overflow-hidden">

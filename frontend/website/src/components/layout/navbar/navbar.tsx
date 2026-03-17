@@ -126,8 +126,7 @@ export default function Navbar() {
         initial={false}
         animate={{ 
           y: isVisible ? 0 : "-100%",
-          opacity: isVisible ? 1 : 0,
-          height: isVisible ? "auto" : 0
+          opacity: isVisible ? 1 : 0
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
@@ -138,9 +137,9 @@ export default function Navbar() {
               <Image
                 src={isScrolled ? "/images/logo-white1.png" : "/images/logo-dark1.png"}
                 alt="logo"
-                width={160}
-                height={42}
-                className="object-contain transition-all duration-500 w-[120px] md:w-[160px] landscape:w-[70px] md:landscape:w-[100px]"
+                width={220}
+                height={58}
+                className="object-contain transition-all duration-500 w-[140px] md:w-[220px] landscape:w-[100px] md:landscape:w-[140px]"
               />
             </Link>
 

@@ -8,7 +8,7 @@ import { Calendar, ChevronDown } from "lucide-react"
 import "react-datepicker/dist/react-datepicker.css"
 
 // --- custom date input ---
-const CustomDateInput = forwardRef(({ value, onClick, placeholder }: any, ref) => (
+const CustomDateInput = forwardRef<HTMLInputElement, { value?: string; onClick?: () => void; placeholder?: string }>(({ value, onClick, placeholder }, ref) => (
   <div className="relative">
     <input
       type="text"
@@ -18,15 +18,15 @@ const CustomDateInput = forwardRef(({ value, onClick, placeholder }: any, ref) =
       readOnly
       ref={ref}
       className="
-        peer w-full bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl
+        peer w-full bg-gray-50 border border-gray-200 rounded-sm
         px-4 pt-6 pb-2 placeholder-gray-400 text-gray-900
-        shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+        focus:outline-none focus:ring-1 focus:ring-brand-blue
         transition duration-300 pr-10
       "
     />
     <label className="
-      absolute left-4 top-2 text-gray-700 text-sm transition-all
-      peer-focus:top-1 peer-focus:text-blue-500 peer-focus:text-sm
+      absolute left-4 top-2 text-gray-500 text-[10px] uppercase font-bold tracking-wider transition-all
+      peer-focus:text-brand-blue
     ">
       Date & Time
     </label>
@@ -58,15 +58,15 @@ export default function AppointmentForm() {
   }
 
   const inputClass = `
-    peer w-full bg-white/30 backdrop-blur-sm border border-white/40 rounded-xl
+    peer w-full bg-gray-50 border border-gray-200 rounded-sm
     px-4 pt-6 pb-2 placeholder-gray-400 text-gray-900
-    shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+    focus:outline-none focus:ring-1 focus:ring-brand-blue
     transition duration-300
   `
 
   const labelClass = `
-    absolute left-4 top-2 text-gray-700 text-sm transition-all
-    peer-focus:top-1 peer-focus:text-blue-500 peer-focus:text-sm
+    absolute left-4 top-2 text-gray-500 text-[10px] uppercase font-bold tracking-wider transition-all
+    peer-focus:text-brand-blue
   `
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,16 +161,16 @@ export default function AppointmentForm() {
           disabled={form.service !== "other"}
           className={`
             peer w-full
-            ${form.service !== "other" ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-white/30 text-gray-900"}
-            backdrop-blur-sm border border-white/40 rounded-xl
+            ${form.service !== "other" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-50 text-gray-900"}
+            border border-gray-200 rounded-sm
             px-4 pt-6 pb-2
-            shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50
+            focus:outline-none focus:ring-1 focus:ring-brand-blue
             transition duration-300
           `}
         />
         <label className={`
-          absolute left-4 top-2 text-sm transition-all
-          ${form.service !== "other" ? "text-gray-400" : "text-gray-700 peer-focus:text-blue-500"}
+          absolute left-4 top-2 text-[10px] uppercase font-bold tracking-wider transition-all
+          ${form.service !== "other" ? "text-gray-400" : "text-gray-500 peer-focus:text-brand-blue"}
         `}>
           Specify Service
         </label>
@@ -192,7 +192,7 @@ export default function AppointmentForm() {
       <div className="md:col-span-2">
         <button
           type="submit"
-          className="w-full bg-black text-white py-3 rounded-xl hover:opacity-90 transition"
+          className="w-full bg-brand-red text-white py-4 rounded-sm font-bold hover:bg-red-700 transition shadow-lg hover:shadow-red-900/20"
         >
           Book Appointment
         </button>

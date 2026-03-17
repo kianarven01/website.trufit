@@ -9,37 +9,44 @@ interface ServiceCardProps {
 }
 
 export default function ServiceCard({ service }: ServiceCardProps) {
-  const Icon = (LucideIcons as Record<string, any>)[service.icon]
+  const Icon = (LucideIcons as Record<string, React.ElementType>)[service.icon]
 
   return (
-    <div className="relative w-full bg-gradient-to-br from-black/40 to-black/20 dark:from-white/60 dark:to-white/30 backdrop-blur-md border border-white/20 dark:border-white/40 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition duration-300 cursor-pointer">
-
+    <div className="group relative w-full bg-white border border-gray-100 rounded-sm overflow-hidden transition-all duration-300 hover:shadow-premium cursor-pointer">
       {/* image */}
-      <div className="relative w-full h-48">
+      <div className="relative w-full h-56 overflow-hidden">
         <Image
           src={service.image}
           alt={service.title}
           fill
-          className="object-cover"
+          className="object-cover transition-transform duration-500 group-hover:scale-110"
         />
+        
+        {/* overlay */}
+        <div className="absolute inset-0 bg-brand-dark/20 group-hover:bg-transparent transition-colors duration-300" />
 
-        {/* icon */}
+        {/* glass icon */}
         {Icon && (
-          <div className="absolute bottom-3 left-3 bg-white/80 dark:bg-black/60 backdrop-blur-md p-2 rounded-full">
-            <Icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="absolute top-4 left-4 glass p-3 rounded-sm border border-white/20">
+            <Icon className="w-6 h-6 text-brand-blue" />
           </div>
         )}
       </div>
 
-      {/* text */}
-      <div className="p-4">
-        <h3 className="text-xl font-semibold mb-2 text-white dark:text-gray-900">
+      {/* content */}
+      <div className="p-6">
+        <h3 className="text-xl font-bold mb-3 text-brand-dark group-hover:text-brand-red transition-colors duration-300">
           {service.title}
         </h3>
 
-        <p className="text-sm text-gray-200 dark:text-gray-700">
+        <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
           {service.description}
         </p>
+        
+        <div className="mt-6 flex items-center text-brand-red font-bold text-xs tracking-widest uppercase">
+          Read More
+          <div className="ml-2 h-[1px] w-0 group-hover:w-8 bg-brand-red transition-all duration-300" />
+        </div>
       </div>
     </div>
   )

@@ -1,83 +1,116 @@
-// src/components/sections/HeroSlide.tsx
+"use client"
+
+import { useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRightCircle, Play } from "lucide-react"
 import { Slide } from "@/types/slide"
+import gsap from "gsap"
 
 type Props = {
   slide: Slide
 }
 
 export default function HeroSlide({ slide }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const badgeRef = useRef<HTMLDivElement>(null)
+  const titleRef = useRef<HTMLHeadingElement>(null)
+  const subtitleRef = useRef<HTMLParagraphElement>(null)
+  const buttonsRef = useRef<HTMLDivElement>(null)
+  const statsRef = useRef<HTMLDivElement>(null)
+
   const [firstWord, ...restWords] = slide.title.split(" ")
   const restOfTitle = restWords.join(" ")
   const serviceSlug = slide.title.replace(/\s+/g, "-").toLowerCase()
 
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out", duration: 1 } })
+
+      tl.fromTo(badgeRef.current, { opacity: 0, x: -30 }, { opacity: 1, x: 0 })
+        .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0 }, "-=0.7")
+        .fromTo(subtitleRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0 }, "-=0.8")
+        .fromTo(buttonsRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0 }, "-=0.8")
+        .fromTo(statsRef.current, { opacity: 0 }, { opacity: 1, duration: 1.5 }, "-=0.5")
+    }, containerRef)
+
+    return () => ctx.revert()
+  }, [slide])
+
   return (
-    <div className="relative h-screen w-full">
-      
+    <div ref={containerRef} className="relative h-screen w-full">
       {/* background image */}
-      <Image
-        src={slide.image}
-        alt={slide.title}
-        fill
-        priority
-        className="object-cover"
-      />
+      <Image src={slide.image} alt={slide.title} fill priority className="object-cover" />
 
       {/* dark overlay */}
-      <div className="absolute inset-0 bg-black/50" />
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* left shadow */}
-      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-black/70 to-transparent" />
-
-      {/* right shadow */}
-      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-black/70 to-transparent" />
+      <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/80 to-transparent" />
 
       {/* content */}
       <div className="relative z-10 flex h-full items-center">
-        <div className="px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 text-white text-left max-w-4xl">
-          
+        <div className="px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 text-white text-left max-w-[1820px] mx-auto w-full 
+                      pt-16 pb-10 md:pb-0">
+          {/* Quality Auto Care badge */}
+          <div ref={badgeRef} className="flex items-center gap-2 mb-3 md:mb-6 landscape:hidden lg:landscape:flex">
+            <div className="h-[2px] w-8 bg-brand-red" />
+            <span className="text-[10px] md:text-sm font-bold tracking-widest uppercase text-brand-red">
+              Quality Auto Care
+            </span>
+          </div>
+ 
           {/* title */}
-          <h1 className="font-brawler text-4xl md:text-6xl font-bold mb-4">
-            <span className="text-red-600">{firstWord}</span> {restOfTitle}
+          <h1 ref={titleRef} className="font-brawler text-3xl sm:text-4xl md:text-8xl font-bold mb-3 md:mb-6 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl">
+            <span className="text-brand-red">{firstWord}</span> {restOfTitle}
           </h1>
 
           {/* subtitle */}
-          <p className="font-brawler text-md md:text-xl mb-6">
+          <p
+            ref={subtitleRef}
+            className="text-[11px] sm:text-sm md:text-xl mb-4 md:mb-10 max-w-2xl text-gray-300 font-light leading-relaxed landscape:hidden lg:landscape:block"
+          >
             {slide.subtitle}
           </p>
 
           {/* buttons */}
-          {slide.buttonText && slide.buttonLink && (
-            <div className="flex flex-wrap gap-3">
+          <div ref={buttonsRef} className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-16 landscape:mb-4 md:landscape:mb-10">
+            <Link
+              href={slide.buttonLink || "/services"}
+              className="group inline-flex items-center gap-2 bg-brand-red hover:bg-red-700 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all shadow-lg hover:shadow-red-900/40 text-[9px] sm:text-xs md:text-base"
+            >
+              Our Services
+              <div className="bg-white/20 p-1 rounded-full group-hover:bg-white/40 transition-colors">
+                <ArrowRightCircle className="w-3 md:w-4 h-3 md:h-4" />
+              </div>
+            </Link>
 
-              {/* main red button */}
-              <Link
-                href={slide.buttonLink}
-                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-md font-semibold transition"
-              >
-                {slide.buttonText}
-                <ArrowRightCircle className="w-5 h-5" />
-              </Link>
+            <Link
+              href={`/services/${serviceSlug}`}
+              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all
+                         bg-white/5 backdrop-blur-md border border-white/20 text-white
+                         hover:bg-brand-red/10 hover:border-brand-red text-[9px] sm:text-xs md:text-base"
+            >
+              <Play className="w-3 md:w-4 h-3 md:h-4" />
+              View More
+            </Link>
+          </div>
 
-              {/* glass View More button */}
-              <Link
-                href={`/services/${serviceSlug}`}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-md font-semibold transition
-                           bg-white/10 backdrop-blur-md border border-white/30 text-white
-                           hover:bg-white/20"
-              >
-                <Play className="w-5 h-5" />
-                View More
-              </Link>
-
+          {/* stats */}
+          <div ref={statsRef} className="hidden sm:flex lg:flex gap-12 border-t border-white/10 pt-8 landscape:hidden lg:landscape:flex">
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-brand-red mb-1">25+</div>
+              <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400">Years Experience</div>
             </div>
-          )}
-
+            <div>
+              <div className="text-3xl md:text-4xl font-bold text-white mb-1 flex items-center">
+                4.5<span className="text-brand-red text-2xl ml-1">★</span>
+              </div>
+              <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400">Customer Ratings</div>
+            </div>
+          </div>
         </div>
       </div>
-
     </div>
   )
-}
+}

@@ -54,7 +54,7 @@ export default function ServicesSection() {
 
   return (
     <section ref={sectionRef} className="relative bg-gray-50">
-      <div className="px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1400px]">
+      <div className="px-6 sm:px-10 lg:px-16 mx-auto max-w-[1820px]">
         <h2 className="text-3xl font-bold text-center mb-16">Our Services</h2>
 
         {/* horizontal scroll container */}

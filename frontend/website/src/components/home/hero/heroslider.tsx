@@ -32,12 +32,11 @@ export default function HeroSlider() {
   }, [slideCount])
 
   useEffect(() => {
-    setProgress(0)
     const progressInterval = setInterval(() => {
       setProgress((prev) => Math.min(prev + 100 / (intervalTime / 100), 100))
     }, 100)
     return () => clearInterval(progressInterval)
-  }, [index, intervalTime])
+  }, [index, intervalTime, startInterval])
 
   const handleClick = (i: number) => {
     setIndex(i)
@@ -70,8 +69,8 @@ export default function HeroSlider() {
   }
 
   return (
-    <div
-      className="relative w-full overflow-hidden"
+    <section
+      className="relative h-[600px] md:h-screen w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -79,12 +78,12 @@ export default function HeroSlider() {
       <HeroSlide slide={slides[index]} />
 
       {/* clickable rectangle progress bars */}
-      <div className="absolute bottom-4 left-0 right-0 px-6 md:px-16 flex gap-2 z-50">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[1820px] px-6 sm:px-10 lg:px-16 flex gap-2 z-50 landscape:bottom-2">
         {slides.map((_, i) => (
           <div
             key={i}
             onClick={() => handleClick(i)}
-            className="flex-1 h-3 bg-white/30 cursor-pointer hover:bg-white/50 relative"
+            className="flex-1 h-2 md:h-3 bg-white/30 cursor-pointer hover:bg-white/50 relative landscape:h-1"
           >
             <div
               className="h-full bg-white transition-[width] duration-100 linear pointer-events-none"
@@ -95,6 +94,6 @@ export default function HeroSlider() {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }

@@ -88,7 +88,7 @@ const AddPartsCategory: React.FC<Props> = ({
                   key={cat}
                   type="button"
                   onClick={() => setName(cat)}
-                  className="px-3 py-1.5 text-sm rounded-md border hover:bg-muted transition"
+                  className="px-2 py-1.5 text-xs rounded-md border hover:bg-muted transition"
                 >
                   {cat}
                 </button>

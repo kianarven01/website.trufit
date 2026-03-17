@@ -166,24 +166,22 @@ const VehicleVariantsPage: React.FC = () => {
             >
               Product Catalog
             </BreadcrumbLink>
-
             <BreadcrumbSeparator />
-
           </BreadcrumbItem>
+
           <BreadcrumbItem>
             <BreadcrumbLink 
               onClick={() => 
               navigate("/webapp/products/product-catalog")
               }
             >
-              Vehicles
+              {`${make} ${model}`}
             </BreadcrumbLink>
-
             <BreadcrumbSeparator />
-
           </BreadcrumbItem>
+
           <BreadcrumbItem>
-            <BreadcrumbPage>Part Categories</BreadcrumbPage>
+            <BreadcrumbPage>Parts List</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -346,7 +344,20 @@ const VehicleVariantsPage: React.FC = () => {
                     {categoryList.map((cat) => {
                       const Icon = CATEGORY_ICONS[cat.name] || Wrench;
                       return (
-                        <Card key={cat.id} className="relative group cursor-pointer hover:shadow-md transition rounded-lg">
+                        <Card 
+                          key={cat.id} 
+                          className="relative group cursor-pointer hover:shadow-md transition rounded-lg"
+                            onClick={() => {
+                            if (!selectedVariantId) {
+                              alert("Please select a variant first.");
+                              return;
+                            }
+
+                            navigate(
+                              `/webapp/products/product-catalog/${vehicleSlug}/${selectedVariantId}/${cat.id}/products`
+                            );
+                          }}
+                          >
                           <CardContent className="p-4 flex items-center gap-4">
                             <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                               <Icon className="w-6 h-6 text-primary" />
@@ -365,7 +376,8 @@ const VehicleVariantsPage: React.FC = () => {
                               <Button 
                                 variant="ghost" 
                                 size="icon_xs" 
-                                onClick={() => { 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
                                   setEditingCategory(cat); 
                                   setCategoryModalOpen(true); 
                                   }}
@@ -376,7 +388,8 @@ const VehicleVariantsPage: React.FC = () => {
                                 variant="ghost" 
                                 size="icon_xs" 
                                 className="text-destructive" 
-                                onClick={() => { 
+                                onClick={(e) => { 
+                                  e.stopPropagation();
                                   setCategoryToDelete(cat); 
                                   setDeleteCategoryOpen(true); 
                                   }}

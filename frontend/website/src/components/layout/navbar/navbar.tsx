@@ -26,16 +26,11 @@ export default function Navbar() {
   // handle scroll
   useEffect(() => {
     const handleScroll = () => {
-      // Early exit if locked to prevent jitter loop
-      if (isLockedRef.current) return
-
       const currentScrollY = window.scrollY
       
-      // Update scrolled state - threshold for changing appearance
-      setIsScrolled(currentScrollY > 20)
-
-      // Always show at top (force show)
+      // Always show at top (force show) and reset scrolled state
       if (currentScrollY < 60) {
+        setIsScrolled(false)
         if (!isVisibleRef.current) {
           setIsVisible(true)
           isVisibleRef.current = true
@@ -43,6 +38,12 @@ export default function Navbar() {
         lastScrollY.current = currentScrollY
         return
       }
+
+      // Early exit if locked to prevent jitter loop (only after top-check)
+      if (isLockedRef.current) return
+      
+      // Update scrolled state - threshold for changing appearance
+      setIsScrolled(currentScrollY > 20)
 
       const diff = currentScrollY - lastScrollY.current
       

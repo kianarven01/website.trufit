@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from "react"
 import ServiceCard from "@/components/ui/servicecard"
-import { services } from "@/data/services"
+import { services } from "@/data/home-services"
 
 export default function ServicesSection() {
   const containerRef = useRef<HTMLDivElement>(null)

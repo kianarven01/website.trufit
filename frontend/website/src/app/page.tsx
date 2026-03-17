@@ -1,3 +1,4 @@
+import AppointmentSection from "@/components/home/appointment/appointment"
 import HeroSection from "@/components/home/hero/herosection"
 import ServicesSection from "@/components/home/services/servicessection"
 
@@ -6,6 +7,7 @@ export default function HomePage() {
     <>
       <HeroSection />
       <ServicesSection/>
+      <AppointmentSection/>
     </>
   )
 }

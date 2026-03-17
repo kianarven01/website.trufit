@@ -38,8 +38,8 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <Phone size={14} />
-              <a href="tel:+639187747788" className="hover:underline">
-                +639187747788
+              <a href="tel:09187747788" className="hover:underline">
+                0918-774-7788
               </a>
             </div>
             <div className="hidden sm:flex items-center gap-1">
@@ -50,7 +50,7 @@ export default function Navbar() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Clock size={14} /> Mon–Sat: 8am – 5pm
+            <Clock size={14} /> Mon – Sat: 8:00 AM – 5:00 PM
           </div>
         </div>
       </div>

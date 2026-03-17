@@ -10,8 +10,9 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
-  const lastScrollY = useRef(0)
   const isVisibleRef = useRef(true)
+  const lastScrollY = useRef(0)
+  const isLockedRef = useRef(false)
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -25,13 +26,16 @@ export default function Navbar() {
   // handle scroll
   useEffect(() => {
     const handleScroll = () => {
+      // Early exit if locked to prevent jitter loop
+      if (isLockedRef.current) return
+
       const currentScrollY = window.scrollY
       
-      // Update scrolled state
-      setIsScrolled(currentScrollY > 50)
+      // Update scrolled state - threshold for changing appearance
+      setIsScrolled(currentScrollY > 20)
 
-      // Always show at top (or very near top)
-      if (currentScrollY < 120) {
+      // Always show at top (force show)
+      if (currentScrollY < 60) {
         if (!isVisibleRef.current) {
           setIsVisible(true)
           isVisibleRef.current = true
@@ -41,18 +45,31 @@ export default function Navbar() {
       }
 
       const diff = currentScrollY - lastScrollY.current
-      const threshold = 15 // decisive threshold
-
-      if (Math.abs(diff) > threshold) {
-        if (diff > 0 && isVisibleRef.current && !isOpen) {
-          // scrolling down decisively
-          setIsVisible(false)
-          isVisibleRef.current = false
-        } else if (diff < 0 && !isVisibleRef.current) {
-          // scrolling up decisively
-          setIsVisible(true)
-          isVisibleRef.current = true
-        }
+      
+      // Decisions based on scroll direction and cumulative distance
+      // Higher hide threshold to prevent "accidental" hiding
+      if (diff > 50 && isVisibleRef.current && !isOpen) {
+        // Scrolling down decisively
+        setIsVisible(false)
+        isVisibleRef.current = false
+        lastScrollY.current = currentScrollY
+        
+        // Lock for 500ms to allow animation to finish and scroll to settle
+        isLockedRef.current = true
+        setTimeout(() => { isLockedRef.current = false }, 500)
+      } else if (diff < -30 && !isVisibleRef.current) {
+        // Scrolling up decisively
+        setIsVisible(true)
+        isVisibleRef.current = true
+        lastScrollY.current = currentScrollY
+        
+        // Lock for 500ms
+        isLockedRef.current = true
+        setTimeout(() => { isLockedRef.current = false }, 500)
+      }
+      
+      // Periodically update last position to avoid stale anchors
+      if (Math.abs(diff) > 150) {
         lastScrollY.current = currentScrollY
       }
     }
@@ -108,8 +125,9 @@ export default function Navbar() {
         className="overflow-hidden"
         initial={false}
         animate={{ 
-          height: isVisible ? "auto" : 0,
-          opacity: isVisible ? 1 : 0
+          y: isVisible ? 0 : "-100%",
+          opacity: isVisible ? 1 : 0,
+          height: isVisible ? "auto" : 0
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >

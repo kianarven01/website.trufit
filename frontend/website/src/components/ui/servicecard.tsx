@@ -25,16 +25,16 @@ export default function ServiceCard({ service }: ServiceCardProps) {
         {/* subtle overlay */}
         <div className="absolute inset-0 bg-brand-dark/10 group-hover:bg-transparent transition-colors duration-300" />
 
-        {/* white icon box (glass design) */}
+        {/* white icon box (glass design) - positioned bottom-left per request */}
         {Icon && (
-          <div className="absolute top-0 left-0 bg-white p-4 rounded-ee-sm shadow-sm transition-transform duration-300 group-hover:scale-110 origin-top-left">
-            <Icon className="w-6 h-6 text-brand-blue" />
+          <div className="absolute bottom-4 left-4 bg-white p-5 rounded-sm shadow-md transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl">
+            <Icon className="w-8 h-8 text-brand-blue" />
           </div>
         )}
       </div>
 
       {/* content */}
-      <div className="p-8">
+      <div className="p-8 pt-10">
         <h3 className="text-xl font-black mb-3 text-brand-dark group-hover:text-brand-red transition-colors duration-300">
           {service.title}
         </h3>

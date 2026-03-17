@@ -116,7 +116,7 @@ export default function Navbar() {
           <div className="flex items-center gap-1.5">
             <Clock size={14} className="text-brand-red" />
             <span className="hidden xs:inline">Mon – Sat: 8:00 AM – 5:00 PM</span>
-            <span className="xs:hidden">8AM – 5PM</span>
+            <span className="xs:hidden">Mon – Sat: 8:00 AM – 5:00 PM</span>
           </div>
         </div>
       </div>

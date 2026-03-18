@@ -52,7 +52,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   product?: ProductModalItem | null;
   categories: CategoryOption[];
-  units: UnitOption[];
   suppliers: SupplierOption[];
   onSaved: () => void | Promise<void>;
 }
@@ -62,7 +61,6 @@ export function ProductModal({
   onOpenChange,
   product,
   categories,
-  units,
   suppliers,
   onSaved,
 }: Props) {
@@ -73,7 +71,7 @@ export function ProductModal({
   const [sku, setSku] = useState("");
   const [barcode, setBarcode] = useState("");
   const [partNumber, setPartNumber] = useState("");
-  const [unitId, setUnitId] = useState("");
+  const [unit, setUnit] = useState("");
   const [description, setDescription] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [cost, setCost] = useState("");
@@ -91,7 +89,7 @@ export function ProductModal({
       setSku(product.sku ?? "");
       setBarcode(product.barcode ?? "");
       setPartNumber(product.partNumber ?? "");
-      setUnitId(product.unit ?? "");
+      setUnit(product.unit ?? "");
       setDescription(product.description ?? "");
       setSupplierId(product.supplierCode ?? "");
       setCost(product.cost != null ? String(product.cost) : "");
@@ -102,7 +100,7 @@ export function ProductModal({
       setSku("");
       setBarcode("");
       setPartNumber("");
-      setUnitId("");
+      setUnit("");
       setDescription("");
       setSupplierId("");
       setCost("");
@@ -135,7 +133,7 @@ export function ProductModal({
       return;
     }
 
-    if (!unitId) {
+    if (!unit) {
       toast.error("Unit of measure is required.");
       return;
     }
@@ -157,7 +155,7 @@ export function ProductModal({
       description: description.trim() || null,
       image_URL: imageUrl.trim() || null,
       category_id: categoryId ? Number(categoryId) : null,
-      unit: unitId,
+      unit: unit.trim(),
       barcode: barcode.trim() || null,
       part_number: partNumber.trim(),
       supplier_code: supplierId,
@@ -291,18 +289,11 @@ export function ProductModal({
 
               <div>
                 <Label className="text-xs">Unit *</Label>
-                <select
-                  value={unitId}
-                  onChange={(e) => setUnitId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select unit</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </option>
-                  ))}
-                </select>
+                <Input
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  placeholder="SKU"
+                />
               </div>
 
               <div>

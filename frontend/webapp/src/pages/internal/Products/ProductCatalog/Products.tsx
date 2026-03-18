@@ -10,17 +10,24 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import DataToolbar from "@/components/DataToolbar";
+import { Card, CardContent } from "@/components/ui/card";
+
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+
+import { ProductModal } from "@/components/popupModal/ProductCatalog/addProduct";
+import { Image as ImageIcon } from "lucide-react";
 
 interface Variant {
   id: string;
   name: string;
-  year: string;
-  engine: string;
-  transmission: string;
-  drivetrain: string;
 }
 
 interface Category {
@@ -31,33 +38,39 @@ interface Category {
 interface Part {
   id: string;
   name: string;
+  sku: string;
+  price: number;
+  unit: string;
+  image?: string;
+  brandId: string;
   variantId: string;
   categoryId: string;
 }
 
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
-
   const { vehicleSlug, variantId, categoryId } = useParams<{
     vehicleSlug: string;
     variantId: string;
     categoryId: string;
   }>();
 
-  // 🚨 Guard: invalid route params
+  const [variant, setVariant] = useState<Variant>();
+  const [category, setCategory] = useState<Category>();
+  const [parts, setParts] = useState<Part[]>([]);
+  const [filteredParts, setFilteredParts] = useState<Part[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   if (!vehicleSlug || !variantId || !categoryId) {
     return <div className="p-4">Invalid route</div>;
   }
 
-  // Vehicle name
   const [make, model] = vehicleSlug
     .split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1));
 
-  const [variant, setVariant] = useState<Variant | undefined>();
-  const [category, setCategory] = useState<Category | undefined>();
-  const [parts, setParts] = useState<Part[]>([]);
-
+  // Load parts, variant, category
   useEffect(() => {
     const variants: Variant[] = JSON.parse(localStorage.getItem("variants") || "[]");
     const categories: Category[] = JSON.parse(localStorage.getItem("categories") || "[]");
@@ -66,7 +79,6 @@ const ProductList: React.FC = () => {
     const foundVariant = variants.find((v) => v.id === variantId);
     const foundCategory = categories.find((c) => c.id === categoryId);
 
-    // 🚨 HARD FAIL → redirect if invalid
     if (!foundVariant || !foundCategory) {
       navigate("/webapp/products/product-catalog");
       return;
@@ -75,17 +87,39 @@ const ProductList: React.FC = () => {
     setVariant(foundVariant);
     setCategory(foundCategory);
 
-    const filteredParts = savedParts.filter(
+    const filtered = savedParts.filter(
       (p) => p.variantId === variantId && p.categoryId === categoryId
     );
 
-    setParts(filteredParts);
+    setParts(filtered);
+    setFilteredParts(filtered);
   }, [variantId, categoryId, navigate]);
 
-  // ⛔ Block render until data is valid
-  if (!variant || !category) {
-    return null; // or loading spinner
-  }
+  // Search filter
+  useEffect(() => {
+    setFilteredParts(
+      parts.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.sku.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    );
+  }, [searchQuery, parts]);
+
+  const handleAddPart = (newPart: Part) => {
+    const savedParts: Part[] = JSON.parse(localStorage.getItem("parts") || "[]");
+    const updatedParts = [...savedParts, newPart];
+    localStorage.setItem("parts", JSON.stringify(updatedParts));
+
+    const filtered = updatedParts.filter(
+      (p) => p.variantId === variantId && p.categoryId === categoryId
+    );
+
+    setParts(filtered);
+    setFilteredParts(filtered);
+    setIsModalOpen(false);
+  };
+
+  if (!variant || !category) return null;
 
   return (
     <div className="w-full h-full p-4 flex flex-col space-y-4">
@@ -93,104 +127,122 @@ const ProductList: React.FC = () => {
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
-
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate("/webapp/products/product-catalog")
-              }
-            >
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
               Product Catalog
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
-
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate("/webapp/products/product-catalog/")
-              }
-            >
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
               {make} {model}
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
-
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate(`/webapp/products/product-catalog/${vehicleSlug}`)
-              }            
-            >
+            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
               {variant.name}
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
-
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate(
-                  `/webapp/products/product-catalog/${vehicleSlug}`)
-              }
-            >
+            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
               {category.name}
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
-
           <BreadcrumbItem>
-            <BreadcrumbPage>
-              Products
-            </BreadcrumbPage>
+            <BreadcrumbPage>Products</BreadcrumbPage>
           </BreadcrumbItem>
-
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">
-          Parts List
-        </h2>
+      {/* Toolbar */}
+      <DataToolbar
+        searchPlaceholder="Search parts..."
+        onSearch={(v) => setSearchQuery(v)}
+        onAdd={() => setIsModalOpen(true)}
+        addLabel="Add Part"
+      />
 
-        <Button
-          size="sm"
-          onClick={() => {
-            console.log("Add part");
-          }}
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Add Part
-        </Button>
-      </div>
+      {/* ✅ Table */}
+      {filteredParts.length > 0 && (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Part Name</TableHead>
+              <TableHead>SKU</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Unit</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredParts.map((part) => (
+              <TableRow key={part.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    {part.image ? (
+                      <img
+                        src={part.image}
+                        alt={part.name}
+                        className="h-8 w-8 rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-medium">{part.name}</span>
+                      <p className="text-muted-foreground text-xs">
+                        {part.brandId}
+                      </p>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>{part.sku}</TableCell>
+                <TableCell>${part.price.toFixed(2)}</TableCell>
+                <TableCell>{part.unit}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
-      {/* Parts List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium">
-            {category.name}
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-2">
-          {parts.length > 0 ? (
-            parts.map((part) => (
-              <div
-                key={part.id}
-                className="p-4 border rounded-lg hover:shadow-sm transition"
-              >
-                <p className="font-medium">{part.name}</p>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-10 text-muted-foreground">
-              No parts found for this category.
+      {/* ❌ Empty state */}
+      {filteredParts.length === 0 && (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center justify-center text-center">
+            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <ImageIcon className="h-6 w-6 text-muted-foreground" />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-sm font-medium">No products found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Try adjusting your search or add a new product.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* Modal */}
+      {isModalOpen && (
+        <ProductModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          product={null}
+          categories={[
+            { id: Number(category.id), name: category.name, code: category.id },
+          ]}
+          suppliers={[
+            {
+              id: "supplier1",
+              CompanyName: "Default Supplier",
+              supplier_code: "SUP1",
+            },
+          ]}
+          onSaved={() => Promise.resolve()}
+        />
+      )}
     </div>
   );
 };

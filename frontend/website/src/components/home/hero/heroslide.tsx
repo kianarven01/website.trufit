@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightCircle, Play } from "lucide-react";
@@ -24,7 +24,14 @@ export default function HeroSlide({ slide, isActive }: Props) {
   const restOfTitle = restWords.join(" ");
   const serviceSlug = slide.title.replace(/\s+/g, "-").toLowerCase();
 
-  useEffect(() => {
+  // Common style to prevent sub-pixel rendering shifts and color "blinks"
+  const consistentTextStyle: React.CSSProperties = {
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
+    transformStyle: "preserve-3d",
+  };
+
+  useLayoutEffect(() => {
     // If NOT active (Base Layer), keep it locked in its final state
     if (!isActive) {
       gsap.set(
@@ -39,14 +46,14 @@ export default function HeroSlide({ slide, isActive }: Props) {
           opacity: 1,
           x: 0,
           y: 0,
-          visibility: "visible",
-          overwrite: true, // Stops any previous animations immediately
+          overwrite: true,
         },
       );
       return;
     }
 
     const ctx = gsap.context(() => {
+      // Set initial states for incoming slide
       gsap.set(
         [
           badgeRef.current,
@@ -57,8 +64,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
         ],
         {
           opacity: 0,
-          y: 40,
-          visibility: "hidden",
         },
       );
 
@@ -66,29 +71,14 @@ export default function HeroSlide({ slide, isActive }: Props) {
         defaults: {
           ease: "power4.out",
           duration: 1.5,
-          force3D: true, // Prevents sub-pixel "snapping" jumps
         },
-        delay: 1.4,
+        delay: 1.2,
       });
 
-      tl.to(
-        [
-          badgeRef.current,
-          titleRef.current,
-          subtitleRef.current,
-          buttonsRef.current,
-          statsRef.current,
-        ],
-        {
-          visibility: "visible",
-          duration: 0,
-        },
-      )
-        // Reduced x movement from -60 to -20 to make the entrance smoother
-        .fromTo(
+      tl.fromTo(
           badgeRef.current,
           { opacity: 0, x: -20, y: 40 },
-          { opacity: 1, x: 0, y: 0 },
+          { opacity: 1, x: 0, y: 0 }
         )
         .fromTo(
           titleRef.current,
@@ -146,6 +136,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           <div
             ref={badgeRef}
             className="flex items-center gap-2 mb-3 md:mb-6 landscape:hidden lg:landscape:flex"
+            style={{ 
+                opacity: isActive ? 0 : 1,
+                ...consistentTextStyle 
+            }}
           >
             <div className="h-[2px] w-8 bg-brand-red" />
             <span className="text-[10px] md:text-sm font-bold tracking-widest uppercase text-brand-red">
@@ -157,6 +151,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           <h1
             ref={titleRef}
             className="font-brawler text-3xl sm:text-4xl md:text-8xl font-bold mb-3 md:mb-6 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl"
+            style={{ 
+                opacity: isActive ? 0 : 1,
+                ...consistentTextStyle 
+            }}
           >
             <span className="text-brand-red">{firstWord}</span> {restOfTitle}
           </h1>
@@ -165,6 +163,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           <p
             ref={subtitleRef}
             className="text-[11px] sm:text-sm md:text-xl mb-4 md:mb-10 max-w-2xl text-gray-300 font-light leading-relaxed landscape:hidden lg:landscape:block"
+            style={{ 
+                opacity: isActive ? 0 : 1,
+                ...consistentTextStyle 
+            }}
           >
             {slide.subtitle}
           </p>
@@ -173,6 +175,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           <div
             ref={buttonsRef}
             className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-16 landscape:mb-4 md:landscape:mb-10"
+            style={{ 
+                opacity: isActive ? 0 : 1,
+                ...consistentTextStyle 
+            }}
           >
             <Link
               href={slide.buttonLink || "/services"}
@@ -199,6 +205,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           <div
             ref={statsRef}
             className="hidden sm:flex lg:flex gap-12 border-t border-white/10 pt-8 landscape:hidden lg:landscape:flex"
+            style={{ 
+                opacity: isActive ? 0 : 1,
+                ...consistentTextStyle 
+            }}
           >
             <div>
               <div className="text-3xl md:text-4xl font-bold text-brand-red mb-1">

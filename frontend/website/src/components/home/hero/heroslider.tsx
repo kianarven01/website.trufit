@@ -57,7 +57,6 @@ export default function HeroSlider() {
   useEffect(() => {
     if (nextIndex === null) return;
 
-    // We still use a tiny timeout to ensure React has painted the incoming-slide div
     const timer = setTimeout(() => {
       const incoming = containerRef.current?.querySelector(".incoming-slide");
       if (!incoming) {
@@ -69,13 +68,11 @@ export default function HeroSlider() {
       const ctx = gsap.context(() => {
         const tl = gsap.timeline({
           onComplete: () => {
-            // Batch state updates to prevent flickering
-            gsap.delayedCall(0.1, () => {
-              setIndex(nextIndex);
-              setNextIndex(null);
-              setProgress(0);
-              setIsCompleting(false);
-            });
+            // Swap immediately without delay to prevent "double overlay" darkening
+            setIndex(nextIndex);
+            setNextIndex(null);
+            setProgress(0);
+            setIsCompleting(false);
           }
         });
 
@@ -88,7 +85,6 @@ export default function HeroSlider() {
             ease: "expo.inOut" 
           }
         );
-        // Added duration here to match HeroSlide's internal animations
         tl.to({}, { duration: 1.5 });
       }, containerRef);
 
@@ -125,7 +121,7 @@ export default function HeroSlider() {
       {/* Transition Layer */}
       {nextIndex !== null && (
         <div 
-          className="incoming-slide absolute inset-0 z-20 shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
+          className="incoming-slide absolute inset-0 z-20"
           style={{ 
             clipPath: "polygon(0% 0%, 0% 0%, 0% 0%)", 
             WebkitClipPath: "polygon(0% 0%, 0% 0%, 0% 0%)" 

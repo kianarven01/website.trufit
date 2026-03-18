@@ -189,21 +189,29 @@ export default function ServicesSection() {
 
   const variants = {
     enter: (direction: number) => ({
-      x: direction > 0 ? 300 : -300,
+      x: direction > 0 ? 150 : -150,
       opacity: 0,
-      scale: 0.8
+      scale: 0.95
     }),
     center: {
       zIndex: 1,
       x: 0,
       opacity: 1,
-      scale: 1
+      scale: 1,
+      transition: {
+        x: { type: "spring", stiffness: 400, damping: 40 },
+        opacity: { duration: 0.2 }
+      }
     },
     exit: (direction: number) => ({
       zIndex: 0,
-      x: direction < 0 ? 300 : -300,
+      x: direction < 0 ? 150 : -150,
       opacity: 0,
-      scale: 0.8
+      scale: 0.95,
+      transition: {
+        x: { type: "spring", stiffness: 400, damping: 40 },
+        opacity: { duration: 0.2 }
+      }
     })
   };
 
@@ -269,7 +277,7 @@ export default function ServicesSection() {
         {/* Mobile Swipeable Stack View */}
         <div className="md:hidden relative h-[560px] w-full flex flex-col items-center touch-pan-y">
           <div className="relative w-full h-[480px] flex items-center justify-center overflow-hidden">
-            <AnimatePresence initial={false} custom={direction}>
+            <AnimatePresence initial={false} custom={direction} mode="popLayout">
               <motion.div
                 key={currentIndex}
                 custom={direction}
@@ -277,14 +285,11 @@ export default function ServicesSection() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{
-                  x: { type: "spring", stiffness: 300, damping: 30 },
-                  opacity: { duration: 0.2 }
-                }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={1}
                 onDragEnd={handleDragEnd}
+                style={{ willChange: "transform, opacity" }}
                 className="absolute w-full max-w-[340px] cursor-grab active:cursor-grabbing px-4"
               >
                 <ServiceCard service={services[currentIndex]} />

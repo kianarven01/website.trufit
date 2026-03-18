@@ -12,9 +12,9 @@ export default function ServiceCard({ service }: ServiceCardProps) {
   const Icon = (LucideIcons as unknown as Record<string, React.ElementType>)[service.icon]
 
   return (
-    <div className="group relative w-full bg-white/80 md:bg-transparent md:glass border border-white/60 md:border-white/60 rounded-sm overflow-hidden transition-all duration-500 hover:shadow-premium hover:-translate-y-2 cursor-pointer shadow-[0_15px_50px_-12px_rgba(0,0,0,0.1)]">
-      {/* internal background glow (Disable blur/complex layers on mobile if possible, but keeping it small for now) */}
-      <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-brand-blue/10 rounded-full blur-2xl group-hover:bg-brand-red/20 transition-colors duration-700" />
+    <div className="group relative w-full bg-white md:bg-transparent md:glass border border-gray-100 md:border-white/60 rounded-sm overflow-hidden transition-all duration-500 hover:shadow-premium hover:-translate-y-2 cursor-pointer shadow-lg md:shadow-[0_15px_50px_-12px_rgba(0,0,0,0.1)]">
+      {/* internal background glow - Hidden on mobile for performance */}
+      <div className="hidden md:block absolute -bottom-10 -right-10 w-32 h-32 bg-brand-blue/10 rounded-full blur-2xl group-hover:bg-brand-red/20 transition-colors duration-700" />
       
       {/* image section */}
       <div className="relative w-full h-56 md:h-60 overflow-hidden border-b border-white/20">

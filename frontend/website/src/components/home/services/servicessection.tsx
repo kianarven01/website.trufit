@@ -18,7 +18,7 @@ export default function ServicesSection() {
 
     // --- DESKTOP VIEW (High Performance Bi-Directional) ---
     mm.add("(min-width: 768px)", () => {
-      // 1. Dynamic Bidirectional Wipe (Reveal on enter, Hide on exit)
+      // 1. Dynamic Bidirectional Wipe (Scrubbed)
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container.current,
@@ -49,7 +49,7 @@ export default function ServicesSection() {
         duration: 0.4
       });
 
-      // 2. Dynamic Parallax (Scrubbed)
+      // 2. Desktop Parallax (Stronger)
       gsap.fromTo(innerRef.current,
         { y: 150 },
         {
@@ -69,15 +69,29 @@ export default function ServicesSection() {
       gsap.to(".aura-2", { x: -250, y: -100, duration: 30, repeat: -1, yoyo: true, ease: "sine.inOut", delay: 2 })
     });
 
-    // --- MOBILE VIEW (Optimized) ---
+    // --- MOBILE VIEW (Light Parallax Only) ---
     mm.add("(max-width: 767px)", () => {
-      gsap.set(container.current, { clipPath: "none", webkitClipPath: "none" });
-      gsap.set(innerRef.current, { y: 0 });
+      // Light, Optimized Parallax for Mobile (Using yPercent for compositor efficiency)
+      gsap.fromTo(innerRef.current,
+        { yPercent: 4 },
+        {
+          yPercent: -4,
+          ease: "none",
+          force3D: true,
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: 0.5
+          }
+        }
+      )
+
+      // Very light background drift
       gsap.to(".aura-1", { x: 20, y: 20, duration: 15, repeat: -1, yoyo: true, ease: "sine.inOut" });
     });
 
-    // --- BI-DIRECTIONAL TRANSITIONS (Shared but high-fidelity on Web) ---
-    // This makes the text/cards hide when scrolling out and re-appear when scrolling back
+    // --- SHARED BI-DIRECTIONAL REVEALS ---
     gsap.fromTo(".section-header > *",
       { y: 50, opacity: 0 },
       { 
@@ -90,7 +104,7 @@ export default function ServicesSection() {
           trigger: ".section-header",
           start: "top 90%",
           end: "bottom 10%",
-          toggleActions: "play reverse play reverse" // Bi-directional trigger
+          toggleActions: "play reverse play reverse"
         }
       }
     )
@@ -107,7 +121,7 @@ export default function ServicesSection() {
           trigger: ".services-grid",
           start: "top 90%",
           end: "bottom 10%",
-          toggleActions: "play reverse play reverse" // Bi-directional trigger
+          toggleActions: "play reverse play reverse"
         }
       }
     )
@@ -119,10 +133,8 @@ export default function ServicesSection() {
     <section 
       ref={container} 
       id="services-root-stable" 
-      className="py-24 md:py-32 bg-white overflow-hidden relative"
-      style={{ 
-        clipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)" 
-      }}
+      // Optimized: Initial clip-path only applied via CSS on Desktop to prevent mobile reload flicker
+      className="py-24 md:py-32 bg-white overflow-hidden relative md:[clip-path:polygon(0%_15%,_100%_0%,_100%_100%,_0%_100%)]"
     >
       
       {/* Structural Engineering Grid */}

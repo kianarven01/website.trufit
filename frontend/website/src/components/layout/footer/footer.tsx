@@ -74,6 +74,37 @@ export default function Footer() {
           </ul>
         </div>
 
+        {/* FAQ */}
+        <div className="lg:pl-8">
+          <h4 className="font-bold mb-6 text-lg tracking-tight uppercase">FAQ</h4>
+          <ul className="space-y-4 text-gray-400 text-sm">
+            <li>
+              <p className="text-white font-medium mb-1">Do I need an appointment?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                Walk-ins are welcome, but appointments are preferred for faster service.
+              </p>
+            </li>
+            <li>
+              <p className="text-white font-medium mb-1">How long for a diagnostic?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                A comprehensive electronic scan typically takes 30-60 minutes.
+              </p>
+            </li>
+            <li>
+              <p className="text-white font-medium mb-1">Do you service all brands?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                We specialize in European, American, and Asian vehicle standards.
+              </p>
+            </li>
+            <li>
+              <p className="text-white font-medium mb-1">What is your warranty?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                We provide a standard warranty on all certified parts and labor.
+              </p>
+            </li>
+          </ul>
+        </div>
+
       </div>
 
       {/* copyright */}

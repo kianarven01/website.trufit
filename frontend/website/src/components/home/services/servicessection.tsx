@@ -13,7 +13,7 @@ export default function ServicesSection() {
   const container = useRef<HTMLDivElement>(null)
   
   useGSAP(() => {
-    // 1. Atmospheric Floating Animations
+    // 1. Atmospheric Floating Animations (Aggressive but smooth)
     gsap.to(".aura-1", {
       x: 200,
       y: 150,
@@ -55,16 +55,6 @@ export default function ServicesSection() {
       delay: 1
     })
 
-    gsap.to(".shadow-blob", {
-      x: 100,
-      y: 100,
-      scale: 0.8,
-      duration: 20,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut"
-    })
-
     // 2. Content reveals
     gsap.fromTo(".section-header > *",
       { y: 20, opacity: 0 },
@@ -98,28 +88,32 @@ export default function ServicesSection() {
   }, { scope: container })
 
   return (
-    <section ref={container} id="services-root-stable" className="py-24 bg-[#F8F9FA] overflow-hidden relative">
+    <section ref={container} id="services-root-stable" className="py-24 bg-white overflow-hidden relative">
       
-      {/* Structural Grid Pattern */}
+      {/* Structural Engineering Grid */}
       <div 
-        className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none select-none" 
+        className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none select-none" 
         style={{ 
           backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
           backgroundSize: '80px 80px' 
         }}
       />
 
-      {/* Atmospheric Background Layers */}
+      {/* Atmospheric Background Layers (Massive Sizes) */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="aura-1 absolute -top-40 -left-40 w-[1000px] h-[1000px] bg-brand-red/15 rounded-full blur-[120px]" />
         <div className="aura-2 absolute top-0 -right-40 w-[1100px] h-[1100px] bg-brand-blue/15 rounded-full blur-[150px]" />
+        
         <div className="accent-1 absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-red/20 rounded-full blur-[80px]" />
         <div className="accent-2 absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-brand-blue/20 rounded-full blur-[90px]" />
-        <div className="shadow-blob absolute top-1/3 left-1/2 w-[700px] h-[700px] bg-brand-dark/10 rounded-full blur-[140px]" />
+        
+        {/* Shadow Blob for Contrast */}
+        <div className="absolute top-1/3 left-1/2 w-[700px] h-[700px] bg-brand-dark/5 rounded-full blur-[140px]" />
+        
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-white/40 rounded-full blur-[160px] mix-blend-overlay" />
       </div>
 
-      {/* Container aligned with Hero section padding and max-width */}
+      {/* Aligned Margins with Hero */}
       <div className="relative z-10 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1820px] w-full">
         {/* section-header */}
         <div className="mb-10 md:mb-16 section-header">
@@ -129,16 +123,16 @@ export default function ServicesSection() {
               What We Do
             </span>
           </div>
-          <h2 className="text-5xl md:text-5xl lg:text-6xl font-black text-brand-dark leading-tight">
+          <h2 className="text-5xl md:text-5xl lg:text-7xl font-black text-brand-dark leading-tight uppercase tracking-tight">
             Our Services
           </h2>
-          <p className="mt-6 text-gray-600 md:text-gray-500 max-w-2xl leading-relaxed font-medium md:font-normal">
+          <p className="mt-6 text-gray-600 md:text-gray-500 max-w-2xl leading-relaxed text-lg font-medium md:font-normal">
             Comprehensive automotive repair powered by state of the art tools and decades of expertise
           </p>
         </div>
 
         {/* Services Grid */}
-        <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
           {services.map(service => (
             <div key={service.id} className="service-card-reveal">
                 <ServiceCard service={service} />

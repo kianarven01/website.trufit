@@ -16,9 +16,14 @@ export default function ServicesSection() {
   useGSAP(() => {
     const mm = gsap.matchMedia();
 
-    // --- DESKTOP VIEW (High Performance Bi-Directional) ---
+    // Initial state setup to prevent flash of content (FOUM)
+    gsap.set(".section-header > *, .service-card-reveal", { 
+      opacity: 0, 
+      y: 40 
+    });
+
+    // --- DESKTOP VIEW ---
     mm.add("(min-width: 768px)", () => {
-      // 1. Dynamic Bidirectional Wipe (Scrubbed)
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container.current,
@@ -49,7 +54,6 @@ export default function ServicesSection() {
         duration: 0.4
       });
 
-      // 2. Desktop Parallax (Stronger)
       gsap.fromTo(innerRef.current,
         { y: 150 },
         {
@@ -63,15 +67,10 @@ export default function ServicesSection() {
           }
         }
       )
-
-      // 3. Floating Background Accents
-      gsap.to(".aura-1", { x: 200, y: 150, duration: 25, repeat: -1, yoyo: true, ease: "sine.inOut" })
-      gsap.to(".aura-2", { x: -250, y: -100, duration: 30, repeat: -1, yoyo: true, ease: "sine.inOut", delay: 2 })
     });
 
-    // --- MOBILE VIEW (Light Parallax Only) ---
+    // --- MOBILE VIEW ---
     mm.add("(max-width: 767px)", () => {
-      // Light, Optimized Parallax for Mobile (Using yPercent for compositor efficiency)
       gsap.fromTo(innerRef.current,
         { yPercent: 4 },
         {
@@ -86,45 +85,36 @@ export default function ServicesSection() {
           }
         }
       )
-
-      // Very light background drift
-      gsap.to(".aura-1", { x: 20, y: 20, duration: 15, repeat: -1, yoyo: true, ease: "sine.inOut" });
     });
 
     // --- SHARED BI-DIRECTIONAL REVEALS ---
-    gsap.fromTo(".section-header > *",
-      { y: 50, opacity: 0 },
-      { 
-        y: 0, 
-        opacity: 1, 
-        stagger: 0.1, 
-        duration: 1,
-        ease: "power4.out",
-        scrollTrigger: {
-          trigger: ".section-header",
-          start: "top 90%",
-          end: "bottom 10%",
-          toggleActions: "play reverse play reverse"
-        }
+    gsap.to(".section-header > *", { 
+      y: 0, 
+      opacity: 1, 
+      stagger: 0.1, 
+      duration: 1,
+      ease: "power4.out",
+      scrollTrigger: {
+        trigger: ".section-header",
+        start: "top 92%",
+        end: "bottom 8%",
+        toggleActions: "play reverse play reverse"
       }
-    )
+    })
 
-    gsap.fromTo(".service-card-reveal", 
-      { y: 80, opacity: 0 },
-      { 
-        y: 0, 
-        opacity: 1, 
-        stagger: 0.1, 
-        duration: 0.8,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: ".services-grid",
-          start: "top 90%",
-          end: "bottom 10%",
-          toggleActions: "play reverse play reverse"
-        }
+    gsap.to(".service-card-reveal", { 
+      y: 0, 
+      opacity: 1, 
+      stagger: 0.1, 
+      duration: 0.8,
+      ease: "power2.out",
+      scrollTrigger: {
+        trigger: ".services-grid",
+        start: "top 92%",
+        end: "bottom 8%",
+        toggleActions: "play reverse play reverse"
       }
-    )
+    })
 
     return () => mm.revert();
   }, { scope: container })
@@ -133,11 +123,8 @@ export default function ServicesSection() {
     <section 
       ref={container} 
       id="services-root-stable" 
-      // Optimized: Initial clip-path only applied via CSS on Desktop to prevent mobile reload flicker
       className="py-24 md:py-32 bg-white overflow-hidden relative md:[clip-path:polygon(0%_15%,_100%_0%,_100%_100%,_0%_100%)]"
     >
-      
-      {/* Structural Engineering Grid */}
       <div 
         className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none select-none" 
         style={{ 
@@ -146,7 +133,6 @@ export default function ServicesSection() {
         }}
       />
 
-      {/* Atmospheric Layers */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="aura-1 absolute -top-40 -left-40 w-[800px] md:w-[1200px] h-[800px] md:h-[1200px] bg-brand-blue/10 rounded-full blur-[80px] md:blur-[130px] will-change-transform" />
         <div className="aura-2 absolute top-0 -right-40 w-[600px] md:w-[900px] h-[600px] md:h-[900px] bg-brand-red/8 rounded-full blur-[70px] md:blur-[110px] will-change-transform" />
@@ -155,26 +141,24 @@ export default function ServicesSection() {
       </div>
 
       <div ref={innerRef} className="relative z-10 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1820px] w-full" style={{ willChange: "transform" }}>
-        {/* section-header */}
         <div className="mb-12 md:mb-20 section-header">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 opacity-0"> {/* Initial opacity for SSR safety */}
             <div className="w-12 h-[2px] bg-brand-blue" />
             <span className="text-brand-blue font-bold text-sm md:text-xs tracking-[0.2em] uppercase">
               What We Do
             </span>
           </div>
-          <h2 className="text-5xl md:text-6xl lg:text-8xl font-black text-brand-dark leading-tight uppercase tracking-tight">
+          <h2 className="text-5xl md:text-6xl lg:text-8xl font-black text-brand-dark leading-tight uppercase tracking-tight opacity-0">
             Our Services
           </h2>
-          <p className="mt-4 md:mt-8 text-gray-600 md:text-gray-500 max-w-2xl leading-relaxed text-base md:text-xl font-medium md:font-normal">
+          <p className="mt-4 md:mt-8 text-gray-600 md:text-gray-500 max-w-2xl leading-relaxed text-base md:text-xl font-medium md:font-normal opacity-0">
             Comprehensive automotive repair powered by state of the art tools and decades of expertise
           </p>
         </div>
 
-        {/* Services Grid */}
         <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
           {services.map(service => (
-            <div key={service.id} className="service-card-reveal" style={{ willChange: "opacity, transform" }}>
+            <div key={service.id} className="service-card-reveal opacity-0" style={{ willChange: "opacity, transform" }}>
                 <ServiceCard service={service} />
             </div>
           ))}

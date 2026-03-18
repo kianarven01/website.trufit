@@ -6,6 +6,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import Combobox from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,19 +16,15 @@ import { toast } from "sonner";
 import api from "@/api/axios";
 
 interface CategoryOption {
-  id: number;
+  id: string;
   name: string;
   code: string;
 }
 
-interface UnitOption {
-  id: string;
-  name: string;
-}
 
 interface SupplierOption {
   id: string;
-  CompanyName: string;
+  name: string;
   supplier_code: string;
 }
 
@@ -246,18 +243,20 @@ export function ProductModal({
 
               <div>
                 <Label className="text-xs">Category</Label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  value={categoryId ? categories.find(c => c.id === categoryId)?.name || "" : ""}
+                  onChange={(val) => {
+                    const cat = categories.find(c => c.name === val);
+                    setCategoryId(cat ? String(cat.id) : ""); 
+                  }}
+                  items={categories.map(c => c.name)}
+                  placeholder="Select or type category..."
+                  allowAdd
+                  addLabel="category"
+                  onAdd={() => {
+                    toast("Open add category modal here");
+                  }}
+                />
               </div>
 
               <div>
@@ -292,24 +291,26 @@ export function ProductModal({
                 <Input
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  placeholder="SKU"
+                  placeholder="pcs, boxes, etc."
                 />
               </div>
 
               <div>
                 <Label className="text-xs">Supplier *</Label>
-                <select
-                  value={supplierId}
-                  onChange={(e) => setSupplierId(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Select supplier</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.CompanyName}
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  value={supplierId ? suppliers.find(s => s.id === supplierId)?.name || "" : ""}
+                  onChange={(val) => {
+                    const sup = suppliers.find(s => s.name === val);
+                    setSupplierId(sup ? sup.id : "");
+                  }}
+                  items={suppliers.map(s => s.name)}
+                  placeholder="Select or type supplier..."
+                  allowAdd
+                  addLabel="supplier"
+                  onAdd={() => {
+                    toast("Open add supplier modal here");
+                  }}
+                />
               </div>
 
               <div>
@@ -323,15 +324,6 @@ export function ProductModal({
                   placeholder="0.00"
                 />
               </div>
-            </div>
-
-            <div>
-              <Label className="text-xs">Image URL</Label>
-              <Input
-                value={imageUrl.startsWith("data:") ? "" : imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-              />
             </div>
 
             <div>

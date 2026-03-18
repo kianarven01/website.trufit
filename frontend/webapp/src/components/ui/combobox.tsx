@@ -1,52 +1,88 @@
-import { FC, useRef, useState, useEffect } from "react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { FC, useRef, useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 interface MakeComboboxProps {
   value: string;
   onChange: (val: string) => void;
-  makes: string[];
+  items: string[];
   placeholder?: string;
+  allowAdd?: boolean;
+  addLabel?: string;       
+  onAdd?: () => void;      
 }
 
-const Combobox: FC<MakeComboboxProps> = ({ value, onChange, makes, placeholder }) => {
+const Combobox: FC<MakeComboboxProps> = ({
+  value,
+  onChange,
+  items,
+  placeholder,
+  allowAdd,
+  addLabel,
+  onAdd,
+}) => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const filteredMakes = makes.filter((make) =>
-    make.toLowerCase().includes(search.toLowerCase())
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Auto-close popover if no matches
-  useEffect(() => {
-    if (filteredMakes.length === 0 && open) {
-      setOpen(false);
-    }
-  }, [filteredMakes, open]);
+  const handleClear = () => {
+    setSearch("");
+    onChange("");
+    setOpen(false);
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="relative">
+        <div className="relative w-full">
           <Input
             ref={inputRef}
-            placeholder={placeholder || "Type or select make..."}
+            placeholder={placeholder || "Type or select..."}
             value={search}
             onChange={(e) => {
-              setSearch(e.target.value);
-              onChange(e.target.value);
-              if (!open) setOpen(true);
+              const val = e.target.value;
+              setSearch(val);
+              onChange(val);
+              if (val.length > 0) setOpen(true);
+              else setOpen(false);
             }}
-            onFocus={() => setOpen(true)}
-            className="w-full pr-8"
+            className="w-full pr-10"
           />
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
+
+          {value ? (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : (
+            <ChevronDown
+              onClick={() => setOpen((prev) => !prev)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 cursor-pointer"
+            />
+          )}
         </div>
       </PopoverTrigger>
+
       <PopoverContent
         className="w-[--radix-popover-trigger-width] p-0"
         side="bottom"
@@ -54,29 +90,63 @@ const Combobox: FC<MakeComboboxProps> = ({ value, onChange, makes, placeholder }
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command>
-          <CommandList>
-            {filteredMakes.length > 0 && (
+          <CommandList
+            className="max-h-[260px] overflow-y-auto overscroll-contain scroll-smooth"
+            onWheel={(e) => e.stopPropagation()}
+          >
+            {filteredItems.length > 0 ? (
               <CommandGroup>
-                {filteredMakes.map((make) => (
-                  <CommandItem
-                    key={make}
-                    value={make}
-                    onSelect={() => {
-                      onChange(make);
-                      setSearch(make);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
+                {filteredItems.map((item) => {
+                  const isSelected =
+                    value.toLowerCase() === item.toLowerCase();
+
+                  return (
+                    <CommandItem
+                      key={item}
+                      value={item}
+                      data-selected={isSelected} 
+                      onSelect={() => {
+                        onChange(item);
+                        setSearch(item);
+                        setOpen(false);
+                      }}
                       className={cn(
-                        "mr-2 h-4 w-4",
-                        value.toLowerCase() === make.toLowerCase() ? "opacity-100" : "opacity-0"
+                        "relative flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none justify-between",
+                        "data-[disabled=true]:pointer-events-none",
+                        "hover:bg-blue-50 hover:text-blue-600 data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-600"
                       )}
-                    />
-                    {make}
-                  </CommandItem>
-                ))}
+                    >
+                      <span>{item}</span>
+                      {isSelected && <Check className="h-4 w-4 text-blue-700" />} 
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
+            ) : (
+              <CommandItem disabled>No results found</CommandItem>
+            )}
+
+            {/* Updated Add button */}
+            {allowAdd && onAdd && (
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  onAdd();
+                }}
+                className={cn(
+                  "relative flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none justify-between",
+                  "data-[disabled=true]:pointer-events-none",
+                  "hover:bg-blue-50 hover:text-blue-600",
+                  "data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-600"
+                )}
+              >
+                <span className="flex-1 text-blue-600">
+                  {search
+                    ? `+ Add "${search}" ${addLabel || ""}`
+                    : `+ Add new ${addLabel || ""}`}
+                </span>
+
+              </CommandItem>
             )}
           </CommandList>
         </Command>

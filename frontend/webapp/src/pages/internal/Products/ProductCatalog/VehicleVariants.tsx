@@ -249,7 +249,7 @@ const VehicleVariantsPage: React.FC = () => {
                     v.name.toLowerCase() === val.toLowerCase());
                   setSelectedVariantId(variant ? variant.id : null);
                 }}
-                makes={variantList.map((v) => v.name)}
+                items={variantList.map((v) => v.name)}
                 placeholder="Search variants..."
               />
               <Button

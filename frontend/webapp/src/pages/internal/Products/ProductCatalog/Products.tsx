@@ -35,6 +35,11 @@ interface Category {
   name: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+}
+
 interface Part {
   id: string;
   name: string;
@@ -57,6 +62,7 @@ const ProductList: React.FC = () => {
 
   const [variant, setVariant] = useState<Variant>();
   const [category, setCategory] = useState<Category>();
+  const [supplier, setSupplier] = useState<Supplier[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
   const [filteredParts, setFilteredParts] = useState<Part[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,6 +72,8 @@ const ProductList: React.FC = () => {
     return <div className="p-4">Invalid route</div>;
   }
 
+  
+
   const [make, model] = vehicleSlug
     .split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1));
@@ -74,6 +82,7 @@ const ProductList: React.FC = () => {
   useEffect(() => {
     const variants: Variant[] = JSON.parse(localStorage.getItem("variants") || "[]");
     const categories: Category[] = JSON.parse(localStorage.getItem("categories") || "[]");
+    const suppliers: Supplier[] = JSON.parse(localStorage.getItem("suppliers") || "[]");
     const savedParts: Part[] = JSON.parse(localStorage.getItem("parts") || "[]");
 
     const foundVariant = variants.find((v) => v.id === variantId);
@@ -86,6 +95,7 @@ const ProductList: React.FC = () => {
 
     setVariant(foundVariant);
     setCategory(foundCategory);
+    setSupplier(suppliers);
 
     const filtered = savedParts.filter(
       (p) => p.variantId === variantId && p.categoryId === categoryId
@@ -165,7 +175,7 @@ const ProductList: React.FC = () => {
         addLabel="Add Part"
       />
 
-      {/* ✅ Table */}
+      {/*Products Table */}
       {filteredParts.length > 0 && (
         <Table>
           <TableHeader>
@@ -209,7 +219,7 @@ const ProductList: React.FC = () => {
         </Table>
       )}
 
-      {/* ❌ Empty state */}
+      {/*Empty state */}
       {filteredParts.length === 0 && (
         <Card>
           <CardContent className="py-16 flex flex-col items-center justify-center text-center">
@@ -224,22 +234,16 @@ const ProductList: React.FC = () => {
         </Card>
       )}
 
-      {/* Modal */}
+      {/*Add Product Modal */}
       {isModalOpen && (
         <ProductModal
           open={isModalOpen}
           onOpenChange={setIsModalOpen}
           product={null}
           categories={[
-            { id: Number(category.id), name: category.name, code: category.id },
+            { id: category.id, name: category.name, code: category.id },
           ]}
-          suppliers={[
-            {
-              id: "supplier1",
-              CompanyName: "Default Supplier",
-              supplier_code: "SUP1",
-            },
-          ]}
+          suppliers={supplier.map((s) => ({ id: s.id, name: s.name, supplier_code: s.id }))}
           onSaved={() => Promise.resolve()}
         />
       )}

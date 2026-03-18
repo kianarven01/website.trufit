@@ -179,7 +179,7 @@ export function VehicleModal({
               <Combobox
                 value={makeName}
                 onChange={setMakeName}
-                makes={makerList.map((m) => capitalize(m.name))}
+                items={makerList.map((m) => capitalize(m.name))}
                 placeholder="Type or select make..."
               />
             </div>

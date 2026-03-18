@@ -11,9 +11,64 @@ gsap.registerPlugin(ScrollTrigger)
 
 export default function ServicesSection() {
   const container = useRef<HTMLDivElement>(null)
-  // Simple Staggered Entrance (Standard ScrollTrigger)
+  
   useGSAP(() => {
-    // Header reveal
+    // 1. Atmospheric Floating Animations
+    // Large background auras (Slow)
+    gsap.to(".aura-1", {
+      x: 200,
+      y: 150,
+      rotation: 360,
+      duration: 25,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    })
+
+    gsap.to(".aura-2", {
+      x: -250,
+      y: -100,
+      rotation: -360,
+      duration: 30,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut",
+      delay: 2
+    })
+
+    // Faster accent blobs (Energy)
+    gsap.to(".accent-1", {
+      x: 300,
+      y: -200,
+      scale: 1.3,
+      duration: 15,
+      repeat: -1,
+      yoyo: true,
+      ease: "power1.inOut"
+    })
+
+    gsap.to(".accent-2", {
+      x: -400,
+      y: 300,
+      duration: 12,
+      repeat: -1,
+      yoyo: true,
+      ease: "power2.inOut",
+      delay: 1
+    })
+
+    // Deep shadow blob
+    gsap.to(".shadow-blob", {
+      x: 100,
+      y: 100,
+      scale: 0.8,
+      duration: 20,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut"
+    })
+
+    // 2. Content reveals
     gsap.fromTo(".section-header > *",
       { y: 20, opacity: 0 },
       { 
@@ -29,7 +84,6 @@ export default function ServicesSection() {
       }
     )
 
-    // Basic staggered entrance for cards
     gsap.fromTo(".service-card-reveal", 
       { y: 30, opacity: 0 },
       { 
@@ -47,9 +101,40 @@ export default function ServicesSection() {
   }, { scope: container })
 
   return (
-    <section ref={container} id="services-root-stable" className="py-24 bg-white overflow-hidden relative">
-      <div className="px-6 sm:px-10 lg:px-16 mx-auto max-w-[1400px]">
-        {/* subheader and heading */}
+    <section ref={container} id="services-root-stable" className="py-24 bg-[#F8F9FA] overflow-hidden relative">
+      
+      {/* Structural Grid Pattern */}
+      <div 
+        className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none select-none" 
+        style={{ 
+          backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
+          backgroundSize: '80px 80px' 
+        }}
+      />
+
+      {/* Atmospheric Background Layers */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        {/* Aura 1: Massive Red Background */}
+        <div className="aura-1 absolute -top-40 -left-40 w-[1000px] h-[1000px] bg-brand-red/15 rounded-full blur-[120px]" />
+        
+        {/* Aura 2: Massive Blue Background */}
+        <div className="aura-2 absolute top-0 -right-40 w-[1100px] h-[1100px] bg-brand-blue/15 rounded-full blur-[150px]" />
+        
+        {/* Accent 1: Brighter Red Energy */}
+        <div className="accent-1 absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-red/20 rounded-full blur-[80px]" />
+        
+        {/* Accent 2: Brighter Blue Energy */}
+        <div className="accent-2 absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-brand-blue/20 rounded-full blur-[90px]" />
+        
+        {/* Shadow Blob: Adds contrast for the glass */}
+        <div className="shadow-blob absolute top-1/3 left-1/2 w-[700px] h-[700px] bg-brand-dark/10 rounded-full blur-[140px]" />
+
+        {/* Core center intensity */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-white/40 rounded-full blur-[160px] mix-blend-overlay" />
+      </div>
+
+      <div className="relative z-10 px-6 sm:px-10 lg:px-16 mx-auto max-w-[1400px]">
+        {/* section-header */}
         <div className="mb-10 md:mb-16 section-header">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-[2px] bg-brand-blue" />
@@ -65,7 +150,7 @@ export default function ServicesSection() {
           </p>
         </div>
 
-        {/* Unified Responsive Grid (Stability First) */}
+        {/* Services Grid */}
         <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {services.map(service => (
             <div key={service.id} className="service-card-reveal">
@@ -76,4 +161,4 @@ export default function ServicesSection() {
       </div>
     </section>
   )
-}
+}

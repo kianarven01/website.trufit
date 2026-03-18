@@ -12,8 +12,8 @@ export default function ServiceCard({ service }: ServiceCardProps) {
   const Icon = (LucideIcons as unknown as Record<string, React.ElementType>)[service.icon]
 
   return (
-    <div className="group relative w-full glass border border-gray-200/60 rounded-sm overflow-hidden transition-all duration-500 hover:shadow-premium hover:-translate-y-2 cursor-pointer shadow-sm">
-      {/* background glow (inside card) */}
+    <div className="group relative w-full glass border border-gray-300/40 rounded-sm overflow-hidden transition-all duration-500 hover:shadow-premium hover:-translate-y-2 cursor-pointer shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      {/* internal background glow */}
       <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-brand-blue/10 rounded-full blur-2xl group-hover:bg-brand-red/20 transition-colors duration-700" />
       
       {/* image section */}
@@ -25,7 +25,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
           className="object-cover transition-transform duration-1000 group-hover:scale-110"
         />
         
-        {/* gradient overlay */}
+        {/* dynamic gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/90 via-brand-dark/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
 
         {/* Floating icon badge */}

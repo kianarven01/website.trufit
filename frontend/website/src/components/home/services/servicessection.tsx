@@ -14,7 +14,6 @@ export default function ServicesSection() {
   
   useGSAP(() => {
     // 1. Atmospheric Floating Animations
-    // Large background auras (Slow)
     gsap.to(".aura-1", {
       x: 200,
       y: 150,
@@ -36,7 +35,6 @@ export default function ServicesSection() {
       delay: 2
     })
 
-    // Faster accent blobs (Energy)
     gsap.to(".accent-1", {
       x: 300,
       y: -200,
@@ -57,7 +55,6 @@ export default function ServicesSection() {
       delay: 1
     })
 
-    // Deep shadow blob
     gsap.to(".shadow-blob", {
       x: 100,
       y: 100,
@@ -114,26 +111,16 @@ export default function ServicesSection() {
 
       {/* Atmospheric Background Layers */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        {/* Aura 1: Massive Red Background */}
         <div className="aura-1 absolute -top-40 -left-40 w-[1000px] h-[1000px] bg-brand-red/15 rounded-full blur-[120px]" />
-        
-        {/* Aura 2: Massive Blue Background */}
         <div className="aura-2 absolute top-0 -right-40 w-[1100px] h-[1100px] bg-brand-blue/15 rounded-full blur-[150px]" />
-        
-        {/* Accent 1: Brighter Red Energy */}
         <div className="accent-1 absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-red/20 rounded-full blur-[80px]" />
-        
-        {/* Accent 2: Brighter Blue Energy */}
         <div className="accent-2 absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-brand-blue/20 rounded-full blur-[90px]" />
-        
-        {/* Shadow Blob: Adds contrast for the glass */}
         <div className="shadow-blob absolute top-1/3 left-1/2 w-[700px] h-[700px] bg-brand-dark/10 rounded-full blur-[140px]" />
-
-        {/* Core center intensity */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-white/40 rounded-full blur-[160px] mix-blend-overlay" />
       </div>
 
-      <div className="relative z-10 px-6 sm:px-10 lg:px-16 mx-auto max-w-[1400px]">
+      {/* Container aligned with Hero section padding and max-width */}
+      <div className="relative z-10 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1820px] w-full">
         {/* section-header */}
         <div className="mb-10 md:mb-16 section-header">
           <div className="flex items-center gap-3 mb-4">

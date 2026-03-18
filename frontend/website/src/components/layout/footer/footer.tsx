@@ -1,141 +1,131 @@
 // src/components/layout/Footer/Footer.tsx
 import Image from "next/image"
 import Link from "next/link"
-import { Facebook, Phone, Mail, MapPin } from "lucide-react"
+
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-950 text-white pt-12 pb-6">
+    <footer className="bg-gray-950 text-white pt-16 pb-8">
       
       {/* main footer content */}
-      <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
 
         {/* logo */}
-        <div className="flex flex-col items-start">
+        <div className="flex flex-col items-start lg:pr-8">
           <Link href="/">
             <Image
               src="/images/logo-dark1.png"
               alt="TruFit Auto Center"
-              width={150}
-              height={40}
+              width={180}
+              height={48}
               priority
+              className="w-[150px] md:w-[180px]"
             />
           </Link>
-          <p className="mt-4 text-gray-400 text-sm">
+          <p className="mt-8 text-gray-400 text-sm leading-relaxed">
             Quality auto care inspired by world-class engineering standards. Your vehicle deserves the best.
           </p>
 
-          {/* Contact + Facebook Icon */}
-          <div className="mt-4 flex items-center gap-4 text-gray-300">
-
-            <a
-              href="tel:+639187747788"
-              className="hover:text-red-600 transition"
-            >
-              <Phone size={25} />
-            </a>
-
-            <a
-              href="mailto:trufitautocenter@gmail.com"
-              className="hover:text-red-600 transition"
-            >
-              <Mail size={25} />
-            </a>
-
-            <a
-              href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-red-600 transition"
-            >
-              <MapPin size={25} />
-            </a>
-
-            <a
-              href="https://www.facebook.com/ac.trufit"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Facebook"
-              className="hover:text-blue-500 transition"
-            >
-              <Facebook size={25} />
-            </a>
-
+          {/* Social Icons */}
+          <div className="mt-10 flex items-center gap-6">
+            <Link href="/" className="text-gray-400 hover:text-white transition-all hover:scale-110">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </Link>
+            <Link href="/" className="text-gray-400 hover:text-white transition-all hover:scale-110">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.332 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.332 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.332-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608-.058-1.266-.07-1.646-.07-4.85s.012-3.584.07-4.85c.062-1.366.332-2.633 1.308-3.608.975-.975 2.242-1.246 3.608-1.308 1.266-.058 1.646-.07 4.85-.07zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12s.014 3.667.072 4.947c.2 4.352 2.613 6.766 6.96 6.966 1.28.058 1.688.072 4.947.072s3.667-.014 4.947-.072c4.351-.2 6.766-2.613 6.966-6.966.058-1.28.072-1.688.072-4.947s-.014-3.667-.072-4.947c-.2-4.352-2.613-6.766-6.966-6.966C15.667.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </Link>
+            <Link href="/" className="text-gray-400 hover:text-white transition-all hover:scale-110">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.872.505 9.377.505 9.377.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            </Link>
+            <Link href="/" className="text-gray-400 hover:text-white transition-all hover:scale-110">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </Link>
           </div>
 
         </div>
 
         {/* Services */}
-        <div>
-          <h4 className="font-semibold mb-4">Services</h4>
-          <ul className="space-y-2 text-gray-300">
-            <li><Link href="/" className="hover:text-red-600 transition">Euro Car Specialist</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">American Car Specialist</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Diagnostic of Vehicle Electronics</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Maintenance & Inspection</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Air Conditioning Services & Repair</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Mechanical Repairs</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Under Chassis Repairs</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Diesel Vehicle Services</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Diesel Common Rail Direct Inspection</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Interior & Exterior Detailing</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Other Allied Services</Link></li>
+        <div className="lg:pl-8">
+          <h4 className="font-bold mb-6 text-lg tracking-tight uppercase">Services</h4>
+          <ul className="space-y-3 text-gray-400 text-sm">
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Euro Car Specialist</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">American Car Specialist</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Diagnostic of Vehicle Electronics</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Maintenance & Inspection</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Air Conditioning Services & Repair</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Mechanical Repairs</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Under Chassis Repairs</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Diesel Vehicle Services</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Diesel Common Rail Direct Inspection</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Interior & Exterior Detailing</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Other Allied Services</Link></li>
           </ul>
         </div>
 
         {/* Company */}
-        <div>
-          <h4 className="font-semibold mb-4">Company</h4>
-          <ul className="space-y-2 text-gray-300">
-            <li><Link href="/about" className="hover:text-red-600 transition">About Us</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Our Team</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Careers</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Testimonials</Link></li>
-            <li><Link href="/" className="hover:text-red-600 transition">Blog</Link></li>
+        <div className="lg:pl-8">
+          <h4 className="font-bold mb-6 text-lg tracking-tight uppercase">Company</h4>
+          <ul className="space-y-3 text-gray-400 text-sm">
+            <li><Link href="/about" className="hover:text-brand-red transition-colors">About Us</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Our Team</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Careers</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Testimonials</Link></li>
+            <li><Link href="/" className="hover:text-brand-red transition-colors">Blog</Link></li>
+          </ul>
+        </div>
+
+        {/* FAQ */}
+        <div className="lg:pl-8">
+          <h4 className="font-bold mb-6 text-lg tracking-tight uppercase">FAQ</h4>
+          <ul className="space-y-4 text-gray-400 text-sm">
+            <li>
+              <p className="text-white font-medium mb-1">Do I need an appointment?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                Walk-ins are welcome, but appointments are preferred for faster service.
+              </p>
+            </li>
+            <li>
+              <p className="text-white font-medium mb-1">How long for a diagnostic?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                A comprehensive electronic scan typically takes 30-60 minutes.
+              </p>
+            </li>
+            <li>
+              <p className="text-white font-medium mb-1">Do you service all brands?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                We specialize in European, American, and Asian vehicle standards.
+              </p>
+            </li>
+            <li>
+              <p className="text-white font-medium mb-1">What is your warranty?</p>
+              <p className="text-xs leading-relaxed text-gray-500 italic">
+                We provide a standard warranty on all certified parts and labor.
+              </p>
+            </li>
           </ul>
         </div>
 
       </div>
 
       {/* copyright */}
-      <div className="container mt-8">
-        {/* extra space above the border line */}
-        <div className="mb-6"></div>
-
-        <div className="border-t border-gray-800 pt-4 text-gray-500 text-sm">
-
-          <div className="flex flex-col md:flex-row items-center justify-between gap-2">
-
+      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 mt-12">
+        <div className="border-t border-gray-800 pt-10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             {/* left: copyright */}
-            <div className="text-left md:text-left">
-              © {new Date().getFullYear()} TRUFIT Auto Center. All rights reserved.
+            <div className="text-gray-500 text-xs">
+              © {new Date().getFullYear()} Trufit Auto Center. All rights reserved.
             </div>
-
-            {/* mobile divider */}
-            <div className="block md:hidden w-full border-t border-gray-700 my-2"></div>
 
             {/* center: verse */}
-            <p className="text-gray-400 text-sm text-center md:text-center flex-1 mx-4 max-w-md">
-              {/* mobile: single line */}
-              <span className="md:hidden">
-                For from him and through him and for him are all things. To him be the glory forever! Amen. (Rom. 11:36)
-              </span>
-              {/* desktop: two lines */}
-              <span className="hidden md:inline">
-                For from him and through him and for him are all things.<br />
-                To him be the glory forever! Amen. (Rom. 11:36)
-              </span>
+            <p className="text-gray-600 text-xs text-center italic max-w-lg">
+              For from him and through him and for him are all things. To him be the glory forever! Amen. (Rom. 11:36)
             </p>
 
-            {/* mobile divider */}
-            <div className="block md:hidden w-full border-t border-gray-700 my-2"></div>
-
-            {/* right: privacy + terms */}
-            <div className="flex gap-4 text-right md:text-right">
-              <Link href="/" className="hover:text-red-600 transition">Privacy Policy</Link>
-              <Link href="/" className="hover:text-red-600 transition">Terms of Service</Link>
+            {/* right: links */}
+            <div className="flex gap-8 text-gray-600 text-xs font-medium">
+              <Link href="/" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
-
           </div>
 
         </div>

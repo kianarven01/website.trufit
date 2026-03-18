@@ -6,7 +6,7 @@ import { MapPin, Phone, Mail, Clock } from "lucide-react"
 export default function AppointmentSection() {
   return (
     <section className="bg-gray-100 py-16 md:py-24" id="appointment">
-      <div className="max-w-7xl mx-auto px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32">
+      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-start"> {/* <-- changed items-end to items-start */}
 
           {/* LEFT COLUMN */}
@@ -20,8 +20,9 @@ export default function AppointmentSection() {
             </div>
 
             {/* MAIN TITLE */}
-            <h2 className="text-3xl md:text-5xl font-bold leading-tight">
-              Schedule Your <span className="text-blue-600">Appointment</span>
+            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-brand-dark">
+              Schedule Your <br />
+              <span className="text-brand-blue uppercase">Appointment</span>
             </h2>
 
             {/* SUBTITLE */}
@@ -33,7 +34,7 @@ export default function AppointmentSection() {
             {/* CONTACT INFO */}
             <div className="space-y-4 md:space-y-6 pt-2 md:pt-4">
               <div className="flex items-start gap-3 md:gap-4">
-                <MapPin className="w-5 h-5 text-red-600 mt-1" />
+                <MapPin className="w-5 h-5 text-brand-red mt-1" />
                 <a
                   href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
                   target="_blank"
@@ -65,8 +66,8 @@ export default function AppointmentSection() {
           </div>
 
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
-          <div className="relative mt-8 md:mt-0"> {/* remove flex and justify-end */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl p-6 md:p-10 hover:bg-white/20 transition duration-300">
+          <div className="relative mt-8 md:mt-0">
+            <div className="bg-white border border-gray-100 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
               <AppointmentForm />
             </div>
           </div>

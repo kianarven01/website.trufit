@@ -14,100 +14,105 @@ export default function ServicesSection() {
   const innerRef = useRef<HTMLDivElement>(null)
   
   useGSAP(() => {
-    const isMobile = window.innerWidth < 768
+    const mm = gsap.matchMedia();
 
-    // 1. Dynamic Bidirectional Wipe Reveal (Hero <-> Services <-> About)
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: container.current,
-        start: "top bottom",
-        end: "bottom top",
-        scrub: true,
-        invalidateOnRefresh: true
-      }
-    });
-
-    tl.fromTo(container.current, 
-      { 
-        clipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)",
-        webkitClipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)"
-      },
-      {
-        clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-        webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-        ease: "none",
-        duration: 0.4
-      }
-    )
-    .to({}, { duration: 0.2 })
-    .to(container.current, {
-      clipPath: "polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)",
-      webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)",
-      ease: "none",
-      duration: 0.4
-    });
-
-    // 2. Parallax Depth for Content
-    gsap.fromTo(innerRef.current,
-      { y: 100 },
-      {
-        y: -100,
-        ease: "none",
+    // --- DESKTOP VIEW (High Performance Bi-Directional) ---
+    mm.add("(min-width: 768px)", () => {
+      // 1. Dynamic Bidirectional Wipe (Reveal on enter, Hide on exit)
+      const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container.current,
           start: "top bottom",
           end: "bottom top",
-          scrub: true
+          scrub: true,
+          invalidateOnRefresh: true
+        }
+      });
+
+      tl.fromTo(container.current, 
+        { 
+          clipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)",
+          webkitClipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)"
+        },
+        {
+          clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+          webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+          ease: "none",
+          duration: 0.4
+        }
+      )
+      .to({}, { duration: 0.2 })
+      .to(container.current, {
+        clipPath: "polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)",
+        webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)",
+        ease: "none",
+        duration: 0.4
+      });
+
+      // 2. Dynamic Parallax (Scrubbed)
+      gsap.fromTo(innerRef.current,
+        { y: 150 },
+        {
+          y: -150,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true
+          }
+        }
+      )
+
+      // 3. Floating Background Accents
+      gsap.to(".aura-1", { x: 200, y: 150, duration: 25, repeat: -1, yoyo: true, ease: "sine.inOut" })
+      gsap.to(".aura-2", { x: -250, y: -100, duration: 30, repeat: -1, yoyo: true, ease: "sine.inOut", delay: 2 })
+    });
+
+    // --- MOBILE VIEW (Optimized) ---
+    mm.add("(max-width: 767px)", () => {
+      gsap.set(container.current, { clipPath: "none", webkitClipPath: "none" });
+      gsap.set(innerRef.current, { y: 0 });
+      gsap.to(".aura-1", { x: 20, y: 20, duration: 15, repeat: -1, yoyo: true, ease: "sine.inOut" });
+    });
+
+    // --- BI-DIRECTIONAL TRANSITIONS (Shared but high-fidelity on Web) ---
+    // This makes the text/cards hide when scrolling out and re-appear when scrolling back
+    gsap.fromTo(".section-header > *",
+      { y: 50, opacity: 0 },
+      { 
+        y: 0, 
+        opacity: 1, 
+        stagger: 0.1, 
+        duration: 1,
+        ease: "power4.out",
+        scrollTrigger: {
+          trigger: ".section-header",
+          start: "top 90%",
+          end: "bottom 10%",
+          toggleActions: "play reverse play reverse" // Bi-directional trigger
         }
       }
     )
 
-    // 3. Floating Background Animations
-    gsap.to(".aura-1", {
-      x: isMobile ? 50 : 200,
-      y: isMobile ? 40 : 150,
-      duration: isMobile ? 15 : 25,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut"
-    })
-
-    gsap.to(".aura-2", {
-      x: isMobile ? -60 : -250,
-      y: isMobile ? -30 : -100,
-      duration: isMobile ? 18 : 30,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut",
-      delay: 2
-    })
-
-    if (!isMobile) {
-      gsap.to(".accent-1", {
-        x: 300, y: -200, scale: 1.3, duration: 15, repeat: -1, yoyo: true, ease: "power1.inOut"
-      })
-      gsap.to(".accent-2", {
-        x: -400, y: 300, duration: 12, repeat: -1, yoyo: true, ease: "power2.inOut", delay: 1
-      })
-    }
-
-    // 4. Staggered Card Entrance (Bidirectional Fade)
-    // Updated toggleActions to trigger from both top and bottom
     gsap.fromTo(".service-card-reveal", 
-      { y: 60, opacity: 0 },
+      { y: 80, opacity: 0 },
       { 
         y: 0, 
         opacity: 1, 
         stagger: 0.1, 
         duration: 0.8,
+        ease: "power2.out",
         scrollTrigger: {
           trigger: ".services-grid",
-          start: "top 90%", // Trigger slightly earlier for better visibility
+          start: "top 90%",
           end: "bottom 10%",
-          toggleActions: "play reverse play reverse" // play on enter, reverse on leave, play on enter back, reverse on leave back
+          toggleActions: "play reverse play reverse" // Bi-directional trigger
         }
       }
     )
+
+    return () => mm.revert();
   }, { scope: container })
 
   return (
@@ -122,23 +127,22 @@ export default function ServicesSection() {
       
       {/* Structural Engineering Grid */}
       <div 
-        className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none select-none" 
+        className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none select-none" 
         style={{ 
           backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
           backgroundSize: '80px 80px' 
         }}
       />
 
-      {/* Atmospheric Background Layers */}
+      {/* Atmospheric Layers */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="aura-1 absolute -top-20 -left-20 w-[400px] md:w-[1000px] h-[400px] md:h-[1000px] bg-brand-red/15 rounded-full blur-[60px] md:blur-[120px]" />
-        <div className="aura-2 absolute top-0 -right-20 w-[450px] md:w-[1100px] h-[450px] md:h-[1100px] bg-brand-blue/15 rounded-full blur-[70px] md:blur-[150px]" />
-        <div className="accent-1 hidden md:block absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-brand-red/20 rounded-full blur-[80px]" />
-        <div className="accent-2 hidden md:block absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-brand-blue/20 rounded-full blur-[90px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] md:w-[1200px] h-[600px] md:h-[1200px] bg-white/40 rounded-full blur-[100px] md:blur-[160px] mix-blend-overlay" />
+        <div className="aura-1 absolute -top-40 -left-40 w-[800px] md:w-[1200px] h-[800px] md:h-[1200px] bg-brand-blue/10 rounded-full blur-[80px] md:blur-[130px] will-change-transform" />
+        <div className="aura-2 absolute top-0 -right-40 w-[600px] md:w-[900px] h-[600px] md:h-[900px] bg-brand-red/8 rounded-full blur-[70px] md:blur-[110px] will-change-transform" />
+        <div className="accent-1 hidden md:block absolute top-1/2 left-1/4 w-[600px] h-[600px] bg-brand-blue/12 rounded-full blur-[90px] will-change-transform" />
+        <div className="accent-2 hidden md:block absolute bottom-0 right-1/4 w-[700px] h-[700px] bg-brand-blue/8 rounded-full blur-[100px] will-change-transform" />
       </div>
 
-      <div ref={innerRef} className="relative z-10 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1820px] w-full">
+      <div ref={innerRef} className="relative z-10 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1820px] w-full" style={{ willChange: "transform" }}>
         {/* section-header */}
         <div className="mb-12 md:mb-20 section-header">
           <div className="flex items-center gap-3 mb-4">
@@ -158,7 +162,7 @@ export default function ServicesSection() {
         {/* Services Grid */}
         <div className="services-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
           {services.map(service => (
-            <div key={service.id} className="service-card-reveal">
+            <div key={service.id} className="service-card-reveal" style={{ willChange: "opacity, transform" }}>
                 <ServiceCard service={service} />
             </div>
           ))}

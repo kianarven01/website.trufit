@@ -6,7 +6,7 @@ import { services } from "@/data/home-services";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -145,7 +145,7 @@ export default function ServicesSection() {
     }
   };
 
-  const variants = {
+  const variants: Variants = {
     enter: (direction: number) => ({
       x: direction > 0 ? 150 : -150,
       opacity: 0,

@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
+  Car
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
@@ -43,6 +44,27 @@ const images = [
   "/images/about/equipment.webp",
 ];
 
+// Custom F1 Car SVG Component
+const F1CarIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 40" className={className} fill="currentColor">
+    {/* Aerodynamic Body */}
+    <path d="M5,28 L15,22 L40,18 L70,18 L90,22 L98,28 Z" />
+    {/* Front Wing */}
+    <path d="M0,28 L12,28 L12,32 L0,32 Z" />
+    {/* Rear Wing Structure */}
+    <path d="M85,15 L98,15 L98,18 L85,18 Z" />
+    <path d="M92,15 L92,25" stroke="currentColor" strokeWidth="2" />
+    {/* Cockpit / Halo */}
+    <path d="M45,18 C45,12 60,12 60,18" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path d="M50,18 L50,14 L58,14 L58,18 Z" />
+    {/* Wheels with detail */}
+    <rect x="18" y="26" width="14" height="10" rx="2" fill="#111" />
+    <rect x="72" y="26" width="16" height="12" rx="2" fill="#111" />
+    {/* Floor / Diffuser area */}
+    <path d="M25,30 L75,30 L75,33 L25,33 Z" opacity="0.5" />
+  </svg>
+);
+
 export default function AboutSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +77,8 @@ export default function AboutSection() {
   const aura2Ref = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
+  const carRef = useRef<HTMLDivElement>(null);
+  const activePathRef = useRef<HTMLDivElement>(null);
 
   const stats = [
     { icon: <Award size={24} />, value: "25+", label: "Years Experience" },
@@ -154,32 +178,36 @@ export default function AboutSection() {
         );
       });
 
-      // Dynamic Horizontal Line Animation
-      gsap.fromTo(dividerRef.current,
-        { width: "0%", opacity: 0 },
-        {
-          width: "100%",
-          opacity: 1,
-          ease: "power2.out",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top 95%",
-            end: "top 60%",
-            scrub: 1,
-          }
+      // Synchronized F1 Car & Path Timeline
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top bottom",
+          end: "top top",
+          scrub: 1, // Reduced scrub for tighter sync
         }
+      });
+
+      tl.fromTo(carRef.current,
+        { x: "0vw", opacity: 0 },
+        { x: "100vw", opacity: 1, ease: "none" },
+        0
       );
 
-      // Scanner Glow Animation
-      gsap.fromTo(scannerRef.current,
-        { x: "-100%" },
-        {
-          x: "200%",
-          duration: 3,
-          repeat: -1,
-          ease: "power1.inOut"
-        }
+      tl.fromTo(activePathRef.current,
+        { width: "0%" },
+        { width: "100%", ease: "none" },
+        0
       );
+
+      // High-frequency vibration for an F1 engine feel
+      gsap.to(carRef.current, {
+        y: "+=1.5",
+        repeat: -1,
+        yoyo: true,
+        duration: 0.05,
+        ease: "sine.inOut"
+      });
     });
 
     return () => mm.revert();
@@ -201,20 +229,39 @@ export default function AboutSection() {
       {/* BACKGROUND ELEMENTS - High End Blueprint Aesthetic */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
         
-        {/* Dynamic Horizontal Divider */}
-        <div className="absolute top-0 left-0 w-full flex justify-center">
+        {/* Car Passing Animation Divider */}
+        <div className="absolute top-0 left-0 w-full h-24 flex items-center overflow-hidden">
+          {/* Main Road Line */}
+          <div className="absolute w-full h-[1px] bg-gray-100" />
+          
+          {/* Active Path Filled by Car */}
           <div 
-            ref={dividerRef}
-            className="h-[1px] bg-gradient-to-r from-transparent via-brand-red/40 to-transparent relative overflow-hidden"
-            style={{ width: '0%', opacity: 0 }}
+            ref={activePathRef}
+            className="absolute h-[2px] bg-gradient-to-r from-transparent via-brand-red to-brand-red shadow-[0_0_10px_rgba(227,27,35,0.3)]"
+          />
+
+          {/* Styled Car Silhouette */}
+          <div 
+            ref={carRef}
+            className="absolute flex flex-col items-center -ml-[50px] origin-center"
+            style={{ left: '0%' }}
           >
-            {/* Scanning Glow Effect */}
-            <div 
-              ref={scannerRef}
-              className="absolute inset-0 w-1/3 h-full bg-gradient-to-r from-transparent via-brand-red to-transparent opacity-50 blur-sm"
-            />
+            <div className="relative">
+              {/* F1 Car Custom SVG - Flipped to face right */}
+              <F1CarIcon className="w-[100px] h-[40px] text-brand-red -scale-x-100" />
+              
+              {/* Speed Lines / Aero Vortex Trails Behind */}
+              <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-12 h-[2px] bg-gradient-to-l from-brand-red/60 to-transparent" />
+              <div className="absolute -left-8 top-1/3 -translate-y-1/2 w-8 h-[1px] bg-gradient-to-l from-brand-red/40 to-transparent" />
+              <div className="absolute -left-8 bottom-1/3 w-8 h-[1px] bg-gradient-to-l from-brand-red/40 to-transparent" />
+              
+              {/* Aero "Heat" Distortion Glow */}
+              <div className="absolute inset-0 bg-brand-red/10 blur-xl rounded-full scale-150 -z-10" />
+            </div>
           </div>
         </div>
+
+        {/* Large Outlined Text Background */}
         
         {/* Large Outlined Text Background */}
         <div 

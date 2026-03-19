@@ -3,29 +3,35 @@
 namespace App\Domains\Vehicle\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Domains\Product\Domain\Models\Manufacturers;
+use App\Domains\Vehicle\Application\DTO\VehicleData;
+use App\Domains\Vehicle\Application\Services\ManufacturerService;
+use App\Domains\Vehicle\Application\Services\VehicleFormatter;
+use App\Domains\Vehicle\Application\UseCases\CreateVehicleUseCase;
+use App\Domains\Vehicle\Application\UseCases\UpdateVehicleUseCase;
+use App\Domains\Vehicle\Infrastructure\Repositories\VehicleRepository;
+use App\Domains\Vehicle\Http\Requests\StoreVehicleRequest;
+use App\Domains\Vehicle\Http\Requests\UpdateVehicleRequest;
 use App\Domains\Vehicle\Domain\Models\VehicleModel;
-use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
-    /**
-     * GET /api/vehicles
-     * Returns all vehicles with their brand (make) eager-loaded.
-     */
+    public function __construct(
+        private VehicleRepository $repository,
+        private CreateVehicleUseCase $createUseCase,
+        private UpdateVehicleUseCase $updateUseCase,
+        private ManufacturerService $manufacturerService,
+        private VehicleFormatter $formatter
+    ) {}
+
     public function index()
     {
-        $vehicles = VehicleModel::with('manufacturer')->orderBy('id')->get();
+        $vehicles = $this->repository->allWithManufacturer();
 
         return response()->json([
-            'data' => $vehicles->map(fn($v) => $this->format($v)),
+            'data' => $vehicles->map(fn (VehicleModel $v) => $this->formatter->format($v)),
         ]);
     }
 
-    /**
-     * GET /api/vehicles/manufacturers
-     * Returns all distinct makes (manufacturers) for the filter dropdown.
-     */
     public function manufacturers()
     {
         $manufacturers = Manufacturers::select('id', 'name')->orderBy('name')->get();
@@ -33,88 +39,39 @@ class VehicleController extends Controller
         return response()->json(['data' => $manufacturers]);
     }
 
-    /**
-     * POST /api/vehicles
-     * Creates a new vehicle. Auto-creates the brand if it doesn't exist.
-     */
-    public function store(Request $request)
+    public function store(StoreVehicleRequest $request)
     {
-        $request->validate([
-            'make'      => 'required|string|max:100',
-            'model'     => 'required|string|max:100',
-            'image_url' => 'nullable|string',
-        ]);
+        $manufacturer = $this->manufacturerService->findOrCreateByName($request->input('make'));
+        $vehicleData = new VehicleData($manufacturer->id, trim($request->input('model')), $request->input('image_url'));
 
-        $manufacturer = Manufacturers::firstOrCreate(
-            ['name' => ucfirst(strtolower(trim($request->make)))],
-        );
-
-        $vehicle = VehicleModel::create([
-            'manufacturer_id' => $manufacturer->id,
-            'model'           => trim($request->model),
-            'image_path'      => $request->image_url ?? null,
-        ]);
-
+        $vehicle = $this->createUseCase->execute($vehicleData);
         $vehicle->load('manufacturer');
 
-        return response()->json([
-            'data' => $this->format($vehicle),
-        ], 201);
+        return response()->json(['data' => $this->formatter->format($vehicle)], 201);
     }
 
-    /**
-     * PUT /api/vehicles/{id}
-     * Updates an existing vehicle.
-     */
-    public function update(Request $request, int $id)
+    public function update(UpdateVehicleRequest $request, int $id)
     {
-        $vehicle = VehicleModel::findOrFail($id);
+        $vehicle = $this->repository->findOrFail($id);
+        $manufacturer = $this->manufacturerService->findOrCreateByName($request->input('make'));
 
-        $request->validate([
-            'make'      => 'required|string|max:100',
-            'model'     => 'required|string|max:100',
-            'image_url' => 'nullable|string',
-        ]);
-
-        $manufacturer = Manufacturers::firstOrCreate(
-            ['name' => ucfirst(strtolower(trim($request->make)))],
+        $vehicleData = new VehicleData(
+            $manufacturer->id,
+            trim($request->input('model')),
+            $request->input('image_url')
         );
 
-        $vehicle->update([
-            'manufacturer_id' => $manufacturer->id,
-            'model'           => trim($request->model),
-            'image_path'      => $request->image_url ?? $vehicle->image_path,
-        ]);
-
+        $vehicle = $this->updateUseCase->execute($vehicle, $vehicleData);
         $vehicle->load('manufacturer');
 
-        return response()->json([
-            'data' => $this->format($vehicle),
-        ]);
+        return response()->json(['data' => $this->formatter->format($vehicle)]);
     }
 
-    /**
-     * DELETE /api/vehicles/{id}
-     */
     public function destroy(int $id)
     {
-        $vehicle = VehicleModel::findOrFail($id);
-        $vehicle->delete();
+        $vehicle = $this->repository->findOrFail($id);
+        $this->repository->delete($vehicle);
 
         return response()->json(['message' => 'Vehicle deleted.']);
-    }
-
-    /**
-     * Normalise the model into the shape the frontend expects.
-     */
-    private function format(VehicleModel $v): array
-    {
-        return [
-            'id'              => $v->id,
-            'make'            => $v->manufacturer?->name ?? '',
-            'manufacturer_id' => $v->manufacturer_id,
-            'model'           => $v->model,
-            'image_url'       => $v->image_path,
-        ];
     }
 }

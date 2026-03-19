@@ -59,6 +59,9 @@ export function VehicleModal({
   str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   
   useEffect(() => {
+    console.log("AddVehicleModelModal rendered")
+    console.log("makerList in modal:", makerList)
+
     if (!open) return
 
     if (vehicle) {
@@ -177,8 +180,12 @@ export function VehicleModal({
               <Combobox
                 value={makeName}
                 onChange={(val) => {
+                  console.log("selected combobox value:", val)
                   setMakeName(val)
-                  const matchedMake = makerList.find((m) => m.name === val)
+                  const matchedMake = makerList.find(
+                    (m) => m.name.trim().toLowerCase() === val.trim().toLowerCase()
+                  )
+                  console.log("matchedMake:", matchedMake)
                   setSelectedMakeId(matchedMake ? matchedMake.id : "")
                 }}
                 items={makerList.map((m) => m.name)}

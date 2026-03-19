@@ -53,25 +53,6 @@ export default function ServicesSection() {
     });
 
     mm.add("(min-width: 768px)", () => {
-      // 1. DYNAMIC BOTTOM SLANT ANIMATION
-      gsap.fromTo(container.current, 
-        { 
-          clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-          webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)"
-        },
-        {
-          clipPath: "polygon(0% 0%, 100% 0%, 100% 88%, 0% 100%)",
-          webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 88%, 0% 100%)",
-          ease: "none",
-          scrollTrigger: {
-            trigger: container.current,
-            start: "bottom bottom", // Start slanting when bottom of section enters
-            end: "bottom top",    // Finish when bottom of section leaves
-            scrub: true
-          }
-        }
-      );
-
       // 2. Background Depth Parallax
       gsap.to(aura1Ref.current, {
         y: -120,
@@ -187,8 +168,8 @@ export default function ServicesSection() {
       ref={container} 
       id="services" 
       className="py-24 md:py-40 bg-white overflow-hidden relative z-10 
-                 md:[mask-image:linear-gradient(to_bottom,transparent_0%,black_200px,black_100%)] 
-                 md:[-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_200px,black_100%)]"
+                 md:[mask-image:linear-gradient(to_bottom,transparent_0%,black_200px,black_80%,transparent_100%)] 
+                 md:[-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_200px,black_80%,transparent_100%)]"
     >
       {/* Background Layer */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">

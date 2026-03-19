@@ -5,6 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Phone, Mail, Clock, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import BibleVerseMarquee from "./BibleVerseMarquee"
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -98,8 +99,8 @@ export default function Navbar() {
     >
       {/* info bar - always visible */}
       <div className="bg-gray-950 text-white text-xs md:text-sm relative z-50">
-        <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 flex justify-between h-8 md:h-10 items-center">
-          <div className="flex items-center gap-4 sm:gap-8">
+        <div className="max-w-[1820px] mx-auto px-2 sm:px-10 lg:px-16 flex items-center h-8 md:h-10">
+          <div className="hidden lg:flex items-center gap-4 sm:gap-8 shrink-0">
             <div className="flex items-center gap-1.5">
               <Phone size={14} className="text-brand-red" />
               <a href="tel:09187747788" className="hover:underline">
@@ -113,7 +114,10 @@ export default function Navbar() {
               </a>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+
+          <BibleVerseMarquee />
+
+          <div className="hidden lg:flex items-center gap-1.5 shrink-0">
             <Clock size={14} className="text-brand-red" />
             <span className="hidden xs:inline">Mon – Sat: 8:00 AM – 5:00 PM</span>
             <span className="xs:hidden">Mon – Sat: 8:00 AM – 5:00 PM</span>

@@ -104,7 +104,7 @@ export default function ServicesSection() {
           scrollTrigger: {
             trigger: ".section-header",
             start: "top 90%",
-            toggleActions: "play none none reverse",
+            toggleActions: "play reverse play reverse",
           },
         });
 
@@ -117,7 +117,7 @@ export default function ServicesSection() {
           scrollTrigger: {
             trigger: ".services-grid",
             start: "top 85%",
-            toggleActions: "play none none reverse",
+            toggleActions: "play reverse play reverse",
           },
         });
       });

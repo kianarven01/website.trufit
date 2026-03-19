@@ -16,14 +16,32 @@ export default function ServiceCard({ service }: ServiceCardProps) {
       {/* internal background glow - Hidden on mobile for performance */}
       <div className="hidden md:block absolute -bottom-10 -right-10 w-32 h-32 bg-brand-blue/10 rounded-full blur-2xl group-hover:bg-brand-red/20 transition-colors duration-700" />
       
-      {/* image section */}
       <div className="relative w-full h-56 md:h-60 overflow-hidden border-b border-white/20">
-        <Image
-          src={service.image}
-          alt={service.title}
-          fill
-          className="object-cover transition-transform duration-1000 group-hover:scale-110"
-        />
+        {service.image ? (
+          <Image
+            src={service.image}
+            alt={service.title}
+            fill
+            className="object-cover transition-transform duration-1000 group-hover:scale-110"
+          />
+        ) : (
+          <div className="w-full h-full bg-brand-dark flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
+            {/* Subtle brand glow in placeholder */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_70%)]" />
+            
+            {Icon && (
+              <Icon className="w-12 h-12 text-white/5 mb-4 relative z-10" />
+            )}
+            <div className="relative z-10">
+              <span className="block text-white/10 font-black text-lg tracking-tighter uppercase italic mb-1">Trufit Quality</span>
+              <span className="block text-white/5 font-bold uppercase tracking-[0.2em] text-[9px]">Documentation Pending</span>
+            </div>
+            
+            {/* Corner accents */}
+            <div className="absolute top-4 left-4 w-8 h-[1px] bg-white/5" />
+            <div className="absolute top-4 left-4 w-[1px] h-8 bg-white/5" />
+          </div>
+        )}
         
         {/* gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/95 via-brand-dark/30 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />

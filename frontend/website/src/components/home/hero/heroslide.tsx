@@ -112,13 +112,23 @@ export default function HeroSlide({ slide, isActive }: Props) {
   return (
     <div ref={containerRef} className="relative h-screen w-full">
       {/* background image */}
-      <Image
-        src={slide.image}
-        alt={slide.title}
-        fill
-        priority
-        className="object-cover"
-      />
+      {slide.image ? (
+        <Image
+          src={slide.image}
+          alt={slide.title}
+          fill
+          priority
+          className="object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-brand-dark flex items-center justify-center">
+          <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.08)_0%,transparent_70%)]" />
+          <div className="absolute inset-0 opacity-20" style={{ 
+            backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)`,
+            backgroundSize: '100px 100px'
+          }} />
+        </div>
+      )}
 
       {/* dark overlay */}
       <div className="absolute inset-0 bg-black/60" />

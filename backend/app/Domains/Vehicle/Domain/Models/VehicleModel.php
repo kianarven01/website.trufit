@@ -7,6 +7,8 @@ use App\Domains\Product\Domain\Models\Manufacturers;
 
 class VehicleModel extends Model
 {
+    public $timestamps = false;
+
     protected $table = 'Main.VehicleModels';
 
     protected $fillable = [

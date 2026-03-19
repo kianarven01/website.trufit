@@ -3,8 +3,8 @@
 namespace App\Domains\Vehicle\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Product\Domain\Models\Manufacturers;
 use App\Domains\Vehicle\Application\DTO\VehicleData;
-use App\Domains\Vehicle\Application\Services\ManufacturerService;
 use App\Domains\Vehicle\Application\Services\VehicleFormatter;
 use App\Domains\Vehicle\Application\UseCases\CreateVehicleUseCase;
 use App\Domains\Vehicle\Application\UseCases\UpdateVehicleUseCase;
@@ -19,7 +19,6 @@ class VehicleController extends Controller
         private VehicleRepository $repository,
         private CreateVehicleUseCase $createUseCase,
         private UpdateVehicleUseCase $updateUseCase,
-        private ManufacturerService $manufacturerService,
         private VehicleFormatter $formatter
     ) {}
 
@@ -41,8 +40,16 @@ class VehicleController extends Controller
 
     public function store(StoreVehicleRequest $request)
     {
-        $manufacturer = $this->manufacturerService->findOrCreateByName($request->input('make'));
-        $vehicleData = new VehicleData($manufacturer->id, trim($request->input('model')), $request->input('image_url'));
+        $manufacturer = Manufacturers::query()
+            ->where('id', $request->input('manufacturer_id'))
+            ->where('type', 'Vehicle')
+            ->firstOrFail();
+
+        $vehicleData = new VehicleData(
+            $manufacturer->id,
+            trim($request->input('model')),
+            $request->input('image_url')
+        );
 
         $vehicle = $this->createUseCase->execute($vehicleData);
         $vehicle->load('manufacturer');
@@ -53,7 +60,10 @@ class VehicleController extends Controller
     public function update(UpdateVehicleRequest $request, int $id)
     {
         $vehicle = $this->repository->findOrFail($id);
-        $manufacturer = $this->manufacturerService->findOrCreateByName($request->input('make'));
+        $manufacturer = Manufacturers::query()
+            ->where('id', $request->input('manufacturer_id'))
+            ->where('type', 'Vehicle')
+            ->firstOrFail();
 
         $vehicleData = new VehicleData(
             $manufacturer->id,

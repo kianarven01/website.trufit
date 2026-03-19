@@ -48,6 +48,7 @@ export function VehicleModal({
   const isEdit = !!vehicle
 
   const [makeName, setMakeName] = useState("") // always string
+  const [selectedMakeId, setSelectedMakeId] = useState("") // UUID of selected make
   const [model, setModel] = useState("")
   const [imageUrl, setImageUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
@@ -62,11 +63,13 @@ export function VehicleModal({
 
     if (vehicle) {
       const existingMake = makerList.find((m) => m.id === vehicle.makeId)
-      setMakeName(existingMake ? existingMake.name : vehicle.makeId)
+      setMakeName(existingMake ? existingMake.name : "")
+      setSelectedMakeId(existingMake ? existingMake.id : "")
       setModel(vehicle.model)
       setImageUrl(vehicle.image)
     } else {
       setMakeName("")
+      setSelectedMakeId("")
       setModel("")
       setImageUrl("")
     }
@@ -102,11 +105,18 @@ export function VehicleModal({
     const existingMake = makerList.find(
       (m) => m.name.toLowerCase() === makeName.toLowerCase()
     )
-    const finalMakeId = existingMake ? existingMake.id : makeName
+
+    if (!existingMake) {
+      toast.error("Please select a valid make from the options.")
+      setIsSaving(false)
+      return
+    }
+
+    setSelectedMakeId(existingMake.id)
 
     const newVehicle: VehicleModalItem = {
       id: vehicle?.id || crypto.randomUUID(),
-      makeId: finalMakeId,
+      makeId: existingMake.id,
       model,
       image: imageUrl,
     }
@@ -178,7 +188,13 @@ export function VehicleModal({
               <Label className="text-xs">Make *</Label>
               <Combobox
                 value={makeName}
-                onChange={setMakeName}
+                onChange={(val) => {
+                  setMakeName(val)
+                  const matchedMake = makerList.find(
+                    (m) => m.name.toLowerCase() === val.toLowerCase()
+                  )
+                  setSelectedMakeId(matchedMake ? matchedMake.id : "")
+                }}
                 items={makerList.map((m) => capitalize(m.name))}
                 placeholder="Type or select make..."
               />

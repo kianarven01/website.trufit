@@ -16,15 +16,15 @@ import api from "@/api/axios";
 import { toast } from "sonner";
 
 interface Vehicle {
-  id: number;
+  id: string;
   make: string;
-  manufacturer_id: number;
+  manufacturer_id: string;
   model: string;
-  image_url?: string;
+  image_url?: string | null;
 }
 
 interface Brand {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -85,7 +85,7 @@ const VehiclesPage: React.FC = () => {
     image: string;
   }) => {
     const payload = {
-      make: vehicleData.makeId,
+      manufacturer_id: vehicleData.makeId,
       model: vehicleData.model,
       image_url: vehicleData.image || null,
     };
@@ -102,9 +102,9 @@ const VehiclesPage: React.FC = () => {
       setVehicles((prev) => [...prev, res.data.data]);
     }
 
-    // Refresh brands list in case a new make was added
-    const brandsRes = await api.get("/vehicles/brands");
-    setBrands(brandsRes.data.data);
+    // Refresh manufacturers list in case a new make was added
+    const manufacturersRes = await api.get("/vehicles/manufacturers");
+    setBrands(manufacturersRes.data.data);
   };
 
   // ─── Delete ───────────────────────────────────────────────────────────────
@@ -272,7 +272,7 @@ const VehiclesPage: React.FC = () => {
           editingVehicle
             ? {
                 id: String(editingVehicle.id),
-                makeId: editingVehicle.make,
+                makeId: editingVehicle.manufacturer_id,
                 model: editingVehicle.model,
                 image: editingVehicle.image_url || "",
               }

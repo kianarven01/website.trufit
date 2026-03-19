@@ -10,35 +10,35 @@ const steps = [
     title: "CONSULTATION",
     description:
       "We begin by understanding your concerns and performing a preliminary assessment of your vehicle's needs.",
-    image: "/images/process/consultation.webp",
+    image: "",
   },
   {
     id: "diagnostics",
     title: "DIAGNOSTICS",
     description:
       "We utilize advanced diagnostic technology to look beyond surface symptoms, performing an exhaustive digital analysis that identifies the root cause of any issue. This data-driven approach allows us to act as your technical consultants, providing a transparent, high-definition view of your vehicle's health so you can make the most strategic maintenance decisions.",
-    image: "/images/process/diagnostics.webp",
+    image: "",
   },
   {
     id: "maintenance",
     title: "PRECISE MAINTENANCE",
     description:
       "Our expert technicians perform the necessary repairs and maintenance with surgical precision using premium parts.",
-    image: "/images/process/maintenance.webp",
+    image: "",
   },
   {
     id: "quality",
     title: "QUALITY CONTROL",
     description:
       "Every vehicle undergoes a rigorous multi-point inspection to ensure all work meets our high standards.",
-    image: "/images/process/quality.webp",
+    image: "",
   },
   {
     id: "delivery",
     title: "DELIVERY",
     description:
       "We return your vehicle in peak condition, providing a detailed report of all services performed.",
-    image: "/images/process/delivery.webp",
+    image: "",
   },
 ]
 
@@ -59,13 +59,19 @@ export default function ProcessSection() {
   return (
     <section className="relative bg-brand-dark text-white py-24 overflow-hidden" id="process">
       {/* Background Image Overlay */}
-      <div className="absolute inset-0 z-0 opacity-20">
-        <Image
-          src={steps[activeStep].image}
-          alt="Process Background"
-          fill
-          className="object-cover"
-        />
+      <div className="absolute inset-0 z-0 opacity-10">
+        {steps[activeStep].image ? (
+          <Image
+            src={steps[activeStep].image}
+            alt="Process Background"
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-brand-dark flex items-center justify-center opacity-20">
+             <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_100%)]" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/80 to-transparent" />
       </div>
 
@@ -123,12 +129,22 @@ export default function ProcessSection() {
 
           <div ref={imageRef} className="order-1 lg:order-2">
             <div className="relative h-[300px] md:h-[400px] w-full rounded-sm overflow-hidden border border-white/10 shadow-2xl">
-              <Image
-                src={steps[activeStep].image}
-                alt={steps[activeStep].title}
-                fill
-                className="object-cover"
-              />
+              {steps[activeStep].image ? (
+                <Image
+                  src={steps[activeStep].image}
+                  alt={steps[activeStep].title}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-brand-dark/40 flex flex-col items-center justify-center p-8 text-center">
+                  <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-4">
+                    <span className="text-brand-red font-black text-xl italic">{activeStep + 1}</span>
+                  </div>
+                  <h4 className="text-white/40 font-bold uppercase tracking-widest text-xs mb-1">{steps[activeStep].title}</h4>
+                  <p className="text-white/10 text-[10px] uppercase">Documentation in Progress</p>
+                </div>
+              )}
               <div className="absolute inset-0 bg-brand-red/10 mix-blend-overlay" />
             </div>
           </div>

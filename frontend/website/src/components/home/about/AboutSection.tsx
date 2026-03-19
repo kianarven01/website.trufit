@@ -38,10 +38,10 @@ const StatItem = ({ icon, value, label }: StatProps) => {
   );
 };
 
-const images = [
-  "/images/about/workshop.webp",
-  "/images/about/diagnostics.webp",
-  "/images/about/equipment.webp",
+const images: string[] = [
+  "", // Workshop Placeholder
+  "", // Diagnostics Placeholder
+  "", // Equipment Placeholder
 ];
 
 // Custom F1 Car SVG Component
@@ -354,12 +354,19 @@ export default function AboutSection() {
                     onDragEnd={onDragEnd}
                     className="relative w-full h-full"
                   >
-                    <Image
-                      src={images[currentImage]}
-                      alt="Trufit Service"
-                      fill
-                      className="object-cover pointer-events-none"
-                    />
+                    {images[currentImage] ? (
+                      <Image
+                        src={images[currentImage]}
+                        alt="Trufit Service"
+                        fill
+                        className="object-cover pointer-events-none"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-brand-dark/5 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200">
+                        <Car className="w-16 h-16 text-gray-200 mb-4" />
+                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Real Service Image Coming Soon</p>
+                      </div>
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -426,12 +433,29 @@ export default function AboutSection() {
                   transition={{ duration: 1 }}
                   className="relative w-full h-full"
                 >
-                  <Image
-                    src={images[currentImage]}
-                    alt={`Trufit Service ${currentImage + 1}`}
-                    fill
-                    className="object-cover"
-                  />
+                  {images[currentImage] ? (
+                    <Image
+                      src={images[currentImage]}
+                      alt={`Trufit Service ${currentImage + 1}`}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-brand-dark to-brand-dark flex flex-col items-center justify-center p-12 text-center">
+                      <div className="relative mb-8">
+                        <Car className="w-24 h-24 text-brand-red/10" />
+                        <div className="absolute inset-0 bg-brand-red/5 blur-3xl rounded-full" />
+                      </div>
+                      <h3 className="text-white/20 font-black text-2xl mb-2 tracking-tighter uppercase italic">Trufit Excellence</h3>
+                      <p className="text-white/10 font-bold uppercase tracking-[0.3em] text-[10px]">Image Gallery Under Construction</p>
+                      
+                      {/* Decorative elements to make it look "designed" even without image */}
+                      <div className="absolute top-10 left-10 w-20 h-[1px] bg-white/5" />
+                      <div className="absolute top-10 left-10 w-[1px] h-20 bg-white/5" />
+                      <div className="absolute bottom-10 right-10 w-20 h-[1px] bg-white/5" />
+                      <div className="absolute bottom-10 right-10 w-[1px] h-20 bg-white/5" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/30 via-transparent to-transparent" />
                 </motion.div>
               </AnimatePresence>

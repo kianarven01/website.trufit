@@ -48,7 +48,8 @@ export default function BibleVerseMarquee() {
     )
   }
 
-  const verseText = `${verse.bookname} ${verse.chapter}:${verse.verse} - "${verse.text}"`
+  const cleanText = verse.text.replace(/<[^>]*>?/gm, "")
+  const verseText = `${verse.bookname} ${verse.chapter}:${verse.verse} - "${cleanText}"`
 
   return (
     <div className="flex-1 overflow-hidden relative h-full flex items-center">

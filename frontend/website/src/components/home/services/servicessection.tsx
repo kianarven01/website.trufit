@@ -14,7 +14,7 @@ export default function ServicesSection() {
   const container = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   
-  // Refs for background shapes to ensure reliable targeting
+  // Refs for background shapes
   const aura1Ref = useRef<HTMLDivElement>(null)
   const aura2Ref = useRef<HTMLDivElement>(null)
   const accent1Ref = useRef<HTMLDivElement>(null)
@@ -23,103 +23,77 @@ export default function ServicesSection() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [direction, setDirection] = useState(0)
 
-  // SEPARATE HOOK FOR FLOATING ANIMATIONS (Desktop Only) - SCATTERED VERSION
+  // 1. FLOATING IDLE ANIMATIONS
   useGSAP(() => {
     const mm = gsap.matchMedia();
-
     mm.add("(min-width: 768px)", () => {
-      // Significantly larger ranges (300px+) to "scatter" them across the screen
-      gsap.to(aura1Ref.current, {
-        x: 350,
-        y: 250,
-        scale: 1.4,
-        rotation: 30,
-        duration: 8,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
-      
-      gsap.to(aura2Ref.current, {
-        x: -400,
-        y: 350,
-        scale: 1.3,
-        rotation: -45,
-        duration: 9,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
-      
-      gsap.to(accent1Ref.current, {
-        scale: 1.6,
-        opacity: 0.3,
-        x: 250,
-        y: -150,
-        rotation: 60,
-        duration: 7,
-        repeat: -1,
-        yoyo: true,
-        ease: "power1.inOut"
-      });
-      
-      gsap.to(accent2Ref.current, {
-        x: 300,
-        y: -250,
-        scale: 1.5,
-        rotation: -20,
-        duration: 10,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
+      [aura1Ref, aura2Ref, accent1Ref, accent2Ref].forEach((ref, i) => {
+        gsap.to(ref.current, {
+          x: (i % 2 === 0 ? 40 : -40),
+          y: (i < 2 ? 60 : -60),
+          scale: 1.1,
+          duration: 6 + i,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut"
+        });
       });
     });
-
     return () => mm.revert();
   }, { scope: container })
   
-  // HOOK FOR SCROLL TRIGGER REVEALS
+  // 2. SCROLL-BASED REVEAL & PARALLAX
   useGSAP(() => {
     const mm = gsap.matchMedia();
 
     // Initial state setup
     gsap.set(".section-header > *, .service-card-reveal", { 
       opacity: 0, 
-      y: 40 
+      y: 80 
     });
 
-    // --- DESKTOP VIEW ---
     mm.add("(min-width: 768px)", () => {
-      const tl = gsap.timeline({
+      // 1. DYNAMIC BOTTOM SLANT ANIMATION
+      gsap.fromTo(container.current, 
+        { 
+          clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+          webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)"
+        },
+        {
+          clipPath: "polygon(0% 0%, 100% 0%, 100% 88%, 0% 100%)",
+          webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 88%, 0% 100%)",
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "bottom bottom", // Start slanting when bottom of section enters
+            end: "bottom top",    // Finish when bottom of section leaves
+            scrub: true
+          }
+        }
+      );
+
+      // 2. Background Depth Parallax
+      gsap.to(aura1Ref.current, {
+        y: -120,
         scrollTrigger: {
           trigger: container.current,
           start: "top bottom",
           end: "bottom top",
-          scrub: true,
-          invalidateOnRefresh: true
+          scrub: 1
         }
       });
 
-      tl.fromTo(container.current, 
-        { 
-          clipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)",
-          webkitClipPath: "polygon(0% 15%, 100% 0%, 100% 100%, 0% 100%)"
-        },
-        {
-          clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-          webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-          ease: "none",
-          duration: 0.4
+      gsap.to(aura2Ref.current, {
+        y: -200,
+        scrollTrigger: {
+          trigger: container.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: 1.5
         }
-      )
-      .to({}, { duration: 0.2 })
-      .to(container.current, {
-        clipPath: "polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)",
-        webkitClipPath: "polygon(0% 0%, 100% 0%, 100% 85%, 0% 100%)",
-        ease: "none",
-        duration: 0.4
       });
 
+      // Content "Magnetic" Reveal
       gsap.fromTo(innerRef.current,
         { y: 150 },
         {
@@ -134,43 +108,36 @@ export default function ServicesSection() {
         }
       )
 
-      // Reveal Animations
+      // Section Header & Cards Entrance
       gsap.to(".section-header > *", { 
         y: 0, 
         opacity: 1, 
-        stagger: 0.1, 
-        duration: 1,
+        stagger: 0.15, 
+        duration: 1.2,
         ease: "power4.out",
         scrollTrigger: {
           trigger: ".section-header",
-          start: "top 92%",
-          end: "bottom 8%",
-          toggleActions: "play reverse play reverse"
+          start: "top 90%",
+          toggleActions: "play none none reverse"
         }
-      })
+      });
 
       gsap.to(".service-card-reveal", { 
         y: 0, 
         opacity: 1, 
         stagger: 0.1, 
-        duration: 0.8,
-        ease: "power2.out",
+        duration: 1,
+        ease: "power3.out",
         scrollTrigger: {
           trigger: ".services-grid",
-          start: "top 92%",
-          end: "bottom 8%",
-          toggleActions: "play reverse play reverse"
+          start: "top 85%",
+          toggleActions: "play none none reverse"
         }
       })
     });
 
-    // --- MOBILE VIEW ---
     mm.add("(max-width: 767px)", () => {
-      gsap.set(".section-header > *, .service-card-reveal", { 
-        opacity: 1, 
-        y: 0 
-      });
-      gsap.set(innerRef.current, { y: 0 });
+      gsap.set(".section-header > *, .service-card-reveal", { opacity: 1, y: 0 });
     });
 
     return () => mm.revert();
@@ -218,35 +185,41 @@ export default function ServicesSection() {
   return (
     <section 
       ref={container} 
-      id="services-root-stable" 
-      className="py-24 md:py-32 bg-white overflow-hidden relative z-10 md:[clip-path:polygon(0%_15%,_100%_0%,_100%_100%,_0%_100%)]"
+      id="services" 
+      className="py-24 md:py-40 bg-white overflow-hidden relative z-10 
+                 md:[mask-image:linear-gradient(to_bottom,transparent_0%,black_200px,black_100%)] 
+                 md:[-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_200px,black_100%)]"
     >
-      <div 
-        className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none select-none" 
-        style={{ 
-          backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
-          backgroundSize: '80px 80px' 
-        }}
-      />
+      {/* Background Layer */}
+      <div className="absolute inset-0 z-0 pointer-events-none select-none">
+        {/* Grid Pattern */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]" 
+          style={{ 
+            backgroundImage: `linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)`,
+            backgroundSize: '80px 80px' 
+          }}
+        />
 
-      {/* Scattered Background Shapes */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div 
-          ref={aura1Ref}
-          className="aura-1 absolute -top-40 -left-60 w-[800px] md:w-[1200px] h-[800px] md:h-[1200px] bg-brand-blue/15 rounded-full blur-[80px] md:blur-[130px]" 
-        />
-        <div 
-          ref={aura2Ref}
-          className="aura-2 absolute -top-20 -right-60 w-[600px] md:w-[900px] h-[600px] md:h-[900px] bg-brand-red/10 rounded-full blur-[70px] md:blur-[110px]" 
-        />
-        <div 
-          ref={accent1Ref}
-          className="accent-1 hidden md:block absolute top-1/2 -left-40 w-[600px] h-[600px] bg-brand-blue/15 rounded-full blur-[90px]" 
-        />
-        <div 
-          ref={accent2Ref}
-          className="accent-2 hidden md:block absolute -bottom-40 -right-40 w-[700px] h-[700px] bg-brand-blue/12 rounded-full blur-[100px]" 
-        />
+        {/* Parallax Aura Shapes */}
+        <div className="absolute inset-0">
+          <div 
+            ref={aura1Ref}
+            className="absolute -top-20 -left-20 w-[800px] md:w-[1000px] h-[800px] bg-brand-blue/10 rounded-full blur-[100px] md:blur-[130px]" 
+          />
+          <div 
+            ref={aura2Ref}
+            className="absolute top-1/4 -right-40 w-[600px] md:w-[800px] h-[600px] bg-brand-red/5 rounded-full blur-[80px] md:blur-[110px]" 
+          />
+          <div 
+            ref={accent1Ref}
+            className="hidden md:block absolute top-1/2 left-1/4 w-[400px] h-[400px] bg-brand-blue/10 rounded-full blur-[100px]" 
+          />
+          <div 
+            ref={accent2Ref}
+            className="hidden md:block absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-brand-blue/5 rounded-full blur-[110px]" 
+          />
+        </div>
       </div>
 
       <div ref={innerRef} className="relative z-10 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 mx-auto max-w-[1820px] w-full" style={{ willChange: "transform" }}>

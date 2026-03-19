@@ -116,18 +116,18 @@ export default function AboutSection() {
         }
       );
 
-      // More aggressive dynamic blueprint lines
-      gsap.utils.toArray(".blueprint-line").forEach((line: any, i) => {
-        gsap.to(line, {
-          y: i % 2 === 0 ? -200 : -150,
-          x: i % 2 === 0 ? 50 : -50,
-          rotation: i % 2 === 0 ? 5 : -5,
+      // Dynamic Diagnostic Graphs Animation
+      gsap.utils.toArray(".diagnostic-graph").forEach((graph: any, i) => {
+        gsap.to(graph, {
+          x: i % 2 === 0 ? -100 : 100, // Move horizontally
+          y: i % 2 === 0 ? -120 : -80, // Move vertically
+          scaleX: 1.1,
           ease: "none",
           scrollTrigger: {
             trigger: sectionRef.current,
             start: "top bottom",
             end: "bottom top",
-            scrub: 1 // Adding a little smoothing to the scrub
+            scrub: 1.5
           }
         });
       });
@@ -181,10 +181,44 @@ export default function AboutSection() {
           TRUFIT<br />AUTO
         </div>
 
-        {/* Floating Blueprint Lines */}
-        <div className="blueprint-line absolute top-1/4 right-0 w-1/3 h-[1px] bg-brand-red/10 -rotate-12 translate-x-10" />
-        <div className="blueprint-line absolute bottom-1/3 left-0 w-1/4 h-[1px] bg-brand-blue/10 rotate-12 -translate-x-10" />
-        <div className="blueprint-line absolute top-1/2 left-1/2 w-48 h-[1px] bg-brand-dark/5 -rotate-45" />
+        {/* Dynamic Diagnostic Graphs (Stock/Telemetry Style) */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Blue "Performance" Graph - Smooth and Rising */}
+          <svg 
+            className="diagnostic-graph absolute top-1/4 -left-20 w-[120%] h-64 opacity-[0.05] text-brand-blue"
+            viewBox="0 0 1000 200"
+            preserveAspectRatio="none"
+          >
+            <path 
+              d="M0,150 Q100,140 200,160 T400,120 T600,140 T800,80 T1000,100" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeDasharray="5,5"
+            />
+            <circle cx="200" cy="160" r="3" fill="currentColor" />
+            <circle cx="600" cy="140" r="3" fill="currentColor" />
+            <circle cx="800" cy="80" r="3" fill="currentColor" />
+          </svg>
+
+          {/* Red "Diagnostic" Graph - More Jagged and Technical */}
+          <svg 
+            className="diagnostic-graph absolute bottom-1/4 -right-20 w-[120%] h-48 opacity-[0.04] text-brand-red"
+            viewBox="0 0 1000 200"
+            preserveAspectRatio="none"
+          >
+            <path 
+              d="M0,100 L50,80 L100,120 L150,90 L200,110 L250,70 L300,130 L350,100 L400,110 L450,80 L500,120 L550,90 L600,100 L650,60 L700,120 L750,90 L800,110 L850,70 L900,100 L950,120 L1000,80" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="1.5"
+            />
+            {/* Adding "Data Points" along the jagged path */}
+            {[100, 300, 500, 650, 850].map((x, i) => (
+              <rect key={i} x={x} y="90" width="4" height="4" fill="currentColor" className="opacity-50" />
+            ))}
+          </svg>
+        </div>
 
         {/* Soft Depth Shapes */}
         <div 

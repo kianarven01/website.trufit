@@ -90,8 +90,8 @@ export function VehicleModal({
   }
 
   const handleSave = async () => {
-    if (!makeName.trim()) {
-      toast.error("Vehicle make is required.")
+    if (!selectedMakeId) {
+      toast.error("Please select a valid make from the options.")
       return
     }
 
@@ -102,22 +102,10 @@ export function VehicleModal({
 
     setIsSaving(true)
 
-    const existingMake = makerList.find(
-      (m) => m.name.toLowerCase() === makeName.toLowerCase()
-    )
-
-    if (!existingMake) {
-      toast.error("Please select a valid make from the options.")
-      setIsSaving(false)
-      return
-    }
-
-    setSelectedMakeId(existingMake.id)
-
     const newVehicle: VehicleModalItem = {
       id: vehicle?.id || crypto.randomUUID(),
-      makeId: existingMake.id,
-      model,
+      makeId: selectedMakeId,
+      model: model.trim(),
       image: imageUrl,
     }
 
@@ -190,12 +178,10 @@ export function VehicleModal({
                 value={makeName}
                 onChange={(val) => {
                   setMakeName(val)
-                  const matchedMake = makerList.find(
-                    (m) => m.name.toLowerCase() === val.toLowerCase()
-                  )
+                  const matchedMake = makerList.find((m) => m.name === val)
                   setSelectedMakeId(matchedMake ? matchedMake.id : "")
                 }}
-                items={makerList.map((m) => capitalize(m.name))}
+                items={makerList.map((m) => m.name)}
                 placeholder="Type or select make..."
               />
             </div>

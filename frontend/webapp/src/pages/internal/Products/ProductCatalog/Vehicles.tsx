@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
-import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
+import { VehicleModal } from "@/components/popupModal/ProductCatalog/AddVehicleModelModal";
 import { Edit, Trash2, ChevronRight, Car } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -86,20 +86,29 @@ const VehiclesPage: React.FC = () => {
   }) => {
     const payload = {
       manufacturer_id: vehicleData.makeId,
-      model: vehicleData.model,
+      model: vehicleData.model.trim(),
       image_url: vehicleData.image || null,
     };
 
-    if (editingVehicle) {
-      // UPDATE
-      const res = await api.put(`/vehicles/${editingVehicle.id}`, payload);
-      setVehicles((prev) =>
-        prev.map((v) => (v.id === editingVehicle.id ? res.data.data : v))
-      );
-    } else {
-      // CREATE
-      const res = await api.post("/vehicles", payload);
-      setVehicles((prev) => [...prev, res.data.data]);
+    console.log("vehicleData:", vehicleData);
+    console.log("payload:", payload);
+
+    try {
+      if (editingVehicle) {
+        // UPDATE
+        const res = await api.put(`/vehicles/${editingVehicle.id}`, payload);
+        setVehicles((prev) =>
+          prev.map((v) => (v.id === editingVehicle.id ? res.data.data : v))
+        );
+      } else {
+        // CREATE
+        const res = await api.post("/vehicles", payload);
+        setVehicles((prev) => [...prev, res.data.data]);
+      }
+    } catch (error: any) {
+      console.log("POST /vehicles error:", error?.response?.data);
+      console.log("POST /vehicles status:", error?.response?.status);
+      throw error;
     }
 
     // Refresh manufacturers list in case a new make was added

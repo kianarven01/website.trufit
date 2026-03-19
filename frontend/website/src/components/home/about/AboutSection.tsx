@@ -53,6 +53,8 @@ export default function AboutSection() {
   // Background shape refs
   const aura1Ref = useRef<HTMLDivElement>(null);
   const aura2Ref = useRef<HTMLDivElement>(null);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const scannerRef = useRef<HTMLDivElement>(null);
 
   const stats = [
     { icon: <Award size={24} />, value: "25+", label: "Years Experience" },
@@ -146,11 +148,38 @@ export default function AboutSection() {
               trigger: item,
               start: "top 92%",
               end: "bottom 8%",
-              toggleActions: "play reverse play reverse" // Key fix for both directions
+              toggleActions: "play reverse play reverse"
             }
           }
         );
       });
+
+      // Dynamic Horizontal Line Animation
+      gsap.fromTo(dividerRef.current,
+        { width: "0%", opacity: 0 },
+        {
+          width: "100%",
+          opacity: 1,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top 95%",
+            end: "top 60%",
+            scrub: 1,
+          }
+        }
+      );
+
+      // Scanner Glow Animation
+      gsap.fromTo(scannerRef.current,
+        { x: "-100%" },
+        {
+          x: "200%",
+          duration: 3,
+          repeat: -1,
+          ease: "power1.inOut"
+        }
+      );
     });
 
     return () => mm.revert();
@@ -171,6 +200,21 @@ export default function AboutSection() {
     >
       {/* BACKGROUND ELEMENTS - High End Blueprint Aesthetic */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
+        
+        {/* Dynamic Horizontal Divider */}
+        <div className="absolute top-0 left-0 w-full flex justify-center">
+          <div 
+            ref={dividerRef}
+            className="h-[1px] bg-gradient-to-r from-transparent via-brand-red/40 to-transparent relative overflow-hidden"
+            style={{ width: '0%', opacity: 0 }}
+          >
+            {/* Scanning Glow Effect */}
+            <div 
+              ref={scannerRef}
+              className="absolute inset-0 w-1/3 h-full bg-gradient-to-r from-transparent via-brand-red to-transparent opacity-50 blur-sm"
+            />
+          </div>
+        </div>
         
         {/* Large Outlined Text Background */}
         <div 

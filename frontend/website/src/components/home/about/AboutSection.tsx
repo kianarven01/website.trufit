@@ -48,6 +48,7 @@ export default function AboutSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [currentImage, setCurrentImage] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
   const stats = [
     { icon: <Award size={24} />, value: "25+", label: "Years Experience" },
@@ -55,12 +56,34 @@ export default function AboutSection() {
     { icon: <ShieldCheck size={24} />, value: "100%", label: "OEM Standard" },
   ];
 
+  // Handle auto-play
   useEffect(() => {
+    if (!isAutoPlaying) return;
     const timer = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % images.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isAutoPlaying]);
+
+  // Pause auto-play on interaction
+  const handleInteraction = (newIndex: number) => {
+    setIsAutoPlaying(false);
+    setCurrentImage(newIndex);
+    // Resume auto-play after 10 seconds of inactivity
+    setTimeout(() => setIsAutoPlaying(true), 10000);
+  };
+
+  const onDragEnd = (event: any, info: any) => {
+    const swipeThreshold = 50;
+    // Swipe Right -> Previous Image
+    if (info.offset.x > swipeThreshold) {
+      handleInteraction((currentImage - 1 + images.length) % images.length);
+    } 
+    // Swipe Left -> Next Image
+    else if (info.offset.x < -swipeThreshold) {
+      handleInteraction((currentImage + 1) % images.length);
+    }
+  };
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -129,30 +152,38 @@ export default function AboutSection() {
             </h2>
 
             {/* Photo Slider - Sandwiched on mobile between title and text */}
-            <div className="lg:hidden my-10 relative group">
-              <div className="relative h-[300px] w-full overflow-hidden rounded-sm border border-gray-100 bg-gray-100">
+            <div className="lg:hidden my-10 relative group touch-pan-y">
+              <div className="relative h-[350px] w-full overflow-hidden rounded-sm border border-gray-100 bg-gray-100">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentImage}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="relative w-full h-full"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    drag="x"
+                    dragDirectionLock
+                    dragConstraints={{ left: 0, right: 0 }}
+                    onDragEnd={onDragEnd}
+                    className="relative w-full h-full cursor-grab active:cursor-grabbing"
+                    style={{ touchAction: "pan-y" }}
                   >
                     <Image
                       src={images[currentImage]}
                       alt="Trufit Service"
                       fill
-                      className="object-cover"
+                      className="object-cover pointer-events-none"
                     />
                   </motion.div>
                 </AnimatePresence>
-                <div className="absolute bottom-4 left-4 flex gap-1">
+                
+                {/* Dots Indicator (Horizontal on mobile) */}
+                <div className="absolute bottom-4 left-4 flex gap-1.5 z-20">
                   {images.map((_, idx) => (
-                    <div
+                    <button
                       key={idx}
-                      className={`h-1 rounded-full transition-all ${idx === currentImage ? "w-6 bg-brand-red" : "w-2 bg-white/50"}`}
+                      onClick={() => handleInteraction(idx)}
+                      className={`h-1.5 rounded-full transition-all ${idx === currentImage ? "w-8 bg-brand-red" : "w-2 bg-white/40"}`}
                     />
                   ))}
                 </div>
@@ -238,8 +269,8 @@ export default function AboutSection() {
               <div className="absolute bottom-6 right-6 flex gap-2">
                 <button
                   onClick={() =>
-                    setCurrentImage(
-                      (prev) => (prev - 1 + images.length) % images.length,
+                    handleInteraction(
+                      (currentImage - 1 + images.length) % images.length,
                     )
                   }
                   className="p-3 bg-white/90 hover:bg-brand-red hover:text-white transition-colors text-brand-dark rounded-sm"
@@ -248,7 +279,7 @@ export default function AboutSection() {
                 </button>
                 <button
                   onClick={() =>
-                    setCurrentImage((prev) => (prev + 1) % images.length)
+                    handleInteraction((currentImage + 1) % images.length)
                   }
                   className="p-3 bg-white/90 hover:bg-brand-red hover:text-white transition-colors text-brand-dark rounded-sm"
                 >
@@ -259,8 +290,9 @@ export default function AboutSection() {
               {/* Slider Dots */}
               <div className="absolute bottom-6 left-6 flex gap-2">
                 {images.map((_, idx) => (
-                  <div
+                  <button
                     key={idx}
+                    onClick={() => handleInteraction(idx)}
                     className={`h-1.5 transition-all duration-300 rounded-full ${idx === currentImage ? "w-8 bg-brand-red" : "w-2 bg-white/50"}`}
                   />
                 ))}

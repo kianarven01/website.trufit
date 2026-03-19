@@ -3,31 +3,17 @@
 use Illuminate\Support\Facades\Route;
 use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\KeyManagement\Http\Controllers\KeyController;
-use App\Domains\Product\Http\Controllers\ProductController;
-use App\Domains\Product\Http\Controllers\ProductReferenceController;
-use App\Domains\Supplier\Http\Controllers\SupplierController;
-
-/*
-|--------------------------------------------------------------------------
-| Supplier Reference Routes
-|--------------------------------------------------------------------------
-*/
 
 
-/*
-|--------------------------------------------------------------------------
-| Product Reference Routes
-|--------------------------------------------------------------------------
-*/
 
-Route::prefix('products')->group(function () {
+// Product + Reference routes
+require app_path('Domains/Product/routes.php');
 
-    Route::get('/', [ProductController::class, 'index']);
+// Vehicle routes
+require app_path('Domains/Vehicle/routes.php');
 
-    Route::get('/categories', [ProductReferenceController::class, 'categories']);
-    Route::get('/units', [ProductReferenceController::class, 'units']);
-    Route::get('/suppliers', [SupplierController::class, 'index']);
-});
+// Supplier route
+require app_path('Domains/Supplier/routes.php');
 /*
 |--------------------------------------------------------------------------
 | Authentication Domain

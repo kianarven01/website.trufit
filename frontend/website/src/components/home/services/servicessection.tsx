@@ -219,7 +219,7 @@ export default function ServicesSection() {
     <section 
       ref={container} 
       id="services-root-stable" 
-      className="py-24 md:py-32 bg-white overflow-hidden relative md:[clip-path:polygon(0%_15%,_100%_0%,_100%_100%,_0%_100%)]"
+      className="py-24 md:py-32 bg-white overflow-hidden relative z-10 md:[clip-path:polygon(0%_15%,_100%_0%,_100%_100%,_0%_100%)]"
     >
       <div 
         className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none select-none" 

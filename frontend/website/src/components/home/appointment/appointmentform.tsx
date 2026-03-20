@@ -18,19 +18,19 @@ const CustomDateInput = forwardRef<HTMLInputElement, { value?: string; onClick?:
       readOnly
       ref={ref}
       className="
-        peer w-full bg-gray-50 border border-gray-200 rounded-sm
-        px-4 pt-6 pb-2 placeholder-gray-400 text-gray-900
+        peer w-full bg-white/10 border border-white/20 rounded-sm
+        px-4 pt-6 pb-2 placeholder-white/40 text-white
         focus:outline-none focus:ring-1 focus:ring-brand-blue
         transition duration-300 pr-10
       "
     />
     <label className="
-      absolute left-4 top-2 text-gray-500 text-[10px] uppercase font-bold tracking-wider transition-all
+      absolute left-4 top-2 text-white/60 text-[10px] uppercase font-bold tracking-wider transition-all
       peer-focus:text-brand-blue
     ">
       Date & Time
     </label>
-    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-700 pointer-events-none" />
+    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
   </div>
 ))
 CustomDateInput.displayName = "CustomDateInput"
@@ -58,14 +58,14 @@ export default function AppointmentForm() {
   }
 
   const inputClass = `
-    peer w-full bg-gray-50 border border-gray-200 rounded-sm
-    px-4 pt-6 pb-2 placeholder-gray-400 text-gray-900
+    peer w-full bg-white/10 border border-white/20 rounded-sm
+    px-4 pt-6 pb-2 placeholder-white/40 text-white
     focus:outline-none focus:ring-1 focus:ring-brand-blue
     transition duration-300
   `
 
   const labelClass = `
-    absolute left-4 top-2 text-gray-500 text-[10px] uppercase font-bold tracking-wider transition-all
+    absolute left-4 top-2 text-white/60 text-[10px] uppercase font-bold tracking-wider transition-all
     peer-focus:text-brand-blue
   `
 
@@ -140,14 +140,14 @@ export default function AppointmentForm() {
           required
           className={`${inputClass} appearance-none pr-10`}
         >
-          <option value="" disabled hidden>Select a service</option>
+          <option value="" disabled hidden className="text-gray-900">Select a service</option>
           {services.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+            <option key={s.id} value={s.id} className="text-gray-900">{s.name}</option>
           ))}
-          <option value="other">Other</option>
+          <option value="other" className="text-gray-900">Other</option>
         </select>
         <label className={labelClass}>Service Needed</label>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-700 pointer-events-none" />
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
       </div>
 
       {/* OTHER SERVICE INPUT */}
@@ -161,8 +161,8 @@ export default function AppointmentForm() {
           disabled={form.service !== "other"}
           className={`
             peer w-full
-            ${form.service !== "other" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-50 text-gray-900"}
-            border border-gray-200 rounded-sm
+            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
+            border rounded-sm
             px-4 pt-6 pb-2
             focus:outline-none focus:ring-1 focus:ring-brand-blue
             transition duration-300
@@ -170,7 +170,7 @@ export default function AppointmentForm() {
         />
         <label className={`
           absolute left-4 top-2 text-[10px] uppercase font-bold tracking-wider transition-all
-          ${form.service !== "other" ? "text-gray-400" : "text-gray-500 peer-focus:text-brand-blue"}
+          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-blue"}
         `}>
           Specify Service
         </label>

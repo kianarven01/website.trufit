@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import { Cog } from "lucide-react"
 import gsap from "gsap"
@@ -60,6 +60,28 @@ export default function ProcessSection() {
   const gear4Ref = useRef<SVGSVGElement>(null)
   const orb1Ref = useRef<HTMLDivElement>(null)
   const orb2Ref = useRef<HTMLDivElement>(null)
+
+  // Use IntersectionObserver instead of GSAP to reliably toggle the body attribute for navbar
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          document.body.setAttribute("data-hide-navbar-on-scroll-up", "true")
+          window.dispatchEvent(new CustomEvent("hideNavbar"))
+        } else {
+          document.body.removeAttribute("data-hide-navbar-on-scroll-up")
+        }
+      },
+      // Trigger when a small fraction of the element is visible
+      { threshold: 0.02 }
+    )
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
 
   useGSAP(
     () => {

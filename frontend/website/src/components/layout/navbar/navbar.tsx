@@ -24,6 +24,16 @@ export default function Navbar() {
     { name: "Contact", href: "/contact" },
   ]
 
+  // handle custom hide event (e.g., from ProcessSection)
+  useEffect(() => {
+    const handleHide = () => {
+      setIsVisible(false)
+      isVisibleRef.current = false
+    }
+    window.addEventListener("hideNavbar", handleHide as EventListener)
+    return () => window.removeEventListener("hideNavbar", handleHide as EventListener)
+  }, [])
+
   // handle scroll
   useEffect(() => {
     const handleScroll = () => {
@@ -60,6 +70,11 @@ export default function Navbar() {
         isLockedRef.current = true
         setTimeout(() => { isLockedRef.current = false }, 500)
       } else if (diff < -30 && !isVisibleRef.current) {
+        // Prevent showing navbar if the section has requested it hidden
+        if (document.body.hasAttribute("data-hide-navbar-on-scroll-up")) {
+          return
+        }
+
         // Scrolling up decisively
         setIsVisible(true)
         isVisibleRef.current = true

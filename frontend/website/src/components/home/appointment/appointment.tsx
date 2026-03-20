@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef } from "react"
+import Image from "next/image"
 import AppointmentForm from "./appointmentform"
 import { MapPin, Phone, Mail, Clock } from "lucide-react"
 import gsap from "gsap"
@@ -11,6 +12,7 @@ gsap.registerPlugin(ScrollTrigger)
 
 export default function AppointmentSection() {
   const container = useRef<HTMLDivElement>(null)
+  const backgroundImage = "" // Add your image path here
 
   useGSAP(
     () => {
@@ -75,8 +77,20 @@ export default function AppointmentSection() {
   )
 
   return (
-    <section ref={container} className="bg-gray-100 py-16 md:py-24 overflow-hidden" id="appointment">
-      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
+    <section ref={container} className="relative bg-brand-dark py-16 md:py-24 overflow-hidden" id="appointment">
+      {/* BACKGROUND IMAGE & OVERLAY */}
+      <div className="absolute inset-0 z-0 opacity-20">
+        {backgroundImage ? (
+          <Image src={backgroundImage} fill alt="Appointment Background" className="object-cover" />
+        ) : (
+          <div className="w-full h-full bg-brand-dark flex items-center justify-center">
+             <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_100%)]" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/80 to-transparent" />
+      </div>
+
+      <div className="relative z-10 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-start">
 
           {/* LEFT COLUMN */}
@@ -84,19 +98,19 @@ export default function AppointmentSection() {
             {/* SMALL TITLE WITH LINE */}
             <div className="flex items-center gap-4 opacity-0">
               <div className="h-[2px] w-10 bg-brand-blue"></div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-gray-600">
+              <p className="text-sm font-semibold uppercase tracking-wider text-white/60">
                 get in touch
               </p>
             </div>
 
             {/* MAIN TITLE */}
-            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-brand-dark opacity-0">
+            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-white opacity-0">
               Schedule Your <br />
               <span className="text-brand-blue uppercase">Appointment</span>
             </h2>
 
             {/* SUBTITLE */}
-            <p className="text-gray-600 max-w-lg opacity-0">
+            <p className="text-gray-300 max-w-lg opacity-0">
               Ready to experience quality auto care? Contact us today or fill
               out the form to book your next service appointment.
             </p>
@@ -109,26 +123,26 @@ export default function AppointmentSection() {
                   href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-700 hover:underline text-sm md:text-base"
+                  className="text-gray-200 hover:underline text-sm md:text-base"
                 >
                   P1, Brgy. Gahonon, Daet, Camarines Norte
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
                 <Phone className="w-5 h-5 text-brand-blue mt-1" />
-                <a href="tel:09187747788" className="text-gray-700 hover:underline text-sm md:text-base">
+                <a href="tel:09187747788" className="text-gray-200 hover:underline text-sm md:text-base">
                   0918-774-7788
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
                 <Mail className="w-5 h-5 text-brand-blue mt-1" />
-                <a href="mailto:trufitautocenter@gmail.com" className="text-gray-700 hover:underline text-sm md:text-base">
+                <a href="mailto:trufitautocenter@gmail.com" className="text-gray-200 hover:underline text-sm md:text-base">
                   trufitautocenter@gmail.com
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
                 <Clock className="w-5 h-5 text-brand-blue mt-1" />
-                <p className="text-gray-700 text-sm md:text-base">
+                <p className="text-gray-200 text-sm md:text-base">
                   Mon – Sat: 8:00 AM – 5:00 PM
                 </p>
               </div>
@@ -137,7 +151,7 @@ export default function AppointmentSection() {
 
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
           <div className="relative mt-8 md:mt-0 appointment-form-container opacity-0">
-            <div className="bg-white border border-gray-100 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
+            <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
               <AppointmentForm />
             </div>
           </div>

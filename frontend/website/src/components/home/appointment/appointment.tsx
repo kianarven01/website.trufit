@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import Image from "next/image"
 import AppointmentForm from "./appointmentform"
 import { MapPin, Phone, Mail, Clock } from "lucide-react"
@@ -14,52 +14,51 @@ export default function AppointmentSection() {
   const container = useRef<HTMLDivElement>(null)
   const backgroundImage = "" // Add your image path here
 
-  useGSAP(
-    () => {
-      // Left Column Content Scroll Reveal
-      gsap.from(".appointment-content > *", {
-        opacity: 0,
-        x: -50,
-        duration: 1,
-        stagger: 0.15,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: ".appointment-content",
-          start: "top 85%",
-          toggleActions: "play reverse play reverse",
-        }
-      })
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Left Column Content Scroll Reveal
+          gsap.to(".appointment-content > *", {
+            opacity: 1,
+            x: 0,
+            duration: 1,
+            stagger: 0.15,
+            ease: "power3.out",
+          })
 
-      // Contact Info Items Stagger
-      gsap.from(".contact-item", {
-        opacity: 0,
-        y: 20,
-        duration: 0.8,
-        stagger: 0.1,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: ".contact-info",
-          start: "top 90%",
-          toggleActions: "play reverse play reverse",
-        }
-      })
+          // Contact Info Items Stagger
+          gsap.to(".contact-item", {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            stagger: 0.1,
+            ease: "power2.out",
+            delay: 0.4
+          })
 
-      // Right Column Form Reveal
-      gsap.from(".appointment-form-container", {
-        opacity: 0,
-        x: 50,
-        scale: 0.95,
-        duration: 1.2,
-        ease: "power4.out",
-        scrollTrigger: {
-          trigger: ".appointment-form-container",
-          start: "top 80%",
-          toggleActions: "play reverse play reverse",
+          // Right Column Form Reveal
+          gsap.to(".appointment-form-container", {
+            opacity: 1,
+            x: 0,
+            scale: 1,
+            duration: 1.2,
+            ease: "power4.out",
+            delay: 0.2
+          })
+
+          observer.disconnect()
         }
-      })
-    },
-    { scope: container }
-  )
+      },
+      { threshold: 0.15 }
+    )
+
+    if (container.current) {
+      observer.observe(container.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <section ref={container} className="relative bg-brand-dark py-16 md:py-24 overflow-hidden" id="appointment">
@@ -81,7 +80,7 @@ export default function AppointmentSection() {
           {/* LEFT COLUMN */}
           <div className="space-y-6 md:space-y-8 appointment-content">
             {/* SMALL TITLE WITH LINE */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 opacity-0 -translate-x-12">
               <div className="h-[2px] w-10 bg-brand-blue"></div>
               <p className="text-sm font-semibold uppercase tracking-wider text-white/60">
                 get in touch
@@ -89,20 +88,20 @@ export default function AppointmentSection() {
             </div>
 
             {/* MAIN TITLE */}
-            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-white">
+            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-white opacity-0 -translate-x-12">
               Schedule Your <br />
               <span className="text-brand-blue uppercase">Appointment</span>
             </h2>
 
             {/* SUBTITLE */}
-            <p className="text-gray-300 max-w-lg">
+            <p className="text-gray-300 max-w-lg opacity-0 -translate-x-12">
               Ready to experience quality auto care? Contact us today or fill
               out the form to book your next service appointment.
             </p>
 
             {/* CONTACT INFO */}
             <div className="space-y-4 md:space-y-6 pt-2 md:pt-4 contact-info">
-              <div className="flex items-start gap-3 md:gap-4 contact-item">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
                 <MapPin className="w-5 h-5 text-brand-blue mt-1" />
                 <a
                   href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
@@ -113,19 +112,19 @@ export default function AppointmentSection() {
                   P1, Brgy. Gahonon, Daet, Camarines Norte
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
                 <Phone className="w-5 h-5 text-brand-blue mt-1" />
                 <a href="tel:09187747788" className="text-gray-200 hover:underline text-sm md:text-base">
                   0918-774-7788
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
                 <Mail className="w-5 h-5 text-brand-blue mt-1" />
                 <a href="mailto:trufitautocenter@gmail.com" className="text-gray-200 hover:underline text-sm md:text-base">
                   trufitautocenter@gmail.com
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
                 <Clock className="w-5 h-5 text-brand-blue mt-1" />
                 <p className="text-gray-200 text-sm md:text-base">
                   Mon – Sat: 8:00 AM – 5:00 PM
@@ -135,7 +134,7 @@ export default function AppointmentSection() {
           </div>
 
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
-          <div className="relative mt-12 lg:mt-0 appointment-form-container">
+          <div className="relative mt-12 lg:mt-0 appointment-form-container opacity-0 translate-x-12 scale-95">
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
               <AppointmentForm />
             </div>

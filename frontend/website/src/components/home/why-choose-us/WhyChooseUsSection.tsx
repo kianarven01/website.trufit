@@ -1,12 +1,8 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { ShieldCheck, Leaf, Award, Heart } from "lucide-react"
 import gsap from "gsap"
-import { ScrollTrigger } from "gsap/ScrollTrigger"
-import { useGSAP } from "@gsap/react"
-
-gsap.registerPlugin(ScrollTrigger)
 
 const features = [
   {
@@ -34,56 +30,59 @@ const features = [
 export default function WhyChooseUsSection() {
   const container = useRef<HTMLDivElement>(null)
 
-  useGSAP(
-    () => {
-      // Section Header Reveal
-      gsap.from(".why-header > *", {
-        opacity: 0,
-        y: 50,
-        duration: 1,
-        stagger: 0.2,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: ".why-header",
-          start: "top 85%",
-          toggleActions: "play reverse play reverse",
-        }
-      })
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Section Header Reveal
+          gsap.to(".why-header > *", {
+            opacity: 1,
+            y: 0,
+            duration: 1,
+            stagger: 0.2,
+            ease: "power3.out",
+          })
 
-      // Features Grid Reveal
-      gsap.from(".why-feature", {
-        opacity: 0,
-        y: 60,
-        duration: 1,
-        stagger: 0.15,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: ".why-grid",
-          start: "top 80%",
-          toggleActions: "play reverse play reverse",
+          // Features Grid Reveal
+          gsap.to(".why-feature", {
+            opacity: 1,
+            y: 0,
+            duration: 1,
+            stagger: 0.15,
+            ease: "power2.out",
+            delay: 0.4
+          })
+
+          observer.disconnect()
         }
-      })
-    },
-    { scope: container }
-  )
+      },
+      { threshold: 0.15 }
+    )
+
+    if (container.current) {
+      observer.observe(container.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <section ref={container} className="section-padding bg-white overflow-hidden" id="why-choose-us">
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="text-center mb-20 why-header">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center gap-2 mb-4 opacity-0 translate-y-12">
             <div className="h-[2px] w-8 bg-brand-blue" />
             <span className="text-sm font-bold tracking-widest uppercase text-brand-blue">
               Why Choose Us
             </span>
             <div className="h-[2px] w-8 bg-brand-blue" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold font-brawler text-brand-dark">Built on Trust & Precision</h2>
+          <h2 className="text-4xl md:text-5xl font-bold font-brawler text-brand-dark opacity-0 translate-y-12">Built on Trust & Precision</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 why-grid">
           {features.map((feature, idx) => (
-            <div key={idx} className="why-feature flex flex-col items-center text-center group">
+            <div key={idx} className="why-feature flex flex-col items-center text-center group opacity-0 translate-y-12">
               <div className="mb-6 p-4 rounded-full bg-blue-50 transition-transform duration-300 group-hover:scale-110">
                 {feature.icon}
               </div>

@@ -41,6 +41,7 @@ export default function WhyChooseUsSection() {
             duration: 1,
             stagger: 0.2,
             ease: "power3.out",
+            overwrite: "auto"
           })
 
           // Features Grid Reveal
@@ -50,10 +51,13 @@ export default function WhyChooseUsSection() {
             duration: 1,
             stagger: 0.15,
             ease: "power2.out",
-            delay: 0.4
+            delay: 0.4,
+            overwrite: "auto"
           })
-
-          observer.disconnect()
+        } else {
+          // Reverss
+          gsap.to(".why-header > *", { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
+          gsap.to(".why-feature", { opacity: 0, y: 60, duration: 0.5, overwrite: "auto" })
         }
       },
       { threshold: 0.15 }

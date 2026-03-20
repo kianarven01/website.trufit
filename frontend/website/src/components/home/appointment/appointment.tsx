@@ -25,6 +25,7 @@ export default function AppointmentSection() {
             duration: 1,
             stagger: 0.15,
             ease: "power3.out",
+            overwrite: "auto"
           })
 
           // Contact Info Items Stagger
@@ -34,7 +35,8 @@ export default function AppointmentSection() {
             duration: 0.8,
             stagger: 0.1,
             ease: "power2.out",
-            delay: 0.4
+            delay: 0.4,
+            overwrite: "auto"
           })
 
           // Right Column Form Reveal
@@ -44,10 +46,14 @@ export default function AppointmentSection() {
             scale: 1,
             duration: 1.2,
             ease: "power4.out",
-            delay: 0.2
+            delay: 0.2,
+            overwrite: "auto"
           })
-
-          observer.disconnect()
+        } else {
+          // Reverse
+          gsap.to(".appointment-content > *", { opacity: 0, x: -50, duration: 0.5, overwrite: "auto" })
+          gsap.to(".contact-item", { opacity: 0, y: 20, duration: 0.5, overwrite: "auto" })
+          gsap.to(".appointment-form-container", { opacity: 0, x: 50, scale: 0.95, duration: 0.5, overwrite: "auto" })
         }
       },
       { threshold: 0.15 }

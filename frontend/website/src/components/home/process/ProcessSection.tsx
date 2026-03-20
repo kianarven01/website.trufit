@@ -144,6 +144,23 @@ export default function ProcessSection() {
             )
         })
       })
+      
+      mm.add("(max-width: 767px)", () => {
+        // Mobile-specific scroll reveals
+        gsap.utils.toArray('.mobile-step').forEach((step: any) => {
+          gsap.fromTo(step, 
+            { opacity: 0, y: 30 },
+            {
+              opacity: 1, y: 0, duration: 0.8, ease: "power2.out",
+              scrollTrigger: {
+                trigger: step,
+                start: "top 85%",
+                toggleActions: "play reverse play reverse"
+              }
+            }
+          )
+        })
+      })
 
       return () => mm.revert()
     },
@@ -193,9 +210,11 @@ export default function ProcessSection() {
         />
       </div>
 
-      {/* Background Image Overlay */}
-      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
-        <div className="relative w-full h-full">
+      {/* DESKTOP VIEW */}
+      <div className="hidden md:block">
+        {/* Background Image Overlay */}
+        <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+          <div className="relative w-full h-full">
           {steps.map((step, idx) => (
             <div
               key={`bg-${step.id}`}
@@ -321,6 +340,44 @@ export default function ProcessSection() {
               </div>
             </div>
           </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MOBILE VIEW (Vertical Stack) */}
+      <div className="block md:hidden relative z-10 min-h-screen py-16 px-6 mt-16">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-black uppercase tracking-tighter italic">Quality at Every Step</h2>
+          <p className="text-brand-blue font-bold tracking-widest uppercase text-sm mt-4">Our Work</p>
+        </div>
+        
+        <div className="flex flex-col gap-8 pb-12">
+          {steps.map((step, idx) => (
+            <div key={step.id} className="mobile-step relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-sm p-6 overflow-hidden">
+              <span className="absolute -top-6 -right-6 text-white/5 font-black font-brawler text-[140px] select-none leading-none z-0">
+                {step.id}
+              </span>
+              <div className="relative z-10">
+                <span className="text-brand-blue font-black italic text-xs mb-2 block tracking-[0.2em]">STEP 0{step.id}</span>
+                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-3">{step.title}</h3>
+                <p className="text-gray-300 text-sm leading-relaxed mb-6 font-medium">{step.description}</p>
+              </div>
+              {step.image ? (
+                <div className="relative w-full h-48 rounded-sm overflow-hidden mt-2 shadow-2xl border border-white/10 z-10">
+                  <Image src={step.image} alt={step.title} fill className="object-cover" />
+                  <div className="absolute inset-0 bg-brand-red/10 mix-blend-overlay" />
+                </div>
+              ) : (
+                <div className="relative w-full h-48 rounded-sm overflow-hidden mt-2 shadow-2xl border border-white/10 bg-brand-dark flex flex-col items-center justify-center text-center p-4 z-10">
+                  <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-4 bg-brand-dark shadow-xl">
+                    <span className="text-brand-blue font-black text-xl italic tracking-tighter">{idx + 1}</span>
+                  </div>
+                  <h4 className="text-white/40 font-black uppercase tracking-[0.2em] text-[10px] mb-2">{step.title}</h4>
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent h-10 w-full animate-pulse" />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -83,19 +83,19 @@ export default function WhyChooseUsSection() {
     <section ref={container} className="section-padding bg-white overflow-hidden" id="why-choose-us">
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="text-center mb-20 why-header">
-          <div className="flex items-center justify-center gap-2 mb-4 opacity-0">
+          <div className="flex items-center justify-center gap-2 mb-4">
             <div className="h-[2px] w-8 bg-brand-blue" />
             <span className="text-sm font-bold tracking-widest uppercase text-brand-blue">
               Why Choose Us
             </span>
             <div className="h-[2px] w-8 bg-brand-blue" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold font-brawler text-brand-dark opacity-0">Built on Trust & Precision</h2>
+          <h2 className="text-4xl md:text-5xl font-bold font-brawler text-brand-dark">Built on Trust & Precision</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 why-grid">
           {features.map((feature, idx) => (
-            <div key={idx} className="why-feature flex flex-col items-center text-center group opacity-0">
+            <div key={idx} className="why-feature flex flex-col items-center text-center group">
               <div className="mb-6 p-4 rounded-full bg-blue-50 transition-transform duration-300 group-hover:scale-110">
                 {feature.icon}
               </div>

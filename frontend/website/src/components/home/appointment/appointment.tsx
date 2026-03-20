@@ -96,7 +96,7 @@ export default function AppointmentSection() {
           {/* LEFT COLUMN */}
           <div className="space-y-6 md:space-y-8 appointment-content">
             {/* SMALL TITLE WITH LINE */}
-            <div className="flex items-center gap-4 opacity-0">
+            <div className="flex items-center gap-4">
               <div className="h-[2px] w-10 bg-brand-blue"></div>
               <p className="text-sm font-semibold uppercase tracking-wider text-white/60">
                 get in touch
@@ -104,20 +104,20 @@ export default function AppointmentSection() {
             </div>
 
             {/* MAIN TITLE */}
-            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-white opacity-0">
+            <h2 className="text-4xl md:text-6xl font-bold leading-tight font-brawler text-white">
               Schedule Your <br />
               <span className="text-brand-blue uppercase">Appointment</span>
             </h2>
 
             {/* SUBTITLE */}
-            <p className="text-gray-300 max-w-lg opacity-0">
+            <p className="text-gray-300 max-w-lg">
               Ready to experience quality auto care? Contact us today or fill
               out the form to book your next service appointment.
             </p>
 
             {/* CONTACT INFO */}
             <div className="space-y-4 md:space-y-6 pt-2 md:pt-4 contact-info">
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
+              <div className="flex items-start gap-3 md:gap-4 contact-item">
                 <MapPin className="w-5 h-5 text-brand-blue mt-1" />
                 <a
                   href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
@@ -128,19 +128,19 @@ export default function AppointmentSection() {
                   P1, Brgy. Gahonon, Daet, Camarines Norte
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
+              <div className="flex items-start gap-3 md:gap-4 contact-item">
                 <Phone className="w-5 h-5 text-brand-blue mt-1" />
                 <a href="tel:09187747788" className="text-gray-200 hover:underline text-sm md:text-base">
                   0918-774-7788
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
+              <div className="flex items-start gap-3 md:gap-4 contact-item">
                 <Mail className="w-5 h-5 text-brand-blue mt-1" />
                 <a href="mailto:trufitautocenter@gmail.com" className="text-gray-200 hover:underline text-sm md:text-base">
                   trufitautocenter@gmail.com
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
+              <div className="flex items-start gap-3 md:gap-4 contact-item">
                 <Clock className="w-5 h-5 text-brand-blue mt-1" />
                 <p className="text-gray-200 text-sm md:text-base">
                   Mon – Sat: 8:00 AM – 5:00 PM
@@ -150,7 +150,7 @@ export default function AppointmentSection() {
           </div>
 
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
-          <div className="relative mt-8 md:mt-0 appointment-form-container opacity-0">
+          <div className="relative mt-8 md:mt-0 appointment-form-container">
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
               <AppointmentForm />
             </div>

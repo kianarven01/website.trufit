@@ -16,62 +16,47 @@ export default function AppointmentSection() {
 
   useGSAP(
     () => {
-      const mm = gsap.matchMedia()
-
-      mm.add("(min-width: 768px)", () => {
-        // Left Column Content Scroll Reveal
-        gsap.fromTo(".appointment-content > *",
-          { opacity: 0, x: -50 },
-          {
-            opacity: 1,
-            x: 0,
-            duration: 1,
-            stagger: 0.15,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".appointment-content",
-              start: "top 85%",
-              toggleActions: "play reverse play reverse",
-            }
-          }
-        )
-
-        // Contact Info Items Stagger
-        gsap.fromTo(".contact-item",
-          { opacity: 0, y: 20 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power2.out",
-            scrollTrigger: {
-              trigger: ".contact-info",
-              start: "top 90%",
-              toggleActions: "play reverse play reverse",
-            }
-          }
-        )
-
-        // Right Column Form Reveal
-        gsap.fromTo(".appointment-form-container",
-          { opacity: 0, x: 50, scale: 0.95 },
-          {
-            opacity: 1,
-            x: 0,
-            scale: 1,
-            duration: 1.2,
-            ease: "power4.out",
-            scrollTrigger: {
-              trigger: ".appointment-form-container",
-              start: "top 80%",
-              toggleActions: "play reverse play reverse",
-            }
-          }
-        )
+      // Left Column Content Scroll Reveal
+      gsap.from(".appointment-content > *", {
+        opacity: 0,
+        x: -50,
+        duration: 1,
+        stagger: 0.15,
+        ease: "power3.out",
+        scrollTrigger: {
+          trigger: ".appointment-content",
+          start: "top 85%",
+          toggleActions: "play reverse play reverse",
+        }
       })
 
-      return () => mm.revert()
+      // Contact Info Items Stagger
+      gsap.from(".contact-item", {
+        opacity: 0,
+        y: 20,
+        duration: 0.8,
+        stagger: 0.1,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: ".contact-info",
+          start: "top 90%",
+          toggleActions: "play reverse play reverse",
+        }
+      })
+
+      // Right Column Form Reveal
+      gsap.from(".appointment-form-container", {
+        opacity: 0,
+        x: 50,
+        scale: 0.95,
+        duration: 1.2,
+        ease: "power4.out",
+        scrollTrigger: {
+          trigger: ".appointment-form-container",
+          start: "top 80%",
+          toggleActions: "play reverse play reverse",
+        }
+      })
     },
     { scope: container }
   )
@@ -91,7 +76,7 @@ export default function AppointmentSection() {
       </div>
 
       <div className="relative z-10 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
 
           {/* LEFT COLUMN */}
           <div className="space-y-6 md:space-y-8 appointment-content">
@@ -150,7 +135,7 @@ export default function AppointmentSection() {
           </div>
 
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
-          <div className="relative mt-8 md:mt-0 appointment-form-container">
+          <div className="relative mt-12 lg:mt-0 appointment-form-container">
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
               <AppointmentForm />
             </div>

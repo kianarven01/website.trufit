@@ -145,8 +145,8 @@ export default function ProcessSection() {
         })
       })
       
-      mm.add("(max-width: 767px)", () => {
-        // Mobile-specific scroll reveals
+      mm.add("(max-width: 1023px)", () => {
+        // Mobile & Tablet scroll reveals
         gsap.utils.toArray('.mobile-step').forEach((step: any) => {
           gsap.fromTo(step, 
             { opacity: 0, y: 30 },
@@ -211,7 +211,7 @@ export default function ProcessSection() {
       </div>
 
       {/* DESKTOP VIEW */}
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         {/* Background Image Overlay */}
         <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
           <div className="relative w-full h-full">
@@ -344,8 +344,8 @@ export default function ProcessSection() {
         </div>
       </div>
 
-      {/* MOBILE VIEW (Vertical Stack) */}
-      <div className="block md:hidden relative z-10 min-h-screen py-16 px-6 mt-16">
+      {/* MOBILE & TABLET VIEW (Vertical Stack) */}
+      <div className="block lg:hidden relative z-10 min-h-screen py-16 px-6 mt-16">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-black uppercase tracking-tighter italic">Quality at Every Step</h2>
           <p className="text-brand-blue font-bold tracking-widest uppercase text-sm mt-4">Our Work</p>

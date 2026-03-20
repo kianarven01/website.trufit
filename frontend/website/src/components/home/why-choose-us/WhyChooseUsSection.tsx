@@ -36,45 +36,33 @@ export default function WhyChooseUsSection() {
 
   useGSAP(
     () => {
-      const mm = gsap.matchMedia()
-
-      mm.add("(min-width: 768px)", () => {
-        // Section Header Reveal
-        gsap.fromTo(".why-header > *", 
-          { opacity: 0, y: 50 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.2,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".why-header",
-              start: "top 85%",
-              toggleActions: "play reverse play reverse",
-            }
-          }
-        )
-
-        // Features Grid Reveal
-        gsap.fromTo(".why-feature", 
-          { opacity: 0, y: 60 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.15,
-            ease: "power2.out",
-            scrollTrigger: {
-              trigger: ".why-grid",
-              start: "top 80%",
-              toggleActions: "play reverse play reverse",
-            }
-          }
-        )
+      // Section Header Reveal
+      gsap.from(".why-header > *", {
+        opacity: 0,
+        y: 50,
+        duration: 1,
+        stagger: 0.2,
+        ease: "power3.out",
+        scrollTrigger: {
+          trigger: ".why-header",
+          start: "top 85%",
+          toggleActions: "play reverse play reverse",
+        }
       })
 
-      return () => mm.revert()
+      // Features Grid Reveal
+      gsap.from(".why-feature", {
+        opacity: 0,
+        y: 60,
+        duration: 1,
+        stagger: 0.15,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: ".why-grid",
+          start: "top 80%",
+          toggleActions: "play reverse play reverse",
+        }
+      })
     },
     { scope: container }
   )

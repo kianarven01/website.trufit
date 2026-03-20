@@ -46,6 +46,13 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
+.text-gradient-blue {
+  background: linear-gradient(90deg, #1E3A8A 0%, #002BA3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Custom Shadows */
 .shadow-premium {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);

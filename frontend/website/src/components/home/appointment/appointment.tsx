@@ -104,7 +104,7 @@ export default function AppointmentSection() {
             {/* CONTACT INFO */}
             <div className="space-y-4 md:space-y-6 pt-2 md:pt-4 contact-info">
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
-                <MapPin className="w-5 h-5 text-brand-red mt-1" />
+                <MapPin className="w-5 h-5 text-brand-blue mt-1" />
                 <a
                   href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
                   target="_blank"
@@ -115,19 +115,19 @@ export default function AppointmentSection() {
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
-                <Phone className="w-5 h-5 text-brand-red mt-1" />
+                <Phone className="w-5 h-5 text-brand-blue mt-1" />
                 <a href="tel:09187747788" className="text-gray-700 hover:underline text-sm md:text-base">
                   0918-774-7788
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
-                <Mail className="w-5 h-5 text-brand-red mt-1" />
+                <Mail className="w-5 h-5 text-brand-blue mt-1" />
                 <a href="mailto:trufitautocenter@gmail.com" className="text-gray-700 hover:underline text-sm md:text-base">
                   trufitautocenter@gmail.com
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0">
-                <Clock className="w-5 h-5 text-brand-red mt-1" />
+                <Clock className="w-5 h-5 text-brand-blue mt-1" />
                 <p className="text-gray-700 text-sm md:text-base">
                   Mon – Sat: 8:00 AM – 5:00 PM
                 </p>

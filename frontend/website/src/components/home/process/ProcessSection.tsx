@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import Image from "next/image"
+import { Cog } from "lucide-react"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
 import { useGSAP } from "@gsap/react"
@@ -52,6 +53,14 @@ export default function ProcessSection() {
   const pinRef = useRef<HTMLDivElement>(null)
   const progressLineRef = useRef<HTMLDivElement>(null)
 
+  // Animated Background Refs
+  const gear1Ref = useRef<SVGSVGElement>(null)
+  const gear2Ref = useRef<SVGSVGElement>(null)
+  const gear3Ref = useRef<SVGSVGElement>(null)
+  const gear4Ref = useRef<SVGSVGElement>(null)
+  const orb1Ref = useRef<HTMLDivElement>(null)
+  const orb2Ref = useRef<HTMLDivElement>(null)
+
   useGSAP(
     () => {
       const mm = gsap.matchMedia()
@@ -85,6 +94,16 @@ export default function ProcessSection() {
           duration: steps.length - 1
         }, 0)
 
+        // Animate background elements hooked to the same scroll progress
+        // Gear ratios (smaller spins faster to simulate connected teeth)
+        tl.to(gear1Ref.current, { rotation: 180, ease: "none", duration: steps.length - 1 }, 0)
+        tl.to(gear2Ref.current, { rotation: -300, ease: "none", duration: steps.length - 1 }, 0)
+        tl.to(gear3Ref.current, { rotation: -225, ease: "none", duration: steps.length - 1 }, 0)
+        tl.to(gear4Ref.current, { rotation: 450, ease: "none", duration: steps.length - 1 }, 0)
+
+        tl.to(orb1Ref.current, { x: 200, y: 100, scale: 1.2, ease: "sine.inOut", duration: steps.length - 1 }, 0)
+        tl.to(orb2Ref.current, { x: -200, y: -100, scale: 0.8, ease: "sine.inOut", duration: steps.length - 1 }, 0)
+
         // Animate content for each step
         steps.forEach((_, i) => {
           if (i === 0) return // First step is default state
@@ -116,8 +135,44 @@ export default function ProcessSection() {
 
   return (
     <section ref={sectionRef} className="relative bg-brand-dark text-white overflow-hidden" id="process">
+      
+      {/* --- NEW ANIMATED BACKGROUND LAYER --- */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+        {/* Glowing Orbs */}
+        <div ref={orb1Ref} className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-red/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3" />
+        <div ref={orb2Ref} className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-brand-blue/10 rounded-full blur-[150px] translate-y-1/3 -translate-x-1/4" />
+
+        {/* Top-Left Connected Gear System */}
+        <Cog 
+          ref={gear1Ref} 
+          className="absolute top-0 left-0 text-white opacity-[0.02] -ml-[400px] -mt-[400px] origin-center" 
+          strokeWidth={0.5} 
+          style={{ width: '1000px', height: '1000px' }} 
+        />
+        <Cog 
+          ref={gear2Ref} 
+          className="absolute top-0 left-0 text-white opacity-[0.02] ml-[430px] mt-[180px] origin-center" 
+          strokeWidth={0.5} 
+          style={{ width: '600px', height: '600px' }} 
+        />
+
+        {/* Bottom-Right Connected Gear System */}
+        <Cog 
+          ref={gear3Ref} 
+          className="absolute bottom-0 right-0 text-white opacity-[0.02] -mr-[300px] -mb-[300px] origin-center" 
+          strokeWidth={0.5} 
+          style={{ width: '800px', height: '800px' }} 
+        />
+        <Cog 
+          ref={gear4Ref} 
+          className="absolute bottom-0 right-0 text-white opacity-[0.02] mr-[340px] mb-[280px] origin-center" 
+          strokeWidth={0.5} 
+          style={{ width: '400px', height: '400px' }} 
+        />
+      </div>
+
       {/* Background Image Overlay */}
-      <div className="absolute inset-0 z-0 opacity-10">
+      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
         <div className="relative w-full h-full">
           {steps.map((step, idx) => (
             <div
@@ -132,9 +187,7 @@ export default function ProcessSection() {
                   className="object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-brand-dark flex items-center justify-center">
-                  <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_100%)]" />
-                </div>
+                <div className="w-full h-full bg-transparent flex items-center justify-center" />
               )}
             </div>
           ))}
@@ -146,11 +199,11 @@ export default function ProcessSection() {
         <div className="max-w-[1820px] mx-auto w-full px-6 sm:px-10 lg:px-16">
           <div className="text-center mb-24">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="h-[2px] w-8 bg-brand-red" />
-              <span className="text-sm font-bold tracking-widest uppercase text-brand-red">
+              <div className="h-[2px] w-8 bg-brand-blue" />
+              <span className="text-sm font-bold tracking-widest uppercase text-brand-blue">
                 Our Work
               </span>
-              <div className="h-[2px] w-8 bg-brand-red" />
+              <div className="h-[2px] w-8 bg-brand-blue" />
             </div>
             <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter italic">Quality at Every Step</h2>
           </div>
@@ -163,7 +216,7 @@ export default function ProcessSection() {
             {/* Progress Line */}
             <div 
               ref={progressLineRef}
-              className="absolute top-1/2 left-0 w-0 h-[1px] bg-brand-red -translate-y-1/2 hidden md:block z-10 shadow-[0_0_10px_rgba(227,27,35,0.5)]" 
+              className="absolute top-1/2 left-0 w-0 h-[1px] bg-brand-blue -translate-y-1/2 hidden md:block z-10 shadow-[0_0_10px_rgba(0,43,163,0.5)]" 
             />
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative">
@@ -178,7 +231,7 @@ export default function ProcessSection() {
                     <div
                       className={`w-4 h-4 rounded-full border-2 transition-all duration-500 ${
                         idx <= activeStep 
-                          ? "bg-brand-red border-brand-red scale-110 shadow-[0_0_20px_rgba(227,27,35,0.8)]" 
+                          ? "bg-brand-blue border-brand-blue scale-110 shadow-[0_0_20px_rgba(0,43,163,0.8)]" 
                           : "bg-brand-dark border-white/20 group-hover:border-white/40"
                       }`}
                     />
@@ -186,7 +239,7 @@ export default function ProcessSection() {
 
                   {/* Label with increased spacing */}
                   <div className={`absolute top-full mt-6 flex flex-col items-center transition-all duration-500 ${idx === activeStep ? "opacity-100 translate-y-0" : "opacity-40 -translate-y-2"}`}>
-                    <span className="text-[10px] font-black italic text-brand-red mb-1">STEP 0{idx + 1}</span>
+                    <span className="text-[10px] font-black italic text-brand-blue mb-1">STEP 0{idx + 1}</span>
                     <span className="text-[11px] font-bold tracking-[0.2em] uppercase whitespace-nowrap">{step.title}</span>
                   </div>
                 </button>
@@ -203,7 +256,7 @@ export default function ProcessSection() {
                     key={`content-${step.id}`}
                     className={`step-content-${idx} ${idx === activeStep ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
                   >
-                    <h3 className="text-2xl md:text-4xl font-black mb-6 text-brand-red uppercase italic tracking-tighter">
+                    <h3 className="text-2xl md:text-4xl font-black mb-6 text-brand-blue uppercase italic tracking-tighter">
                       {step.title}
                     </h3>
                     <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-xl font-medium">
@@ -231,7 +284,7 @@ export default function ProcessSection() {
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-brand-dark">
                         <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-brand-dark shadow-xl">
-                          <span className="text-brand-red font-black text-2xl italic tracking-tighter">{idx + 1}</span>
+                          <span className="text-brand-blue font-black text-2xl italic tracking-tighter">{idx + 1}</span>
                         </div>
                         <h4 className="text-white/40 font-black uppercase tracking-[0.2em] text-[10px] mb-2">{step.title}</h4>
                         <p className="text-white/5 text-[9px] uppercase font-bold">Trufit Excellence / Process Documentation</p>

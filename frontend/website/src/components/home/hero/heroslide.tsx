@@ -151,8 +151,8 @@ export default function HeroSlide({ slide, isActive }: Props) {
                 ...consistentTextStyle 
             }}
           >
-            <div className="h-[2px] w-8 bg-brand-red" />
-            <span className="text-[10px] md:text-sm font-bold tracking-widest uppercase text-brand-red">
+            <div className="h-[2px] w-8 bg-brand-blue" />
+            <span className="text-[10px] md:text-sm font-bold tracking-widest uppercase text-brand-blue">
               Quality Auto Care
             </span>
           </div>
@@ -192,7 +192,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           >
             <Link
               href={slide.buttonLink || "/services"}
-              className="group inline-flex items-center gap-2 bg-brand-red hover:bg-red-700 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all shadow-lg hover:shadow-red-900/40 text-[9px] sm:text-xs md:text-base"
+              className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all shadow-lg hover:shadow-blue-900/40 text-[9px] sm:text-xs md:text-base"
             >
               Our Services
               <div className="bg-white/20 p-1 rounded-full group-hover:bg-white/40 transition-colors">

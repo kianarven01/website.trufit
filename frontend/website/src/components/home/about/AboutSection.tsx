@@ -328,8 +328,8 @@ export default function AboutSection() {
           {/* Content Side */}
           <div className="order-1 lg:order-2">
             <div className="flex items-center gap-3 mb-6 about-reveal">
-              <div className="h-[2px] w-12 bg-brand-red" />
-              <span className="text-sm font-extrabold tracking-[0.3em] uppercase text-brand-red">
+              <div className="h-[2px] w-12 bg-brand-blue" />
+              <span className="text-sm font-extrabold tracking-[0.3em] uppercase text-brand-blue">
                 About Trufit
               </span>
             </div>
@@ -407,7 +407,7 @@ export default function AboutSection() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 about-reveal">
-              <button className="bg-brand-red text-white px-10 py-5 rounded-sm font-black hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs shadow-lg shadow-brand-red/20">
+              <button className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs shadow-lg shadow-brand-blue/20">
                 Book Appointment
               </button>
               <a

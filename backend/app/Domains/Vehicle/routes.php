@@ -9,4 +9,10 @@ Route::prefix('vehicles')->group(function () {
     Route::post('/', [VehicleController::class, 'store']);
     Route::put('/{id}', [VehicleController::class, 'update']);
     Route::delete('/{id}', [VehicleController::class, 'destroy']);
+
+    Route::get('/models/{carModelId}/variants', [VehicleController::class, 'getVariants']);
+    Route::post('/models/{carModelId}/variants', [VehicleController::class, 'storeVariant']);
+
+    Route::put('/variants/{variantId}', [VehicleController::class, 'updateVariant']);
+    Route::delete('/variants/{variantId}', [VehicleController::class, 'destroyVariant']);
 });

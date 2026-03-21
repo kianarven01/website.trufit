@@ -66,8 +66,8 @@ const App: React.FC = () => {
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
               <Route index element={<VehiclesPage />} />
-              <Route path=":vehicleSlug" element={<VehicleVariantsPage />} />
-              <Route path=":vehicleSlug/:variantId/:categoryId/products" element={<ProductList />} />
+              <Route path=":vehicleModelId/:vehicleSlug" element={<VehicleVariantsPage />} />
+              <Route path=":vehicleModelId/:vehicleSlug/:variantId/:categoryId/products" element={<ProductList />} />
             </Route>
 
             <Route path="/webapp/products/inventory-list" element={<InventoryList />} />

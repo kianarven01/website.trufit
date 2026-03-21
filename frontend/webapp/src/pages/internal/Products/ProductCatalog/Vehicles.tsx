@@ -133,9 +133,7 @@ const VehiclesPage: React.FC = () => {
     const vehicleSlug = `${vehicle.make}-${vehicle.model}`
       .toLowerCase()
       .replace(/\s+/g, "-");
-    navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
-      state: { vehicleId: vehicle.id },
-    });
+    navigate(`/webapp/products/product-catalog/${vehicle.id}/${vehicleSlug}`);
   };
 
   return (

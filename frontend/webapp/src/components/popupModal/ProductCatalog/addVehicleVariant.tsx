@@ -16,7 +16,8 @@ type VehicleVariant = {
   year: string;
   engine: string;
   transmission: string;
-  drivetrain: string;
+  oilCapacity?: number;
+  serviceClass?: string;
 };
 
 type Props = {
@@ -33,7 +34,8 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
   const [year, setYear] = useState("");
   const [engine, setEngine] = useState("");
   const [transmission, setTransmission] = useState("");
-  const [drivetrain, setDrivetrain] = useState("");
+  const [oilCapacity, setOilCapacity] = useState<number | undefined>();
+  const [serviceClass, setServiceClass] = useState("");
 
   useEffect(() => {
     if (variant) {
@@ -41,11 +43,15 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
       setYear(variant.year);
       setEngine(variant.engine);
       setTransmission(variant.transmission);
+      setOilCapacity(variant.oilCapacity);
+      setServiceClass(variant.serviceClass || "");
     } else {
       setName("");
       setYear(new Date().getFullYear().toString());
       setEngine("");
       setTransmission("");
+      setOilCapacity(undefined);
+      setServiceClass("");
     }
   }, [variant, open]);
 
@@ -58,7 +64,8 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
       year,
       engine,
       transmission,
-      drivetrain,
+      oilCapacity: oilCapacity ?? 0,
+      serviceClass,
     };
 
     onSaved(data);
@@ -100,20 +107,28 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
           </div>
 
           <div className="space-y-2">
-            <Label>Drivetrain</Label>
-            <Input
-              placeholder="FWD or AWD"
-              value={drivetrain}
-              onChange={(e) => setDrivetrain(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label>Transmission</Label>
             <Input
               placeholder="A/T or M/T"
               value={transmission}
               onChange={(e) => setTransmission(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Oil Capacity (ml)</Label>
+            <Input
+              type="number"
+              value={oilCapacity ?? ""}
+              onChange={(e) => setOilCapacity(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Service Class</Label>
+            <Input
+              value={serviceClass}
+              onChange={(e) => setServiceClass(e.target.value)}
             />
           </div>
         </div>

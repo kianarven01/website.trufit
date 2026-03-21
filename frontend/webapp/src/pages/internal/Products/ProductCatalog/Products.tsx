@@ -54,7 +54,8 @@ interface Part {
 
 const ProductList: React.FC = () => {
   const navigate = useNavigate();
-  const { vehicleSlug, variantId, categoryId } = useParams<{
+  const { vehicleModelId, vehicleSlug, variantId, categoryId } = useParams<{
+    vehicleModelId: string;
     vehicleSlug: string;
     variantId: string;
     categoryId: string;
@@ -144,19 +145,19 @@ const ProductList: React.FC = () => {
             <BreadcrumbSeparator />
           </BreadcrumbItem>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}`)}>
               {make} {model}
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
+            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}`)}>
               {variant.name}
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
+            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}/${variantId}/${categoryId}/products`)}>
               {category.name}
             </BreadcrumbLink>
             <BreadcrumbSeparator />

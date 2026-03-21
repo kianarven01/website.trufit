@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-type VehicleVariant = {
-  id: string;
+export type VehicleVariantFormValue = {
+  id?: string;
   name: string;
   year: string;
   engine: string;
@@ -23,11 +23,16 @@ type VehicleVariant = {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  variant?: VehicleVariant | null;
-  onSaved: (variant: VehicleVariant) => void;
+  variant?: VehicleVariantFormValue | null;
+  onSaved: (variant: VehicleVariantFormValue) => void | Promise<void>;
 };
 
-const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSaved }: Props) => {
+const AddVehicleVariant: React.FC<Props> = ({
+  open,
+  onOpenChange,
+  variant,
+  onSaved,
+}) => {
   const isEdit = !!variant;
 
   const [name, setName] = useState("");
@@ -39,37 +44,35 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
 
   useEffect(() => {
     if (variant) {
-      setName(variant.name);
-      setYear(variant.year);
-      setEngine(variant.engine);
-      setTransmission(variant.transmission);
+      setName(variant.name ?? "");
+      setYear(variant.year ?? "");
+      setEngine(variant.engine ?? "");
+      setTransmission(variant.transmission ?? "");
       setOilCapacity(variant.oilCapacity);
-      setServiceClass(variant.serviceClass || "");
-    } else {
-      setName("");
-      setYear(new Date().getFullYear().toString());
-      setEngine("");
-      setTransmission("");
-      setOilCapacity(undefined);
-      setServiceClass("");
+      setServiceClass(variant.serviceClass ?? "");
+      return;
     }
+
+    setName("");
+    setYear(new Date().getFullYear().toString());
+    setEngine("");
+    setTransmission("");
+    setOilCapacity(undefined);
+    setServiceClass("");
   }, [variant, open]);
 
-  const handleSave = () => {
-    if (!name || !year || !engine || !transmission) return;
+  const handleSave = async () => {
+    if (!name.trim() || !year.trim()) return;
 
-    const data: VehicleVariant = {
-      id: variant?.id ?? `V-${Date.now()}`,
-      name,
-      year,
-      engine,
-      transmission,
+    await onSaved({
+      id: variant?.id,
+      name: name.trim(),
+      year: year.trim(),
+      engine: engine.trim(),
+      transmission: transmission.trim(),
       oilCapacity: oilCapacity ?? 0,
-      serviceClass,
-    };
-
-    onSaved(data);
-    onOpenChange(false);
+      serviceClass: serviceClass.trim(),
+    });
   };
 
   return (
@@ -92,6 +95,7 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
           <div className="space-y-2">
             <Label>Year</Label>
             <Input
+              placeholder="e.g. 2026"
               value={year}
               onChange={(e) => setYear(e.target.value)}
             />
@@ -100,7 +104,7 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
           <div className="space-y-2">
             <Label>Engine</Label>
             <Input
-              placeholder="2.8L"
+              placeholder="e.g. 1.1L"
               value={engine}
               onChange={(e) => setEngine(e.target.value)}
             />
@@ -120,13 +124,16 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
             <Input
               type="number"
               value={oilCapacity ?? ""}
-              onChange={(e) => setOilCapacity(Number(e.target.value))}
+              onChange={(e) =>
+                setOilCapacity(e.target.value === "" ? undefined : Number(e.target.value))
+              }
             />
           </div>
 
           <div className="space-y-2">
             <Label>Service Class</Label>
             <Input
+              placeholder="e.g. API SN"
               value={serviceClass}
               onChange={(e) => setServiceClass(e.target.value)}
             />
@@ -138,10 +145,7 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
             Cancel
           </Button>
 
-          <Button
-            onClick={handleSave}
-            disabled={!name || !year || !engine || !transmission}
-          >
+          <Button onClick={handleSave} disabled={!name.trim() || !year.trim()}>
             {isEdit ? "Save Changes" : "Add Variant"}
           </Button>
         </DialogFooter>

@@ -77,37 +77,6 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Tyres & Wheels": Disc,
 };
 
-const parseEngineToCc = (engine: string): number | null => {
-  const cleaned = engine.trim().toLowerCase().replace(/\s/g, "").replace("l", "");
-  if (!cleaned) return null;
-
-  const liters = Number(cleaned);
-  if (Number.isNaN(liters)) return null;
-
-  return Math.round(liters * 1000);
-};
-
-const parseYearRange = (year: string): { year_start: number; year_end: number | null } => {
-  const trimmed = year.trim();
-
-  if (!trimmed.includes("-")) {
-    const single = Number(trimmed);
-    return {
-      year_start: single,
-      year_end: single,
-    };
-  }
-
-  const [startRaw, endRaw] = trimmed.split("-");
-  const start = Number(startRaw.trim());
-  const end = Number(endRaw.trim());
-
-  return {
-    year_start: start,
-    year_end: Number.isNaN(end) ? start : end,
-  };
-};
-
 const VehicleVariantsPage: React.FC = () => {
   const { vehicleModelId, vehicleSlug } = useParams<{
     vehicleModelId: string;
@@ -198,14 +167,10 @@ const VehicleVariantsPage: React.FC = () => {
       return;
     }
 
-    const yearRange = parseYearRange(formVariant.year);
-    const engineDisplacement = parseEngineToCc(formVariant.engine);
-
     const payload = {
       variant_name: formVariant.name.trim(),
-      year_start: yearRange.year_start,
-      year_end: yearRange.year_end,
-      engine_displacement: engineDisplacement,
+      year: Number(formVariant.year),
+      engine_displacement: formVariant.engine.trim(),
       transmission_type: formVariant.transmission.trim(),
       oil_capacity: formVariant.oilCapacity ?? 0,
       service_class: formVariant.serviceClass?.trim() ?? "",

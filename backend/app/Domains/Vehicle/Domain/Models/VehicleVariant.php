@@ -14,8 +14,7 @@ class VehicleVariant extends Model
         'car_model_id',
         'variant_name',
         'engine_displacement',
-        'year_start',
-        'year_end',
+        'year',
         'transmission_type',
         'oil_capacity',
         'service_class',
@@ -23,9 +22,7 @@ class VehicleVariant extends Model
 
     protected $casts = [
         'car_model_id' => 'integer',
-        'engine_displacement' => 'integer',
-        'year_start' => 'integer',
-        'year_end' => 'integer',
+        'year' => 'integer',
         'oil_capacity' => 'integer',
     ];
 

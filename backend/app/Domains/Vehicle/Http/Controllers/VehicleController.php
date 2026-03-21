@@ -107,6 +107,8 @@ class VehicleController extends Controller
 
     public function getVariants(int $carModelId): JsonResponse
     {
+        VehicleModel::query()->findOrFail($carModelId);
+
         $variants = $this->variantRepository->getVariantsByCarModelId($carModelId);
 
         return response()->json(
@@ -164,25 +166,11 @@ class VehicleController extends Controller
 
     private function formatVariant(VehicleVariant $variant): array
     {
-        $year = (string) $variant->year_start;
-
-        if (
-            !is_null($variant->year_end) &&
-            $variant->year_end !== $variant->year_start
-        ) {
-            $year .= '-' . $variant->year_end;
-        }
-
-        $engine = '';
-        if (!is_null($variant->engine_displacement) && $variant->engine_displacement > 0) {
-            $engine = rtrim(rtrim(number_format($variant->engine_displacement / 1000, 1, '.', ''), '0'), '.') . 'L';
-        }
-
         return [
             'id' => (string) $variant->id,
             'name' => $variant->variant_name,
-            'year' => $year,
-            'engine' => $engine,
+            'year' => (string) $variant->year,
+            'engine' => $variant->engine_displacement ?? '',
             'transmission' => $variant->transmission_type ?? '',
             'oilCapacity' => $variant->oil_capacity,
             'serviceClass' => $variant->service_class ?? '',

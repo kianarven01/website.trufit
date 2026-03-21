@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Button } from "@/components/ui/button";
 import Combobox from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
+import api from "@/api/axios";
 import {
   Car,
   Gauge,
@@ -39,9 +40,9 @@ interface Variant {
 }
 
 interface PartCategory {
-  id: string;
+  id: number;
   name: string;
-  parts: number;
+  code: string;
 }
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -84,24 +85,18 @@ const VehicleVariantsPage: React.FC = () => {
   const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<PartCategory | null>(null);
 
-  // Load from localStorage on mount
   useEffect(() => {
-    const savedVariants = localStorage.getItem("variants");
-    const savedCategories = localStorage.getItem("categories");
+    const fetchCategories = async () => {
+      try {
+        const res = await api.get("/products/categories");
+        setCategoryList(res.data);
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+      }
+    };
 
-    if (savedVariants) setVariantList(JSON.parse(savedVariants));
-    if (savedCategories) setCategoryList(JSON.parse(savedCategories));
+    fetchCategories();
   }, []);
-
-  // Persist variants to localStorage
-  useEffect(() => {
-    localStorage.setItem("variants", JSON.stringify(variantList));
-  }, [variantList]);
-
-  // Persist categories to localStorage
-  useEffect(() => {
-    localStorage.setItem("categories", JSON.stringify(categoryList));
-  }, [categoryList]);
 
   const filteredVariants = variantList.filter((v) =>
     v.name.toLowerCase().includes(variantSearch.toLowerCase())
@@ -115,16 +110,16 @@ const VehicleVariantsPage: React.FC = () => {
     });
   };
 
-  const handleCategorySaved = (category: { name: string }) => {
+  const handleCategorySaved = (category: { name: string; code?: string }) => {
     setCategoryList((prev) => {
       const exists = prev.find((c) => c.name === category.name);
       if (exists) return prev;
       return [
         ...prev,
         {
-          id: `C-${Date.now()}`,
+          id: Date.now(),
           name: category.name,
-          parts: 0,
+          code: category.code || category.name,
         },
       ];
     });
@@ -367,7 +362,7 @@ const VehicleVariantsPage: React.FC = () => {
                               <div className="flex items-center justify-between mt-1 min-w-0">
                                 <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
                                   <Settings className="w-3 h-3 flex-shrink-0" />
-                                  {cat.parts > 0 ? `${cat.parts} part${cat.parts > 1 ? "s" : ""}` : "No part listed"}
+                                  {cat.code || "No code"}
                                 </p>
                                 <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                               </div>

@@ -3,20 +3,16 @@
 namespace App\Domains\Product\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Domains\Product\Domain\Models\Category;
+use App\Domains\Product\Application\UseCases\GetCategories;
 use App\Domains\Product\Domain\Models\Unit;
 
 class ProductReferenceController extends Controller
 {
-    public function categories()
+    public function categories(GetCategories $getCategories)
     {
-        $categories = Category::select('id', 'name', 'code')
-            ->orderBy('name')
-            ->get();
+        $categories = $getCategories->execute();
 
-        return response()->json([
-            'data' => $categories
-        ]);
+        return response()->json($categories);
     }
 
     public function units()

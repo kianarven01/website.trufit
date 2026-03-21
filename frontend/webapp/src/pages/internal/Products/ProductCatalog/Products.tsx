@@ -1,59 +1,58 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
+import api from "@/api/axios";
 import {
   Breadcrumb,
-  BreadcrumbList,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
-import DataToolbar from "@/components/DataToolbar";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Search, Plus, Package } from "lucide-react";
 
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-
-import { ProductModal } from "@/components/popupModal/ProductCatalog/addProduct";
-import { Image as ImageIcon } from "lucide-react";
-
-interface Variant {
+interface ProductListItem {
   id: string;
   name: string;
+  SKU: string;
+  cost: number;
+  description?: string | null;
+  image_URL?: string | null;
+  barcode?: string | null;
+  part_number?: string | null;
+  category_id?: number | null;
+  category_name?: string | null;
+  unit?: string | null;
+  unit_name?: string | null;
+  supplier_code?: string | null;
+  supplier_name?: string | null;
+  quantity_on_hand?: number | null;
+  sell_price?: number | null;
 }
 
-interface Category {
+interface CategoryOption {
   id: string;
   name: string;
+  code: string;
 }
 
-interface Supplier {
+interface VariantOption {
   id: string;
   name: string;
+  year: string;
+  engine: string;
+  transmission: string;
+  oilCapacity?: number;
+  serviceClass?: string;
 }
 
-interface Part {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  unit: string;
-  image?: string;
-  brandId: string;
-  variantId: string;
-  categoryId: string;
-}
-
-const ProductList: React.FC = () => {
+const ProductsPage: React.FC = () => {
   const navigate = useNavigate();
+
   const { vehicleModelId, vehicleSlug, variantId, categoryId } = useParams<{
     vehicleModelId: string;
     vehicleSlug: string;
@@ -61,81 +60,84 @@ const ProductList: React.FC = () => {
     categoryId: string;
   }>();
 
-  const [variant, setVariant] = useState<Variant>();
-  const [category, setCategory] = useState<Category>();
-  const [supplier, setSupplier] = useState<Supplier[]>([]);
-  const [parts, setParts] = useState<Part[]>([]);
-  const [filteredParts, setFilteredParts] = useState<Part[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [products, setProducts] = useState<ProductListItem[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [variants, setVariants] = useState<VariantOption[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  if (!vehicleSlug || !variantId || !categoryId) {
-    return <div className="p-4">Invalid route</div>;
-  }
+  const vehicleTitle = useMemo(() => {
+    if (!vehicleSlug) return "Vehicle";
+    return vehicleSlug
+      .split("-")
+      .map((s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s))
+      .join(" ");
+  }, [vehicleSlug]);
 
-  
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.id === categoryId) ?? null,
+    [categories, categoryId]
+  );
 
-  const [make, model] = vehicleSlug
-    .split("-")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1));
+  const selectedVariant = useMemo(
+    () => variants.find((v) => v.id === variantId) ?? null,
+    [variants, variantId]
+  );
 
-  // Load parts, variant, category
   useEffect(() => {
-    const variants: Variant[] = JSON.parse(localStorage.getItem("variants") || "[]");
-    const categories: Category[] = JSON.parse(localStorage.getItem("categories") || "[]");
-    const suppliers: Supplier[] = JSON.parse(localStorage.getItem("suppliers") || "[]");
-    const savedParts: Part[] = JSON.parse(localStorage.getItem("parts") || "[]");
+    const fetchPageData = async () => {
+      if (!vehicleModelId || !variantId || !categoryId) return;
 
-    const foundVariant = variants.find((v) => v.id === variantId);
-    const foundCategory = categories.find((c) => c.id === categoryId);
+      setLoading(true);
 
-    if (!foundVariant || !foundCategory) {
-      navigate("/webapp/products/product-catalog");
-      return;
-    }
+      try {
+        const [categoriesRes, variantsRes, productsRes] = await Promise.all([
+          api.get<CategoryOption[] | { data: CategoryOption[] }>("/products/categories"),
+          api.get<VariantOption[]>(`/vehicles/models/${vehicleModelId}/variants`),
+          api.get<ProductListItem[]>("/products", {
+            params: {
+              variant_id: variantId,
+              category_id: categoryId,
+            },
+          }),
+        ]);
 
-    setVariant(foundVariant);
-    setCategory(foundCategory);
-    setSupplier(suppliers);
+        const fetchedCategories = Array.isArray(categoriesRes.data)
+          ? categoriesRes.data
+          : categoriesRes.data.data ?? [];
 
-    const filtered = savedParts.filter(
-      (p) => p.variantId === variantId && p.categoryId === categoryId
-    );
+        const fetchedVariants = Array.isArray(variantsRes.data) ? variantsRes.data : [];
+        const fetchedProducts = Array.isArray(productsRes.data) ? productsRes.data : [];
 
-    setParts(filtered);
-    setFilteredParts(filtered);
-  }, [variantId, categoryId, navigate]);
+        setCategories(fetchedCategories);
+        setVariants(fetchedVariants);
+        setProducts(fetchedProducts);
+      } catch (error) {
+        console.error("Failed to fetch products page data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Search filter
-  useEffect(() => {
-    setFilteredParts(
-      parts.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    );
-  }, [searchQuery, parts]);
+    fetchPageData();
+  }, [vehicleModelId, variantId, categoryId]);
 
-  const handleAddPart = (newPart: Part) => {
-    const savedParts: Part[] = JSON.parse(localStorage.getItem("parts") || "[]");
-    const updatedParts = [...savedParts, newPart];
-    localStorage.setItem("parts", JSON.stringify(updatedParts));
+  const filteredProducts = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return products;
 
-    const filtered = updatedParts.filter(
-      (p) => p.variantId === variantId && p.categoryId === categoryId
-    );
-
-    setParts(filtered);
-    setFilteredParts(filtered);
-    setIsModalOpen(false);
-  };
-
-  if (!variant || !category) return null;
+    return products.filter((product) => {
+      return (
+        product.name?.toLowerCase().includes(term) ||
+        product.SKU?.toLowerCase().includes(term) ||
+        product.part_number?.toLowerCase().includes(term) ||
+        product.supplier_name?.toLowerCase().includes(term)
+      );
+    });
+  }, [products, search]);
 
   return (
-    <div className="w-full h-full p-4 flex flex-col space-y-4">
-
-      {/* Breadcrumb */}
+    <div className="w-full h-full p-4 flex flex-col gap-4 overflow-auto">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -144,112 +146,130 @@ const ProductList: React.FC = () => {
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
+
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}`)}>
-              {make} {model}
+            <BreadcrumbLink
+              onClick={() =>
+                navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}`)
+              }
+            >
+              {vehicleTitle}
             </BreadcrumbLink>
             <BreadcrumbSeparator />
           </BreadcrumbItem>
+
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}`)}>
-              {variant.name}
-            </BreadcrumbLink>
-            <BreadcrumbSeparator />
-          </BreadcrumbItem>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}/${variantId}/${categoryId}/products`)}>
-              {category.name}
-            </BreadcrumbLink>
-            <BreadcrumbSeparator />
-          </BreadcrumbItem>
-          <BreadcrumbItem>
-            <BreadcrumbPage>Products</BreadcrumbPage>
+            <BreadcrumbPage>{selectedCategory?.name ?? "Parts List"}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Toolbar */}
-      <DataToolbar
-        searchPlaceholder="Search parts..."
-        onSearch={(v) => setSearchQuery(v)}
-        onAdd={() => setIsModalOpen(true)}
-        addLabel="Add Part"
-      />
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">
+            {selectedCategory?.name ?? "Parts List"}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
+            {selectedVariant && <span>{selectedVariant.name}</span>}
+            {selectedCategory?.code && <Badge variant="outline">{selectedCategory.code}</Badge>}
+          </div>
+        </div>
 
-      {/*Products Table */}
-      {filteredParts.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Part Name</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Unit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredParts.map((part) => (
-              <TableRow key={part.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    {part.image ? (
-                      <img
-                        src={part.image}
-                        alt={part.name}
-                        className="h-8 w-8 rounded-md object-cover"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center">
-                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium">{part.name}</span>
-                      <p className="text-muted-foreground text-xs">
-                        {part.brandId}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{part.sku}</TableCell>
-                <TableCell>${part.price.toFixed(2)}</TableCell>
-                <TableCell>{part.unit}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+        <Button>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Product
+        </Button>
+      </div>
 
-      {/*Empty state */}
-      {filteredParts.length === 0 && (
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          placeholder="Search products..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {loading ? (
         <Card>
-          <CardContent className="py-16 flex flex-col items-center justify-center text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium">No products found</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Try adjusting your search or add a new product.
-            </p>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            Loading products...
           </CardContent>
         </Card>
-      )}
+      ) : filteredProducts.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground flex flex-col items-center gap-3">
+            <Package className="w-10 h-10 opacity-40" />
+            <div>
+              <p className="font-medium">No products found</p>
+              <p className="text-sm">
+                There are no compatible products under this category and variant yet.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="hover:shadow-md transition">
+              <CardContent className="p-4 flex gap-4">
+                <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {product.image_URL ? (
+                    <img
+                      src={product.image_URL}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Package className="w-8 h-8 text-muted-foreground" />
+                  )}
+                </div>
 
-      {/*Add Product Modal */}
-      {isModalOpen && (
-        <ProductModal
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          product={null}
-          categories={[
-            { id: category.id, name: category.name, code: category.id },
-          ]}
-          suppliers={supplier.map((s) => ({ id: s.id, name: s.name, supplier_code: s.id }))}
-          onSaved={() => Promise.resolve()}
-        />
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold leading-tight">{product.name}</h3>
+                    {product.sell_price != null && (
+                      <Badge variant="secondary">₱{Number(product.sell_price).toFixed(2)}</Badge>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    SKU: {product.SKU || "—"}
+                  </p>
+
+                  {product.part_number && (
+                    <p className="text-sm text-muted-foreground">
+                      Part No: {product.part_number}
+                    </p>
+                  )}
+
+                  {product.supplier_name && (
+                    <p className="text-sm text-muted-foreground">
+                      Supplier: {product.supplier_name}
+                    </p>
+                  )}
+
+                  {product.description && (
+                    <p className="text-sm line-clamp-2 text-muted-foreground">
+                      {product.description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {product.unit_name && <Badge variant="outline">{product.unit_name}</Badge>}
+                    {product.category_name && (
+                      <Badge variant="outline">{product.category_name}</Badge>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );
 };
 
-export default ProductList;
+export default ProductsPage;

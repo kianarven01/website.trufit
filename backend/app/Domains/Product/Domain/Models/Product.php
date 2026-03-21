@@ -2,13 +2,13 @@
 
 namespace App\Domains\Product\Domain\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use App\Domains\Product\Domain\Models\Category;
-use App\Domains\Product\Domain\Models\Unit;
 use App\Domains\Supplier\Domain\Models\Supplier;
+use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
+    public $timestamps = false;
+
     protected $table = 'Main.Products';
 
     protected $fillable = [
@@ -16,14 +16,20 @@ class Product extends Model
         'SKU',
         'cost',
         'description',
-        'image_URL',
-        'barcode',
-        'part_number',
+        'image_path',
         'category_id',
         'unit',
-        'supplier_code',
-        'quantity_on_hand',
-        'sell_price',
+        'barcode',
+        'part_number',
+        'part_id',
+        'manufacturer_id',
+        'is_oem',
+        'oem_reference_number',
+    ];
+
+    protected $casts = [
+        'cost' => 'decimal:2',
+        'is_oem' => 'boolean',
     ];
 
     public function category()
@@ -31,13 +37,18 @@ class Product extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
-    public function unit()
-    {
-        return $this->belongsTo(Unit::class, 'unit', 'id');
-    }
-
     public function supplier()
     {
-        return $this->belongsTo(Supplier::class, 'supplier_code', 'supplier_code');
+        return $this->belongsTo(Supplier::class, 'manufacturer_id');
+    }
+
+    public function unitRelation()
+    {
+        return $this->belongsTo(Unit::class, 'unit');
+    }
+
+    public function vehicleCompatibilities()
+    {
+        return $this->hasMany(ProductVehicleCompatibility::class, 'product_id');
     }
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -62,6 +62,16 @@ interface PartCategory {
   code: string;
 }
 
+interface VehicleRouteState {
+  vehicle?: {
+    id: string;
+    make: string;
+    manufacturer_id: string;
+    model: string;
+    image_url?: string | null;
+  };
+}
+
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Engine: Settings,
   Brakes: Disc,
@@ -84,6 +94,9 @@ const VehicleVariantsPage: React.FC = () => {
   }>();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = location.state as VehicleRouteState | null;
+  const vehicleFromState = routeState?.vehicle ?? null;
 
   const [variantModalOpen, setVariantModalOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
@@ -105,13 +118,17 @@ const VehicleVariantsPage: React.FC = () => {
   const [loadingVariants, setLoadingVariants] = useState(false);
 
   const vehicleTitle = useMemo(() => {
+    if (vehicleFromState) {
+      return `${vehicleFromState.make} ${vehicleFromState.model}`;
+    }
+
     if (!vehicleSlug) return "Vehicle";
 
     return vehicleSlug
       .split("-")
       .map((s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s))
       .join(" ");
-  }, [vehicleSlug]);
+  }, [vehicleSlug, vehicleFromState]);
 
   const selectedVariant = variantList.find((v) => v.id === selectedVariantId) ?? null;
 
@@ -147,7 +164,7 @@ const VehicleVariantsPage: React.FC = () => {
         setVariantList(variants);
 
         if (variants.length > 0) {
-          setSelectedVariantId((prev) => prev ?? variants[0].id);
+          setSelectedVariantId(variants[0].id);
         } else {
           setSelectedVariantId(null);
         }
@@ -286,7 +303,15 @@ const VehicleVariantsPage: React.FC = () => {
             <Card className="cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1">
               <CardContent className="p-0">
                 <div className="w-full h-48 relative overflow-hidden flex items-center justify-center bg-muted/30">
-                  <Car className="w-16 h-16 text-muted-foreground/40" />
+                  {vehicleFromState?.image_url ? (
+                    <img
+                      src={vehicleFromState.image_url}
+                      alt={`${vehicleFromState.make} ${vehicleFromState.model}`}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <Car className="w-16 h-16 text-muted-foreground/40" />
+                  )}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-30 transition-opacity"></div>
                 </div>
               </CardContent>

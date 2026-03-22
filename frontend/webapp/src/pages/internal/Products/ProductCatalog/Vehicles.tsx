@@ -41,7 +41,6 @@ const VehiclesPage: React.FC = () => {
   const capitalize = (str: string) =>
     str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
-  // ─── Fetch vehicles & brands from the API ────────────────────────────────
   const fetchVehicles = async () => {
     try {
       const [vehiclesRes, manufacturersRes] = await Promise.all([
@@ -61,7 +60,6 @@ const VehiclesPage: React.FC = () => {
     fetchVehicles();
   }, []);
 
-  // ─── Filter options for the toolbar ──────────────────────────────────────
   const filterOptions: FilterOption[] = [
     {
       key: "make",
@@ -77,7 +75,6 @@ const VehiclesPage: React.FC = () => {
           (v) => v.make.toLowerCase() === filters.make.toLowerCase()
         );
 
-  // ─── Save (create or update) ──────────────────────────────────────────────
   const handleSaveVehicle = async (vehicleData: {
     id: string;
     makeId: string;
@@ -90,18 +87,13 @@ const VehiclesPage: React.FC = () => {
       image_url: vehicleData.image || null,
     };
 
-    console.log("vehicleData:", vehicleData);
-    console.log("payload:", payload);
-
     try {
       if (editingVehicle) {
-        // UPDATE
         const res = await api.put(`/vehicles/${editingVehicle.id}`, payload);
         setVehicles((prev) =>
           prev.map((v) => (v.id === editingVehicle.id ? res.data.data : v))
         );
       } else {
-        // CREATE
         const res = await api.post("/vehicles", payload);
         setVehicles((prev) => [...prev, res.data.data]);
       }
@@ -111,12 +103,10 @@ const VehiclesPage: React.FC = () => {
       throw error;
     }
 
-    // Refresh manufacturers list in case a new make was added
     const manufacturersRes = await api.get("/vehicles/manufacturers");
     setBrands(manufacturersRes.data.data);
   };
 
-  // ─── Delete ───────────────────────────────────────────────────────────────
   const handleDeleteVehicle = async (vehicle: Vehicle) => {
     if (!confirm(`Delete ${vehicle.make} ${vehicle.model}?`)) return;
     try {
@@ -128,32 +118,34 @@ const VehiclesPage: React.FC = () => {
     }
   };
 
-  // ─── Navigate into a vehicle's variants ──────────────────────────────────
   const openVehicleCatalog = (vehicle: Vehicle) => {
     const vehicleSlug = `${vehicle.make}-${vehicle.model}`
       .toLowerCase()
       .replace(/\s+/g, "-");
-    navigate(`/webapp/products/product-catalog/${vehicle.id}/${vehicleSlug}`);
+
+    navigate(`/webapp/products/product-catalog/${vehicle.id}/${vehicleSlug}`, {
+      state: {
+        vehicle,
+      },
+    });
   };
 
   return (
     <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
-      {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
-            Product Catalog
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>Vehicles</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+              Product Catalog
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Vehicles</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search Vehicles..."
         onSearch={(value) => {
@@ -182,14 +174,12 @@ const VehiclesPage: React.FC = () => {
         addLabel="Add Vehicle"
       />
 
-      {/* Loading state */}
       {loading && (
         <div className="w-full flex items-center justify-center py-12">
           <p className="text-sm text-gray-400">Loading vehicles...</p>
         </div>
       )}
 
-      {/* No Vehicle Record */}
       {!loading && filteredVehicles.length === 0 && (
         <div className="w-full flex items-center justify-center py-12">
           <p className="text-lg font-medium uppercase text-gray-700 text-center">
@@ -198,7 +188,6 @@ const VehiclesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Vehicles Grid */}
       {!loading && filteredVehicles.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredVehicles.map((v) => (
@@ -207,7 +196,6 @@ const VehiclesPage: React.FC = () => {
               onClick={() => openVehicleCatalog(v)}
               className="cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1"
             >
-              {/* Image */}
               <CardContent className="p-0">
                 <div className="w-full h-40 relative overflow-hidden flex items-center justify-center bg-muted/30">
                   {v.image_url ? (
@@ -222,7 +210,6 @@ const VehiclesPage: React.FC = () => {
 
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-30 transition-opacity" />
 
-                  {/* Edit / Delete Buttons */}
                   <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <button
                       onClick={(e) => {
@@ -250,7 +237,6 @@ const VehiclesPage: React.FC = () => {
                 </div>
               </CardContent>
 
-              {/* Info */}
               <CardFooter className="flex justify-between items-center px-4 py-3 bg-white transition-colors duration-200 group-hover:bg-gray-900">
                 <div className="flex flex-col">
                   <p className="text-gray-900 font-semibold text-sm group-hover:text-white">
@@ -271,7 +257,6 @@ const VehiclesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Vehicle Modal */}
       <VehicleModal
         open={modalOpen}
         onOpenChange={setModalOpen}

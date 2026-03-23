@@ -24,6 +24,13 @@ import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
 import SalesOrder from "./pages/internal/Sales/SalesOrder";
 import Estimates from "./pages/internal/Sales/Estimates";
 
+import PurchOrderContainer from "./pages/internal/Purchasing/PurchaseOrders/POContainer";
+import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
+import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";
+import SupplierList from "./pages/internal/Purchasing/Suppliers/SupplierList";
+import SupplierContainer from "./pages/internal/Purchasing/Suppliers/SuppliersContainer";
+import SupplierDetails from "./pages/internal/Purchasing/Suppliers/SupplierDetail";
+
 import ProductCatalog from "./pages/internal/Products/ProductCatalogContainer";
 import VehiclesPage from "./pages/internal/Products/ProductCatalog/Vehicles";
 import VehicleVariantsPage from "./pages/internal/Products/ProductCatalog/VehicleVariants";
@@ -63,6 +70,16 @@ const App: React.FC = () => {
 
             <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
             <Route path="/webapp/sales/estimates" element={<Estimates />} />
+
+            <Route path="/webapp/purchasing/purchase-orders" element={<PurchOrderContainer />}>
+              <Route index element={<PurchaseOrderList />} />
+              <Route path=":id" element={<PurchaseOrderDetails />} />
+            </Route>
+
+            <Route path="/webapp/purchasing/suppliers" element={<SupplierContainer />}>
+              <Route index element={<SupplierList />} />
+              <Route path=":supplierId" element={<SupplierDetails />} />
+            </Route>
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
               <Route index element={<VehiclesPage />} />

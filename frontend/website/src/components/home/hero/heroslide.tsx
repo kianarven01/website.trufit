@@ -140,12 +140,12 @@ export default function HeroSlide({ slide, isActive }: Props) {
       <div className="relative z-10 flex h-full items-center">
         <div
           className="px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 text-white text-left max-w-[1820px] mx-auto w-full 
-                      pt-16 pb-10 md:pb-0"
+                      pt-16 md:pt-18 lg:pt-20 pb-10 md:pb-2 flex flex-col justify-center"
         >
           {/* Quality Auto Care badge */}
           <div
             ref={badgeRef}
-            className="flex items-center gap-2 mb-3 md:mb-6 landscape:hidden lg:landscape:flex"
+            className="flex items-center gap-2 mb-3 md:mb-3 landscape:hidden lg:landscape:flex"
             style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle 
@@ -160,10 +160,11 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* title */}
           <h1
             ref={titleRef}
-            className="font-brawler text-3xl sm:text-4xl md:text-8xl font-bold mb-3 md:mb-6 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl"
+            className="font-brawler text-3xl sm:text-4xl md:text-8xl font-bold mb-3 md:mb-3 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl"
             style={{ 
                 opacity: isActive ? 0 : 1,
-                ...consistentTextStyle 
+                ...consistentTextStyle, 
+                fontSize: "clamp(2.5rem, 5vw, 4rem)"
             }}
           >
             <span className="text-brand-red">{firstWord}</span> {restOfTitle}
@@ -172,10 +173,11 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* subtitle */}
           <p
             ref={subtitleRef}
-            className="text-[11px] sm:text-sm md:text-xl mb-4 md:mb-10 max-w-2xl text-gray-300 font-light leading-relaxed landscape:hidden lg:landscape:block"
+            className="text-[11px] sm:text-sm md:text-xl mb-4 md:mb-5 max-w-2xl text-gray-300 font-light leading-relaxed landscape:hidden lg:landscape:block"
             style={{ 
                 opacity: isActive ? 0 : 1,
-                ...consistentTextStyle 
+                ...consistentTextStyle, 
+                fontSize: "clamp(0.9rem, 1.2vw, 1.25rem)"
             }}
           >
             {slide.subtitle}
@@ -184,7 +186,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* buttons */}
           <div
             ref={buttonsRef}
-            className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-16 landscape:mb-4 md:landscape:mb-10"
+            className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-6 landscape:mb-4 md:landscape:mb-6"
             style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle 
@@ -214,7 +216,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* stats */}
           <div
             ref={statsRef}
-            className="hidden sm:flex lg:flex gap-12 border-t border-white/10 pt-8 landscape:hidden lg:landscape:flex"
+            className="hidden sm:flex lg:flex gap-12 border-t border-white/10 pt-6 md:pt-4 landscape:hidden lg:landscape:flex max-h-[150px]"
             style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle 

@@ -236,9 +236,9 @@ export default function ProcessSection() {
         <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/80 to-transparent" />
       </div>
 
-      <div ref={pinRef} className="min-h-screen flex flex-col justify-center relative z-10 py-24">
+      <div ref={pinRef} className="min-h-screen flex flex-col justify-center relative z-10 py-12">
         <div className="max-w-[1820px] mx-auto w-full px-6 sm:px-10 lg:px-16">
-          <div className="text-center mb-24">
+          <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-2 mb-4">
               <div className="h-[2px] w-8 bg-brand-blue" />
               <span className="text-sm font-bold tracking-widest uppercase text-brand-blue">
@@ -250,7 +250,7 @@ export default function ProcessSection() {
           </div>
 
           {/* Timeline Dots */}
-          <div className="relative mb-32 max-w-5xl mx-auto">
+          <div className="relative mb-12 max-w-5xl mx-auto">
             {/* Background Line */}
             <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/10 -translate-y-1/2 hidden md:block" />
             
@@ -279,7 +279,7 @@ export default function ProcessSection() {
                   </div>
 
                   {/* Label with increased spacing */}
-                  <div className={`absolute top-full mt-6 flex flex-col items-center transition-all duration-500 ${idx === activeStep ? "opacity-100 translate-y-0" : "opacity-40 -translate-y-2"}`}>
+                  <div className={`absolute top-full mt-1 flex flex-col items-center transition-all duration-500 ${idx === activeStep ? "opacity-100 translate-y-0" : "opacity-40 -translate-y-2"}`}>
                     <span className="text-[10px] font-black italic text-brand-blue mb-1">STEP 0{idx + 1}</span>
                     <span className="text-[11px] font-bold tracking-[0.2em] uppercase whitespace-nowrap">{step.title}</span>
                   </div>
@@ -289,18 +289,20 @@ export default function ProcessSection() {
           </div>
 
           {/* Content Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center min-h-[400px]">
-            <div className="relative h-full flex flex-col justify-center order-2 lg:order-1">
-              <div className="relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center w-full flex-1 pb-12">
+            <div className="relative h-full flex flex-col justify-start pt-20 order-2 lg:order-1">
+             
+              <div className="relative w-full">
                 {steps.map((step, idx) => (
                   <div 
                     key={`content-${step.id}`}
                     className={`step-content-${idx} ${idx === activeStep ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
                   >
-                    <h3 className="text-2xl md:text-4xl font-black mb-6 text-brand-blue uppercase italic tracking-tighter">
+                    <h3 className="text-2xl md:text-4xl font-black mb-4 text-brand-blue uppercase italic tracking-tighter leading-tight
+                    ">
                       {step.title}
                     </h3>
-                    <p className="text-gray-300 text-lg md:text-xl leading-relaxed max-w-xl font-medium">
+                    <p className="text-gray-300 text-base md:text-md leading-relaxed max-w-xl font-medium">
                       {step.description}
                     </p>
                   </div>
@@ -309,7 +311,7 @@ export default function ProcessSection() {
             </div>
 
             <div className="order-1 lg:order-2">
-              <div className="relative h-[300px] md:h-[450px] w-full rounded-sm overflow-hidden border border-white/10 shadow-2xl bg-black/20 group">
+              <div className="relative aspect-video w-full rounded-sm overflow-hidden border border-white/10 shadow-2xl bg-black/20 group">
                 {steps.map((step, idx) => (
                   <div
                     key={`img-${step.id}`}

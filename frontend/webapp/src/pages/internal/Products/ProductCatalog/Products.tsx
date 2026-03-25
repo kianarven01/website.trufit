@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 import {
   Breadcrumb,
@@ -10,9 +11,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-import DataToolbar from "@/components/DataToolbar";
+import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-
 import {
   Table,
   TableHeader,
@@ -21,119 +21,164 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Badge } from "@/components/ui/badge";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { ImageIcon } from "lucide-react";
 
-import { ProductModal } from "@/components/popupModal/ProductCatalog/addProduct";
-import { Image as ImageIcon } from "lucide-react";
-
-interface Variant {
+/* ================= TYPES ================= */
+interface Product {
   id: string;
-  name: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface Supplier {
-  id: string;
-  name: string;
-}
-
-interface Part {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  unit: string;
   image?: string;
-  brandId: string;
-  variantId: string;
-  categoryId: string;
+  name: string;
+  brand: string;
+  manufacturer: string;
+  supplier: string;
+  sku: string;
+  partNumber: string;
+  unit: string;
+  price: number;
 }
 
-const ProductList: React.FC = () => {
+/* ================= HELPERS ================= */
+const fromSlug = (slug?: string) =>
+  slug
+    ?.split("-")
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(" ") || "";
+
+/* ================= COMPONENT ================= */
+const ProductsList: React.FC = () => {
   const navigate = useNavigate();
-  const { vehicleSlug, variantId, categoryId } = useParams<{
-    vehicleSlug: string;
-    variantId: string;
-    categoryId: string;
-  }>();
+  const { vehicleSlug, variantSlug, categorySlug } = useParams<{
+  vehicleSlug: string;
+  variantSlug: string;
+  categorySlug: string;
+}>();
 
-  const [variant, setVariant] = useState<Variant>();
-  const [category, setCategory] = useState<Category>();
-  const [supplier, setSupplier] = useState<Supplier[]>([]);
-  const [parts, setParts] = useState<Part[]>([]);
-  const [filteredParts, setFilteredParts] = useState<Part[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
 
-  if (!vehicleSlug || !variantId || !categoryId) {
-    return <div className="p-4">Invalid route</div>;
-  }
+  const [filtersState, setFiltersState] = useState<Record<string, string>>({
+    manufacturer: "all",
+    supplier: "all",
+  });
 
-  
+  const [imgError, setImgError] = useState<Record<string, boolean>>({});
 
-  const [make, model] = vehicleSlug
-    .split("-")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1));
+  const { page, setPage, pageSize, setPageSize, paginate } =
+    usePagination(25);
 
-  // Load parts, variant, category
-  useEffect(() => {
-    const variants: Variant[] = JSON.parse(localStorage.getItem("variants") || "[]");
-    const categories: Category[] = JSON.parse(localStorage.getItem("categories") || "[]");
-    const suppliers: Supplier[] = JSON.parse(localStorage.getItem("suppliers") || "[]");
-    const savedParts: Part[] = JSON.parse(localStorage.getItem("parts") || "[]");
+  const STORAGE_KEY =
+    variantSlug && categorySlug
+      ? `products_${variantSlug}_${categorySlug}`
+      : "products_temp";
 
-    const foundVariant = variants.find((v) => v.id === variantId);
-    const foundCategory = categories.find((c) => c.id === categoryId);
 
-    if (!foundVariant || !foundCategory) {
-      navigate("/webapp/products/product-catalog");
-      return;
-    }
+  /* ================= DUMMY DATA ================= */
+  const generateDummyProducts = (): Product[] => {
+    const manufacturers = ["Bosch", "Denso", "NGK"];
+    const suppliers = ["AutoHub", "PartsPro", "SpeedZone"];
 
-    setVariant(foundVariant);
-    setCategory(foundCategory);
-    setSupplier(suppliers);
-
-    const filtered = savedParts.filter(
-      (p) => p.variantId === variantId && p.categoryId === categoryId
-    );
-
-    setParts(filtered);
-    setFilteredParts(filtered);
-  }, [variantId, categoryId, navigate]);
-
-  // Search filter
-  useEffect(() => {
-    setFilteredParts(
-      parts.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    );
-  }, [searchQuery, parts]);
-
-  const handleAddPart = (newPart: Part) => {
-    const savedParts: Part[] = JSON.parse(localStorage.getItem("parts") || "[]");
-    const updatedParts = [...savedParts, newPart];
-    localStorage.setItem("parts", JSON.stringify(updatedParts));
-
-    const filtered = updatedParts.filter(
-      (p) => p.variantId === variantId && p.categoryId === categoryId
-    );
-
-    setParts(filtered);
-    setFilteredParts(filtered);
-    setIsModalOpen(false);
+    return Array.from({ length: 60 }, (_, i) => ({
+      id: `prod-${i + 1}`,
+      image: i % 3 === 0 ? "" : `https://via.placeholder.com/40`,
+      name: `Product ${i + 1}`,
+      brand: ["Toyota", "Honda"][i % 2],
+      manufacturer: manufacturers[i % manufacturers.length],
+      supplier: suppliers[i % suppliers.length],
+      sku: `SKU-${1000 + i}`,
+      partNumber: `PRT-${1000 + i}`,
+      unit: ["pcs", "set", "box"][i % 3],
+      price: Math.floor(Math.random() * 5000) + 500,
+    }));
   };
 
-  if (!variant || !category) return null;
+  /* ================= LOAD ================= */
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+
+    if (stored) {
+      const parsed = JSON.parse(stored);
+
+      if (!parsed.length) {
+        const dummy = generateDummyProducts();
+        setProducts(dummy);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      } else {
+        setProducts(parsed);
+      }
+    } else {
+      const dummy = generateDummyProducts();
+      setProducts(dummy);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+    }
+  }, [STORAGE_KEY]);
+
+  /* ================= SAVE ================= */
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  }, [products, STORAGE_KEY]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filtersState]);
+
+  /* ================= FILTER OPTIONS ================= */
+  const manufacturerOptions = Array.from(
+    new Set(products.map((p) => p.manufacturer))
+  ).map((m) => ({ label: m, value: m }));
+
+  const supplierOptions = Array.from(
+    new Set(products.map((p) => p.supplier))
+  ).map((s) => ({ label: s, value: s }));
+
+  const filters: FilterOption[] = [
+    {
+      key: "manufacturer",
+      label: "Manufacturer",
+      options: manufacturerOptions,
+    },
+    {
+      key: "supplier",
+      label: "Supplier",
+      options: supplierOptions,
+    },
+  ];
+
+  /* ================= FILTER LOGIC ================= */
+  const filtered = products.filter((p) => {
+    const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchesManufacturer =
+      filtersState.manufacturer === "all" ||
+      p.manufacturer === filtersState.manufacturer;
+
+    const matchesSupplier =
+      filtersState.supplier === "all" ||
+      p.supplier === filtersState.supplier;
+
+    return matchesSearch && matchesManufacturer && matchesSupplier;
+  });
+
+  const paginated = paginate(filtered);
+
+  /* ================= BREADCRUMB ================= */
+  const [make, model] = vehicleSlug
+    ? vehicleSlug
+        .split("-")
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    : ["", ""];
+     
+  const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
+  const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
+      
 
   return (
-    <div className="w-full h-full p-4 flex flex-col space-y-4">
-
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
+      
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -141,26 +186,34 @@ const ProductList: React.FC = () => {
             <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
               Product Catalog
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
-              {make} {model}
+              {`${make} ${model}`}
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
-              {variant.name}
+              {variantName}
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
-              {category.name}
+              {categoryName}
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbPage>Products</BreadcrumbPage>
           </BreadcrumbItem>
@@ -169,86 +222,128 @@ const ProductList: React.FC = () => {
 
       {/* Toolbar */}
       <DataToolbar
-        searchPlaceholder="Search parts..."
-        onSearch={(v) => setSearchQuery(v)}
-        onAdd={() => setIsModalOpen(true)}
-        addLabel="Add Part"
+        searchPlaceholder={`Search ${categoryName} products...`}
+        onSearch={setSearch}
+        filters={filters}
+        activeFilters={filtersState}
+        onFilterChange={(key, value) =>
+          setFiltersState((prev) => ({ ...prev, [key]: value }))
+        }
+        onAdd={() => console.log("open add product modal")}
+        addLabel="Add Product"
       />
 
-      {/*Products Table */}
-      {filteredParts.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Part Name</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Unit</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredParts.map((part) => (
-              <TableRow key={part.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    {part.image ? (
-                      <img
-                        src={part.image}
-                        alt={part.name}
-                        className="h-8 w-8 rounded-md object-cover"
-                      />
-                    ) : (
-                      <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center">
-                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium">{part.name}</span>
-                      <p className="text-muted-foreground text-xs">
-                        {part.brandId}
-                      </p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{part.sku}</TableCell>
-                <TableCell>${part.price.toFixed(2)}</TableCell>
-                <TableCell>{part.unit}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {/* TABLE */}
+      {products.length > 0 ? (
+        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
+          <div className="flex-1 overflow-auto">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-2/6">Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Part Number</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Selling Price</TableHead>
+                </TableRow>
+              </TableHeader>
 
-      {/*Empty state */}
-      {filteredParts.length === 0 && (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center justify-center text-center">
-            <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+              <TableBody>
+                {filtered.length > 0 ? (
+                  paginated.map((p) => (
+                    <TableRow
+                      key={p.id}
+                      onClick={() => navigate(`/webapp/products/${p.id}`)}
+                      className={cn(
+                        "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                        "hover:bg-accent/30"
+                      )}
+                    >
+                      {/* PRODUCT CELL */}
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-3">
+                          
+                          {/* IMAGE / PLACEHOLDER */}
+                          {p.image && !imgError[p.id] ? (
+                            <img
+                              src={p.image}
+                              alt={p.name}
+                              className="w-12 h-10 rounded-md object-cover border"
+                            />
+                          ) : (
+                            <div className="w-12 h-10 flex items-center justify-center rounded-md border">
+                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
+
+                          {/* TEXT */}
+                          <div className="flex flex-col">
+                            <span className="font-medium">{p.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {p.brand}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>{p.sku}</TableCell>
+
+                      <TableCell> {p.partNumber} </TableCell>
+
+                      <TableCell>{p.unit}</TableCell>
+
+                      <TableCell>
+                        ₱ {p.price.toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      <div className="py-16 flex flex-col items-center text-center">
+                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          No products found
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your search or filters
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* PAGINATION */}
+          {filtered.length > 25 && (
+            <div className="sticky bottom-0 bg-background z-10">
+              <Pagination
+                totalItems={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             </div>
-            <p className="text-sm font-medium">No products found</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Try adjusting your search or add a new product.
+          )}
+        </ScrollArea>
+      ) : (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">
+              No products available
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Add a product to get started
             </p>
           </CardContent>
         </Card>
-      )}
-
-      {/*Add Product Modal */}
-      {isModalOpen && (
-        <ProductModal
-          open={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          product={null}
-          categories={[
-            { id: category.id, name: category.name, code: category.id },
-          ]}
-          suppliers={supplier.map((s) => ({ id: s.id, name: s.name, supplier_code: s.id }))}
-          onSaved={() => Promise.resolve()}
-        />
       )}
     </div>
   );
 };
 
-export default ProductList;
+export default ProductsList;

@@ -61,9 +61,7 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 
 const VehicleVariantsPage: React.FC = () => {
   const { vehicleSlug } = useParams<{ vehicleSlug: string }>();
-  const [make, model] = vehicleSlug
-    ? vehicleSlug.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    : ["", ""];
+
 
   const navigate = useNavigate();
   const [variantModalOpen, setVariantModalOpen] = useState(false);
@@ -83,6 +81,14 @@ const VehicleVariantsPage: React.FC = () => {
 
   const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<PartCategory | null>(null);
+
+
+  const [make, model] = vehicleSlug
+    ? vehicleSlug.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    : ["", ""];  
+
+  const toSlug = (str: string) =>
+    str.toLowerCase().replace(/\s+/g, "-");
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -165,9 +171,10 @@ const VehicleVariantsPage: React.FC = () => {
               }
             >
               Product Catalog
-            </BreadcrumbLink>
-            <BreadcrumbSeparator />
+            </BreadcrumbLink> 
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
 
           <BreadcrumbItem>
             <BreadcrumbLink 
@@ -177,8 +184,9 @@ const VehicleVariantsPage: React.FC = () => {
             >
               {`${make} ${model}`}
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
 
           <BreadcrumbItem>
             <BreadcrumbPage>Parts List</BreadcrumbPage>
@@ -348,14 +356,17 @@ const VehicleVariantsPage: React.FC = () => {
                           key={cat.id} 
                           className="relative group cursor-pointer hover:shadow-md transition rounded-lg"
                             onClick={() => {
-                            if (!selectedVariantId) {
-                              alert("Please select a variant first.");
-                              return;
-                            }
+                              if (!selectedVariantId) {
+                                alert("Please select a variant first.");
+                                return;
+                              }
 
-                            navigate(
-                              `/webapp/products/product-catalog/${vehicleSlug}/${selectedVariantId}/${cat.id}/products`
-                            );
+                              const variant = variantList.find(v => v.id === selectedVariantId);
+                              if (!variant) return;
+
+                              navigate(
+                                `/webapp/products/product-catalog/${vehicleSlug}/${toSlug(variant.name)}/${toSlug(cat.name)}/products`
+                              );
                           }}
                           >
                           <CardContent className="p-4 flex items-center gap-4">

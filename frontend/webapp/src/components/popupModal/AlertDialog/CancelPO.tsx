@@ -43,6 +43,7 @@ const CancelPurchaseOrderDialog: React.FC<Props> = ({
             <span className="text-destructive font-semibold">
               cancelled
             </span>.
+            
           </AlertDialogDescription>
         </AlertDialogHeader>
 

@@ -126,8 +126,10 @@ const openVehicleCatalog = (vehicle: Vehicles) => {
             <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
               Product Catalog
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
+            
           </BreadcrumbItem>
+          
+          <BreadcrumbSeparator />
 
           <BreadcrumbItem>
             <BreadcrumbPage>Vehicles</BreadcrumbPage>

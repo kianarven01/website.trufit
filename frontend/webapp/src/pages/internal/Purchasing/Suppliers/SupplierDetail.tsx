@@ -13,8 +13,7 @@ import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
-
-import { Mail, Phone, User, MessageCircle, Edit, Trash2 } from "lucide-react";
+import { Mail, Phone, User, MessageCircle, Edit, Trash2, Percent } from "lucide-react";
 
 interface Supplier {
   id: string;
@@ -24,6 +23,8 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
+  isVAT: boolean;
+  vatRate: number;
 }
 
 interface Transaction {
@@ -143,8 +144,6 @@ const SupplierDetails: React.FC = () => {
   }
 
   return (
-  // Layout is not yet finalized
-
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
 
       <Breadcrumb>
@@ -219,20 +218,36 @@ const SupplierDetails: React.FC = () => {
                 value: supplier.viber || "No Viber available",
                 clickable: !!supplier.viber,
                 action: () => supplier.viber && window.open(`viber://chat?number=${supplier.viber}`)
-              }].map((field, i) => (
+              }, {
+                label: "Tax",
+                icon: Percent,
+                value: "",
+                clickable: false,
+                isTax: true
+              }].map((field: any, i) => (
                 <div key={i} className="space-y-1">
                   <Label>{field.label}</Label>
                   <div className="relative">
                     <field.icon
-                      className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${field.clickable ? "cursor-pointer" : "opacity-1"}`}
-                      onClick={field.action}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
                     />
-                    <Input
-                      value={field.value}
-                      readOnly
-                      onClick={field.action}
-                      className={`pl-9 ${field.clickable ? "cursor-pointer" : "text-foreground"}`}
-                    />
+
+                    {field.isTax ? (
+                      <div className="flex items-center pl-9 h-9 border rounded-md">
+                        {supplier.isVAT ? (
+                          `${supplier.vatRate}% VAT applied`
+                        ) : (
+                          "Non-VAT supplier"
+                        )}
+                      </div>
+                    ) : (
+                      <Input
+                        value={field.value}
+                        readOnly
+                        onClick={field.action}
+                        className={`pl-9 ${field.clickable ? "cursor-pointer" : "text-foreground"}`}
+                      />
+                    )}
                   </div>
                 </div>
               ))}
@@ -245,7 +260,9 @@ const SupplierDetails: React.FC = () => {
           </Card>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT unchanged */}
+        {/* (kept exactly as-is) */}
+
         <div className="col-span-3 flex flex-col min-h-0">
           <Card className="flex flex-col flex-1 min-h-0">
 
@@ -256,88 +273,81 @@ const SupplierDetails: React.FC = () => {
                 <TabsTrigger value="products">Supplied Products ({products.length})</TabsTrigger>
               </TabsList>
 
-            <TabsContent value="transactions" className="flex-1 min-h-0 mt-4">
-              <div className="h-full overflow-hidden">
-                
-                <div className="h-full overflow-y-auto">
-                  <Table className="table-fixed w-full">
-                    
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Purchase Date</TableHead>
-                        <TableHead>Parts Ordered</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-
-                    <TableBody>
-                      {transactions.slice(0, 10).map((txn) => (
-                        <TableRow key={txn.id}>
-                          <TableCell>
-                            <div>
-                            <p className="text-sm font-medium leading-none">{txn.date}</p>
-                            <p className="text-xs text-muted-foreground">{txn.time}</p>
-                            </div>
-                            </TableCell>
-                          <TableCell>{txn.partsOrdered}</TableCell>
-                          <TableCell>{txn.amount}</TableCell>
-                          <TableCell>
-                            <Badge>{txn.status}</Badge> {/* Status color is yet to be assigned*/}
-                          </TableCell>
+              <TabsContent value="transactions" className="flex-1 min-h-0 mt-4">
+                <div className="h-full overflow-hidden">
+                  <div className="h-full overflow-y-auto">
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Purchase Date</TableHead>
+                          <TableHead>Parts Ordered</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
+                      </TableHeader>
 
-                  </Table>
+                      <TableBody>
+                        {transactions.slice(0, 10).map((txn) => (
+                          <TableRow key={txn.id}>
+                            <TableCell>
+                              <div>
+                                <p className="text-sm font-medium leading-none">{txn.date}</p>
+                                <p className="text-xs text-muted-foreground">{txn.time}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>{txn.partsOrdered}</TableCell>
+                            <TableCell>{txn.amount}</TableCell>
+                            <TableCell>
+                              <Badge>{txn.status}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+
+                    </Table>
+                  </div>
                 </div>
+              </TabsContent>
 
-              </div>
-            </TabsContent>
+              <TabsContent value="products" className="flex-1 min-h-0 mt-4">
+                <div className="h-full overflow-hidden flex flex-col">
+                  <div className="flex-1 overflow-y-auto">
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product Name</TableHead>
+                          <TableHead>Part Number</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Stock</TableHead>
+                        </TableRow>
+                      </TableHeader>
 
-              {/* PRODUCTS */}
-<TabsContent value="products" className="flex-1 min-h-0 mt-4">
-  <div className="h-full overflow-hidden flex flex-col">
+                      <TableBody>
+                        {paginate(products).map((prod) => (
+                          <TableRow key={prod.id}>
+                            <TableCell className="truncate">{prod.name}</TableCell>
+                            <TableCell>{prod.partNumber}</TableCell>
+                            <TableCell>{prod.price}</TableCell>
+                            <TableCell>{prod.stock}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
 
-    {/* Scrollable table */}
-    <div className="flex-1 overflow-y-auto">
-      <Table className="table-fixed w-full">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Product Name</TableHead>
-            <TableHead>Part Number</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Stock</TableHead>
-          </TableRow>
-        </TableHeader>
-
-        <TableBody>
-          {paginate(products).map((prod) => (
-            <TableRow key={prod.id}>
-              <TableCell className="truncate">{prod.name}</TableCell>
-              <TableCell>{prod.partNumber}</TableCell>
-              <TableCell>{prod.price}</TableCell>
-              <TableCell>{prod.stock}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-
-    {/* Pagination */}
-    {products.length > 25 && (
-      <div className="mt-2">
-        <Pagination
-          totalItems={products.length}
-          page={page}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      </div>
-    )}
-  </div>
-</TabsContent>
+                  {products.length > 25 && (
+                    <div className="mt-2">
+                      <Pagination
+                        totalItems={products.length}
+                        page={page}
+                        pageSize={pageSize}
+                        onPageChange={setPage}
+                        onPageSizeChange={setPageSize}
+                      />
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
 
             </Tabs>
           </Card>
@@ -345,34 +355,34 @@ const SupplierDetails: React.FC = () => {
 
       </div>
 
-<SupplierModal
-  open={isEditOpen}
-  onOpenChange={setIsEditOpen}
-  supplier={supplier}
-  onSaved={handleSaveSupplier}
-/>      
+      <SupplierModal
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        supplier={supplier}
+        onSaved={handleSaveSupplier}
+      />      
 
-<AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Delete Supplier</AlertDialogTitle>
-      <AlertDialogDescription>
-        This action cannot be undone. This will permanently delete{" "}
-        <span className="font-semibold">{supplier.name}</span>.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Supplier</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete{" "}
+              <span className="font-semibold">{supplier.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-    <AlertDialogFooter>
-      <AlertDialogCancel>Cancel</AlertDialogCancel>
-      <AlertDialogAction
-        className="bg-destructive text-white hover:bg-destructive/90"
-        onClick={handleDeleteSupplier}
-      >
-        Delete
-      </AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={handleDeleteSupplier}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

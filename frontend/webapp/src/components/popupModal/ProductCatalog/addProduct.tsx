@@ -13,14 +13,12 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { X, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
-import api from "@/api/axios";
 
 interface CategoryOption {
   id: string;
   name: string;
   code: string;
 }
-
 
 interface SupplierOption {
   id: string;
@@ -50,7 +48,7 @@ interface Props {
   product?: ProductModalItem | null;
   categories: CategoryOption[];
   suppliers: SupplierOption[];
-  onSaved: () => void | Promise<void>;
+  onSaved: (prodduct: any) => void | Promise<void>;
 }
 
 export function ProductModal({
@@ -145,35 +143,42 @@ export function ProductModal({
       return;
     }
 
-    const payload = {
-      name: name.trim(),
-      SKU: sku.trim() || null,
-      cost: Number(cost),
-      description: description.trim() || null,
-      image_URL: imageUrl.trim() || null,
-      category_id: categoryId ? Number(categoryId) : null,
-      unit: unit.trim(),
-      barcode: barcode.trim() || null,
-      part_number: partNumber.trim(),
-      supplier_code: supplierId,
-    };
-
     setIsSaving(true);
 
     try {
-      if (isEdit && product?.id) {
-        await api.put(`/products/${product.id}`, payload);
+      const existing: any[] = JSON.parse(localStorage.getItem("parts") || "[]");
+
+      const newProduct = {
+        id: product?.id ?? `part-${Date.now()}`,
+        name: name.trim(),
+        sku: sku.trim() || `SKU-${Date.now()}`,
+        price: Number(cost),
+        unit: unit.trim(),
+        image: imageUrl || "",
+        brandId: supplierId,
+        variantId: window.location.pathname.split("/")[4],
+        categoryId: categoryId,
+      };
+
+      let updated;
+
+      if (isEdit) {
+        updated = existing.map((p) =>
+          p.id === newProduct.id ? newProduct : p
+        );
         toast.success("Product updated successfully.");
       } else {
-        await api.post("/products", payload);
+        updated = [...existing, newProduct];
         toast.success("Product added successfully.");
       }
 
-      await onSaved();
+      localStorage.setItem("parts", JSON.stringify(updated));
+
+      await onSaved(newProduct);
       onOpenChange(false);
-    } catch (err: any) {
-      console.error("Failed to save product:", err?.response?.data || err);
-      toast.error(err?.response?.data?.message || "Failed to save product.");
+    } catch (err) {
+      console.error("Failed to save product:", err);
+      toast.error("Failed to save product.");
     } finally {
       setIsSaving(false);
     }
@@ -247,7 +252,7 @@ export function ProductModal({
                   value={categoryId ? categories.find(c => c.id === categoryId)?.name || "" : ""}
                   onChange={(val) => {
                     const cat = categories.find(c => c.name === val);
-                    setCategoryId(cat ? String(cat.id) : ""); 
+                    setCategoryId(cat ? String(cat.id) : "");
                   }}
                   items={categories.map(c => c.name)}
                   placeholder="Select or type category..."

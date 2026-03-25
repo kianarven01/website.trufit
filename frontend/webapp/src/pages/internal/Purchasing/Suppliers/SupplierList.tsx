@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -17,12 +19,12 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
+import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { ImageIcon } from "lucide-react";
 
-
-
+/* TYPES */
 interface Supplier {
   id: string;
   name: string;
@@ -31,10 +33,13 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
+  isVAT: boolean;
+  vatRate: number;
 }
 
 const STORAGE_KEY = "suppliers";
 
+/* DUMMY */
 const generateDummySuppliers = (): Supplier[] => {
   return Array.from({ length: 30 }, (_, i) => ({
     id: `sup-${i + 1}`,
@@ -44,19 +49,23 @@ const generateDummySuppliers = (): Supplier[] => {
     phone: `0917${String(1000000 + i)}`,
     contactPerson: `Contact ${i + 1}`,
     viber: `0917${String(2000000 + i)}`,
+    isVAT: i % 2 === 0,
+    vatRate: i % 2 === 0 ? 12 : 0,
   }));
 };
-
 
 const SupplierList: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);  
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
 
   const navigate = useNavigate();
 
-  /* LOAD FROM LOCAL STORAGE */
+  /* PAGINATION */
+  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
+
+  /* LOAD */
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
 
@@ -77,37 +86,42 @@ const SupplierList: React.FC = () => {
     }
   }, []);
 
-  /* SAVE TO LOCAL STORAGE */
+  /* SAVE */
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(suppliers));
   }, [suppliers]);
 
-  /* SEARCH FILTER */
+  /* RESET PAGE ON SEARCH */
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  /* FILTER */
   const filtered = suppliers.filter((s) =>
     `${s.name} ${s.supplierCode} ${s.email} ${s.phone} ${s.contactPerson} ${s.viber}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
 
+  const paginated = paginate(filtered);
+
   const handleSaveSupplier = (newSupplier: Supplier) => {
     setSuppliers((prev) => {
       const exists = prev.find((s) => s.id === newSupplier.id);
 
       if (exists) {
-        // UPDATE
         return prev.map((s) =>
           s.id === newSupplier.id ? newSupplier : s
         );
       }
 
-      // ADD
       return [newSupplier, ...prev];
     });
-  };  
+  };
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none">
-      
+
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -130,55 +144,80 @@ const SupplierList: React.FC = () => {
 
       {/* TABLE */}
       {suppliers.length > 0 ? (
-        <ScrollArea className="flex-1 h-0">
-          <Table className="table-fixed w-full">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Viber</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Contact</TableHead>
-              </TableRow>
-            </TableHeader>
+        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
+          
+          <div className="flex-1 overflow-auto">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Viber</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Contact</TableHead>
+                </TableRow>
+              </TableHeader>
 
-            <TableBody>
-              {filtered.length > 0 ? (
-                filtered.map((s) => (
-                  <TableRow 
-                  key={s.id}
-                  onClick={() => 
-                    navigate(`/webapp/purchasing/suppliers/${s.id}`)}
-                  >
-                    <TableCell className="px-4 py-2">
-                      <div>
-                        <p className="font-medium text-sm">{s.name}</p>
-                        <p className="text-[12px] text-muted-foreground">
-                          {s.supplierCode}
+              <TableBody>
+                {filtered.length > 0 ? (
+                  paginated.map((s) => (
+                    <TableRow
+                      key={s.id}
+                      onClick={() =>
+                        navigate(`/webapp/purchasing/suppliers/${s.id}`)
+                      }
+                      className={cn(
+                        "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                        "hover:bg-accent/30"
+                      )}
+                    >
+                      <TableCell
+                        className={cn(
+                          "py-0.5"
+                        )}
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{s.name}</p>
+                          <p className="text-[12px] text-muted-foreground">
+                            {s.supplierCode}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{s.viber}</TableCell>
+                      <TableCell>{s.email}</TableCell>
+                      <TableCell>{s.phone}</TableCell>
+                      <TableCell>{s.contactPerson}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      <div className="py-16 flex flex-col items-center text-center">
+                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">No suppliers found</p>
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your search
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>{s.viber}</TableCell>
-                    <TableCell>{s.email}</TableCell>
-                    <TableCell>{s.phone}</TableCell>
-                    <TableCell>{s.contactPerson}</TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5}>
-                    <div className="py-16 flex flex-col items-center text-center">
-                      <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                      <p className="text-sm font-medium">No suppliers found</p>
-                      <p className="text-xs text-muted-foreground">
-                        Try adjusting your search
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination */}
+          {filtered.length > pageSize && (
+            <div className="sticky bottom-0 bg-background z-10">
+              <Pagination
+                totalItems={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
+          )}
         </ScrollArea>
       ) : (
         <Card>
@@ -197,7 +236,7 @@ const SupplierList: React.FC = () => {
       <SupplierModal
         open={open}
         onOpenChange={setOpen}
-        supplier={editingSupplier}  
+        supplier={editingSupplier}
         onSaved={handleSaveSupplier}
       />
     </div>

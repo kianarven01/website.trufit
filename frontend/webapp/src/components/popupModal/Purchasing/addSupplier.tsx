@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scrollArea";
+import { Percent, Ban } from "lucide-react";
+
 
 interface Supplier {
   id: string;
@@ -20,6 +22,8 @@ interface Supplier {
   contactPerson: string;
   viber: string;
   supplierCode: string;
+  isVAT: boolean;
+  vatRate: number;  
 }
 
 interface Props {
@@ -42,6 +46,8 @@ const SupplierModal: React.FC<Props> = ({
   const [phone, setPhone] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [viber, setViber] = useState("");
+  const [isVAT, setIsVAT] = useState(true);
+  const [vatRate, setVatRate] = useState(12);
   const [isSaving, setIsSaving] = useState(false);
 
   /* LOAD DATA WHEN OPEN */
@@ -54,12 +60,18 @@ const SupplierModal: React.FC<Props> = ({
       setPhone(supplier.phone || "");
       setContactPerson(supplier.contactPerson || "");
       setViber(supplier.viber || "");
+
+      setIsVAT(supplier.isVAT);
+      setVatRate(supplier.vatRate);
     } else {
       setName("");
       setEmail("");
       setPhone("");
       setContactPerson("");
       setViber("");
+
+      setIsVAT(true);
+      setVatRate(12);
     }
   }, [open, supplier]);
 
@@ -99,6 +111,8 @@ const generateSupplierCode = (name: string) => {
       phone: phone.trim(),
       contactPerson: contactPerson.trim(),
       viber: viber.trim(),
+      isVAT,
+      vatRate: isVAT ? vatRate : 0,
       supplierCode: supplier?.supplierCode || generateSupplierCode(name),
     };
 
@@ -170,6 +184,70 @@ const generateSupplierCode = (name: string) => {
                 onChange={(e) => setViber(e.target.value)}
                 placeholder="Viber Account"
               />
+            </div>
+
+            <div>
+              <Label className="text-xs">Tax</Label>
+
+              <div className="flex items-center justify-between text-sm">
+                
+                {/* TOGGLE */}
+                <div className="flex border rounded-md overflow-hidden">
+                  
+                  {/* VAT */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsVAT(true);
+                      if (!vatRate) setVatRate(12);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 h-9 text-xs transition
+                    ${isVAT ? "bg-primary text-white" : "bg-background"}`}
+                  >
+                    <Percent className="size-3.5" />
+                    VAT
+                  </button>
+
+                  {/* NON-VAT */}
+                  <button
+                    type="button"
+                    onClick={() => setIsVAT(false)}
+                    className={`flex items-center gap-1.5 px-3 h-9 text-xs border-l transition
+                    ${!isVAT ? "bg-primary text-white" : "bg-background"}`}
+                  >
+                    <Ban className="size-3.5" />
+                    Non-VAT
+                  </button>
+                </div>
+
+                {/* VAT INPUT */}
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={vatRate}
+                    onChange={(e) => {
+                      const value = Math.min(100, Math.max(0, Number(e.target.value)));
+                      setVatRate(value);
+                    }}
+                    disabled={!isVAT}
+                    min={0}
+                    max={100}
+                    className="w-28 text-xs pr-7"
+                  />
+
+                  {/* % ICON INSIDE */}
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                    %
+                  </span>
+                </div>
+
+              </div>
+
+              {!isVAT && (
+                <p className="text-[11px] text-muted-foreground mt-1 text-right">
+                  VAT disabled for non-VAT supplier
+                </p>
+              )}
             </div>
 
           </div>

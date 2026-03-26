@@ -28,6 +28,8 @@ export default function ServiceCard({ service }: ServiceCardProps) {
             src={service.image}
             alt={service.title}
             fill
+            priority 
+            unoptimized
             className="object-cover transition-transform duration-1000 group-hover:scale-110"
           />
         ) : (
@@ -37,7 +39,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
             {/* Background Placeholder Icon (Dynamic) */}
             <div className="relative w-16 h-16 mb-4 opacity-10 z-10 text-white">
               {isImagePath ? (
-                <Image src={service.icon} alt="" fill className="object-contain grayscale invert" />
+                <Image src={service.icon} alt="" fill className="object-contain brightness-0 invert" />
               ) : (
                 Icon && <Icon className="w-full h-full" />
               )}
@@ -55,7 +57,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
         {/* Floating icon badge (Handles both) */}
         <div className="absolute bottom-4 left-4 bg-white/90 md:bg-transparent md:glass p-3 md:p-4 rounded-sm border border-white/50 shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:bg-brand-red group-hover:border-brand-red">
           {isImagePath ? (
-            <div className="relative w-5 h-5 md:w-6 md:h-6 group-hover:brightness-0 group-hover:invert transition-all">
+            <div className="relative w-5 h-5 md:w-6 md:h-6 md:brightness-0 md:invert group-hover:brightness-0 group-hover:invert transition-all">
               <Image src={service.icon} alt={service.title} fill className="object-contain" />
             </div>
           ) : (

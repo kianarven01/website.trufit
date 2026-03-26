@@ -4,6 +4,7 @@ import ServicesSection from "@/components/home/services/servicessection"
 import AboutSection from "@/components/home/about/AboutSection"
 import ProcessSection from "@/components/home/process/ProcessSection"
 import WhyChooseUsSection from "@/components/home/why-choose-us/WhyChooseUsSection"
+import PartnersSection from "@/components/home/partners/PartnersSection"
 
 export default function HomePage() {
   return (
@@ -14,6 +15,7 @@ export default function HomePage() {
       <ProcessSection />
       <WhyChooseUsSection />
       <AppointmentSection />
+      <PartnersSection/>
     </>
   )
 }

@@ -22,7 +22,7 @@ export default function PromoPopup() {
     if (isReadyToShow) {
       const timer: ReturnType<typeof setTimeout> = setTimeout(() => {
         handleOpen();
-      }, 10000); // 10 seconds delay
+      }, 20000); // 20 seconds delay
       return () => clearTimeout(timer);
     }
   }, []);

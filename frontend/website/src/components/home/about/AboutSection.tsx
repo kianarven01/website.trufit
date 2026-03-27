@@ -419,7 +419,7 @@ export default function AboutSection() {
                   }
                   setIsOpen(false);
                 }}
-                className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs shadow-lg shadow-brand-blue/20 inline-block"
+                className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20 inline-block"
               >
                 Book Appointment
               </Link>

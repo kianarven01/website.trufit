@@ -210,7 +210,7 @@ export default function Navbar() {
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              className="lg:hidden fixed top-0 left-0 w-full h-screen z-50 flex flex-col items-center justify-center gap-8 bg-brand-dark"
+              className="lg:hidden fixed top-0 left-0 w-full min-h-[100dvh] z-[999] flex flex-col items-center justify-start pt-20 pb-10 gap-8 bg-brand-dark overflow-y-auto"
               initial={{ opacity: 0, x: "100%" }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: "100%" }}

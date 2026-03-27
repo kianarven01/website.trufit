@@ -132,7 +132,7 @@ export default function HeroSlider() {
       )}
 
       {/* Progress Bars */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[1820px] px-6 sm:px-10 lg:px-16 flex gap-2 z-50">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[1820px] px-6 sm:px-10 lg:px-16 flex gap-2 z-20">
         {slides.map((_, i) => (
           <div
             key={i}

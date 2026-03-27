@@ -252,8 +252,13 @@ export default function Navbar() {
             </Link>
 
               <div className="absolute bottom-12 flex gap-6 text-white/40">
-                <Phone size={20} />
-                <Mail size={20} />
+                <a href="tel:09187747788" className="hover:text-white transition-colors">
+                  <Phone size={20} />
+                </a>
+
+                <a href="mailto:trufitautocenter@gmail.com" className="hover:text-white transition-colors">
+                  <Mail size={20} />
+                </a>
                 <span className="text-sm">Trufit Auto Center</span>
               </div>
             </motion.div>

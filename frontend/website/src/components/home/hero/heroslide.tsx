@@ -19,6 +19,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const buttonsRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
+  const accreditationsRef = useRef<HTMLDivElement>(null);
 
   const [firstWord, ...restWords] = slide.title.split(" ");
   const restOfTitle = restWords.join(" ");
@@ -41,6 +42,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           subtitleRef.current,
           buttonsRef.current,
           statsRef.current,
+          accreditationsRef.current,
         ],
         {
           opacity: 1,
@@ -61,6 +63,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           subtitleRef.current,
           buttonsRef.current,
           statsRef.current,
+          accreditationsRef.current,
         ],
         {
           opacity: 0,
@@ -95,6 +98,12 @@ export default function HeroSlide({ slide, isActive }: Props) {
         .fromTo(
           buttonsRef.current,
           { opacity: 0, y: 30 },
+          { opacity: 1, y: 0 },
+          "-=1.4",
+        )
+        .fromTo(
+          accreditationsRef.current,
+          { opacity: 0, y: 20 },
           { opacity: 1, y: 0 },
           "-=1.4",
         )
@@ -186,7 +195,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* buttons */}
           <div
             ref={buttonsRef}
-            className="flex flex-wrap gap-2 md:gap-4 mb-6 md:mb-6 landscape:mb-4 md:landscape:mb-6"
+            className="flex flex-wrap gap-2 md:gap-4 mb-8 md:mb-10 landscape:mb-4 md:landscape:mb-6"
             style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle 
@@ -213,32 +222,59 @@ export default function HeroSlide({ slide, isActive }: Props) {
             </Link>
           </div>
 
-          {/* stats */}
-          <div
-            ref={statsRef}
-            className="hidden sm:flex lg:flex gap-12 border-t border-white/10 pt-6 md:pt-4 landscape:hidden lg:landscape:flex max-h-[150px]"
-            style={{ 
+          {/* Accreditations and Stats combined in one line */}
+          <div className="hidden sm:flex flex-wrap items-center gap-8 md:gap-16 border-t border-white/10 pt-8 md:pt-10 landscape:hidden lg:landscape:flex">
+            {/* Accreditations Part */}
+            <div 
+              ref={accreditationsRef}
+              className="flex flex-wrap items-center gap-6 md:gap-10"
+              style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle 
-            }}
-          >
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-brand-red mb-1">
-                25+
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <Image src="/images/accreditations/suzuki.webp" alt="Suzuki Authorized" width={100} height={100} className="w-auto h-5 md:h-6 object-contain" />
+                <div className="text-[10px] md:text-xs uppercase font-bold tracking-tighter leading-tight">
+                  Authorized<br/><span className="text-gray-400 font-normal">Service Station</span>
+                </div>
               </div>
-              <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400">
-                Years Experience
+              <div className="flex items-center gap-3">
+                <Image src="/images/accreditations/dti.webp" alt="DTI 5 Star" width={40} height={40} className="w-8 h-8 md:w-10 md:h-10 object-contain" />
+                <div className="text-[10px] md:text-xs uppercase font-bold tracking-tighter leading-tight">
+                  5 Star<br/><span className="text-gray-400 font-normal">Accredited</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Image src="/images/accreditations/bagwis.webp" alt="Bronze Bagwis" width={40} height={40} className="w-8 h-8 md:w-10 md:h-10 object-contain" />
+                <div className="text-[10px] md:text-xs uppercase font-bold tracking-tighter leading-tight">
+                  Bronze Bagwis<br/><span className="text-gray-400 font-normal">Seal of Excellence</span>
+                </div>
               </div>
             </div>
-            <div>
-              <div className="text-3xl md:text-4xl font-bold text-white mb-1 flex items-center">
-                4.5<span className="text-brand-red text-2xl ml-1">★</span>
+
+            {/* Stats Part */}
+            <div
+              ref={statsRef}
+              className="flex items-center gap-8 md:gap-12"
+              style={{ 
+                  opacity: isActive ? 0 : 1,
+                  ...consistentTextStyle 
+              }}
+            >
+              <div className="flex flex-col items-center">
+                <div className="text-2xl md:text-3xl font-bold text-brand-red mb-0.5">25+</div>
+                <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 text-center">Years Experience</div>
               </div>
-              <div className="text-[10px] md:text-xs uppercase tracking-widest text-gray-400">
-                Customer Ratings
+              <div className="flex flex-col items-center">
+                <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 flex items-center">
+                  4.5<span className="text-brand-red text-xl ml-1">★</span>
+                </div>
+                <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 text-center">Customer Ratings</div>
               </div>
             </div>
           </div>
+
         </div>
       </div>
     </div>

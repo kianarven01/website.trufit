@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, forwardRef } from "react"
+import React, { useEffect, useState, forwardRef } from "react"
 import { services } from "@/data/services"
 import { Appointment } from "@/types/appointment"
 import DatePicker from "react-datepicker"
@@ -48,6 +48,24 @@ export default function AppointmentForm() {
   })
 
   const [otherService, setOtherService] = useState("")
+
+  useEffect(() => {
+    const handleClaim = (e: any) => {
+      const { vehicle, price } = e.detail;
+      
+      setForm(prev => ({
+        ...prev,
+        service: "oil-change", 
+        message: `Claiming Promo Offer: ₱${price.toLocaleString()} for ${vehicle}.`
+      }));
+      
+      // Clear otherService so the specify input stays hidden/clean
+      setOtherService("");
+    };
+
+    window.addEventListener("claimOffer", handleClaim);
+    return () => window.removeEventListener("claimOffer", handleClaim);
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>

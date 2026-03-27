@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect } from "react"
+import { useRef, useEffect, useState } from "react" // Added useState
 import Image from "next/image"
 import AppointmentForm from "./appointmentform"
 import { MapPin, Phone, Mail, Clock } from "lucide-react"
@@ -13,8 +13,18 @@ gsap.registerPlugin(ScrollTrigger)
 export default function AppointmentSection() {
   const container = useRef<HTMLDivElement>(null)
   const backgroundImage = "" // Add your image path here
+  
+  // State to hold promo data
+  const [promoData, setPromoData] = useState<any>(null);
 
   useEffect(() => {
+    // Listener for the Promo Popup event
+    const handleClaim = (e: any) => {
+      setPromoData(e.detail);
+    };
+
+    window.addEventListener("claimOffer", handleClaim);
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -63,7 +73,10 @@ export default function AppointmentSection() {
       observer.observe(container.current)
     }
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("claimOffer", handleClaim);
+    }
   }, [])
 
   return (
@@ -142,7 +155,8 @@ export default function AppointmentSection() {
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
           <div className="relative mt-12 lg:mt-0 appointment-form-container opacity-0 translate-x-12 scale-95">
             <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
-              <AppointmentForm />
+              {/* Passed promoData to the form */}
+              <AppointmentForm initialData={promoData} />
             </div>
           </div>
 
@@ -150,4 +164,4 @@ export default function AppointmentSection() {
       </div>
     </section>
   )
-}
+}

@@ -4,6 +4,8 @@ import { Barlow } from "next/font/google"
 import Navbar from "@/components/layout/navbar/navbar"
 import Footer from "@/components/layout/footer/footer"
 import ScrollToTopButton from "@/components/ui/scrolltotopbutton"
+import PromoPopup from "@/components/ui/promopopup"
+
 import "@/styles/globals.css"
 
 const barlow = Barlow({
@@ -33,6 +35,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* scroll-to-top button */}
         <ScrollToTopButton />
+
+        <PromoPopup/>
       </body>
     </html>
   )

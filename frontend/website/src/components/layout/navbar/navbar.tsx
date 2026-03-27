@@ -174,17 +174,25 @@ export default function Navbar() {
 
             {/* desktop book button - hidden below lg */}
             <div className="hidden lg:flex ml-4">
-              <Link
-                href="/book"
-                className={`px-8 py-2.5 rounded-sm font-bold transition-all duration-300 shadow-lg ${
-                  isScrolled
-                    ? "bg-brand-red text-white hover:bg-brand-dark"
-                    : "bg-white text-brand-dark hover:bg-brand-red hover:text-white"
-                }`}
-              >
-                Book Now
-              </Link>
-            </div>
+            <Link
+              href="/#appointment"
+              onClick={(e) => {
+                const el = document.getElementById("appointment");
+
+                if (el) {
+                  e.preventDefault();
+                  el.scrollIntoView(); // no smooth → instant jump
+                }
+              }}
+              className={`px-8 py-2.5 rounded-sm font-bold transition-all duration-300 shadow-lg ${
+                isScrolled
+                  ? "bg-brand-red text-white hover:bg-brand-dark"
+                  : "bg-white text-brand-dark hover:bg-brand-red hover:text-white"
+              }`}
+            >
+              Book Now
+            </Link>
+          </div>
 
             {/* hamburger - visible below lg */}
             <div className="lg:hidden ml-auto z-50">
@@ -227,12 +235,21 @@ export default function Navbar() {
               ))}
 
               <Link
-                href="/book"
-                className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
-                onClick={() => setIsOpen(false)}
-              >
-                Book Now
-              </Link>
+              href="/#appointment"
+              onClick={(e) => {
+                const el = document.getElementById("appointment");
+
+                if (el) {
+                  e.preventDefault();
+                  el.scrollIntoView(); // instant jump
+                }
+
+                setIsOpen(false);
+              }}
+              className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
+            >
+              Book Now
+            </Link>
 
               <div className="absolute bottom-12 flex gap-6 text-white/40">
                 <Phone size={20} />

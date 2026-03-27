@@ -23,7 +23,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
 
   const [firstWord, ...restWords] = slide.title.split(" ");
   const restOfTitle = restWords.join(" ");
-  const serviceSlug = slide.title.replace(/\s+/g, "-").toLowerCase();
 
   // Common style to prevent sub-pixel rendering shifts and color "blinks"
   const consistentTextStyle: React.CSSProperties = {
@@ -193,30 +192,16 @@ export default function HeroSlide({ slide, isActive }: Props) {
           </p>
 
           {/* buttons */}
-          <div
-            ref={buttonsRef}
-            className="flex flex-wrap gap-2 md:gap-4 mb-8 md:mb-10 landscape:mb-4 md:landscape:mb-6"
-            style={{ 
-                opacity: isActive ? 0 : 1,
-                ...consistentTextStyle 
-            }}
-          >
-            <Link
-              href={slide.buttonLink || "/services"}
-              className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all shadow-lg hover:shadow-blue-900/40 text-[9px] sm:text-xs md:text-base"
-            >
+          <div ref={buttonsRef} className="flex flex-wrap gap-2 md:gap-4 mb-8 md:mb-10 landscape:mb-4 md:landscape:mb-6" style={{ opacity: isActive ? 0 : 1, ...consistentTextStyle }}>
+            
+            <Link href={slide.primaryLink} className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all shadow-lg hover:shadow-blue-900/40 text-[9px] sm:text-xs md:text-base">
               Our Services
               <div className="bg-white/20 p-1 rounded-full group-hover:bg-white/40 transition-colors">
                 <ArrowRightCircle className="w-3 md:w-4 h-3 md:h-4" />
               </div>
             </Link>
 
-            <Link
-              href={`/services/${serviceSlug}`}
-              className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all
-                         bg-white/10 border border-white/20 text-white
-                         hover:bg-brand-red hover:border-brand-red text-[9px] sm:text-xs md:text-base"
-            >
+            <Link href={slide.secondaryLink} className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all bg-white/10 border border-white/20 text-white hover:bg-brand-red hover:border-brand-red text-[9px] sm:text-xs md:text-base">
               <Play className="w-3 md:w-4 h-3 md:h-4" />
               View More
             </Link>

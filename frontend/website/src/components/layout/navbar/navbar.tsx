@@ -210,7 +210,7 @@ export default function Navbar() {
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              className="lg:hidden fixed top-0 left-0 w-full min-h-[100dvh] z-[999] flex flex-col items-center justify-start pt-20 pb-10 gap-8 bg-brand-dark overflow-y-auto"
+              className="lg:hidden fixed inset-0 z-[999] bg-brand-dark overflow-y-auto"
               initial={{ opacity: 0, x: "100%" }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: "100%" }}
@@ -222,44 +222,45 @@ export default function Navbar() {
               >
                 <X size={32} />
               </button>
+              <div className="flex flex-col items-center gap-6 py-20 min-h-full">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    className="text-white text-3xl font-brawler hover:text-brand-red transition-colors"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
+                ))}
 
-              {navLinks.map((link) => (
                 <Link
-                  key={link.name}
-                  href={link.href}
-                  className="text-white text-3xl font-brawler hover:text-brand-red transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {link.name}
-                </Link>
-              ))}
+                href="/#appointment"
+                onClick={(e) => {
+                  const el = document.getElementById("appointment");
 
-              <Link
-              href="/#appointment"
-              onClick={(e) => {
-                const el = document.getElementById("appointment");
+                  if (el) {
+                    e.preventDefault();
+                    el.scrollIntoView(); // instant jump
+                  }
 
-                if (el) {
-                  e.preventDefault();
-                  el.scrollIntoView(); // instant jump
-                }
+                  setIsOpen(false);
+                }}
+                className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
+              >
+                Book Now
+              </Link>
 
-                setIsOpen(false);
-              }}
-              className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
-            >
-              Book Now
-            </Link>
+                <div className="mt-auto flex gap-6 text-white/40 pb-6">
+                  <a href="tel:09187747788" className="hover:text-white transition-colors">
+                    <Phone size={20} />
+                  </a>
 
-              <div className="absolute bottom-12 flex gap-6 text-white/40">
-                <a href="tel:09187747788" className="hover:text-white transition-colors">
-                  <Phone size={20} />
-                </a>
-
-                <a href="mailto:trufitautocenter@gmail.com" className="hover:text-white transition-colors">
-                  <Mail size={20} />
-                </a>
-                <span className="text-sm">Trufit Auto Center</span>
+                  <a href="mailto:trufitautocenter@gmail.com" className="hover:text-white transition-colors">
+                    <Mail size={20} />
+                  </a>
+                  <span className="text-sm">Trufit Auto Center</span>
+                </div>
               </div>
             </motion.div>
           )}

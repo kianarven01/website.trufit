@@ -1,14 +1,10 @@
-import React, { useEffect, useState } from "react";
-import temporary_bg from "@/assets/temporary_bg.jpeg";
+import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
 import { Edit, Trash2, ChevronRight, Car } from "lucide-react"; 
-import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -18,104 +14,129 @@ import {
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 
-interface Vehicles {
+export interface Variant {
   id: string;
-  make: string;
-  model: string;
-  image?: string;
-  variants?: string[];
+  vehicleId: string;
+  name: string;
+  year: string;
+  engine: string;
+  transmission: string;
+  drivetrain: string;
 }
 
-interface MakeOption {
+export interface Vehicle {
+  id: string;
+  makeId: string;       
+  makeName: string;     
+  model: string;
+  image?: string;
+}
+
+export interface MakeOption {
   id: string;
   name: string;
 }
 
-
 const VehiclesPage: React.FC = () => {
-  const [vehicles, setVehicles] = useState<Vehicles[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [makers, setMakers] = useState<MakeOption[]>([]);
   const [filters, setFilters] = useState<Record<string, string>>({ make: "all" });
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<Vehicles | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
   const navigate = useNavigate();
+  const { vehicleSlug } = useParams<{ vehicleSlug: string }>();
 
   const capitalize = (str: string) =>
     str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
-
-  // Load makers
+  // Initial load
   useEffect(() => {
     const savedMakers = localStorage.getItem("makers");
-    setMakers(
-      savedMakers
-        ? JSON.parse(savedMakers).map((m: MakeOption) => ({
-            ...m,
-            name: capitalize(m.name),
-          }))
-        : []
-    );
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("makers", JSON.stringify(makers));
-  }, [makers]);
-
-  // Load vehicles from localStorage
-  useEffect(() => {
     const savedVehicles = localStorage.getItem("vehicles");
-
-    if (savedVehicles) {
-      setVehicles(JSON.parse(savedVehicles));
-    }
+    
+    if (savedMakers) setMakers(JSON.parse(savedMakers));
+    if (savedVehicles) setVehicles(JSON.parse(savedVehicles));
   }, []);
 
-  // Save vehicles
-  useEffect(() => {
-    localStorage.setItem("vehicles", JSON.stringify(vehicles));
-  }, [vehicles]);
+  // Sync to localStorage
+  useEffect(() => { localStorage.setItem("makers", JSON.stringify(makers)); }, [makers]);
+  useEffect(() => { localStorage.setItem("vehicles", JSON.stringify(vehicles)); }, [vehicles]);
 
-  // Toolbar filter options
+  // Save/update vehicle
+  const handleSaveVehicle = (vehicleData: any) => {
+    let currentMakeId = vehicleData.makeId;
+    let currentMakeName = "";
+
+    const existingMaker = makers.find(
+      (m) =>
+        m.id === vehicleData.makeId ||
+        m.name.toLowerCase() === vehicleData.makeId.toLowerCase()
+    );
+
+    if (existingMaker) {
+      currentMakeId = existingMaker.id;
+      currentMakeName = existingMaker.name;
+    } else {
+      const newId = crypto.randomUUID();
+      const newName = capitalize(vehicleData.makeId);
+      setMakers((prev) => [...prev, { id: newId, name: newName }]);
+      currentMakeId = newId;
+      currentMakeName = newName;
+    }
+
+    setVehicles((prev) => {
+      const isEdit = prev.some((v) => v.id === vehicleData.id);
+
+      const updatedVehicle: Vehicle = {
+        id: vehicleData.id,
+        makeId: currentMakeId,
+        makeName: currentMakeName,
+        model: vehicleData.model,
+        image: vehicleData.image,
+      };
+
+      // ✅ Save variants to localStorage by vehicle ID
+      localStorage.setItem(
+        `variants_${updatedVehicle.id}`,
+        JSON.stringify(vehicleData.variants || [])
+      );
+
+      return isEdit
+        ? prev.map((v) => (v.id === vehicleData.id ? updatedVehicle : v))
+        : [...prev, updatedVehicle];
+    });
+  };
+
+  // Filtered vehicles
+  const filteredVehicles = useMemo(() => {
+    return vehicles.filter((v) => {
+      if (filters.make !== "all" && v.makeName !== filters.make) return false;
+      return true;
+    });
+  }, [vehicles, filters]);
+
   const filterOptions: FilterOption[] = [
     {
       key: "make",
       label: "Make",
-      options: makers.map((m) => ({ label: capitalize(m.name), value: m.name })),
+      options: makers.map((m) => ({ label: m.name, value: m.name })),
     },
   ];
 
-  const handleSaveVehicle = (vehicle: any) => {
-    let makerExists = makers.find(
-      (m) => m.name.toLowerCase() === vehicle.makeId.toLowerCase()
-    );
-    const capitalizedName = capitalize(vehicle.makeId);
+  // Helper to create URL-safe slug
+  const getVehicleSlug = (v: Vehicle) =>
+    `${v.makeName}-${v.model}`.replace(/\s+/g, "-").toLowerCase();
 
-    if (!makerExists) {
-      const newMaker: MakeOption = { id: vehicle.makeId, name: capitalizedName };
-      setMakers((prev) => [...prev, newMaker]);
-      makerExists = newMaker;
-    }
+  const currentVehicle = vehicles.find(
+    (v) => getVehicleSlug(v) === vehicleSlug
+  );
 
-    const makeName = makerExists ? makerExists.name : capitalizedName;
-
-    setVehicles((prev) => {
-      const exists = prev.find((v) => v.id === vehicle.id);
-      const newVehicle: Vehicles = {
-        id: vehicle.id,
-        make: makeName,
-        model: vehicle.model,
-        image: vehicle.image,
-        variants: vehicle.variants || [],
-      };
-      return exists ? prev.map((v) => (v.id === vehicle.id ? newVehicle : v)) : [...prev, newVehicle];
-    });
+  // Helper to get real variant count from localStorage
+  const getVariantCount = (vehicleId: string) => {
+    const stored = localStorage.getItem(`variants_${vehicleId}`);
+    return stored ? JSON.parse(stored).length : 0;
   };
-
-const openVehicleCatalog = (vehicle: Vehicles) => {
-  const vehicleSlug = `${vehicle.make}-${vehicle.model}`.toLowerCase().replace(/\s+/g, '-');
-  navigate(`/webapp/products/product-catalog/${vehicleSlug}`);
-};
 
   return (
     <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
@@ -123,24 +144,42 @@ const openVehicleCatalog = (vehicle: Vehicles) => {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+            <BreadcrumbLink
+              className="cursor-pointer"
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
               Product Catalog
             </BreadcrumbLink>
-            
           </BreadcrumbItem>
-          
           <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbPage>Vehicles</BreadcrumbPage>
-          </BreadcrumbItem>
+          {currentVehicle ? (
+            <>
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  className="cursor-pointer"
+                  onClick={() => navigate("/webapp/products/product-catalog/vehicles")}
+                >
+                  Vehicles
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {currentVehicle.makeName} - {currentVehicle.model}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          ) : (
+            <BreadcrumbItem>
+              <BreadcrumbPage>Vehicles</BreadcrumbPage>
+            </BreadcrumbItem>
+          )}
         </BreadcrumbList>
       </Breadcrumb>
 
       {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search Vehicles..."
-        onSearch={(value) => console.log("Search:", value)}
         filters={filterOptions}
         activeFilters={filters}
         onFilterChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
@@ -151,89 +190,86 @@ const openVehicleCatalog = (vehicle: Vehicles) => {
         addLabel="Add Vehicle"
       />
 
-      {/* No Vehicle Record */}
-      {vehicles.length === 0 && (
-        <div className="w-full flex items-center justify-center py-12">
-          <p className="text-lg font-medium uppercase text-gray-700 text-center">
-            No vehicle record available. Add a new vehicle using the toolbar above.
+      {/* Empty State */}
+      {filteredVehicles.length === 0 ? (
+        <div className="w-full flex items-center justify-center py-20 border-2 border-dashed rounded-xl">
+          <p className="text-muted-foreground font-medium uppercase tracking-wider">
+            No vehicles found.
           </p>
         </div>
-      )}
-
-      {/* Vehicles Grid */}
-      {vehicles.length > 0 && (
+      ) : (
+        /* Vehicles Grid */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {vehicles.map((v) => (
+          {filteredVehicles.map((v) => (
             <Card
               key={v.id}
-              onClick={() => openVehicleCatalog(v)}
-              className="cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1"
+              onClick={() => navigate(`/webapp/products/product-catalog/${getVehicleSlug(v)}`)}
+              className="cursor-pointer overflow-hidden relative group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border"
             >
-
-              {/* Image */}
+              {/* Image / Icon */}
               <CardContent className="p-0">
-                <div className="w-full h-40 relative overflow-hidden flex items-center justify-center bg-muted/30">
-                      {v.image ? (
-                        <img
-                          src={v.image}
-                          alt={`${v.make} ${v.model}`}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <Car className=" size-16 text-muted-foreground/40"/>
-                      )}
+                <div className="w-full h-44 relative overflow-hidden flex items-center justify-center bg-muted/30">
+                  {v.image ? (
+                    <img
+                      src={v.image}
+                      alt={`${v.makeName} ${v.model}`}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  ) : (
+                    <Car className="size-16 text-muted-foreground/20" />
+                  )}
 
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-30 transition-opacity"></div>
                   {/* Edit/Delete Buttons */}
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingVehicle(v);
-                        setModalOpen(true);
-                      }}
-                      className="p-1 rounded bg-white/90 hover:bg-white text-gray-800"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-2 right-2 flex gap-2 transition-opacity z-10">
+                      <Button
+                        variant="secondary"
+                        size="icon_xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingVehicle(v);
+                          setModalOpen(true);
+                        }}
+                        className="p-2 25 shadow-sm transition-colors"
+                        title="Edit Vehicle"                      
+                      >
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Delete ${v.make} ${v.model}?`)) {
-                          setVehicles((prev) =>
-                            prev.filter((veh) => veh.id !== v.id)
-                          );
-                        }
-                      }}
-                      className="p-1 rounded bg-white/90 hover:bg-white text-red-600"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <Button
+                        variant="destructive"
+                        size="icon_xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Delete ${v.makeName} ${v.model}?`)) {
+                            setVehicles(prev => prev.filter(veh => veh.id !== v.id));
+                          }
+                        }}
+                        className="p-2 shadow-sm hover:text-white transition-colors"
+                        title="Delete Vehicle"                      
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
 
-              {/* Info */}
-              <CardFooter className="flex justify-between items-center px-4 py-3 bg-white transition-colors duration-200 group-hover:bg-gray-900">
+              {/* Vehicle Info */}
+              <CardFooter className="flex justify-between items-center px-4 py-4 bg-card group-hover:bg-blue-900 transition-colors">
                 <div className="flex flex-col">
-                  <p className="text-gray-900 font-semibold text-sm group-hover:text-white">
-                    {v.make}
-                  </p>
-
-                  <p className="text-gray-700 text-sm group-hover:text-white">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary-foreground/70">
+                    {v.makeName}
+                  </span>
+                  <span className="text-sm font-semibold group-hover:text-white">
                     {v.model}
-                  </p>
+                  </span>
                 </div>
-
-                <div className="flex items-center text-gray-500 text-xs font-medium group-hover:text-white">
-                  {v.variants ? v.variants.length : 0} Variants
-                  <ChevronRight className="ml-1 w-4 h-4" />
+                <div className="flex items-center text-[11px] font-medium text-muted-foreground group-hover:text-white/90">
+                  {getVariantCount(v.id)} Var
+                  <ChevronRight className="ml-1 w-3 h-3" />
                 </div>
               </CardFooter>
-
             </Card>
           ))}
         </div>
@@ -243,18 +279,9 @@ const openVehicleCatalog = (vehicle: Vehicles) => {
       <VehicleModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        vehicle={
-          editingVehicle
-            ? {
-                id: editingVehicle.id,
-                makeId: editingVehicle.make,
-                model: editingVehicle.model,
-                image: editingVehicle.image || "",
-              }
-            : null
-        }
+        vehicle={editingVehicle}
         makerList={makers}
-        onSaved={(vehicle) => handleSaveVehicle(vehicle)}
+        onSaved={handleSaveVehicle}
       />
     </div>
   );

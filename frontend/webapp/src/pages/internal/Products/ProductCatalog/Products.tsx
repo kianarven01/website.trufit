@@ -1,32 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon } from "lucide-react";
+import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 
-/* ================= TYPES ================= */
+
 interface Product {
   id: string;
   image?: string;
@@ -40,21 +24,24 @@ interface Product {
   price: number;
 }
 
-/* ================= HELPERS ================= */
+
 const fromSlug = (slug?: string) =>
   slug
     ?.split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
-/* ================= COMPONENT ================= */
+const toSlug = (str: string) =>
+  str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
+
 const ProductsList: React.FC = () => {
   const navigate = useNavigate();
   const { vehicleSlug, variantSlug, categorySlug } = useParams<{
-  vehicleSlug: string;
-  variantSlug: string;
-  categorySlug: string;
-}>();
+    vehicleSlug: string;
+    variantSlug: string;
+    categorySlug: string;
+  }>();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
@@ -69,53 +56,31 @@ const ProductsList: React.FC = () => {
   const { page, setPage, pageSize, setPageSize, paginate } =
     usePagination(25);
 
+  const [openModal, setOpenModal] = useState(false);
+
   const STORAGE_KEY =
-    variantSlug && categorySlug
-      ? `products_${variantSlug}_${categorySlug}`
+    vehicleSlug && variantSlug && categorySlug
+      ? `products_${vehicleSlug}_${variantSlug}_${categorySlug}`
       : "products_temp";
 
 
-  /* ================= DUMMY DATA ================= */
-  const generateDummyProducts = (): Product[] => {
-    const manufacturers = ["Bosch", "Denso", "NGK"];
-    const suppliers = ["AutoHub", "PartsPro", "SpeedZone"];
-
-    return Array.from({ length: 60 }, (_, i) => ({
-      id: `prod-${i + 1}`,
-      image: i % 3 === 0 ? "" : `https://via.placeholder.com/40`,
-      name: `Product ${i + 1}`,
-      brand: ["Toyota", "Honda"][i % 2],
-      manufacturer: manufacturers[i % manufacturers.length],
-      supplier: suppliers[i % suppliers.length],
-      sku: `SKU-${1000 + i}`,
-      partNumber: `PRT-${1000 + i}`,
-      unit: ["pcs", "set", "box"][i % 3],
-      price: Math.floor(Math.random() * 5000) + 500,
-    }));
-  };
-
-  /* ================= LOAD ================= */
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
 
-    if (stored) {
-      const parsed = JSON.parse(stored);
-
-      if (!parsed.length) {
-        const dummy = generateDummyProducts();
-        setProducts(dummy);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setProducts(Array.isArray(parsed) ? parsed : []);
       } else {
-        setProducts(parsed);
+        setProducts([]); // no dummy fallback
       }
-    } else {
-      const dummy = generateDummyProducts();
-      setProducts(dummy);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+    } catch (error) {
+      console.error("Failed to load products:", error);
+      setProducts([]);
     }
   }, [STORAGE_KEY]);
 
-  /* ================= SAVE ================= */
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
   }, [products, STORAGE_KEY]);
@@ -124,7 +89,7 @@ const ProductsList: React.FC = () => {
     setPage(1);
   }, [search, filtersState]);
 
-  /* ================= FILTER OPTIONS ================= */
+
   const manufacturerOptions = Array.from(
     new Set(products.map((p) => p.manufacturer))
   ).map((m) => ({ label: m, value: m }));
@@ -146,7 +111,7 @@ const ProductsList: React.FC = () => {
     },
   ];
 
-  /* ================= FILTER LOGIC ================= */
+
   const filtered = products.filter((p) => {
     const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
       .toLowerCase()
@@ -171,10 +136,9 @@ const ProductsList: React.FC = () => {
         .split("-")
         .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     : ["", ""];
-     
+
   const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
   const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
-      
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
@@ -229,7 +193,7 @@ const ProductsList: React.FC = () => {
         onFilterChange={(key, value) =>
           setFiltersState((prev) => ({ ...prev, [key]: value }))
         }
-        onAdd={() => console.log("open add product modal")}
+        onAdd={() => setOpenModal(true)}
         addLabel="Add Product"
       />
 
@@ -253,22 +217,25 @@ const ProductsList: React.FC = () => {
                   paginated.map((p) => (
                     <TableRow
                       key={p.id}
-                      onClick={() => navigate(`/webapp/products/${p.id}`)}
+                      onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/${toSlug(p.name)}`)}
                       className={cn(
                         "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                         "hover:bg-accent/30"
                       )}
                     >
-                      {/* PRODUCT CELL */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3">
-                          
-                          {/* IMAGE / PLACEHOLDER */}
                           {p.image && !imgError[p.id] ? (
                             <img
                               src={p.image}
                               alt={p.name}
                               className="w-12 h-10 rounded-md object-cover border"
+                              onError={() =>
+                                setImgError((prev) => ({
+                                  ...prev,
+                                  [p.id]: true,
+                                }))
+                              }
                             />
                           ) : (
                             <div className="w-12 h-10 flex items-center justify-center rounded-md border">
@@ -276,7 +243,6 @@ const ProductsList: React.FC = () => {
                             </div>
                           )}
 
-                          {/* TEXT */}
                           <div className="flex flex-col">
                             <span className="font-medium">{p.name}</span>
                             <span className="text-xs text-muted-foreground">
@@ -287,14 +253,9 @@ const ProductsList: React.FC = () => {
                       </TableCell>
 
                       <TableCell>{p.sku}</TableCell>
-
-                      <TableCell> {p.partNumber} </TableCell>
-
+                      <TableCell>{p.partNumber}</TableCell>
                       <TableCell>{p.unit}</TableCell>
-
-                      <TableCell>
-                        ₱ {p.price.toLocaleString()}
-                      </TableCell>
+                      <TableCell>₱ {p.price.toLocaleString()}</TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -316,7 +277,6 @@ const ProductsList: React.FC = () => {
             </Table>
           </div>
 
-          {/* PAGINATION */}
           {filtered.length > 25 && (
             <div className="sticky bottom-0 bg-background z-10">
               <Pagination
@@ -333,15 +293,26 @@ const ProductsList: React.FC = () => {
         <Card>
           <CardContent className="py-16 flex flex-col items-center text-center">
             <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              No products available
-            </p>
+            <p className="text-sm font-medium">No products available</p>
             <p className="text-xs text-muted-foreground">
               Add a product to get started
             </p>
           </CardContent>
         </Card>
       )}
+
+      {/* MODAL */}
+      <ProductModal
+        open={openModal}
+        onOpenChange={setOpenModal}
+        onsaved={(newProduct) => {
+          setProducts((prev) => {
+            const updated = [newProduct, ...prev];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            return updated;
+          });
+        }}
+      />
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { MasterDetailPanel, ColumnDef } from "@/components/MasterDetailPanel";
 
 import CustomerModal from "@/components/popupModal/addCustomer";
-import AddVehicle from "@/components/popupModal/addVehicle";
+//import  AddVehicle from "@/components/popupModal/addVehicle";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

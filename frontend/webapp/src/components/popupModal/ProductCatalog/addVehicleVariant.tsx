@@ -41,16 +41,18 @@ const AddVehicleVariant: React.FC<Props> = ({ open, onOpenChange, variant, onSav
       setYear(variant.year);
       setEngine(variant.engine);
       setTransmission(variant.transmission);
+      setDrivetrain(variant.drivetrain);
     } else {
       setName("");
       setYear(new Date().getFullYear().toString());
       setEngine("");
       setTransmission("");
+      setDrivetrain("");
     }
   }, [variant, open]);
 
   const handleSave = () => {
-    if (!name || !year || !engine || !transmission) return;
+    if (!name || !year || !engine || !transmission || !drivetrain) return;
 
     const data: VehicleVariant = {
       id: variant?.id ?? `V-${Date.now()}`,

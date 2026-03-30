@@ -22,7 +22,6 @@ import {
   ScrollBar,
 } from "@/components/ui/scrollArea";
 
-/* ================= TYPES ================= */
 
 export interface FilterOption {
   key: string;
@@ -35,23 +34,18 @@ type ToolbarVariant = "default" | "detail";
 interface DataToolbarProps {
   variant?: ToolbarVariant;
 
-  /* DEFAULT (LIST) MODE */
   searchPlaceholder?: string;
   onSearch?: (query: string) => void;
-
   filters?: FilterOption[];
   onFilterChange?: (key: string, value: string) => void;
   activeFilters?: Record<string, string>;
-
   onAdd?: () => void;
   addLabel?: string;
 
-  /* DETAIL MODE */
   title?: React.ReactNode;
   actions?: React.ReactNode;
 }
 
-/* ================= COMPONENT ================= */
 
 const DataToolbar: React.FC<DataToolbarProps> = ({
   variant = "default",
@@ -84,14 +78,12 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
   return (
     <div className="space-y-2 mb-4">
 
-      {/* ================= TOP ROW ================= */}
       {variant === "default" ? (
         <div className="flex items-center justify-between gap-3">
 
           {/* LEFT SIDE: SEARCH + FILTER */}
           <div className="flex items-center gap-2 w-full max-w-sm">
 
-            {/* SEARCH */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -102,7 +94,6 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
               />
             </div>
 
-            {/* FILTER ICON */}
             {filters.length > 0 && (
               <Button
                 variant="outline"
@@ -111,7 +102,6 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
               >
                 <SlidersHorizontal className="h-4 w-4" />
 
-                {/* ACTIVE COUNT BADGE */}
                 {activeCount > 0 && (
                   <span className="absolute -top-1 -right-1">
                     <Badge className="h-4 min-w-[16px] px-1 text-[10px] flex items-center justify-center">
@@ -124,7 +114,6 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
 
           </div>
 
-          {/* RIGHT SIDE: ADD BUTTON */}
           <div className="flex items-center gap-2">
             {onAdd && (
               <Button
@@ -153,7 +142,6 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
         </div>
       )}
 
-      {/* ================= FILTER ROW ================= */}
       {variant === "default" && showFilters && filters.length > 0 && (
         <div>
           <hr className="my-1" />

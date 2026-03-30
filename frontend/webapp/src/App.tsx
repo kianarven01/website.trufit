@@ -35,6 +35,8 @@ import ProductCatalog from "./pages/internal/Products/ProductCatalogContainer";
 import VehiclesPage from "./pages/internal/Products/ProductCatalog/Vehicles";
 import VehicleVariantsPage from "./pages/internal/Products/ProductCatalog/VehicleVariants";
 import ProductList from "./pages/internal/Products/ProductCatalog/Products";
+import ProductDetail from "./pages/internal/Products/ProductCatalog/ProductDetail";
+
 
 import InventoryList from "./pages/internal/Products/InventoryList";
 
@@ -85,9 +87,11 @@ const App: React.FC = () => {
               <Route index element={<VehiclesPage />} />
               <Route path=":vehicleSlug" element={<VehicleVariantsPage />} />
               <Route path=":vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />
+              <Route path=":vehicleSlug/:variantSlug/:categorySlug/:productNameSlug" element={<ProductDetail />} />
+
             </Route>
 
-            <Route path="/webapp/products/inventory-list" element={<InventoryList />} />
+            <Route path="/webapp/products/inventory" element={<InventoryList />} />
 
             <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
             <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />

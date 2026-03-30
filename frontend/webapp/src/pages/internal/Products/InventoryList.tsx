@@ -1,344 +1,312 @@
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { MasterDetailPanel, FilterOption, ColumnDef } from "@/components/MasterDetailPanel";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+import DataToolbar from "@/components/DataToolbar";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ProductModal } from "@/components/popupModal/ProductCatalog/addProduct";
-import { useState, useMemo } from "react";
-import { Printer } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { ImageIcon, Ellipsis } from "lucide-react";
 
-interface StockMovement {
+/* ================= TYPES ================= */
+interface InventoryItem {
   id: string;
-  date: string;
-  type: "IN" | "OUT";
-  qty: number;
-  reference: string;
-}
-
-interface Product {
-  id: string;
-  image: string;
+  image?: string;
   name: string;
+  brand: string;
   sku: string;
-  category: string;
-  description: string;
-  price: number;
-  cost: number;
   partNumber: string;
-  engineNo: string;
-  barcode: string;
-  suppliers: string[];
   unit: string;
-
-  minStock: number;
-  currentStock: number;
-
-  movements: StockMovement[];
+  stock: number;
 }
 
-const InventoryList: React.FC = () => {
-  const [products] = useState<Product[]>([]);
+/* ================= STOCK STATUS ================= */
+const getStockStatus = (stock: number) => {
+  if (stock === 0) {
+    return {
+      label: "Out of Stock",
+      value: "out-of-stock",
+      className: "bg-red-100 text-red-600",
+    };
+  }
+  if (stock <= 5) {
+    return {
+      label: "Near Out",
+      value: "near-out",
+      className: "bg-orange-100 text-orange-600",
+    };
+  }
+  if (stock <= 10) {
+    return {
+      label: "Low Stock",
+      value: "low-stock",
+      className: "bg-yellow-100 text-yellow-600",
+    };
+  }
+  return {
+    label: "In Stock",
+    value: "in-stock",
+    className: "bg-green-100 text-green-600",
+  };
+};
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+/* ================= COMPONENT ================= */
+const Inventory: React.FC = () => {
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [search, setSearch] = useState("");
+  const [imgError, setImgError] = useState<Record<string, boolean>>({});
 
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const { page, setPage, pageSize, setPageSize, paginate } =
+    usePagination(25);
 
-  const [filters, setFilters] = useState<Record<string, string>>({
-    category: "all",
-  });
+  const STORAGE_KEY = "inventory_items";
 
-  const filteredProducts = useMemo(() => {
-    return products
-      .filter((p) => {
-        if (filters.category !== "all") return p.category === filters.category;
-        return true;
-      })
-      .filter((p) => {
-        const q = searchQuery.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-        );
-      });
-  }, [products, filters, searchQuery]);
+  /* ================= DUMMY DATA ================= */
+const generatePartNumber = () => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
 
-  const categoryOptions = useMemo(() => {
-    const categories = Array.from(new Set(products.map((p) => p.category)));
-    return categories.map((c) => ({ value: c, label: c }));
-  }, [products]);
+  const randomLetters = Array.from({ length: 3 }, () =>
+    letters[Math.floor(Math.random() * letters.length)]
+  ).join("");
 
-  const filterOptions: FilterOption[] = [
-    { key: "category", label: "Category", options: categoryOptions },
-  ];
+  const randomNumbers = Array.from({ length: 5 }, () =>
+    numbers[Math.floor(Math.random() * numbers.length)]
+  ).join("");
 
-const columns: ColumnDef<Product>[] = [
-  {
-    key: "product",
-    label: "Product Name",
-    render: (p) => (
-      <div className="flex items-center gap-3">
-        <img src={p.image} alt={p.name} className="h-9 w-9 rounded border object-cover" />
-        <span className="font-medium">{p.name}</span>
-      </div>
-    ),
-  },
-  { key: "sku", label: "SKU", render: (p) => p.sku },
+  return `${randomLetters}-${randomNumbers}`; 
+  // Example: ABC-48291
+};
 
-  { key: "unit", label: "Unit", render: (p) => p.unit },
+  const generateDummy = (): InventoryItem[] => {
+    return Array.from({ length: 60 }, (_, i) => ({
+      id: `inv-${i + 1}`,
+      image: i % 3 === 0 ? "" : `https://via.placeholder.com/40`,
+      name: `Product ${i + 1}`,
+      brand: ["Toyota", "Honda"][i % 2],
+      sku: `SKU-${1000 + i}`,
+      partNumber: generatePartNumber(), 
+      unit: ["pcs", "box", "set"][i % 3],
+      stock: Math.floor(Math.random() * 20),
+    }));
+  };
 
-  {
-    key: "minStock",
-    label: "Min Stock",
-    render: (p) => p.minStock,
-  },
+  /* ================= LOAD ================= */
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
 
-  {
-    key: "currentStock",
-    label: "Current Stock",
-    render: (p) => (
-      <span
-        className={`font-medium ${
-          p.currentStock <= p.minStock
-            ? "text-red-600"
-            : "text-green-600"
-        }`}
-      >
-        {p.currentStock}
-      </span>
-    ),
-  },
-];
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (!parsed.length) {
+        const dummy = generateDummy();
+        setItems(dummy);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      } else {
+        setItems(parsed);
+      }
+    } else {
+      const dummy = generateDummy();
+      setItems(dummy);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+    }
+  }, []);
+
+  /* ================= SAVE ================= */
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  }, [items]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  /* ================= FILTER ================= */
+  const filtered = items.filter((p) =>
+    `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
+  const paginated = paginate(filtered);
 
   return (
     <DashboardLayout>
-      <MasterDetailPanel<Product>
-        title="Products"
-        description="Manage all product details"
-        items={filteredProducts}
-        selectedItem={selectedProduct}
-        onSelect={setSelectedProduct}
-        getItemId={(p) => p.id.toString()}
-        columns={columns}
-        filters={filterOptions}
-        activeFilters={filters}
-        onFilterChange={(key, value) =>
-          setFilters((prev) => ({ ...prev, [key]: value }))
-        }
-        searchPlaceholder="Search products..."
-        onSearch={(query) => setSearchQuery(query)}
-      >
-        {selectedProduct && (
-          <div className="space-y-6 select-none">
+      <div className="flex flex-col gap-4 p-4 h-full w-full">
+        
+        {/* ================= BREADCRUMB ================= */}
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbPage>Inventory</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
-          {/* HEADER */}
-          <div className="border-b pb-4 flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-semibold">{selectedProduct.name}</h2>
-              <p className="text-sm text-gray-500">SKU: {selectedProduct.sku}</p>    
-            </div> 
-            <div className="flex gap-2">
-              {/* RESTOCK */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log("Restock product", selectedProduct);
-                }}
-              >
-                Restock
-              </Button>
+        {/* ================= TOOLBAR ================= */}
+        <DataToolbar
+          searchPlaceholder="Search inventory..."
+          onSearch={setSearch}
+          onAdd={() => console.log("adjust stock")}
+          addLabel="Adjust Stock"
+        />
 
-              {/* USE PRODUCT */}
-              <Button
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={() => {
-                  console.log("Use product", selectedProduct);
-                }}
-              >
-                Use Product
-              </Button>
-              </div>
-            </div>
+        {/* ================= TABLE ================= */}
+        {items.length > 0 ? (
+          <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
+            <div className="flex-1 overflow-auto">
+              <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-3/12">Product</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Part No.</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[8%]" />
+                  </TableRow>
+                </TableHeader>
 
-            {/* MAIN GRID */}
-            <div className="grid grid-cols-[260px_1fr] gap-6">
+                <TableBody>
+                  {filtered.length > 0 ? (
+                    paginated.map((p) => {
+                      const status = getStockStatus(p.stock);
 
-              {/* LEFT SIDE */}
-              <div className="space-y-4">
+                      return (
+                        <TableRow
+                          key={p.id}
+                          className={cn(
+                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                            "hover:bg-accent/30"
+                          )}
+                        >
+                          {/* PRODUCT */}
+                          <TableCell className="py-2">
+                            <div className="flex items-center gap-3">
+                              {p.image && !imgError[p.id] ? (
+                                <img
+                                  src={p.image}
+                                  alt={p.name}
+                                  className="w-12 h-10 rounded-md object-cover border"
+                                  onError={() =>
+                                    setImgError((prev) => ({
+                                      ...prev,
+                                      [p.id]: true,
+                                    }))
+                                  }
+                                />
+                              ) : (
+                                <div className="w-12 h-10 flex items-center justify-center rounded-md border">
+                                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                </div>
+                              )}
 
-                <div className="border rounded-lg p-4 bg-white flex justify-center">
-                  <img
-                    src={selectedProduct.image}
-                    alt={selectedProduct.name}
-                    className="h-60 object-contain"
-                  />
-                </div>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{p.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {p.brand}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
 
-                <div className="border rounded-lg p-3 flex justify-between items-center bg-gray-50">
-                  <span className="text-xs tracking-widest">
-                    {selectedProduct.barcode}
-                  </span>
+                          <TableCell>{p.sku}</TableCell>
+                          <TableCell>{p.partNumber}</TableCell>
 
-                  <button className="p-2 rounded hover:bg-gray-200">
-                    <Printer className="h-4 w-4" />
-                  </button>
-                </div>
+                          {/* STOCK */}
+                          <TableCell>
+                            <span className="font-medium">{p.stock}</span>
+                          </TableCell>
 
-              </div>
+                          <TableCell>{p.unit}</TableCell>
 
-              {/* PRODUCT DETAILS TABLE */}
-              <div className="border rounded-lg bg-white overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="w-48 px-4 py-2 font-medium border-r">
-                        Category
-                      </td>
-                      <td className="px-4 py-2">
-                        {selectedProduct.category}
-                      </td>
-                    </tr>
-
-                    <tr className="border-b">
-                      <td className="px-4 py-2 font-medium border-r">
-                        Unit
-                      </td>
-                      <td className="px-4 py-2">
-                        {selectedProduct.unit}
-                      </td>
-                    </tr>
-
-                    <tr className="border-b">
-                      <td className="px-4 py-2 font-medium border-r">
-                        Cost
-                      </td>
-                      <td className="px-4 py-2">
-                        ₱{selectedProduct.cost}
-                      </td>
-                    </tr>
-
-                    <tr className="border-b">
-                      <td className="px-4 py-2 font-medium border-r">
-                        Price
-                      </td>
-                      <td className="px-4 py-2">
-                        ₱{selectedProduct.price}
-                      </td>
-                    </tr>
-
-                    <tr className="border-b">
-                      <td className="px-4 py-2 font-medium border-r">
-                        Part No.
-                      </td>
-                      <td className="px-4 py-2">
-                        {selectedProduct.partNumber}
-                      </td>
-                    </tr>
-
-                    <tr className="border-b">
-                      <td className="px-4 py-2 font-medium border-r">
-                        Engine No.
-                      </td>
-                      <td className="px-4 py-2">
-                        {selectedProduct.engineNo}
-                      </td>
-                    </tr>
-
-                    <tr className="border-t">
-                      <td className="px-4 py-3 font-medium border-r align-top">
-                        Description
-                      </td>
-                      <td className="px-4 py-3 h-[120px] align-top">
-                        {selectedProduct.description}
-                      </td>
-                    </tr>
-
-                  </tbody>
-
-                </table>
-              </div>
-
-              {/* SUPPLIERS CARD */}
-              <div className="col-span-2 border rounded-lg bg-white">
-                <div className="px-4 py-3 border-b font-semibold text-sm text-gray-600">
-                  Suppliers
-                </div>
-
-                <div className="p-4 flex flex-wrap gap-3">
-                  {selectedProduct.suppliers.map((s, i) => (
-                    <div
-                      key={i}
-                      className="px-3 py-2 border rounded-md bg-gray-50 text-sm"
-                    >
-                      {s}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* MOVEMENT HISTORY */}
-                <div className="col-span-2 border rounded-lg bg-white">
-                <div className="px-4 py-3 border-b font-semibold text-sm text-gray-600">
-                    Movement History
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                        <tr>
-                        <th className="px-4 py-2 text-left">Date</th>
-                        <th className="px-4 py-2 text-left">Type</th>
-                        <th className="px-4 py-2 text-left">Qty</th>
-                        <th className="px-4 py-2 text-left">Reference</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {selectedProduct.movements.map((m) => (
-                        <tr key={m.id} className="border-t">
-                            <td className="px-4 py-2">{m.date}</td>
-
-                            <td className="px-4 py-2">
+                          {/* STATUS */}
+                          <TableCell>
                             <span
-                                className={`px-2 py-1 rounded text-xs ${
-                                m.type === "IN"
-                                    ? "bg-green-100 text-green-700"
-                                    : m.type === "OUT"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}
+                              className={cn(
+                                "text-xs px-2 py-0.5 rounded-full flex items-center gap-1 w-fit",
+                                status.className
+                              )}
                             >
-                                {m.type}
+                              <span className=" rounded-full bg-current" />
+                              {status.label}
                             </span>
-                            </td>
-
-                            <td className="px-4 py-2">{m.qty}</td>
-
-                            <td className="px-4 py-2">{m.reference}</td>
-                        </tr>
-                        ))}
-                    </tbody>
-                    </table>
-                </div>
-                </div>
-
+                          </TableCell>
+                            
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="icon_xs"
+                            >
+                              <Ellipsis className="h-4 w-4 text-muted-foreground" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7}>
+                        <div className="py-16 flex flex-col items-center text-center">
+                          <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                          <p className="text-sm font-medium">
+                            No inventory found
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Try adjusting your search
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </div>
+
+            {/* ================= PAGINATION ================= */}
+            {filtered.length > 25 && (
+              <div className="sticky bottom-0 bg-background z-10">
+                <Pagination
+                  totalItems={filtered.length}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
+            )}
+          </ScrollArea>
+        ) : (
+          <Card>
+            <CardContent className="py-16 flex flex-col items-center text-center">
+              <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+              <p className="text-sm font-medium">
+                No inventory available
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Adjust stock to get started
+              </p>
+            </CardContent>
+          </Card>
         )}
-      </MasterDetailPanel>
-      <ProductModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        product={editingProduct}
-        onSaved={() => {
-          console.log("Product added");
-          setEditingProduct(null);
-        }}
-      />
+      </div>
     </DashboardLayout>
   );
 };
 
-export default InventoryList;
+export default Inventory;

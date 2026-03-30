@@ -119,11 +119,9 @@ export default function AccreditationsPartners() {
               key={idx}
               className="accred-item flex items-center gap-4 opacity-0 translate-y-5"
             >
-              <Image
+              <img
                 src={acc.logo}
                 alt={acc.name}
-                width={80}
-                height={50}
                 className="object-contain h-10 md:h-14 w-auto flex-shrink-0"
               />
               <div className="flex flex-col">

@@ -33,8 +33,6 @@ const rescueCards = [
 
 export default function ChapterTwo() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const galleryWrapRef = useRef<HTMLDivElement>(null);
-  const galleryRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
     const mm = gsap.matchMedia();
@@ -44,42 +42,19 @@ export default function ChapterTwo() {
     reveals.forEach((item) => {
       gsap.fromTo(
         item,
-        { opacity: 0, y: 50 },
+        { opacity: 0, y: 30 },
         {
           opacity: 1,
           y: 0,
-          duration: 1,
-          ease: "power3.out",
+          duration: 0.8,
+          ease: "power2.out",
           scrollTrigger: {
             trigger: item,
-            start: "top 90%",
-            end: "bottom 10%",
-            toggleActions: "play reverse play reverse",
+            start: "top 85%",
+            toggleActions: "play none none reverse",
           },
         }
       );
-    });
-
-    // Desktop: Horizontal scroll gallery
-    mm.add("(min-width: 1024px)", () => {
-      const gallery = galleryRef.current;
-      const galleryWrap = galleryWrapRef.current;
-      if (!gallery || !galleryWrap) return;
-
-      const totalScroll = gallery.scrollWidth - galleryWrap.clientWidth;
-
-      gsap.to(gallery, {
-        x: -totalScroll,
-        ease: "none",
-        scrollTrigger: {
-          trigger: galleryWrap,
-          start: "top 15%",
-          end: () => `+=${totalScroll}`,
-          pin: true,
-          scrub: 1,
-          anticipatePin: 1,
-        },
-      });
     });
 
     return () => mm.revert();
@@ -128,19 +103,12 @@ export default function ChapterTwo() {
         </p>
       </div>
 
-      {/* Desktop: Horizontal Scroll Gallery */}
-      <div
-        ref={galleryWrapRef}
-        className="relative z-10 hidden lg:block overflow-hidden"
-      >
-        <div
-          ref={galleryRef}
-          className="horizontal-gallery py-8"
-          style={{ width: "fit-content" }}
-        >
+      {/* Simplified Grid Gallery */}
+      <div className="relative z-10 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 pb-32">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
           {rescueCards.map((card, idx) => (
-            <div key={idx} className="horizontal-gallery-card group">
-              {/* Placeholder Image */}
+            <div key={idx} className="ch2-reveal relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-sm overflow-hidden group h-[300px] lg:h-[400px]">
+              {/* Photo Placeholder for authenticity */}
               <div className="about-placeholder about-placeholder-corners w-full h-full">
                 <Camera className="about-placeholder-icon" size={40} />
                 <p className="about-placeholder-label">{card.title} Photo</p>
@@ -164,39 +132,6 @@ export default function ChapterTwo() {
 
               {/* Hover overlay */}
               <div className="absolute inset-0 bg-brand-red/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-1" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Mobile & Tablet: Vertical Card Stack */}
-      <div className="lg:hidden relative z-10 px-6 sm:px-10 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {rescueCards.map((card, idx) => (
-            <div
-              key={idx}
-              className="ch2-reveal relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-sm overflow-hidden"
-            >
-              {/* Placeholder */}
-              <div className="h-[200px] relative">
-                <div className="about-placeholder w-full h-full" style={{ borderStyle: 'none' }}>
-                  <Camera className="about-placeholder-icon" size={32} />
-                  <p className="about-placeholder-label text-[8px]">{card.title}</p>
-                </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-brand-red">{card.icon}</div>
-                  <h4 className="text-white font-black text-xs uppercase tracking-wider">
-                    {card.title}
-                  </h4>
-                </div>
-                <p className="text-white/50 text-xs leading-relaxed">
-                  {card.caption}
-                </p>
-              </div>
             </div>
           ))}
         </div>

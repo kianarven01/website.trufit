@@ -160,8 +160,39 @@
 /* --------------- Horizontal Scroll Gallery (Chapter 2) --------------- */
 .horizontal-gallery {
   display: flex;
-  gap: 2rem;
-  padding: 0 2rem;
+  gap: 3rem;
+  padding-left: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .horizontal-gallery {
+    padding-left: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .horizontal-gallery {
+    /* Aligns perfectly with max-w-[1820px] mx-auto px-16 */
+    padding-left: max(4rem, calc((100vw - 1820px) / 2 + 4rem));
+  }
+}
+
+.gallery-spacer {
+  flex-shrink: 0;
+  width: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .gallery-spacer {
+    width: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .gallery-spacer {
+    /* Matching right-side buffer */
+    width: max(4rem, calc((100vw - 1820px) / 2 + 4rem));
+  }
 }
 
 .horizontal-gallery-card {

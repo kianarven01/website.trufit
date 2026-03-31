@@ -25,7 +25,7 @@ export default function VehicleBrands() {
           scrollTrigger: {
             trigger: container.current,
             start: "top 80%",
-            toggleActions: "play none none none",
+            toggleActions: "play reverse play reverse",
           },
         }
       );

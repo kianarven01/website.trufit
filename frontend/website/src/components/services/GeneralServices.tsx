@@ -28,7 +28,7 @@ export default function GeneralServices() {
             scrollTrigger: {
               trigger: card,
               start: "top 90%",
-              toggleActions: "play none none none",
+              toggleActions: "play reverse play reverse",
             },
           }
         );
@@ -59,7 +59,7 @@ export default function GeneralServices() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
           {specializedServices.map((service) => (
             <div key={service.id} className="service-card-reveal">
               <ServiceCard service={service} />

@@ -24,6 +24,7 @@ export default function PMSService() {
           scrollTrigger: {
             trigger: container.current,
             start: "top 70%",
+            toggleActions: "play reverse play reverse",
           },
         }
       );

@@ -65,7 +65,7 @@ export default function LocationSection() {
           <div className="map-animate">
             <div className="map-container">
               <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3845.5!2d122.955!3d14.115!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTTCsDA2JzU0LjAiTiAxMjLCsDU3JzE4LjAiRQ!5e0!3m2!1sen!2sph!4v1"
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3551.81314385491!2d122.94052557463601!3d14.12379058857341!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398affd09d7236b%3A0xcfccafc73d343d48!2sTrufit%20Auto%20Center!5e1!3m2!1sen!2sph!4v1774915041783!5m2!1sen!2sph"
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
@@ -86,7 +86,7 @@ export default function LocationSection() {
 
             {/* Open in Google Maps link */}
             <a
-              href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
+              href="https://www.google.com/maps/place/Trufit+Auto+Center/@14.1237854,122.9431005,17z/data=!3m1!4b1!4m6!3m5!1s0x3398affd09d7236b:0xcfccafc73d343d48!8m2!3d14.1237854!4d122.9431005!16s%2Fg%2F11fl9dschh?entry=ttu"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 mt-4 text-sm text-gray-500 hover:text-brand-blue transition-colors group"

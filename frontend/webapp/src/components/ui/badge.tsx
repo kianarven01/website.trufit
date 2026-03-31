@@ -21,6 +21,8 @@ const badgeVariants = cva(
         cancelled: "border-red-500/30 bg-red-500/10 text-red-600 hover:bg-red-500/20",
         "for-approval": "border-yellow-500/30 bg-yellow-400/10 text-yellow-500 hover:bg-yellow-500/20",
         delivered: "border-teal-500/30 bg-teal-500/10 text-teal-600 hover:bg-teal-500/20",    
+
+        vehicles: "border-sky-500/30 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20",
       },
     },
     defaultVariants: {

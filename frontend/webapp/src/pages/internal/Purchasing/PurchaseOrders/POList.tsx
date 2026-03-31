@@ -42,7 +42,7 @@ const STORAGE_KEY = "purchase_orders";
 
 /* DUMMY DATA */
 const generateDummyOrders = (): PurchaseOrder[] => {
-  return Array.from({ length: 50 }, (_, i) => {
+  return Array.from({ length: 26 }, (_, i) => {
 const items = Array.from(
   { length: Math.floor(Math.random() * 16) + 15 },
   (_, j) => {

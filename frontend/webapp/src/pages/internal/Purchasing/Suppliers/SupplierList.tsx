@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-
 import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { ImageIcon } from "lucide-react";
 
@@ -39,7 +38,7 @@ interface Supplier {
 
 const STORAGE_KEY = "suppliers";
 
-/* DUMMY */
+/* DUMMY DATA */
 const generateDummySuppliers = (): Supplier[] => {
   return Array.from({ length: 30 }, (_, i) => ({
     id: `sup-${i + 1}`,
@@ -65,12 +64,12 @@ const SupplierList: React.FC = () => {
   /* PAGINATION */
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  /* LOAD */
+  /* LOAD SUPPLIERS */
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
 
     if (stored) {
-      const parsed = JSON.parse(stored);
+      const parsed: Supplier[] = JSON.parse(stored);
 
       if (parsed.length === 0) {
         const dummy = generateDummySuppliers();
@@ -86,7 +85,7 @@ const SupplierList: React.FC = () => {
     }
   }, []);
 
-  /* SAVE */
+  /* SAVE SUPPLIERS */
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(suppliers));
   }, [suppliers]);
@@ -105,14 +104,13 @@ const SupplierList: React.FC = () => {
 
   const paginated = paginate(filtered);
 
+  /* SAVE OR UPDATE SUPPLIER */
   const handleSaveSupplier = (newSupplier: Supplier) => {
     setSuppliers((prev) => {
       const exists = prev.find((s) => s.id === newSupplier.id);
 
       if (exists) {
-        return prev.map((s) =>
-          s.id === newSupplier.id ? newSupplier : s
-        );
+        return prev.map((s) => (s.id === newSupplier.id ? newSupplier : s));
       }
 
       return [newSupplier, ...prev];
@@ -121,7 +119,6 @@ const SupplierList: React.FC = () => {
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none">
-
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -145,7 +142,6 @@ const SupplierList: React.FC = () => {
       {/* TABLE */}
       {suppliers.length > 0 ? (
         <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
-          
           <div className="flex-1 overflow-auto">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
@@ -171,11 +167,7 @@ const SupplierList: React.FC = () => {
                         "hover:bg-accent/30"
                       )}
                     >
-                      <TableCell
-                        className={cn(
-                          "py-0.5"
-                        )}
-                      >
+                      <TableCell className="py-0.5">
                         <div>
                           <p className="font-medium text-sm">{s.name}</p>
                           <p className="text-[12px] text-muted-foreground">
@@ -206,26 +198,22 @@ const SupplierList: React.FC = () => {
             </Table>
           </div>
 
-          {/* Pagination */}
-          {filtered.length > pageSize && (
-            <div className="sticky bottom-0 bg-background z-10">
-              <Pagination
-                totalItems={filtered.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+          {/* Always-visible Sticky Pagination */}
+          <div className="sticky bottom-0 bg-background z-10">
+            <Pagination
+              totalItems={filtered.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         </ScrollArea>
       ) : (
         <Card>
           <CardContent className="py-16 flex flex-col items-center text-center">
             <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              No current suppliers available
-            </p>
+            <p className="text-sm font-medium">No current suppliers available</p>
             <p className="text-xs text-muted-foreground">
               Add a new supplier to get started
             </p>

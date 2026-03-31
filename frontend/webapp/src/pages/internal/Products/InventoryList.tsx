@@ -147,7 +147,7 @@ const generatePartNumber = () => {
     <DashboardLayout>
       <div className="flex flex-col gap-4 p-4 h-full w-full">
         
-        {/* ================= BREADCRUMB ================= */}
+        {/* breadcrumb */}
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -156,7 +156,7 @@ const generatePartNumber = () => {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* ================= TOOLBAR ================= */}
+        {/* toolbar */}
         <DataToolbar
           searchPlaceholder="Search inventory..."
           onSearch={setSearch}

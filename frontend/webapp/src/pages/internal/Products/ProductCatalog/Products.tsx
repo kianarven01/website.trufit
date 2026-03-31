@@ -217,7 +217,7 @@ const ProductsList: React.FC = () => {
                   paginated.map((p) => (
                     <TableRow
                       key={p.id}
-                      onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/${toSlug(p.name)}`)}
+                      onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${toSlug(p.name)}`)}
                       className={cn(
                         "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                         "hover:bg-accent/30"

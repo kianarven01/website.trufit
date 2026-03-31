@@ -7,15 +7,14 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; // Import this!
 import ProtectedRoute from "./components/ProtectedRoute";
-// import Home from "./pages/public/Home";
-// import About from "./pages/public/About";
-// import Contacts from "./pages/public/Contacts";
-// import Services from "./pages/public/Services";
-// import Products from "./pages/public/Products";
+
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
 
-import Customers from "./pages/internal/Sales/Customers";
+import CustomerContainer from "./pages/internal/Customer/CustomerContainer";
+import CustomersList from "./pages/internal/Customer/Customers";
+import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
+
 import Appointments from "./pages/internal/Sales/Appointments";
 
 import JobOrder from "./pages/internal/Services/JobOrder";
@@ -49,22 +48,23 @@ import AccountSettings from "./pages/internal/AccountSettings";
 import Register from "./pages/internal/Register";
 import PageNotFound from "./pages/PageNotFound";
 
+
 const App: React.FC = () => {
   return (
     //wrap everything here
     <Router>
       <Routes>
-       {/* <Route path="/home" element={<Home />} /> */}
-       {/* <Route path="/about" element={<About />} /> */}
-       {/* <Route path="/services" element={<Services />} /> */}
-       {/* <Route path="/products" element={<Products />} /> */}
-       {/* <Route path="/contacts" element={<Contacts />} /> */}
         <Route path="/webapp/login" element={<LoginPage />} />
         <Route path="/webapp/register" element={<Register />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/webapp/dashboard" element={<Dashboard />} />
-            <Route path="/webapp/customers" element={<Customers />} />
+
+            <Route path="/webapp/customers" element={<CustomerContainer />}>
+              <Route index element={<CustomersList />} />
+              <Route path=":id" element={<CustomerDetail />} />
+            </Route>
+
             <Route path="/webapp/appointments" element={<Appointments />} />
 
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
@@ -87,7 +87,7 @@ const App: React.FC = () => {
               <Route index element={<VehiclesPage />} />
               <Route path=":vehicleSlug" element={<VehicleVariantsPage />} />
               <Route path=":vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />
-              <Route path=":vehicleSlug/:variantSlug/:categorySlug/:productNameSlug" element={<ProductDetail />} />
+              <Route path=":vehicleSlug/:variantSlug/:categorySlug/products/:productNameSlug" element={<ProductDetail />} />
 
             </Route>
 

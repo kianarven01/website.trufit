@@ -1,0 +1,349 @@
+/* =============================================
+   CONTACT PAGE — Custom Styles
+   ============================================= */
+
+/* --------------- Hero Section --------------- */
+.contact-hero {
+  position: relative;
+  background: linear-gradient(145deg, #0A0A0A 0%, #111 40%, #0A0A0A 100%);
+  overflow: hidden;
+}
+
+.contact-hero::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  right: -15%;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.contact-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -20%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(227, 27, 35, 0.04), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* --------------- Support Cards --------------- */
+.support-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  padding: 1.75rem 1.5rem;
+  transition: all 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.support-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+}
+
+.support-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue));
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.support-card:hover::before {
+  opacity: 1;
+}
+
+/* --------------- Contact Form Card --------------- */
+.contact-form-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  padding: 2rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .contact-form-card {
+    padding: 2.5rem;
+  }
+}
+
+.contact-form-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-blue), var(--brand-red));
+}
+
+/* --------------- Location Section --------------- */
+.location-section {
+  background: #FAFAFA;
+  position: relative;
+  overflow: hidden;
+}
+
+.location-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 43, 163, 0.15), transparent);
+}
+
+.map-container {
+  position: relative;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.map-container iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 350px;
+  border: 0;
+}
+
+@media (min-width: 1024px) {
+  .map-container iframe {
+    min-height: 450px;
+  }
+}
+
+.map-pin-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 5;
+}
+
+/* --------------- FAQ Section --------------- */
+.faq-section {
+  position: relative;
+  background: var(--brand-dark);
+  overflow: hidden;
+}
+
+.faq-section::before {
+  content: '';
+  position: absolute;
+  top: 30%;
+  right: -15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 43, 163, 0.05), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.faq-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .faq-trigger {
+    padding: 1.5rem 0;
+    font-size: 1rem;
+  }
+}
+
+.faq-trigger:hover {
+  color: var(--brand-blue);
+}
+
+.faq-trigger-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+}
+
+.faq-trigger-icon.active {
+  background: var(--brand-blue);
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  overflow: hidden;
+  transition: max-height 0.4s ease, opacity 0.3s ease;
+  max-height: 0;
+  opacity: 0;
+}
+
+.faq-answer.open {
+  max-height: 300px;
+  opacity: 1;
+}
+
+.faq-answer-inner {
+  padding-bottom: 1.25rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+/* --------------- CTA Section --------------- */
+.contact-cta {
+  position: relative;
+  background: linear-gradient(135deg, #0A0A0A 0%, #111 50%, #0A0A0A 100%);
+  overflow: hidden;
+}
+
+.contact-cta::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(227, 27, 35, 0.08), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.contact-cta::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* --------------- Quick Contact Email Input --------------- */
+.quick-contact-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  padding: 0.875rem 1rem 0.875rem 2.75rem;
+  color: white;
+  font-size: 0.875rem;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+.quick-contact-input:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.quick-contact-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* --------------- Form Input Styles (light variant) --------------- */
+.contact-input-light {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  padding: 0.875rem 1rem;
+  padding-top: 1.75rem;
+  color: white;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+}
+
+.contact-input-light:focus {
+  outline: none;
+  border-color: var(--brand-blue);
+  box-shadow: 0 0 0 2px rgba(0, 43, 163, 0.15);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.contact-input-light::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.contact-float-label {
+  position: absolute;
+  left: 1rem;
+  top: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  transition: color 0.3s ease;
+  pointer-events: none;
+}
+
+.contact-input-light:focus ~ .contact-float-label {
+  color: var(--brand-blue);
+}
+
+/* --------------- Success Toast --------------- */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contact-toast {
+  animation: slideInUp 0.4s ease-out;
+}

@@ -36,7 +36,11 @@ const CustomDateInput = forwardRef<HTMLInputElement, { value?: string; onClick?:
 CustomDateInput.displayName = "CustomDateInput"
 
 // --- main form ---
-export default function AppointmentForm() {
+interface AppointmentFormProps {
+  initialData?: any;
+}
+
+export default function AppointmentForm({ initialData }: AppointmentFormProps = {}) {
   const [form, setForm] = useState<Appointment>({
     firstName: "",
     lastName: "",

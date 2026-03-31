@@ -237,27 +237,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
                 </div>
               </div>
             </div>
-
-            {/* Stats Part */}
-            <div
-              ref={statsRef}
-              className="flex items-center gap-8 md:gap-12"
-              style={{ 
-                  opacity: isActive ? 0 : 1,
-                  ...consistentTextStyle 
-              }}
-            >
-              <div className="flex flex-col items-center">
-                <div className="text-2xl md:text-3xl font-bold text-brand-red mb-0.5">25+</div>
-                <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 text-center">Years Experience</div>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 flex items-center">
-                  4.5<span className="text-brand-red text-xl ml-1">★</span>
-                </div>
-                <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-400 text-center">Customer Ratings</div>
-              </div>
-            </div>
           </div>
 
         </div>

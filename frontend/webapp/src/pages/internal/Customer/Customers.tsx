@@ -7,17 +7,10 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
+import AddCustomer from "@/components/popupModal/addCustomer";
 
 import { ImageIcon } from "lucide-react";
 
-interface Vehicle {
-  yearMakeModel: string;
-  color: string;
-  plateNo: string;
-  vin: string;
-  kilometers: number;
-  engineNo: string;
-}
 
 interface Customer {
   id: string;
@@ -27,12 +20,12 @@ interface Customer {
   landline?: string;
   email: string;
   businessPhone?: string;
-  vehicles: Vehicle[];
 }
 
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const navigate = useNavigate();
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
@@ -70,7 +63,7 @@ const CustomersList: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, setPage]);
+  }, [search, pageSize, setPage]);
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
@@ -88,7 +81,9 @@ const CustomersList: React.FC = () => {
       <DataToolbar
         searchPlaceholder="Search customers..."
         onSearch={setSearch}
-        onAdd={() => console.log("Add customer clicked")}
+        onAdd={() => 
+          setCustomerModalOpen(true)
+        }
         addLabel="Add Customer"
       />
 
@@ -107,7 +102,7 @@ const CustomersList: React.FC = () => {
               </TableHeader>
 
               <TableBody>
-                {filtered.length > 0 ? (
+                {paginated.length > 0 ? (
                   paginated.map((c) => (
                     <TableRow
                       key={c.id}
@@ -165,6 +160,16 @@ const CustomersList: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Add / Edit Customer Modal */}
+<AddCustomer
+  open={customerModalOpen}
+  onOpenChange={setCustomerModalOpen}
+  onSaved={(newCustomer: Customer) => {
+    setCustomers((prev) => [newCustomer, ...prev]);
+  }}
+/>    
+      
     </div>
   );
 };

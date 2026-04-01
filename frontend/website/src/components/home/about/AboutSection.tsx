@@ -379,7 +379,7 @@ export default function AboutSection() {
             </div>
 
             <p className="text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl about-reveal font-medium">
-              Founded in 2021, Trufit pairs trusted techniques with dealership-level tools to keep your car running strong.
+              Founded in 2019, Trufit pairs trusted techniques with dealership-level tools to keep your car running strong.
             </p>
 
             <p className="text-gray-500 text-base mb-12 leading-relaxed max-w-2xl about-reveal">

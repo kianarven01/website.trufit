@@ -5,12 +5,17 @@ import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useModalStore } from "@/store/useModalStore";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function AboutCTA() {
   const sectionRef = useRef<HTMLDivElement>(null);
 
+  const openAppointment = useModalStore((s) => s.openAppointment);
+  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen);
+  const closeAppointment = useModalStore((s) => s.closeAppointment);
+  
   useGSAP(() => {
     const reveals = gsap.utils.toArray<HTMLElement>(".cta-reveal");
     reveals.forEach((item, i) => {
@@ -60,12 +65,12 @@ export default function AboutCTA() {
         </p>
 
         <div className="cta-reveal flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            href="/#appointment"
+          <button
+            onClick={openAppointment}
             className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20"
           >
             Book Appointment
-          </Link>
+          </button>
           <Link
             href="/contact"
             className="border-2 border-white/20 text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center"

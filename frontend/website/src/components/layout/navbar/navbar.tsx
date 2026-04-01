@@ -6,13 +6,16 @@ import Link from "next/link"
 import { Phone, Mail, Clock, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import BibleVerseMarquee from "./BibleVerseMarquee"
-import AppointmentModal from "@/components/home/appointment/appointment-modal"
+import { useModalStore } from "@/store/useModalStore"
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
-  const [isAppointmentOpen, setIsAppointmentOpen] = useState(false)
+  
+  const openAppointment = useModalStore((s) => s.openAppointment)
+  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen)
+
   const isVisibleRef = useRef(true)
   const lastScrollY = useRef(0)
   const isLockedRef = useRef(false)
@@ -177,7 +180,7 @@ export default function Navbar() {
             {/* desktop book button - hidden below lg */}
             <div className="hidden lg:flex ml-4">
               <button
-                onClick={() => setIsAppointmentOpen(true)}
+                onClick={openAppointment}
                 className={`px-8 py-2.5 rounded-sm font-bold transition-all shadow-lg ${
                   isScrolled ? "bg-brand-red text-white" : "bg-white text-brand-dark"
                 }`}
@@ -229,7 +232,7 @@ export default function Navbar() {
                 <button
                   onClick={() => {
                     setIsOpen(false)
-                    setIsAppointmentOpen(true)
+                    openAppointment()
                   }}
                   className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
                 >
@@ -251,8 +254,7 @@ export default function Navbar() {
           )}
         </AnimatePresence>
       </motion.nav>
-      {/* Appointment Modal */}
-      <AppointmentModal isOpen={isAppointmentOpen} onClose={() => setIsAppointmentOpen(false)} />
+      
     </header>
   )
 }

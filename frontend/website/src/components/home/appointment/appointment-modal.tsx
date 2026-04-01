@@ -4,13 +4,12 @@ import { useEffect, useState, useRef, useLayoutEffect } from "react"
 import { X, MapPin, Phone, Mail, Clock } from "lucide-react"
 import AppointmentForm from "./appointmentform"
 import gsap from "gsap"
+import { useModalStore } from "@/store/useModalStore"
 
-interface AppointmentModalProps {
-  isOpen: boolean
-  onClose: () => void
-}
+export default function AppointmentModal() {
+  const isOpen = useModalStore((s) => s.isAppointmentOpen)
+  const closeAppointment = useModalStore((s) => s.closeAppointment)
 
-export default function AppointmentModal({ isOpen, onClose }: AppointmentModalProps) {
   const [promoData, setPromoData] = useState<any>(null)
   const [visible, setVisible] = useState(false)
 
@@ -53,7 +52,7 @@ export default function AppointmentModal({ isOpen, onClose }: AppointmentModalPr
       onComplete: () => setVisible(false)
     })
 
-    onClose()
+    closeAppointment()
   }
 
   if (!visible) return null

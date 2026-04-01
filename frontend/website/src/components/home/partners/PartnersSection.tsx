@@ -12,7 +12,7 @@ const PARTNERS = [
   { name: 'Valvoline', logo: '/images/partners/valvoline.webp' },
   { name: 'Wurth', logo: '/images/partners/wurth.webp' },
 ];
-
+ 
 export default function PartnersSection() {
   const sectionRef = useRef<HTMLDivElement>(null); // Added for the observer
   const sliderRef = useRef<HTMLDivElement>(null);

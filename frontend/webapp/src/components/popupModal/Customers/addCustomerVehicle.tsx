@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,12 +6,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scrollArea";
-
 import { Plus, Trash2, Car } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,43 +23,44 @@ const genId = () => Math.random().toString(36).substring(2, 9);
 
 const emptyVehicle = () => ({
   id: genId(),
-  yearMakeModel: "",
+  year: "",
+  make: "",
+  model: "",
+  variant: "",
   color: "",
   plateNo: "",
-  vin: "",
-  kilometers: 0,
   engineNo: "",
+  vin: "",
+  registrationNo: "",
+  sellingDealer: "",
 });
 
-const AddVehicle: React.FC<Props> = ({ open, onOpenChange, onSaved }) => {
+const AddCustomerVehicle: React.FC<Props> = ({ open, onOpenChange, onSaved }) => {
   const [vehicles, setVehicles] = useState<any[]>([emptyVehicle()]);
 
+  useEffect(() => {
+    if (open) {
+      setVehicles([emptyVehicle()]);
+    }
+  }, [open]);
+
   const updateVehicle = (idx: number, field: string, value: any) => {
-    setVehicles((prev) =>
-      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v))
-    );
+    setVehicles(prev => prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)));
   };
 
-  const addVehicleRow = () => {
-    setVehicles((prev) => [...prev, emptyVehicle()]);
-  };
+  const addVehicleRow = () => setVehicles(prev => [...prev, emptyVehicle()]);
 
-  const removeVehicle = (idx: number) => {
-    setVehicles((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const removeVehicle = (idx: number) => setVehicles(prev => prev.filter((_, i) => i !== idx));
 
   const handleSave = () => {
-    const validVehicles = vehicles.filter((v) => v.yearMakeModel.trim());
-
+    const validVehicles = vehicles.filter(v => v.year && v.make && v.model);
     if (!validVehicles.length) {
-      toast.error("Please add at least one vehicle");
+      toast.error("Please add at least one valid vehicle");
       return;
     }
 
     onSaved?.(validVehicles);
-
     toast.success("Vehicle(s) added");
-
     onOpenChange(false);
   };
 
@@ -79,29 +78,23 @@ const AddVehicle: React.FC<Props> = ({ open, onOpenChange, onSaved }) => {
                 <Car className="h-4 w-4 text-muted-foreground" />
                 Vehicles
               </p>
-
               <Button
                 variant="outline"
                 size="sm"
                 onClick={addVehicleRow}
                 className="h-7 gap-1 text-xs"
               >
-                <Plus className="h-3 w-3" />
-                Add Vehicle
+                <Plus className="h-3 w-3" /> Add Vehicle
               </Button>
             </div>
 
             <div className="space-y-4">
               {vehicles.map((v, idx) => (
-                <div
-                  key={v.id}
-                  className="rounded-lg border p-3 space-y-2 bg-muted/30"
-                >
+                <div key={v.id} className="rounded-lg border p-3 space-y-2 bg-muted/30">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">
                       Vehicle {idx + 1}
                     </span>
-
                     {vehicles.length > 1 && (
                       <Button
                         variant="ghost"
@@ -114,70 +107,86 @@ const AddVehicle: React.FC<Props> = ({ open, onOpenChange, onSaved }) => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid md:grid-cols-2 gap-2">
                     <div className="col-span-2">
-                      <Label className="text-xs">Year / Make / Model</Label>
+                      <div className="grid md:grid-cols-3 gap-4">
+                        <div>
+                          <Label>Year</Label>
+                          <Input
+                            value={v.year}
+                            onChange={(e) => updateVehicle(idx, "year", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Make</Label>
+                          <Input
+                            value={v.make}
+                            onChange={(e) => updateVehicle(idx, "make", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Model</Label>
+                          <Input
+                            value={v.model}
+                            onChange={(e) => updateVehicle(idx, "model", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Variant</Label>
                       <Input
-                        value={v.yearMakeModel}
-                        onChange={(e) =>
-                          updateVehicle(idx, "yearMakeModel", e.target.value)
-                        }
-                        placeholder="2020 Toyota Vios"
+                        value={v.variant}
+                        onChange={(e) => updateVehicle(idx, "variant", e.target.value)}
                       />
                     </div>
 
                     <div>
-                      <Label className="text-xs">Color</Label>
+                      <Label>Color</Label>
                       <Input
                         value={v.color}
-                        onChange={(e) =>
-                          updateVehicle(idx, "color", e.target.value)
-                        }
+                        onChange={(e) => updateVehicle(idx, "color", e.target.value)}
                       />
                     </div>
 
                     <div>
-                      <Label className="text-xs">Plate No.</Label>
+                      <Label>Plate No.</Label>
                       <Input
                         value={v.plateNo}
-                        onChange={(e) =>
-                          updateVehicle(idx, "plateNo", e.target.value)
-                        }
+                        onChange={(e) => updateVehicle(idx, "plateNo", e.target.value)}
                       />
                     </div>
 
                     <div>
-                      <Label className="text-xs">VIN</Label>
+                      <Label>Engine No.</Label>
+                      <Input
+                        value={v.engineNo}
+                        onChange={(e) => updateVehicle(idx, "engineNo", e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>VIN</Label>
                       <Input
                         value={v.vin}
-                        onChange={(e) =>
-                          updateVehicle(idx, "vin", e.target.value)
-                        }
+                        onChange={(e) => updateVehicle(idx, "vin", e.target.value)}
                       />
                     </div>
 
                     <div>
-                      <Label className="text-xs">Kilometers</Label>
+                      <Label>Registration No.</Label>
                       <Input
-                        type="number"
-                        value={v.kilometers || ""}
-                        onChange={(e) =>
-                          updateVehicle(
-                            idx,
-                            "kilometers",
-                            Number(e.target.value)
-                          )
-                        }
+                        value={v.registrationNo}
+                        onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value)}
                       />
                     </div>
 
                     <div className="col-span-2">
-                      <Label className="text-xs">Engine No.</Label>
+                      <Label>Selling Dealer</Label>
                       <Input
-                        value={v.engineNo}
-                        onChange={(e) =>
-                          updateVehicle(idx, "engineNo", e.target.value)
-                        }
+                        value={v.sellingDealer}
+                        onChange={(e) => updateVehicle(idx, "sellingDealer", e.target.value)}
                       />
                     </div>
                   </div>
@@ -188,10 +197,7 @@ const AddVehicle: React.FC<Props> = ({ open, onOpenChange, onSaved }) => {
         </ScrollArea>
 
         <DialogFooter className="px-6 pb-6 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>Save Vehicle</Button>
         </DialogFooter>
       </DialogContent>
@@ -199,4 +205,4 @@ const AddVehicle: React.FC<Props> = ({ open, onOpenChange, onSaved }) => {
   );
 };
 
-export default AddVehicle;
+export default AddCustomerVehicle;

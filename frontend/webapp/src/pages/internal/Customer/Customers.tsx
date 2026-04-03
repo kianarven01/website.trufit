@@ -7,10 +7,8 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
-import AddCustomer from "@/components/popupModal/addCustomer";
-
+import AddCustomer from "@/components/popupModal/Customers/addCustomer";
 import { ImageIcon } from "lucide-react";
-
 
 interface Customer {
   id: string;
@@ -20,7 +18,10 @@ interface Customer {
   landline?: string;
   email: string;
   businessPhone?: string;
+  vehicles?: any[];
 }
+
+const STORAGE_KEY = "customers";
 
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -29,26 +30,21 @@ const CustomersList: React.FC = () => {
   const navigate = useNavigate();
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  // Dummy data
+  // Load customers from localStorage
   useEffect(() => {
-    const dummy: Customer[] = Array.from({ length: 50 }, (_, i) => ({
-      id: `cust-${i + 1}`,
-      name: `Customer ${i + 1}`,
-      address: `Address ${i + 1}`,
-      mobileNumber: `0917-000-000${i}`,
-      email: `customer${i + 1}@email.com`,
-      vehicles: Array.from({ length: Math.floor(Math.random() * 4) }, (_, j) => ({
-        yearMakeModel: `Car ${j + 1}`,
-        color: ["Red", "Blue", "Black"][j % 3],
-        plateNo: `ABC-${i}${j}`,
-        vin: `VIN${i}${j}`,
-        kilometers: Math.floor(Math.random() * 100000),
-        engineNo: `ENG${i}${j}`,
-      })),
-    }));
-
-    setCustomers(dummy);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setCustomers(JSON.parse(stored));
+    } catch (err) {
+      console.error("Failed to load customers", err);
+      localStorage.removeItem(STORAGE_KEY);
+    }
   }, []);
+
+  // Save customers to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
+  }, [customers]);
 
   const filtered = useMemo(() => {
     return customers.filter(
@@ -66,9 +62,7 @@ const CustomersList: React.FC = () => {
   }, [search, pageSize, setPage]);
 
   return (
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-
-      {/* Breadcrumb */}
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -77,20 +71,16 @@ const CustomersList: React.FC = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search customers..."
         onSearch={setSearch}
-        onAdd={() => 
-          setCustomerModalOpen(true)
-        }
+        onAdd={() => setCustomerModalOpen(true)}
         addLabel="Add Customer"
       />
 
-      {/* Table */}
       {customers.length > 0 ? (
-        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
-          <div className="flex-1 overflow-auto">
+        <div className="flex-1 min-h-0 flex flex-col border rounded-xl px-2">
+          <ScrollArea className="flex-1 min-h-0">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -100,7 +90,6 @@ const CustomersList: React.FC = () => {
                   <TableHead className="w-1/5">Landline</TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
                 {paginated.length > 0 ? (
                   paginated.map((c) => (
@@ -136,11 +125,11 @@ const CustomersList: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </ScrollArea>
 
-          {/* Sticky Pagination */}
-          {filtered.length > 0 && (
-            <div className="sticky bottom-0 bg-background z-10">
+          {/* Pagination always at bottom of div */}
+          {filtered.length > 25 && (
+            <div className="mt-2">
               <Pagination
                 totalItems={filtered.length}
                 page={page}
@@ -150,7 +139,7 @@ const CustomersList: React.FC = () => {
               />
             </div>
           )}
-        </ScrollArea>
+        </div>
       ) : (
         <Card>
           <CardContent className="py-16 flex flex-col items-center text-center">
@@ -161,15 +150,13 @@ const CustomersList: React.FC = () => {
         </Card>
       )}
 
-      {/* Add / Edit Customer Modal */}
-<AddCustomer
-  open={customerModalOpen}
-  onOpenChange={setCustomerModalOpen}
-  onSaved={(newCustomer: Customer) => {
-    setCustomers((prev) => [newCustomer, ...prev]);
-  }}
-/>    
-      
+      <AddCustomer
+        open={customerModalOpen}
+        onOpenChange={setCustomerModalOpen}
+        onSaved={(newCustomer: Customer) => {
+          setCustomers((prev) => [newCustomer, ...prev]);
+        }}
+      />
     </div>
   );
 };

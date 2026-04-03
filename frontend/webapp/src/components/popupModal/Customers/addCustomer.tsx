@@ -21,7 +21,9 @@ const genId = () => Math.random().toString(36).substring(2, 9);
 
 const emptyVehicle = () => ({
   id: genId(),
-  yearMakeModel: "",
+  year: "",
+  make: "",
+  model: "",
   variant: "",
   color: "",
   plateNo: "",
@@ -56,7 +58,6 @@ const CustomerFormModal: React.FC<Props> = ({
       setEmail(customer.email || "");
       setBusinessPhone(customer.businessPhone || "");
 
-      // ✅ FIX: load vehicles when editing
       if (customer.vehicles && customer.vehicles.length > 0) {
         setVehicles(customer.vehicles);
       } else {
@@ -87,35 +88,46 @@ const CustomerFormModal: React.FC<Props> = ({
     setVehicles((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const handleSave = () => {
-    if (!name.trim() || !mobileNumber.trim()) {
-      toast.error("Name and mobile number are required");
-      return;
-    }
+const handleSave = () => {
+  if (!name.trim() || !mobileNumber.trim()) {
+    toast.error("Name and mobile number are required");
+    return;
+  }
 
-    const validVehicles = vehicles.filter((v) =>
-      v.yearMakeModel.trim()
-    );
+  const validVehicles = vehicles.filter(
+    (v) =>
+      v.year !== undefined &&
+      v.year !== null &&
+      v.make?.trim() &&
+      v.model?.trim()
+  );
 
-    const payload = {
-      id: customer?.id || genId(), // ✅ keep existing ID on edit
-      name,
-      address,
-      mobileNumber,
-      landline,
-      email,
-      businessPhone,
-      vehicles: validVehicles, // ✅ include vehicles
-    };
-
-    console.log("Saved customer:", payload);
-
-    onSaved?.(payload);
-
-    toast.success(isEdit ? "Customer updated" : "Customer added");
-
-    onOpenChange(false);
+  const payload = {
+    id: customer?.id || genId(),
+    name,
+    address,
+    mobileNumber,
+    landline,
+    email,
+    businessPhone,
+    vehicles: validVehicles,
   };
+
+  // ✅ detect newly added vehicle (last one)
+  const lastVehicle =
+    validVehicles.length > 0
+      ? validVehicles[validVehicles.length - 1]
+      : null;
+
+  onSaved?.({
+    ...payload,
+    __lastAddedVehicle: lastVehicle, // ✅ attach helper field
+  });
+
+  toast.success(isEdit ? "Customer updated" : "Customer added");
+
+  onOpenChange(false);
+};
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -235,22 +247,40 @@ const CustomerFormModal: React.FC<Props> = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid md:grid-cols-2 gap-2">
                       <div className="col-span-2">
-                        <Label className="text-xs">
-                          Year / Make / Model
-                        </Label>
-                        <Input
-                          value={v.yearMakeModel}
-                          onChange={(e) =>
-                            updateVehicle(
-                              idx,
-                              "yearMakeModel",
-                              e.target.value
-                            )
-                          }
-                          placeholder="2020 Toyota Vios"
-                        />
+                        <div className="grid md:grid-cols-3 gap-4">
+                          <div>
+                            <Label>Year</Label>
+                            <Input
+                              value={v.year}
+                              onChange={(e) =>
+                                updateVehicle(idx, "year", e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Make</Label>
+                            <Input
+                              value={v.make}
+                              onChange={(e) =>
+                                updateVehicle(idx, "make", e.target.value)
+                              }
+                            />
+                          </div>
+
+                          <div>
+                            <Label>Model</Label>
+                            <Input
+                              value={v.model}
+                              onChange={(e) =>
+                                updateVehicle(idx, "model", e.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
+
                       </div>
 
                       <div>

@@ -1,7 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Outlet } from "react-router-dom";
 
-const SupplierContainer: React.FC = () => {
+const DashboardContainer: React.FC = () => {
   return (
     <DashboardLayout>
        <Outlet />
@@ -9,4 +9,4 @@ const SupplierContainer: React.FC = () => {
   );
 };
 
-export default SupplierContainer;
+export default DashboardContainer;

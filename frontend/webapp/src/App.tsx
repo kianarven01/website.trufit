@@ -10,24 +10,23 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
+import DashboardContainer from "./components/DashboardContainer";
 
-import CustomerContainer from "./pages/internal/Customer/CustomerContainer";
 import CustomersList from "./pages/internal/Customer/Customers";
 import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 
-import Appointments from "./pages/internal/Sales/Appointments";
+import Appointments from "./pages/internal/Appointments";
 
 import JobOrder from "./pages/internal/Services/JobOrder";
 import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
 
-import SalesOrder from "./pages/internal/Sales/SalesOrder";
-import Estimates from "./pages/internal/Sales/Estimates";
+import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
+import Estimates from "./pages/internal/Sales/Estimates/Estimates";
 
-import PurchOrderContainer from "./pages/internal/Purchasing/PurchaseOrders/POContainer";
 import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
 import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";
+
 import SupplierList from "./pages/internal/Purchasing/Suppliers/SupplierList";
-import SupplierContainer from "./pages/internal/Purchasing/Suppliers/SuppliersContainer";
 import SupplierDetails from "./pages/internal/Purchasing/Suppliers/SupplierDetail";
 
 import ProductCatalog from "./pages/internal/Products/ProductCatalogContainer";
@@ -58,11 +57,40 @@ const App: React.FC = () => {
         <Route path="/webapp/register" element={<Register />} />
 
           <Route element={<ProtectedRoute />}>
+
+
             <Route path="/webapp/dashboard" element={<Dashboard />} />
 
-            <Route path="/webapp/customers" element={<CustomerContainer />}>
-              <Route index element={<CustomersList />} />
-              <Route path=":id" element={<CustomerDetail />} />
+            <Route path="/webapp" element={<DashboardContainer />}> 
+
+              {/* <Route path: Customers */}
+              <Route path="customers">
+                <Route index element={<CustomersList />} />
+                <Route path=":id" element={<CustomerDetail />} />
+              </Route>
+
+              {/* <Route path: Sales */}
+              <Route path="sales/sales-orders">
+                <Route index element={<SalesOrder />} />
+              </Route>
+
+              {/* <Route path: Estimates */}
+              <Route path="sales/estimates">
+                <Route index element={<Estimates />} />
+              </Route>
+
+              {/* <Route path: Purchase Orders */}
+              <Route path="purchasing/purchase-orders">
+                <Route index element={<PurchaseOrderList />} />
+                <Route path=":id" element={<PurchaseOrderDetails />} />
+              </Route>
+
+              {/* <Route path: Suppliers */}
+              <Route path="purchasing/suppliers">
+                <Route index element={<SupplierList />} />
+                <Route path=":supplierId" element={<SupplierDetails />} />
+              </Route>
+
             </Route>
 
             <Route path="/webapp/appointments" element={<Appointments />} />
@@ -70,18 +98,6 @@ const App: React.FC = () => {
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
             <Route path="/webapp/services/service-catalog" element={<ServiceCatalog />} />
 
-            <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
-            <Route path="/webapp/sales/estimates" element={<Estimates />} />
-
-            <Route path="/webapp/purchasing/purchase-orders" element={<PurchOrderContainer />}>
-              <Route index element={<PurchaseOrderList />} />
-              <Route path=":id" element={<PurchaseOrderDetails />} />
-            </Route>
-
-            <Route path="/webapp/purchasing/suppliers" element={<SupplierContainer />}>
-              <Route index element={<SupplierList />} />
-              <Route path=":supplierId" element={<SupplierDetails />} />
-            </Route>
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
               <Route index element={<VehiclesPage />} />

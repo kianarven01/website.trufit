@@ -127,7 +127,7 @@ const CustomerDetail: React.FC = () => {
 
 
   return (
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto select-none">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>

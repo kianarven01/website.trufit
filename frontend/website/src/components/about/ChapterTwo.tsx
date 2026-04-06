@@ -8,26 +8,26 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const rescueCards = [
+const overlandCards = [
   {
-    title: "Emergency Response",
-    caption: "When typhoons strike, the Trufit team is among the first to mobilize — deploying vehicles and manpower to reach affected communities.",
-    icon: <Shield size={20} />,
-  },
-  {
-    title: "Relief Operations",
-    caption: "From distributing food packs and water to clearing debris-blocked roads, we put our mechanical expertise to work where it matters most.",
-    icon: <Heart size={20} />,
-  },
-  {
-    title: "Vehicle Recovery",
-    caption: "Stranded vehicles in floodwaters and fallen trees on roadways — our team works around the clock to restore mobility to our neighbors.",
+    title: "Adventure Ready",
+    caption: "Equipping vehicles for the toughest terrains — ensuring every journey is backed by performance and reliability.",
     icon: <Truck size={20} />,
   },
   {
-    title: "Community Rebuilding",
-    caption: "After the storm passes, our commitment continues. We help repair damaged vehicles at reduced rates and support local rebuilding efforts.",
+    title: "Custom Builds",
+    caption: "Tailored off-road solutions for explorers, from suspension upgrades to full overland rig preparations.",
+    icon: <Shield size={20} />,
+  },
+  {
+    title: "Expert Support",
+    caption: "Our team brings mechanical excellence to the trail, offering support for off-road enthusiasts across the region.",
     icon: <Heart size={20} />,
+  },
+  {
+    title: "Overland Community",
+    caption: "Beyond the workshop, we foster a community of explorers who share a passion for the great outdoors and rugged discovery.",
+    icon: <Camera size={20} />,
   },
 ];
 
@@ -82,7 +82,7 @@ export default function ChapterTwo() {
       <div className="relative z-10 pt-20 md:pt-32 pb-12 md:pb-16 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="ch2-reveal chapter-label">
           <div className="chapter-label-line" />
-          <span className="chapter-label-text">Community & Service</span>
+          <span className="chapter-label-text">Overland</span>
         </div>
 
         <h2 className="ch2-reveal text-3xl md:text-5xl lg:text-6xl font-black font-brawler leading-tight uppercase tracking-tight mb-6">
@@ -90,30 +90,37 @@ export default function ChapterTwo() {
         </h2>
 
         <p className="ch2-reveal text-white/60 text-base md:text-lg max-w-2xl leading-relaxed font-medium mb-4">
-          In a province where typhoons are a way of life, Trufit Auto Center
-          doesn&apos;t just wait for the storm to pass. We roll up our sleeves and
-          head straight into the heart of it.
+          Through Overland, Trufit Auto Center extends its reach into the wild.
+          We don&apos;t just fix cars for the road; we prepare them for the journey where the road ends.
         </p>
 
-        <p className="ch2-reveal text-white/40 text-sm md:text-base max-w-2xl leading-relaxed">
-          When disaster strikes our community, our team transforms from mechanics
-          to first responders. Using our fleet, our tools, and our hands, we deploy
-          for rescue missions, relief operations, and vehicle recovery — because
-          being part of a community means showing up when it matters most.
+        <p className="ch2-reveal text-white/40 text-sm md:text-base max-w-2xl leading-relaxed mb-8">
+          Whether it&apos;s custom rigs, trail support, or community expeditions, our team is dedicated to 
+          the overland lifestyle. We believe that mechanical excellence shouldn&apos;t be limited by asphalt.
         </p>
+
+        <a 
+          href="https://www.facebook.com/cnoverland/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ch2-reveal inline-flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-sm transition-all duration-300 group border border-white/10"
+        >
+          <span className="font-bold text-sm uppercase tracking-wider">Follow Overland on Facebook</span>
+          <Camera size={18} className="text-brand-red group-hover:scale-110 transition-transform" />
+        </a>
       </div>
 
       {/* Simplified Grid Gallery */}
       <div className="relative z-10 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 pb-32">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-          {rescueCards.map((card, idx) => (
+          {overlandCards.map((card, idx) => (
             <div key={idx} className="ch2-reveal relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-sm overflow-hidden group h-[300px] lg:h-[400px]">
-              {/* Photo Placeholder for authenticity */}
+              {/* Photo Placeholder */}
               <div className="about-placeholder about-placeholder-corners w-full h-full">
                 <Camera className="about-placeholder-icon" size={40} />
                 <p className="about-placeholder-label">{card.title} Photo</p>
                 <p className="about-placeholder-sublabel">
-                  Rescue / Relief documentation
+                  Overland adventure documentation
                 </p>
               </div>
 

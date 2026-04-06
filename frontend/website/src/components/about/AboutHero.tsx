@@ -96,7 +96,7 @@ export default function AboutHero() {
         </h1>
 
         <p className="hero-subtitle text-white/60 text-base md:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed font-medium opacity-0">
-          We fix cars. We rescue communities. We race to win.
+          We fix cars. We build Overland adventures. We race to win.
           This is the Trufit story.
         </p>
 

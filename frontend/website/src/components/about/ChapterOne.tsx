@@ -90,17 +90,14 @@ export default function ChapterOne() {
               {/* Main Image */}
               <div className="relative h-[400px] md:h-[550px] lg:h-[650px] w-full rounded-sm overflow-hidden shadow-2xl">
                 <div className="about-placeholder about-placeholder-corners w-full h-full">
-                  <Camera className="about-placeholder-icon" size={48} />
-                  <p className="about-placeholder-label">Workshop Photo</p>
-                  <p className="about-placeholder-sublabel">Team at work or shop interior</p>
+                  <img src="/images/about/workshop.jpg" alt="Workshop" className="w-full h-full object-cover" />
                 </div>
               </div>
 
               {/* Floating accent image */}
               <div className="absolute -bottom-8 -right-4 md:-right-8 w-[180px] md:w-[240px] h-[140px] md:h-[180px] rounded-sm overflow-hidden shadow-xl border-4 border-white z-10">
                 <div className="about-placeholder w-full h-full" style={{ borderStyle: 'none' }}>
-                  <Camera className="about-placeholder-icon" size={24} />
-                  <p className="about-placeholder-label text-[7px]">Detail Shot</p>
+                  <img src="/images/about/detailshot.jpg" alt="Workshop" className="w-full h-full object-cover" />
                 </div>
               </div>
 

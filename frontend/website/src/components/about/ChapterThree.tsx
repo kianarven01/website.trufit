@@ -90,7 +90,7 @@ export default function ChapterThree() {
             </div>
 
             <h2 className="ch3-reveal text-3xl md:text-5xl lg:text-6xl font-black font-brawler leading-tight uppercase tracking-tight mb-6 text-brand-dark">
-              Racing <span className="text-brand-red">Spirit</span>
+              Triathlon <span className="text-brand-red">Team</span>
             </h2>
 
             <p className="ch3-reveal text-gray-600 text-base md:text-lg leading-relaxed font-medium max-w-xl">

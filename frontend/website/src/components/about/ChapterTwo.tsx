@@ -14,21 +14,25 @@ const overlandCards = [
     title: "Adventure Ready",
     caption: "Equipping vehicles for the toughest terrains — ensuring every journey is backed by performance and reliability.",
     icon: <Truck size={20} />,
+    image: "/images/about/overland_contents/adventure_ready.jpg",
   },
   {
     title: "Custom Builds",
     caption: "Tailored off-road solutions for explorers, from suspension upgrades to full overland rig preparations.",
     icon: <Shield size={20} />,
+    image: "/images/about/overland_contents/custom_builds.jpg",
   },
   {
     title: "Expert Support",
     caption: "Our team brings mechanical excellence to the trail, offering support for off-road enthusiasts across the region.",
     icon: <Heart size={20} />,
+    image: "/images/about/overland_contents/expert_support.jpg",
   },
   {
     title: "Overland Community",
     caption: "Beyond the workshop, we foster a community of explorers who share a passion for the great outdoors and rugged discovery.",
     icon: <Camera size={20} />,
+    image: "/images/about/overland_contents/overland_community.jpg",
   },
 ];
 
@@ -41,7 +45,7 @@ export default function ChapterTwo() {
 
     // Parallax on background
     gsap.to(bgRef.current, {
-      y: 100,
+      y: 160,
       ease: "none",
       scrollTrigger: {
         trigger: sectionRef.current,
@@ -77,17 +81,18 @@ export default function ChapterTwo() {
   return (
     <section
       ref={sectionRef}
-      className="relative text-white overflow-hidden"
+      className="relative text-white overflow-hidden bg-brand-dark"
       id="beyond-workshop"
     >
       {/* Background Image with Overlay */}
-      <div ref={bgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
+      <div ref={bgRef} className="absolute inset-x-0 -top-[20%] h-[140%] z-0">
         <img 
           src="/images/about/overland.jpg" 
           alt="Overland Background" 
-          className="w-full h-full object-cover opacity-70" 
+          className="w-full h-full object-cover opacity-30" 
         />
-        <div className="absolute inset-0 bg-brand-dark/40" />
+        <div className="absolute inset-0 bg-brand-dark/60" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-dark/10 via-60% to-brand-dark" />
       </div>
       {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none select-none">
@@ -138,14 +143,13 @@ export default function ChapterTwo() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
           {overlandCards.map((card, idx) => (
             <div key={idx} className="ch2-reveal relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-sm overflow-hidden group h-[300px] lg:h-[400px]">
-              {/* Photo Placeholder */}
-              <div className="about-placeholder about-placeholder-corners w-full h-full">
-                <Camera className="about-placeholder-icon" size={40} />
-                <p className="about-placeholder-label">{card.title} Photo</p>
-                <p className="about-placeholder-sublabel">
-                  Overland adventure documentation
-                </p>
-              </div>
+              {/* Photo */}
+              <Image 
+                src={card.image}
+                alt={card.title}
+                fill
+                className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700"
+              />
 
               {/* Caption Overlay */}
               <div className="horizontal-gallery-card-caption">

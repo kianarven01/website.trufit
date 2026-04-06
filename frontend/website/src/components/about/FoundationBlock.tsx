@@ -13,37 +13,44 @@ export default function FoundationBlock() {
   const containerRef = useRef<HTMLDivElement>(null);
   const bgRef = useRef<HTMLDivElement>(null);
 
-  useGSAP(() => {
-    // Parallax on shared background - spans both internal sections
-    gsap.fromTo(bgRef.current, 
-      { y: -60 },
-      {
-        y: 60,
-        ease: "none",
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
+  useGSAP(
+    () => {
+      // Parallax on shared background - spans both internal sections
+      gsap.fromTo(
+        bgRef.current,
+        { y: -60 },
+        {
+          y: 60,
+          ease: "none",
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
         },
-      }
-    );
-  }, { scope: containerRef });
+      );
+    },
+    { scope: containerRef },
+  );
 
   return (
-    <div ref={containerRef} className="relative bg-brand-dark overflow-hidden transition-all duration-700">
+    <div
+      ref={containerRef}
+      className="relative bg-brand-dark overflow-hidden transition-all duration-700"
+    >
       {/* Shared Background Image with centered offset to eliminate boundary gaps */}
       <div className="absolute inset-x-0 -top-[10%] h-[120%] z-0 overflow-hidden">
         <div ref={bgRef} className="absolute inset-0 h-full w-full">
-          <img 
-            src="/images/about/foundation.jpg" 
-            alt="Foundation Background" 
-            className="w-full h-full object-cover opacity-30" 
+          <img
+            src="/images/about/foundation.jpg"
+            alt="Foundation Background"
+            className="w-full h-full object-cover opacity-30"
           />
         </div>
         {/* Uniform darkening overlay */}
         <div className="absolute inset-0 bg-brand-dark/60" />
-        
+
         {/* Bottom fade to footer - only at the very end of the block */}
         <div className="absolute inset-x-0 bottom-0 h-96 bg-gradient-to-t from-brand-dark via-brand-dark/20 to-transparent z-1" />
       </div>

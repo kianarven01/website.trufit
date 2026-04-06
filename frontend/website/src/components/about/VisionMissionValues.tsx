@@ -16,13 +16,16 @@ const coreValues = [
   { title: "Professionalism", desc: "Industry-leading standards and practices." },
 ];
 
-export default function VisionMissionValues() {
+export default function VisionMissionValues({ isTransparent = false }: { isTransparent?: boolean }) {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const bgRef = useRef<HTMLDivElement>(null);
+  const localBgRef = useRef<HTMLDivElement>(null);
+
+  const bgRef = isTransparent ? { current: null } : localBgRef;
 
   useGSAP(() => {
-    // Parallax on background
-    gsap.to(bgRef.current, {
+    // Parallax on local background (if not transparent)
+    if (!isTransparent && bgRef.current) {
+      gsap.to(bgRef.current, {
       y: 120,
       ease: "none",
       scrollTrigger: {
@@ -32,6 +35,7 @@ export default function VisionMissionValues() {
         scrub: true,
       },
     });
+    }
 
     const cards = gsap.utils.toArray<HTMLElement>(".vmv-animate");
     cards.forEach((card, i) => {
@@ -79,24 +83,30 @@ export default function VisionMissionValues() {
   return (
     <section
       ref={sectionRef}
-      className="relative bg-brand-dark text-white overflow-hidden py-20 md:py-32"
+      className={`relative text-white overflow-hidden py-20 md:py-32 ${isTransparent ? "" : "bg-brand-dark"}`}
       id="vision-mission"
     >
-      {/* Background Image with Overlay */}
-      <div ref={bgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
-        <img 
-          src="/images/about/foundation.jpg" 
-          alt="Foundation Background" 
-          className="w-full h-full object-cover opacity-30" 
-        />
-        <div className="absolute inset-0 bg-brand-dark/60" />
-      </div>
+      {/* Local Background (Only if not transparent) */}
+      {!isTransparent && (
+        <>
+          <div ref={localBgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
+            <img 
+              src="/images/about/foundation.jpg" 
+              alt="Foundation Background" 
+              className="w-full h-full object-cover opacity-30" 
+            />
+            <div className="absolute inset-0 bg-brand-dark/60" />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-dark/10 via-60% to-brand-dark" />
+          </div>
 
-      {/* Decorative Gradients */}
-      <div className="absolute inset-0 pointer-events-none select-none z-1">
-        <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[130px]" />
-        <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] bg-brand-red/[0.03] rounded-full blur-[110px]" />
-      </div>
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-brand-dark to-transparent z-1 pointer-events-none" />
+
+          <div className="absolute inset-0 pointer-events-none select-none z-1">
+            <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[130px]" />
+            <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] bg-brand-red/[0.03] rounded-full blur-[110px]" />
+          </div>
+        </>
+      )}
 
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">
         {/* Header */}

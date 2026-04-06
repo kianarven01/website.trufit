@@ -8,7 +8,7 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function AboutCTA() {
+export default function AboutCTA({ isTransparent = false }: { isTransparent?: boolean }) {
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
@@ -36,7 +36,7 @@ export default function AboutCTA() {
   return (
     <section
       ref={sectionRef}
-      className="about-cta py-20 md:py-28"
+      className={`relative py-20 md:py-28 ${isTransparent ? "" : "about-cta"}`}
       id="about-cta"
     >
       <div className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 text-center relative z-10">

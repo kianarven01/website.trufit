@@ -15,23 +15,26 @@ export default function FoundationBlock() {
 
   useGSAP(() => {
     // Parallax on shared background - spans both internal sections
-    gsap.to(bgRef.current, {
-      y: 80,
-      ease: "none",
-      scrollTrigger: {
-        trigger: containerRef.current,
-        start: "top bottom",
-        end: "bottom top",
-        scrub: true,
-      },
-    });
+    gsap.fromTo(bgRef.current, 
+      { y: -60 },
+      {
+        y: 60,
+        ease: "none",
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+        },
+      }
+    );
   }, { scope: containerRef });
 
   return (
     <div ref={containerRef} className="relative bg-brand-dark overflow-hidden transition-all duration-700">
-      {/* Shared Background Image with internal scale to allow "zoomed-out" parallax */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <div ref={bgRef} className="absolute inset-0 h-full w-full scale-110 origin-top">
+      {/* Shared Background Image with centered offset to eliminate boundary gaps */}
+      <div className="absolute inset-x-0 -top-[10%] h-[120%] z-0 overflow-hidden">
+        <div ref={bgRef} className="absolute inset-0 h-full w-full">
           <img 
             src="/images/about/foundation.jpg" 
             alt="Foundation Background" 

@@ -121,7 +121,7 @@ export default function ChapterOne() {
             </h2>
 
             <p className="ch1-reveal text-brand-red font-bold text-sm tracking-[0.2em] uppercase mb-8">
-              Founded 2021 · 25+ Years of Expertise
+              Founded 2019 · 25+ Years of Expertise
             </p>
 
             <p className="ch1-reveal text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl font-medium">

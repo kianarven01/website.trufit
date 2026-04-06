@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { Camera, Heart, Shield, Truck } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -33,9 +34,22 @@ const overlandCards = [
 
 export default function ChapterTwo() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const bgRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
     const mm = gsap.matchMedia();
+
+    // Parallax on background
+    gsap.to(bgRef.current, {
+      y: 100,
+      ease: "none",
+      scrollTrigger: {
+        trigger: sectionRef.current,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: true,
+      },
+    });
 
     // Reveal animations (all sizes)
     const reveals = gsap.utils.toArray<HTMLElement>(".ch2-reveal");
@@ -63,9 +77,18 @@ export default function ChapterTwo() {
   return (
     <section
       ref={sectionRef}
-      className="relative bg-brand-dark text-white overflow-hidden"
+      className="relative text-white overflow-hidden"
       id="beyond-workshop"
     >
+      {/* Background Image with Overlay */}
+      <div ref={bgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
+        <img 
+          src="/images/about/overland.jpg" 
+          alt="Overland Background" 
+          className="w-full h-full object-cover opacity-70" 
+        />
+        <div className="absolute inset-0 bg-brand-dark/40" />
+      </div>
       {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none select-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-red/[0.06] rounded-full blur-[150px] -translate-y-1/2 translate-x-1/3" />
@@ -74,7 +97,7 @@ export default function ChapterTwo() {
           className="absolute top-20 right-10 text-[10vw] font-black leading-none opacity-[0.02] text-transparent"
           style={{ WebkitTextStroke: "1px white" }}
         >
-          SERVE
+          ADVENTURE
         </div>
       </div>
 

@@ -18,8 +18,21 @@ const coreValues = [
 
 export default function VisionMissionValues() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const bgRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
+    // Parallax on background
+    gsap.to(bgRef.current, {
+      y: 120,
+      ease: "none",
+      scrollTrigger: {
+        trigger: sectionRef.current,
+        start: "top bottom",
+        end: "bottom top",
+        scrub: true,
+      },
+    });
+
     const cards = gsap.utils.toArray<HTMLElement>(".vmv-animate");
     cards.forEach((card, i) => {
       gsap.fromTo(
@@ -69,8 +82,18 @@ export default function VisionMissionValues() {
       className="relative bg-brand-dark text-white overflow-hidden py-20 md:py-32"
       id="vision-mission"
     >
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none select-none">
+      {/* Background Image with Overlay */}
+      <div ref={bgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
+        <img 
+          src="/images/about/foundation.jpg" 
+          alt="Foundation Background" 
+          className="w-full h-full object-cover opacity-30" 
+        />
+        <div className="absolute inset-0 bg-brand-dark/60" />
+      </div>
+
+      {/* Decorative Gradients */}
+      <div className="absolute inset-0 pointer-events-none select-none z-1">
         <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[130px]" />
         <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] bg-brand-red/[0.03] rounded-full blur-[110px]" />
       </div>

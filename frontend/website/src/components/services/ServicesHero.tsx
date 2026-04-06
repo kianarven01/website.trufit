@@ -48,7 +48,7 @@ export default function ServicesHero() {
   return (
     <section
       ref={container}
-      className="relative h-[80vh] md:h-[70vh] w-full flex items-center justify-center overflow-hidden bg-brand-dark -mt-[112px] md:-mt-[120px]"
+      className="relative min-h-[85vh] md:min-h-[75vh] w-full flex items-center justify-center overflow-hidden bg-brand-dark -mt-[112px] md:-mt-[120px]"
     >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
@@ -63,7 +63,7 @@ export default function ServicesHero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-5xl mx-auto pt-24 md:pt-32">
+      <div className="relative z-10 text-center px-6 max-w-5xl mx-auto pt-20 md:pt-28 pb-16 md:pb-24">
         <div 
           ref={subtitleRef}
           className="flex items-center justify-center gap-3 mb-6"

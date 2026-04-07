@@ -74,13 +74,13 @@ export default function GalleryGrid() {
                     <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 w-[1px] h-6 md:h-12 bg-brand-dark/10" />
                   </div>
 
-                  {/* Real Image (when provided) */}
-                  {/* <Image 
+                  {/* Real Image */}
+                  <Image 
                     src={item.image} 
                     alt={item.title}
                     fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                  /> */}
+                    className="object-cover transition-transform duration-700 group-hover:scale-110 z-[1]"
+                  />
                 </div>
 
                 {/* Overlay Content */}

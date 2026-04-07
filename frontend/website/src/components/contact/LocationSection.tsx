@@ -89,9 +89,9 @@ export default function LocationSection() {
               href="https://www.google.com/maps/place/Trufit+Auto+Center/@14.1237854,122.9431005,17z/data=!3m1!4b1!4m6!3m5!1s0x3398affd09d7236b:0xcfccafc73d343d48!8m2!3d14.1237854!4d122.9431005!16s%2Fg%2F11fl9dschh?entry=ttu"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 mt-4 text-sm text-gray-500 hover:text-brand-blue transition-colors group"
+              className="inline-flex items-center gap-2 mt-4 text-sm text-gray-500 hover:text-brand-red transition-colors group font-barlow"
             >
-              <Navigation size={14} className="group-hover:text-brand-blue transition-colors" />
+              <Navigation size={14} className="group-hover:text-brand-red transition-colors" />
               Open Google Maps
               <ExternalLink size={12} />
             </a>
@@ -101,16 +101,16 @@ export default function LocationSection() {
           <div className="space-y-6">
             {/* Label */}
             <div className="location-reveal flex items-center gap-3">
-              <div className="h-[2px] w-10 bg-brand-blue" />
-              <span className="text-brand-blue text-xs font-bold tracking-[0.3em] uppercase">
+              <div className="h-[2px] w-10 bg-brand-red" />
+              <span className="text-gray-400 text-xs font-bold tracking-[0.3em] uppercase font-barlow">
                 Our Location
               </span>
             </div>
 
             {/* Title */}
-            <h2 className="location-reveal text-3xl md:text-5xl font-black text-gray-900 font-brawler leading-tight tracking-tight">
+            <h2 className="location-reveal text-3xl md:text-5xl font-semibold text-gray-900 leading-tight tracking-tight">
               Visit Our{" "}
-              <span className="text-brand-blue">Shop</span>
+              <span className="text-brand-red">Shop</span>
             </h2>
 
             {/* Description */}
@@ -123,7 +123,7 @@ export default function LocationSection() {
             {/* Address Details */}
             <div className="location-reveal space-y-5 pt-4">
               <div>
-                <h3 className="text-gray-900 font-bold text-sm uppercase tracking-wider mb-2">
+                <h3 className="text-gray-900 font-medium text-sm uppercase tracking-wider mb-2 font-barlow">
                   Headquarters
                 </h3>
                 <div className="space-y-1 text-gray-500 text-sm leading-relaxed">
@@ -137,7 +137,7 @@ export default function LocationSection() {
               <div className="h-px w-full bg-gray-200" />
 
               <div>
-                <h3 className="text-gray-900 font-bold text-sm uppercase tracking-wider mb-2">
+                <h3 className="text-gray-900 font-medium text-sm uppercase tracking-wider mb-2 font-barlow">
                   Business Hours
                 </h3>
                 <div className="space-y-1 text-gray-500 text-sm">
@@ -155,19 +155,19 @@ export default function LocationSection() {
               <div className="h-px w-full bg-gray-200" />
 
               <div>
-                <h3 className="text-gray-900 font-bold text-sm uppercase tracking-wider mb-2">
+                <h3 className="text-gray-900 font-medium text-sm uppercase tracking-wider mb-2 font-barlow">
                   Contact
                 </h3>
-                <div className="space-y-1 text-sm">
+                <div className="space-y-1 text-sm font-barlow">
                   <a
                     href="tel:09187747788"
-                    className="block text-gray-500 hover:text-brand-blue transition-colors"
+                    className="block text-gray-500 hover:text-brand-red transition-colors"
                   >
                     0918-774-7788
                   </a>
                   <a
                     href="mailto:trufitautocenter@gmail.com"
-                    className="block text-gray-500 hover:text-brand-blue transition-colors"
+                    className="block text-gray-500 hover:text-brand-red transition-colors"
                   >
                     trufitautocenter@gmail.com
                   </a>

@@ -103,26 +103,26 @@ export default function FAQSection() {
       className="faq-section py-16 md:py-24 lg:py-32"
       id="faq"
     >
-      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
+      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 lg:gap-20">
           {/* LEFT: Heading + Quick Contact */}
           <div className="lg:col-span-2 space-y-6">
             {/* Label */}
             <div className="faq-left-reveal flex items-center gap-3">
-              <div className="h-[2px] w-10 bg-brand-blue" />
-              <span className="text-brand-blue text-xs font-bold tracking-[0.3em] uppercase">
+              <div className="h-[2px] w-10 bg-brand-red" />
+              <span className="text-white/60 text-xs font-bold tracking-[0.3em] uppercase font-barlow">
                 FAQ
               </span>
             </div>
 
             {/* Title */}
-            <h2 className="faq-left-reveal text-3xl md:text-4xl lg:text-5xl font-black text-white font-brawler leading-tight tracking-tight">
+            <h2 className="faq-left-reveal text-3xl md:text-4xl lg:text-5xl font-semibold text-white leading-tight tracking-tight">
               Do you have any{" "}
               <span className="text-brand-red">questions</span> for us?
             </h2>
 
             {/* Subtitle */}
-            <p className="faq-left-reveal text-white/40 text-sm md:text-base leading-relaxed max-w-md">
+            <p className="faq-left-reveal text-white/50 text-sm md:text-base leading-relaxed max-w-md font-barlow">
               If there are questions you want to ask, we will answer all your questions.
               Can&apos;t find your question below? Send us a message!
             </p>
@@ -149,7 +149,7 @@ export default function FAQSection() {
                       setQuickEmail("");
                     }
                   }}
-                  className="shrink-0 bg-brand-red text-white px-5 py-[0.875rem] rounded-sm text-sm font-bold hover:bg-red-700 transition-all flex items-center gap-2"
+                  className="shrink-0 bg-brand-red text-white px-5 py-[0.875rem] rounded-sm text-sm font-semibold hover:bg-red-700 transition-all flex items-center gap-2 font-barlow"
                 >
                   <Send size={14} />
                   <span className="hidden sm:inline">Submit</span>
@@ -161,28 +161,19 @@ export default function FAQSection() {
           {/* RIGHT: FAQ Accordion */}
           <div className="lg:col-span-3">
             {faqData.map((faq, idx) => (
-              <div
-                key={idx}
-                className="faq-item faq-item-animate"
-              >
+              <div key={idx} className="faq-item faq-item-animate">
                 <button
                   className="faq-trigger"
                   onClick={() => toggleFaq(idx)}
                   aria-expanded={openIndex === idx}
                 >
                   <span className="pr-4">{faq.question}</span>
-                  <span
-                    className={`faq-trigger-icon ${
-                      openIndex === idx ? "active" : ""
-                    }`}
-                  >
+                  <span className={`faq-trigger-icon ${openIndex === idx ? "active" : ""}`}>
                     <ChevronDown size={14} className="text-white" />
                   </span>
                 </button>
 
-                <div
-                  className={`faq-answer ${openIndex === idx ? "open" : ""}`}
-                >
+                <div className={`faq-answer ${openIndex === idx ? "open" : ""}`}>
                   <div className="faq-answer-inner">{faq.answer}</div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { Phone, Mail, MapPin, Clock, Headset, MessageSquareText, Wrench } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -15,8 +16,8 @@ const supportCards = [
     title: "Service Inquiries",
     description:
       "Our team is available to answer your questions about any of our automotive services.",
-    color: "text-brand-blue",
-    bg: "bg-brand-blue/10",
+    color: "text-brand-red",
+    bg: "bg-brand-red/10",
   },
   {
     icon: MessageSquareText,
@@ -31,8 +32,8 @@ const supportCards = [
     title: "Parts & Availability",
     description:
       "Need specific parts or accessories? Reach out and we'll check availability for your vehicle.",
-    color: "text-white/70",
-    bg: "bg-white/5",
+    color: "text-brand-red",
+    bg: "bg-brand-red/10",
   },
 ];
 
@@ -65,9 +66,22 @@ const contactInfo = [
 
 export default function ContactHero() {
   const heroRef = useRef<HTMLDivElement>(null);
+  const bgImageRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
+      // Parallax effect for background image
+      gsap.to(bgImageRef.current, {
+        yPercent: 25,
+        ease: "none",
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
+
       // Content entrance animations
       const tl = gsap.timeline({ delay: 0.2 });
 
@@ -140,6 +154,21 @@ export default function ContactHero() {
       className="contact-hero -mt-[112px] md:-mt-[120px] pt-[140px] md:pt-[160px] pb-16 md:pb-24"
       id="contact-hero"
     >
+      {/* Background with Parallax */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
+          <Image
+            src="/images/contact/lounge1.jpg"
+            alt="Trufit Auto Center Lounge"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+        </div>
+        {/* Single flat dark overlay */}
+        <div className="absolute inset-0 bg-black/50 z-10" />
+      </div>
+
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">
         {/* Top section: Info + Form */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
@@ -147,21 +176,21 @@ export default function ContactHero() {
           <div className="space-y-8">
             {/* Label */}
             <div className="contact-hero-label flex items-center gap-3 opacity-0">
-              <div className="h-[2px] w-10 bg-brand-blue" />
-              <span className="text-white/60 text-xs font-bold tracking-[0.3em] uppercase">
+              <div className="h-[2px] w-10 bg-brand-red" />
+              <span className="text-white/60 text-xs font-bold tracking-[0.3em] uppercase font-barlow">
                 Get In Touch
               </span>
             </div>
 
             {/* Title */}
-            <h1 className="contact-hero-title text-4xl md:text-6xl lg:text-7xl font-black text-white font-brawler leading-[1.05] tracking-tight opacity-0">
+            <h1 className="contact-hero-title text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.05] tracking-tight opacity-0">
               Contact{" "}
               <span className="text-gradient-red">Us</span>
             </h1>
 
             {/* Subtitle */}
-            <p className="contact-hero-subtitle text-white/50 text-base md:text-lg max-w-lg leading-relaxed font-medium opacity-0">
-              Have a question about our services? Need to schedule a repair? 
+            <p className="contact-hero-subtitle text-white/60 text-base md:text-lg max-w-lg leading-relaxed opacity-0">
+              Have a question about our services? Need to schedule a repair?{" "}
               Reach out — we&apos;re ready to help keep your vehicle running at its best.
             </p>
 
@@ -172,8 +201,8 @@ export default function ContactHero() {
                   key={idx}
                   className="contact-info-item flex items-center gap-4 opacity-0"
                 >
-                  <div className="w-10 h-10 shrink-0 rounded-full bg-brand-blue/10 flex items-center justify-center">
-                    <item.icon className="text-brand-blue" size={18} />
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-brand-red/10 flex items-center justify-center">
+                    <item.icon className="text-brand-red" size={18} />
                   </div>
                   {item.href ? (
                     <a
@@ -196,7 +225,7 @@ export default function ContactHero() {
           <div className="contact-form-animate opacity-0">
             <div className="contact-form-card">
               <div className="mb-6">
-                <h2 className="text-white text-xl font-bold mb-1">Send Us a Message</h2>
+                <h2 className="text-white text-xl font-semibold mb-1 tracking-tight">Send Us a Message</h2>
                 <p className="text-white/40 text-sm">We&apos;ll respond within 24 hours</p>
               </div>
               <ContactForm />
@@ -212,7 +241,7 @@ export default function ContactHero() {
                 <div className={`w-9 h-9 rounded-full ${card.bg} flex items-center justify-center`}>
                   <card.icon className={card.color} size={18} />
                 </div>
-                <h3 className="text-white text-sm font-bold uppercase tracking-wider">
+                <h3 className="text-white text-sm font-medium uppercase tracking-wider font-barlow">
                   {card.title}
                 </h3>
               </div>

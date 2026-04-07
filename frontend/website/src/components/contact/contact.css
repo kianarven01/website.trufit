@@ -9,29 +9,7 @@
   overflow: hidden;
 }
 
-.contact-hero::before {
-  content: '';
-  position: absolute;
-  top: -30%;
-  right: -15%;
-  width: 700px;
-  height: 700px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
-.contact-hero::after {
-  content: '';
-  position: absolute;
-  bottom: -20%;
-  left: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(227, 27, 35, 0.04), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
 /* --------------- Support Cards --------------- */
 .support-card {
@@ -91,7 +69,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-blue), var(--brand-red));
+  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue));
 }
 
 /* --------------- Location Section --------------- */
@@ -150,21 +128,10 @@
 /* --------------- FAQ Section --------------- */
 .faq-section {
   position: relative;
-  background: var(--brand-dark);
   overflow: hidden;
 }
 
-.faq-section::before {
-  content: '';
-  position: absolute;
-  top: 30%;
-  right: -15%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.05), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
+
 
 .faq-item {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -199,7 +166,7 @@
 }
 
 .faq-trigger:hover {
-  color: var(--brand-blue);
+  color: var(--brand-red);
 }
 
 .faq-trigger-icon {
@@ -215,7 +182,7 @@
 }
 
 .faq-trigger-icon.active {
-  background: var(--brand-blue);
+  background: var(--brand-red);
   transform: rotate(180deg);
 }
 
@@ -241,33 +208,10 @@
 /* --------------- CTA Section --------------- */
 .contact-cta {
   position: relative;
-  background: linear-gradient(135deg, #0A0A0A 0%, #111 50%, #0A0A0A 100%);
   overflow: hidden;
 }
 
-.contact-cta::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(227, 27, 35, 0.08), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
-.contact-cta::after {
-  content: '';
-  position: absolute;
-  bottom: -30%;
-  left: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
 /* --------------- Quick Contact Email Input --------------- */
 .quick-contact-input {
@@ -283,7 +227,7 @@
 
 .quick-contact-input:focus {
   outline: none;
-  border-color: var(--brand-blue);
+  border-color: var(--brand-red);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -306,8 +250,8 @@
 
 .contact-input-light:focus {
   outline: none;
-  border-color: var(--brand-blue);
-  box-shadow: 0 0 0 2px rgba(0, 43, 163, 0.15);
+  border-color: var(--brand-red);
+  box-shadow: 0 0 0 2px rgba(227, 27, 35, 0.15);
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -329,7 +273,7 @@
 }
 
 .contact-input-light:focus ~ .contact-float-label {
-  color: var(--brand-blue);
+  color: var(--brand-red);
 }
 
 /* --------------- Success Toast --------------- */

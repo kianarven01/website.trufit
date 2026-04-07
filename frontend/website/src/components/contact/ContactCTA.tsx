@@ -46,15 +46,15 @@ export default function ContactCTA() {
       <div className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 text-center relative z-10">
         {/* Label */}
         <div className="contact-cta-reveal flex items-center justify-center gap-3 mb-6">
-          <div className="h-[1px] w-12 bg-brand-red/40" />
-          <span className="text-white/40 text-[10px] font-bold tracking-[0.4em] uppercase">
+          <div className="h-[2px] w-12 bg-brand-red" />
+          <span className="text-white/60 text-xs font-bold tracking-[0.3em] uppercase font-barlow">
             Ready to Go?
           </span>
-          <div className="h-[1px] w-12 bg-brand-red/40" />
+          <div className="h-[2px] w-12 bg-brand-red" />
         </div>
 
         {/* Title */}
-        <h2 className="contact-cta-reveal text-3xl md:text-5xl font-black text-white font-brawler leading-tight uppercase tracking-tight mb-6">
+        <h2 className="contact-cta-reveal text-3xl md:text-5xl font-semibold text-white leading-tight uppercase tracking-tight mb-6">
           Book Your{" "}
           <span className="text-brand-red">Appointment</span>
           <br />
@@ -62,8 +62,8 @@ export default function ContactCTA() {
         </h2>
 
         {/* Subtitle */}
-        <p className="contact-cta-reveal text-white/50 text-base md:text-lg leading-relaxed max-w-xl mx-auto mb-10 font-medium">
-          Whether it&apos;s routine maintenance or a complex repair, your vehicle 
+        <p className="contact-cta-reveal text-white/50 text-base md:text-lg leading-relaxed max-w-xl mx-auto mb-10 font-barlow">
+          Whether it&apos;s routine maintenance or a complex repair, your vehicle{" "}
           is in expert hands. Schedule your visit and experience the Trufit difference.
         </p>
 
@@ -71,13 +71,13 @@ export default function ContactCTA() {
         <div className="contact-cta-reveal flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/#appointment"
-            className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20"
+            className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/30 font-barlow"
           >
             Book Appointment
           </Link>
           <a
             href="tel:09187747788"
-            className="border-2 border-white/20 text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center flex items-center justify-center gap-2"
+            className="border-2 border-brand-red/40 text-white px-10 py-5 rounded-sm font-semibold hover:bg-brand-red hover:border-brand-red transition-all uppercase tracking-[0.2em] text-xs text-center flex items-center justify-center gap-2 font-barlow"
           >
             <Phone size={14} />
             Call Us Now

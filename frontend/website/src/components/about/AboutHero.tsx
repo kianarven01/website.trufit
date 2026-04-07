@@ -89,7 +89,7 @@ export default function AboutHero() {
           <div className="h-[1px] w-12 bg-brand-red" />
         </div>
 
-        <h1 className="hero-title text-4xl md:text-6xl lg:text-7xl font-black text-white font-brawler leading-[1.1] tracking-tight mb-6 opacity-0">
+        <h1 className="hero-title text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] tracking-tight mb-6 opacity-0">
           More Than A<br />
           <span className="text-gradient-red">Service Center</span>
         </h1>

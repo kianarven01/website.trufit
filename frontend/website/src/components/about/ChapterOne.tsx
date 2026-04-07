@@ -72,12 +72,12 @@ export default function ChapterOne() {
     >
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none select-none">
-        <div className="absolute top-20 left-10 text-[12vw] font-black leading-none opacity-[0.02] text-transparent"
+        <div className="absolute top-20 left-10 text-[12vw] font-semibold leading-none opacity-[0.02] text-transparent"
           style={{ WebkitTextStroke: '1px #0A0A0A' }}
         >
           TRUFIT<br />AUTO
         </div>
-        <div className="absolute top-1/4 -right-40 w-[600px] h-[600px] bg-brand-blue/[0.02] rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 -right-40 w-[600px] h-[600px] bg-brand-red/[0.02] rounded-full blur-[120px]" />
         <div className="absolute bottom-1/4 -left-40 w-[500px] h-[500px] bg-brand-red/[0.02] rounded-full blur-[100px]" />
       </div>
 
@@ -113,7 +113,7 @@ export default function ChapterOne() {
               <span className="chapter-label-text">About Trufit</span>
             </div>
 
-            <h2 className="ch1-reveal text-3xl md:text-5xl font-black mb-4 font-brawler leading-tight text-brand-dark uppercase tracking-tight">
+            <h2 className="ch1-reveal text-3xl md:text-5xl font-semibold mb-4 leading-tight text-brand-dark uppercase tracking-tight">
               Who We Are
             </h2>
 
@@ -142,7 +142,7 @@ export default function ChapterOne() {
                     <CheckCircle2 className="text-brand-red w-5 h-5 transition-transform group-hover:scale-110" />
                   </div>
                   <div>
-                    <h4 className="font-black text-brand-dark uppercase text-xs tracking-widest mb-1.5">
+                    <h4 className="font-semibold text-brand-dark uppercase text-xs tracking-widest mb-1.5">
                       {feature.title}
                     </h4>
                     <p className="text-gray-500 text-xs leading-relaxed">
@@ -161,7 +161,7 @@ export default function ChapterOne() {
                   className="flex flex-col items-center p-4 md:p-6 border-r border-gray-100 last:border-0"
                 >
                   <div className="text-brand-red mb-2">{stat.icon}</div>
-                  <span className="text-2xl md:text-3xl font-black text-brand-dark">
+                  <span className="text-2xl md:text-3xl font-semibold text-brand-dark">
                     {stat.value}
                   </span>
                   <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 text-center">

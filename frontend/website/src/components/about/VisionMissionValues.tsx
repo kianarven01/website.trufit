@@ -102,7 +102,7 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-brand-dark to-transparent z-1 pointer-events-none" />
 
           <div className="absolute inset-0 pointer-events-none select-none z-1">
-            <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[130px]" />
+            <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-red/[0.04] rounded-full blur-[130px]" />
             <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] bg-brand-red/[0.03] rounded-full blur-[110px]" />
           </div>
         </>
@@ -112,13 +112,13 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
         {/* Header */}
         <div className="text-center mb-14 md:mb-20">
           <div className="vmv-animate flex items-center justify-center gap-3 mb-4">
-            <div className="h-[2px] w-8 bg-brand-blue" />
-            <span className="text-sm font-bold tracking-[0.3em] uppercase text-brand-blue">
+            <div className="h-[2px] w-8 bg-brand-red" />
+            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
               Our Foundation
             </span>
-            <div className="h-[2px] w-8 bg-brand-blue" />
+            <div className="h-[2px] w-8 bg-brand-red" />
           </div>
-          <h2 className="vmv-animate text-3xl md:text-5xl font-black uppercase tracking-tight font-brawler">
+          <h2 className="vmv-animate text-3xl md:text-5xl font-semibold uppercase tracking-tight">
             What Drives Us
           </h2>
         </div>
@@ -128,10 +128,10 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
           {/* Vision Card */}
           <div className="vmv-animate vmv-card">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center">
-                <Eye className="text-brand-blue" size={20} />
+              <div className="w-10 h-10 rounded-full bg-brand-red/10 flex items-center justify-center">
+                <Eye className="text-brand-red" size={20} />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-wider">Vision</h3>
+              <h3 className="text-xl font-semibold uppercase tracking-wider">Vision</h3>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
               To be recognized as one of the most reliable and customer-focused auto
@@ -146,7 +146,7 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
               <div className="w-10 h-10 rounded-full bg-brand-red/10 flex items-center justify-center">
                 <Target className="text-brand-red" size={20} />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-wider">Mission</h3>
+              <h3 className="text-xl font-semibold uppercase tracking-wider">Mission</h3>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
               To provide dependable, efficient, and honest automotive services that
@@ -158,17 +158,17 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
           {/* Core Values Card */}
           <div className="vmv-animate vmv-card lg:row-span-1">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                <Gem className="text-white/60" size={20} />
+              <div className="w-10 h-10 rounded-full bg-brand-red/10 flex items-center justify-center">
+                <Gem className="text-brand-red" size={20} />
               </div>
-              <h3 className="text-xl font-black uppercase tracking-wider">Core Values</h3>
+              <h3 className="text-xl font-semibold uppercase tracking-wider">Core Values</h3>
             </div>
             <div className="space-y-4">
               {coreValues.map((value, idx) => (
                 <div key={idx} className="value-item flex items-start gap-3">
                   <div className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full bg-brand-red" />
                   <div>
-                    <span className="text-white font-bold text-sm">{value.title}</span>
+                    <span className="text-white font-medium text-sm">{value.title}</span>
                     <span className="text-white/40 text-sm"> — {value.desc}</span>
                   </div>
                 </div>

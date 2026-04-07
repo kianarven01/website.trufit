@@ -57,7 +57,7 @@ export default function FoundationBlock() {
 
       {/* Decorative Gradients (Moved from VisionMissionValues to cover the whole block) */}
       <div className="absolute inset-0 pointer-events-none select-none z-1">
-        <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[130px]" />
+        <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] bg-brand-red/[0.04] rounded-full blur-[130px]" />
         <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] bg-brand-red/[0.03] rounded-full blur-[110px]" />
       </div>
 

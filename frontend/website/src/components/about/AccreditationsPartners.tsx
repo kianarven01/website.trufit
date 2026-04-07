@@ -109,13 +109,13 @@ export default function AccreditationsPartners() {
         <div className="text-center mb-16 md:mb-24 accred-header">
           <div className="inline-flex flex-col items-center">
             <div className="accred-header-item flex items-center justify-center gap-3 mb-4">
-              <div className="h-[2px] w-8 bg-brand-blue" />
-              <span className="text-sm font-bold tracking-[0.3em] uppercase text-brand-blue">
+              <div className="h-[2px] w-8 bg-brand-red" />
+              <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
                 Trust & Authenticity
               </span>
-              <div className="h-[2px] w-8 bg-brand-blue" />
+              <div className="h-[2px] w-8 bg-brand-red" />
             </div>
-            <h2 className="accred-header-item text-3xl md:text-5xl font-black text-brand-dark uppercase tracking-tight">
+            <h2 className="accred-header-item text-3xl md:text-5xl font-semibold text-brand-dark uppercase tracking-tight">
               Accreditations & Partners
             </h2>
             <p className="accred-header-item max-w-2xl mt-6 text-gray-500 font-medium leading-relaxed">
@@ -162,10 +162,10 @@ export default function AccreditationsPartners() {
                   />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-brand-dark font-black text-base md:text-lg uppercase tracking-wider leading-tight">
+                  <span className="text-brand-dark font-semibold text-base md:text-lg uppercase tracking-wider leading-tight">
                     {acc.title}
                   </span>
-                  <span className="text-brand-blue/70 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mt-1 leading-tight">
+                  <span className="text-brand-red/70 text-[10px] md:text-xs font-semibold uppercase tracking-[0.2em] mt-1 leading-tight">
                     {acc.subtitle}
                   </span>
                 </div>

@@ -93,7 +93,7 @@ export default function ChapterThree() {
       {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none select-none">
         <div
-          className="absolute bottom-10 left-10 text-[12vw] font-black leading-none opacity-[0.02] text-transparent"
+          className="absolute bottom-10 left-10 text-[12vw] font-semibold leading-none opacity-[0.02] text-transparent"
           style={{ WebkitTextStroke: "1px #0A0A0A" }}
         >
           RACE
@@ -110,7 +110,7 @@ export default function ChapterThree() {
               <span className="chapter-label-text">Sports & Fitness</span>
             </div>
 
-            <h2 className="ch3-reveal text-3xl md:text-5xl lg:text-6xl font-black font-brawler leading-tight uppercase tracking-tight mb-6 text-brand-dark">
+            <h2 className="ch3-reveal text-3xl md:text-5xl lg:text-6xl font-semibold leading-tight uppercase tracking-tight mb-6 text-brand-dark">
               Triathlon <span className="text-brand-red">Team</span>
             </h2>
 
@@ -133,21 +133,21 @@ export default function ChapterThree() {
               <div className="flex items-center gap-3">
                 <Trophy className="text-brand-red" size={20} />
                 <div>
-                  <p className="text-brand-dark font-black text-lg">Active</p>
+                  <p className="text-brand-dark font-semibold text-lg">Active</p>
                   <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Competitors</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Flame className="text-brand-red" size={20} />
                 <div>
-                  <p className="text-brand-dark font-black text-lg">Local</p>
+                  <p className="text-brand-dark font-semibold text-lg">Local</p>
                   <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Triathlon Events</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Users className="text-brand-red" size={20} />
                 <div>
-                  <p className="text-brand-dark font-black text-lg">Team</p>
+                  <p className="text-brand-dark font-semibold text-lg">Team</p>
                   <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Spirit Driven</p>
                 </div>
               </div>
@@ -171,8 +171,8 @@ export default function ChapterThree() {
               
               {/* Caption Overlay */}
               <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-brand-dark/80 to-transparent z-20">
-                <p className="text-white font-black text-[10px] uppercase tracking-widest mb-1">{img.label}</p>
-                <p className="text-white/60 text-[8px] uppercase tracking-widest font-bold">{img.sublabel}</p>
+                <p className="text-white font-semibold text-[10px] uppercase tracking-widest mb-1">{img.label}</p>
+                <p className="text-white/60 text-[8px] uppercase tracking-widest font-medium">{img.sublabel}</p>
               </div>
 
               {/* Hover overlay */}
@@ -191,15 +191,15 @@ export default function ChapterThree() {
           <div className="ch3-reveal flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
               <Trophy className="text-brand-red" size={18} />
-              <span className="text-brand-dark font-black text-sm">Active Competitors</span>
+              <span className="text-brand-dark font-semibold text-sm">Active Competitors</span>
             </div>
             <div className="flex items-center gap-2">
               <Flame className="text-brand-red" size={18} />
-              <span className="text-brand-dark font-black text-sm">Local Events</span>
+              <span className="text-brand-dark font-semibold text-sm">Local Events</span>
             </div>
             <div className="flex items-center gap-2">
               <Users className="text-brand-red" size={18} />
-              <span className="text-brand-dark font-black text-sm">Team Spirit</span>
+              <span className="text-brand-dark font-semibold text-sm">Team Spirit</span>
             </div>
           </div>
         </div>

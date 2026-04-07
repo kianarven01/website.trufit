@@ -97,9 +97,9 @@ export default function ChapterTwo() {
       {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none select-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-brand-red/[0.06] rounded-full blur-[150px] -translate-y-1/2 translate-x-1/3" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-brand-blue/[0.04] rounded-full blur-[130px] translate-y-1/3 -translate-x-1/4" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-brand-red/[0.04] rounded-full blur-[130px] translate-y-1/3 -translate-x-1/4" />
         <div
-          className="absolute top-20 right-10 text-[10vw] font-black leading-none opacity-[0.02] text-transparent"
+          className="absolute top-20 right-10 text-[10vw] font-semibold leading-none opacity-[0.02] text-transparent"
           style={{ WebkitTextStroke: "1px white" }}
         >
           ADVENTURE
@@ -113,7 +113,7 @@ export default function ChapterTwo() {
           <span className="chapter-label-text">Overland</span>
         </div>
 
-        <h2 className="ch2-reveal text-3xl md:text-5xl lg:text-6xl font-black font-brawler leading-tight uppercase tracking-tight mb-6">
+        <h2 className="ch2-reveal text-3xl md:text-5xl lg:text-6xl font-semibold leading-tight uppercase tracking-tight mb-6">
           Beyond The <span className="text-brand-red">Workshop</span>
         </h2>
 
@@ -155,7 +155,7 @@ export default function ChapterTwo() {
               <div className="horizontal-gallery-card-caption">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="text-brand-red">{card.icon}</div>
-                  <h4 className="text-white font-black text-sm uppercase tracking-wider">
+                  <h4 className="text-white font-semibold text-sm uppercase tracking-wider">
                     {card.title}
                   </h4>
                 </div>

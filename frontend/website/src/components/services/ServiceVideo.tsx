@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import gsap from "gsap";
@@ -12,6 +12,10 @@ gsap.registerPlugin(ScrollTrigger);
 export default function ServiceVideo() {
   const container = useRef<HTMLDivElement>(null);
   const videoWrapper = useRef<HTMLDivElement>(null);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   useGSAP(
     () => {
@@ -35,6 +39,17 @@ export default function ServiceVideo() {
     { scope: container }
   );
 
+  useEffect(() => {
+  const handleVisibility = () => {
+    if (document.hidden && videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibility);
+  return () => document.removeEventListener("visibilitychange", handleVisibility);
+}, []);
+
   return (
     <section ref={container} className="py-24 md:py-40 bg-brand-dark overflow-hidden px-6 sm:px-10 lg:px-24">
       <div className="max-w-[1400px] mx-auto text-center mb-16 md:mb-24">
@@ -49,32 +64,60 @@ export default function ServiceVideo() {
 
       <div 
         ref={videoWrapper}
+        onClick={() => {
+          if (!isPlaying && videoRef.current) {
+            videoRef.current.play();
+          }
+        }}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
         className="relative aspect-video max-w-6xl mx-auto rounded-xl overflow-hidden shadow-premium group cursor-pointer"
       >
+
+        {/* Video Element*/}
+        <video
+        ref={videoRef}
+          src="/videos/service.mp4" // ← your video file
+          controls={isPlaying && isHovering}
+          controlsList="nodownload noremoteplayback" // ← prevents download button
+          disablePictureInPicture
+          onContextMenu={(e) => e.preventDefault()} // ← disables right-click menu
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => setIsPlaying(false)}
+          className="absolute inset-0 w-full h-full object-cover z-20"
+        />
+        
         {/* Placeholder Thumbnail */}
         <Image
           src="/images/service-video-thumb.jpg"
           alt="Suzuki Service Process Video"
           fill
-          className="object-cover transition-transform duration-700 group-hover:scale-105 opacity-60"
+          className={`object-cover transition-transform duration-700 group-hover:scale-105 ${
+            isPlaying ? "opacity-0" : "opacity-60"
+          }`}
         />
 
-        {/* Overlay with Play Button */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40 group-hover:bg-black/20 transition-all duration-500">
-          <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-2 border-white/30 flex items-center justify-center bg-white/10 backdrop-blur-md group-hover:scale-110 transition-transform duration-500">
-            <Play fill="white" size={40} className="text-white ml-2" />
+        {!isPlaying && (
+        <>
+          {/* Overlay with Play Button */}
+          <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 group-hover:bg-black/20 transition-all duration-500">
+            <div className="w-20 h-20 md:w-28 md:h-28 rounded-full border-2 border-white/30 flex items-center justify-center bg-white/10 backdrop-blur-md group-hover:scale-110 transition-transform duration-500">
+              <Play fill="white" size={40} className="text-white ml-2" />
+            </div>
           </div>
-        </div>
 
-        {/* Floating Text Decorative */}
-        <div className="absolute bottom-10 left-10 text-white z-10 transition-opacity duration-300">
-          <span className="text-xs uppercase tracking-[0.5em] font-bold text-brand-red mb-2 block">
-            Watch Full Process
-          </span>
-          <h3 className="text-2xl md:text-3xl font-black uppercase">
-            Certified Maintenance <br/> Demonstration
-          </h3>
-        </div>
+          {/* Floating Text Decorative */}
+          <div className="absolute bottom-10 left-10 text-white z-30 transition-opacity duration-300">
+            <span className="text-xs uppercase tracking-[0.5em] font-bold text-brand-red mb-2 block">
+              Watch Full Process
+            </span>
+            <h3 className="text-2xl md:text-3xl font-black uppercase">
+              Certified Maintenance <br/> Demonstration
+            </h3>
+          </div>
+        </>
+        )}
 
         {/* Grid Pattern Overlay */}
         <div 

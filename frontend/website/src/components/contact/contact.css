@@ -13,17 +13,21 @@
 
 /* --------------- Support Cards --------------- */
 .support-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(31px);
+  -webkit-backdrop-filter: blur(31px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 2px;
   padding: 1.75rem 1.5rem;
-  transition: all 0.4s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease, border-color 0.4s ease;
   position: relative;
   overflow: hidden;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .support-card:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.12);
   transform: translateY(-3px);
 }
@@ -47,13 +51,17 @@
 /* --------------- Contact Form Card --------------- */
 .contact-form-card {
   background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(31px);
+  -webkit-backdrop-filter: blur(31px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
   padding: 2rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   position: relative;
   overflow: hidden;
+  will-change: transform, opacity, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @media (min-width: 768px) {

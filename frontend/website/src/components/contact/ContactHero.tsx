@@ -131,17 +131,17 @@ export default function ContactHero() {
         }
       );
 
-      // Form card entrance
       gsap.fromTo(
         ".contact-form-animate",
-        { opacity: 0, x: 40, scale: 0.97 },
+        { opacity: 0, x: 40, scale: 0.98 },
         {
           opacity: 1,
           x: 0,
           scale: 1,
-          duration: 1,
+          duration: 1.2,
           delay: 0.5,
-          ease: "power4.out",
+          ease: "power3.out",
+          force3D: true,
         }
       );
     },
@@ -222,7 +222,7 @@ export default function ContactHero() {
           </div>
 
           {/* RIGHT: Contact Form */}
-          <div className="contact-form-animate opacity-0">
+          <div className="contact-form-animate">
             <div className="contact-form-card">
               <div className="mb-6">
                 <h2 className="text-white text-xl font-semibold mb-1 tracking-tight">Send Us a Message</h2>

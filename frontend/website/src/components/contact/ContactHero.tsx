@@ -165,8 +165,8 @@ export default function ContactHero() {
             priority
           />
         </div>
-        {/* Single flat dark overlay */}
-        <div className="absolute inset-0 bg-black/50 z-10" />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/75 z-10" />
       </div>
 
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">

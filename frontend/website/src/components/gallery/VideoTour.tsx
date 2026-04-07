@@ -31,14 +31,14 @@ export default function VideoTour() {
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6 video-reveal">
-            <div className="h-[2px] w-12 bg-brand-blue" />
-            <span className="text-sm font-extrabold tracking-[0.3em] uppercase text-brand-blue">
+            <div className="h-[2px] w-12 bg-brand-red" />
+            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
               Experience Trufit
             </span>
-            <div className="h-[2px] w-12 bg-brand-blue" />
+            <div className="h-[2px] w-12 bg-brand-red" />
           </div>
 
-          <h2 className="text-3xl md:text-5xl font-black text-brand-dark mb-6 font-brawler uppercase tracking-tight italic video-reveal">
+          <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark mb-6 uppercase tracking-tight video-reveal">
             Take a <span className="text-brand-red">Video Tour</span>
           </h2>
 

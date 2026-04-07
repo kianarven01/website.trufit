@@ -28,7 +28,7 @@ export default function GalleryHero() {
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_30%,rgba(227,27,35,0.2),transparent_70%)]" />
-        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_70%,rgba(54,103,171,0.1),transparent_70%)]" />
+        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_70%,rgba(227,27,35,0.1),transparent_70%)]" />
       </div>
 
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">
@@ -36,14 +36,14 @@ export default function GalleryHero() {
           <div ref={textRef} className="max-w-3xl">
             <div className="flex items-center gap-3 mb-6 hero-reveal">
               <div className="h-[2px] w-12 bg-brand-red" />
-              <span className="text-sm font-extrabold tracking-[0.3em] uppercase text-brand-red">
+              <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
                 Visual Showcase
               </span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-6 font-brawler uppercase tracking-tight hero-reveal leading-none">
+            <h1 className="text-5xl md:text-7xl font-semibold text-white mb-6 uppercase tracking-tight hero-reveal leading-none">
               Witness Our <br />
-              <span className="text-brand-red">Precision.</span>
+              <span className="text-brand-red">Precision</span>
             </h1>
 
             <p className="text-white/60 text-lg md:text-xl max-w-xl hero-reveal font-medium leading-relaxed">
@@ -56,8 +56,8 @@ export default function GalleryHero() {
             <div className="flex items-center gap-4 text-white/20 mb-2">
               <ImageIcon size={48} strokeWidth={1} />
               <div className="text-right">
-                <span className="block text-4xl font-black leading-none uppercase italic">GLLRY</span>
-                <span className="text-[10px] uppercase tracking-[0.5em] font-bold">Showcase v1.0</span>
+                <span className="block text-4xl font-semibold leading-none uppercase">GLLRY</span>
+                <span className="text-[10px] uppercase tracking-[0.5em] font-semibold">Showcase v1.0</span>
               </div>
             </div>
           </div>

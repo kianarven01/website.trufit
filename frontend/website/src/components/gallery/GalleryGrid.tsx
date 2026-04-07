@@ -29,7 +29,7 @@ export default function GalleryGrid() {
             <button
               key={category.id}
               onClick={() => setActiveCategory(category.id)}
-              className={`px-5 py-3 md:px-10 md:py-5 rounded-sm font-black transition-all uppercase tracking-[0.2em] text-[10px] md:text-xs border-2 ${
+              className={`px-5 py-3 md:px-10 md:py-5 rounded-sm font-semibold transition-all uppercase tracking-[0.2em] text-[10px] md:text-xs border-2 ${
                 activeCategory === category.id 
                   ? "bg-brand-dark text-white border-brand-dark" 
                   : "bg-transparent text-brand-dark border-gray-100 hover:border-brand-red hover:text-brand-red"
@@ -64,8 +64,8 @@ export default function GalleryGrid() {
                       <Car className="w-10 h-10 md:w-20 md:h-20 text-brand-red/10 animate-pulse" />
                       <div className="absolute inset-0 bg-brand-red/5 blur-3xl rounded-full" />
                     </div>
-                    <span className="text-gray-300 font-extrabold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[8px] md:text-[10px] mb-1 md:mb-2">{item.category}</span>
-                    <h3 className="text-brand-dark/30 font-black text-sm md:text-2xl uppercase italic leading-tight">{item.title}</h3>
+                    <span className="text-gray-300 font-semibold uppercase tracking-[0.2em] md:tracking-[0.3em] text-[8px] md:text-[10px] mb-1 md:mb-2">{item.category}</span>
+                    <h3 className="text-brand-dark/30 font-semibold text-sm md:text-2xl uppercase leading-tight">{item.title}</h3>
                     
                     {/* Decorative lines for "high-end" vibe even without image */}
                     <div className="absolute top-4 left-4 md:top-8 md:left-8 w-6 md:w-12 h-[1px] bg-brand-dark/10" />
@@ -86,10 +86,10 @@ export default function GalleryGrid() {
                 {/* Overlay Content */}
                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-brand-dark/95 via-brand-dark/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 p-4 md:p-10 flex flex-col justify-end">
                   <div className="transform translate-y-4 md:translate-y-8 group-hover:translate-y-0 transition-transform duration-500">
-                    <span className="text-brand-red text-[8px] md:text-[10px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] block mb-1 md:mb-3">
+                    <span className="text-brand-red text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.3em] md:tracking-[0.4em] block mb-1 md:mb-3">
                       {item.category.replace("-", " ")}
                     </span>
-                    <h3 className="text-white text-lg md:text-3xl font-black mb-4 md:mb-6 uppercase italic font-brawler leading-tight">
+                    <h3 className="text-white text-lg md:text-3xl font-semibold mb-4 md:mb-6 uppercase font-barlow leading-tight">
                       {item.title}
                     </h3>
                     
@@ -118,7 +118,7 @@ export default function GalleryGrid() {
         {/* Empty State / Coming Soon */}
         {filteredItems.length === 0 && (
           <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-sm">
-            <h3 className="text-gray-400 font-black uppercase tracking-widest text-xl italic mb-2">Expanding Collection</h3>
+            <h3 className="text-gray-400 font-semibold uppercase tracking-widest text-xl mb-2">Expanding Collection</h3>
             <p className="text-gray-300 text-sm font-medium">New visual content is being prepared for this section.</p>
           </div>
         )}

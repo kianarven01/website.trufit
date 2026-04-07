@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { Camera, Trophy, Users, Flame } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -9,10 +10,30 @@ import { useGSAP } from "@gsap/react";
 gsap.registerPlugin(ScrollTrigger);
 
 const triathlonImages = [
-  { label: "Race Day", sublabel: "Triathlon event photo", className: "grid-item-1" },
-  { label: "Team Prep", sublabel: "Pre-race preparation", className: "grid-item-2" },
-  { label: "On Course", sublabel: "In-action shot", className: "grid-item-3" },
-  { label: "Finish Line", sublabel: "Victory moment", className: "grid-item-4" },
+  { 
+    label: "Race Day", 
+    sublabel: "Triathlon event photo", 
+    className: "grid-item-1",
+    src: "/images/about/triathlon/race_day.jpg" 
+  },
+  { 
+    label: "Team Prep", 
+    sublabel: "Pre-race preparation", 
+    className: "grid-item-2",
+    src: "/images/about/triathlon/team_prep.jpg" 
+  },
+  { 
+    label: "On Course", 
+    sublabel: "In-action shot", 
+    className: "grid-item-3",
+    src: "/images/about/triathlon/on_course.jpg" 
+  },
+  { 
+    label: "Finish Line", 
+    sublabel: "Victory moment", 
+    className: "grid-item-4",
+    src: "/images/about/triathlon/finish_line.jpg" 
+  },
 ];
 
 export default function ChapterThree() {
@@ -139,12 +160,19 @@ export default function ChapterThree() {
           {triathlonImages.map((img, idx) => (
             <div
               key={idx}
-              className={`tri-grid-item ${img.className} relative rounded-sm overflow-hidden shadow-lg`}
+              className={`tri-grid-item ${img.className} relative rounded-sm overflow-hidden shadow-lg group`}
             >
-              <div className="about-placeholder about-placeholder-corners w-full h-full min-h-[180px] md:min-h-0">
-                <Camera className="about-placeholder-icon" size={36} />
-                <p className="about-placeholder-label">{img.label}</p>
-                <p className="about-placeholder-sublabel">{img.sublabel}</p>
+              <Image 
+                src={img.src}
+                alt={img.label}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+              
+              {/* Caption Overlay */}
+              <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-brand-dark/80 to-transparent z-20">
+                <p className="text-white font-black text-[10px] uppercase tracking-widest mb-1">{img.label}</p>
+                <p className="text-white/60 text-[8px] uppercase tracking-widest font-bold">{img.sublabel}</p>
               </div>
 
               {/* Hover overlay */}

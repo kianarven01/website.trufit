@@ -4,7 +4,10 @@ import { useRef } from "react";
 import Image from "next/image";
 import { Image as ImageIcon } from "lucide-react";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function GalleryHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -18,6 +21,17 @@ export default function GalleryHero() {
       { opacity: 0, y: 30 },
       { opacity: 1, y: 0, duration: 1, stagger: 0.2, ease: "power3.out" }
     );
+
+    gsap.to(".parallax-bg", {
+      yPercent: 30,
+      ease: "none",
+      scrollTrigger: {
+        trigger: containerRef.current,
+        start: "top top",
+        end: "bottom top",
+        scrub: true,
+      },
+    });
   }, { scope: containerRef });
 
   return (
@@ -26,14 +40,16 @@ export default function GalleryHero() {
       className="relative pt-[200px] md:pt-[240px] pb-20 bg-brand-dark overflow-hidden -mt-[112px] md:-mt-[120px] min-h-[70vh] flex items-center"
     >
       {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
-        <Image 
-            src="/images/gallery/laboratory.jpg"
-            alt="Trufit Precision Laboratory"
-            fill
-            priority
-            className="object-cover opacity-40 scale-105"
-        />
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="parallax-bg absolute top-[-20%] left-0 w-full h-[140%]">
+          <Image 
+              src="/images/gallery/tools.jpg"
+              alt="Trufit Precision Laboratory"
+              fill
+              priority
+              className="object-cover opacity-40"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/40 to-brand-dark" />
       </div>
 

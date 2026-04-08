@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { galleryItems, GalleryItem } from "@/data/galleryData";
-import { Play, Maximize2, Car } from "lucide-react";
+import { Play, Maximize2, Car, ChevronLeft, ChevronRight } from "lucide-react";
 
 const categories = [
   { id: "all", name: "All Showcase" },
@@ -14,10 +14,45 @@ const categories = [
 
 export default function GalleryGrid() {
   const [activeCategory, setActiveCategory] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 14;
+  const gridRef = useRef<HTMLDivElement>(null);
 
-  const filteredItems = activeCategory === "all" 
+  const categoryFilteredItems = activeCategory === "all" 
     ? galleryItems 
     : galleryItems.filter(item => item.category === activeCategory);
+
+  const totalPages = Math.max(1, Math.ceil(categoryFilteredItems.length / ITEMS_PER_PAGE));
+  const filteredItems = categoryFilteredItems.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset to first page when category changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    if (gridRef.current) {
+      const topPos = gridRef.current.getBoundingClientRect().top + window.scrollY - 120;
+      window.scrollTo({
+        top: topPos,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const getBentoClass = (index: number) => {
+    const i = index % 14;
+    // Enhanced mobile responsiveness, 2 columns on mobile
+    if (i === 0) return "col-span-2 md:col-span-2 md:row-span-2 h-[250px] md:h-auto";
+    if (i === 4) return "col-span-2 md:col-span-2 h-[200px] md:h-auto lg:h-[250px]";
+    if (i === 7) return "col-span-2 md:col-span-2 md:row-span-2 h-[250px] md:h-auto";
+    if (i === 11) return "col-span-2 md:col-span-2 h-[200px] md:h-auto lg:h-[250px]";
+    return "col-span-1 row-span-1 h-[150px] md:h-auto";
+  };
 
   return (
     <section className="bg-white py-24 md:py-32 relative">
@@ -42,11 +77,12 @@ export default function GalleryGrid() {
 
         {/* The Grid */}
         <motion.div 
+          ref={gridRef}
           layout
-          className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 auto-rows-auto md:auto-rows-[300px] lg:auto-rows-[350px] grid-flow-dense"
         >
           <AnimatePresence mode="popLayout">
-            {filteredItems.map((item) => (
+            {filteredItems.map((item, index) => (
               <motion.div
                 key={item.id}
                 layout
@@ -54,7 +90,7 @@ export default function GalleryGrid() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.4 }}
-                className="group relative h-[250px] sm:h-[350px] lg:h-[450px] bg-gray-50 rounded-sm overflow-hidden border border-gray-100 shadow-sm"
+                className={`group relative bg-gray-50 rounded-sm overflow-hidden border border-gray-100 shadow-sm ${getBentoClass(index)}`}
               >
                 {/* Image Placeholder / Asset */}
                 <div className="absolute inset-0 z-0">
@@ -120,6 +156,41 @@ export default function GalleryGrid() {
           <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-sm">
             <h3 className="text-gray-400 font-semibold uppercase tracking-widest text-xl mb-2">Expanding Collection</h3>
             <p className="text-gray-300 text-sm font-medium">New visual content is being prepared for this section.</p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-16 md:mt-24 flex justify-center items-center gap-4">
+            <button
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-2 border-gray-200 rounded-sm text-brand-dark disabled:opacity-30 disabled:cursor-not-allowed hover:border-brand-red hover:text-brand-red transition-all"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="flex gap-2">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => handlePageChange(i + 1)}
+                  className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-sm font-semibold text-sm transition-all border-2 ${
+                    currentPage === i + 1
+                      ? "bg-brand-dark text-white border-brand-dark"
+                      : "bg-white text-gray-500 border-gray-200 hover:border-brand-red hover:text-brand-red"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-2 border-gray-200 rounded-sm text-brand-dark disabled:opacity-30 disabled:cursor-not-allowed hover:border-brand-red hover:text-brand-red transition-all"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
         )}
       </div>

@@ -182,7 +182,7 @@ export default function Navbar() {
               <button
                 onClick={openAppointment}
                 className={`px-8 py-2.5 rounded-sm font-bold transition-all shadow-lg ${
-                  isScrolled ? "bg-brand-red text-white" : "bg-white text-brand-dark"
+                  isScrolled ? "bg-brand-red text-white hover:bg-brand-dark" : "bg-white text-brand-dark hover:bg-brand-red hover:text-white"
                 }`}
               >
                 Book Now

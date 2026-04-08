@@ -20,13 +20,13 @@ const CustomDateInput = forwardRef<HTMLInputElement, { value?: string; onClick?:
       className="
         peer w-full bg-white/10 border border-white/20 rounded-sm
         px-4 pt-6 pb-2 placeholder-white/40 text-white
-        focus:outline-none focus:ring-1 focus:ring-brand-blue
+        focus:outline-none focus:ring-1 focus:ring-brand-red
         transition duration-300 pr-10
       "
     />
     <label className="
-      absolute left-4 top-2 text-white/60 text-[10px] uppercase font-bold tracking-wider transition-all
-      peer-focus:text-brand-blue
+      absolute left-4 top-2 text-white/60 text-[10px] uppercase font-semibold tracking-wider transition-all
+      peer-focus:text-brand-red
     ">
       Date & Time
     </label>
@@ -82,13 +82,13 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   const inputClass = `
     peer w-full bg-white/10 border border-white/20 rounded-sm
     px-4 pt-6 pb-2 placeholder-white/40 text-white
-    focus:outline-none focus:ring-1 focus:ring-brand-blue
+    focus:outline-none focus:ring-1 focus:ring-brand-red
     transition duration-300
   `
 
   const labelClass = `
-    absolute left-4 top-2 text-white/60 text-[10px] uppercase font-bold tracking-wider transition-all
-    peer-focus:text-brand-blue
+    absolute left-4 top-2 text-white/60 text-[10px] uppercase font-semibold tracking-wider transition-all
+    peer-focus:text-brand-red
   `
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,13 +188,13 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
             ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
             border rounded-sm
             px-4 pt-6 pb-2
-            focus:outline-none focus:ring-1 focus:ring-brand-blue
+            focus:outline-none focus:ring-1 focus:ring-brand-red
             transition duration-300
           `}
         />
         <label className={`
-          absolute left-4 top-2 text-[10px] uppercase font-bold tracking-wider transition-all
-          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-blue"}
+          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
+          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
         `}>
           Specify Service
         </label>
@@ -216,7 +216,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       <div className="md:col-span-2">
         <button
           type="submit"
-          className="w-full bg-brand-red text-white py-4 rounded-sm font-bold hover:bg-red-700 transition shadow-lg hover:shadow-red-900/20"
+          className="w-full bg-brand-red text-white py-4 rounded-sm font-semibold hover:bg-red-700 transition shadow-lg hover:shadow-red-900/20"
         >
           Book Appointment
         </button>

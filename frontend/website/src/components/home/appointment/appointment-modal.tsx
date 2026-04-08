@@ -76,13 +76,13 @@ export default function AppointmentModal() {
         {/* LEFT COLUMN */}
         <div ref={leftRef} className="flex flex-col justify-start gap-4 p-6 md:p-10 text-white">
           <div className="flex items-center gap-2">
-            <div className="h-[2px] w-10 bg-brand-blue"></div>
+            <div className="h-[2px] w-10 bg-brand-red"></div>
             <p className="text-sm font-semibold uppercase tracking-wider text-white/60">get in touch</p>
           </div>
 
-          <h2 className="text-3xl md:text-4xl font-bold font-brawler">
+          <h2 className="text-3xl md:text-4xl font-semibold">
             Schedule Your <br />
-            <span className="text-brand-blue uppercase">Appointment</span>
+            <span className="text-brand-red uppercase">Appointment</span>
           </h2>
 
           <p className="text-gray-300 max-w-md">
@@ -91,21 +91,21 @@ export default function AppointmentModal() {
 
           <div className="space-y-2 mt-4 text-gray-200">
             <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-brand-blue mt-1" />
+              <MapPin className="w-5 h-5 text-brand-red mt-1" />
               <a href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8" target="_blank" rel="noopener noreferrer" className="hover:underline">
                 P1, Brgy. Gahonon, Daet, Camarines Norte
               </a>
             </div>
             <div className="flex items-start gap-3">
-              <Phone className="w-5 h-5 text-brand-blue mt-1" />
+              <Phone className="w-5 h-5 text-brand-red mt-1" />
               <a href="tel:09187747788" className="hover:underline">0918-774-7788</a>
             </div>
             <div className="flex items-start gap-3">
-              <Mail className="w-5 h-5 text-brand-blue mt-1" />
+              <Mail className="w-5 h-5 text-brand-red mt-1" />
               <a href="mailto:trufitautocenter@gmail.com" className="hover:underline">trufitautocenter@gmail.com</a>
             </div>
             <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-brand-blue mt-1" />
+              <Clock className="w-5 h-5 text-brand-red mt-1" />
               <p>Mon – Sat: 8:00 AM – 5:00 PM</p>
             </div>
           </div>

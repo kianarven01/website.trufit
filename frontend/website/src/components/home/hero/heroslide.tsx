@@ -159,8 +159,8 @@ export default function HeroSlide({ slide, isActive }: Props) {
                 ...consistentTextStyle 
             }}
           >
-            <div className="h-[2px] w-8 bg-brand-blue" />
-            <span className="text-[10px] md:text-sm font-bold tracking-widest uppercase text-brand-blue">
+            <div className="h-[2px] w-8 bg-brand-red" />
+            <span className="text-[10px] md:text-sm font-semibold tracking-widest uppercase text-white/80">
               Quality Auto Care
             </span>
           </div>
@@ -168,7 +168,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* title */}
           <h1
             ref={titleRef}
-            className="font-brawler text-3xl sm:text-4xl md:text-8xl font-bold mb-3 md:mb-3 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl"
+            className="text-3xl sm:text-4xl md:text-8xl font-semibold mb-3 md:mb-3 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl"
             style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle, 
@@ -194,14 +194,14 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* buttons */}
           <div ref={buttonsRef} className="flex flex-wrap gap-2 md:gap-4 mb-8 md:mb-10 landscape:mb-4 md:landscape:mb-6" style={{ opacity: isActive ? 0 : 1, ...consistentTextStyle }}>
             
-            <Link href={slide.primaryLink} className="group inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-800 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all shadow-lg hover:shadow-blue-900/40 text-[9px] sm:text-xs md:text-base">
+            <Link href={slide.primaryLink} className="group inline-flex items-center gap-2 bg-brand-red hover:bg-red-700 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-semibold transition-all shadow-lg hover:shadow-red-900/40 text-[9px] sm:text-xs md:text-base">
               Our Services
               <div className="bg-white/20 p-1 rounded-full group-hover:bg-white/40 transition-colors">
                 <ArrowRightCircle className="w-3 md:w-4 h-3 md:h-4" />
               </div>
             </Link>
 
-            <Link href={slide.secondaryLink} className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-bold transition-all bg-white/10 border border-white/20 text-white hover:bg-brand-red hover:border-brand-red text-[9px] sm:text-xs md:text-base">
+            <Link href={slide.secondaryLink} className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-semibold transition-all bg-white/10 border border-white/20 text-white hover:bg-brand-blue/20 hover:border-brand-blue text-[9px] sm:text-xs md:text-base">
               <Play className="w-3 md:w-4 h-3 md:h-4" />
               View More
             </Link>
@@ -220,19 +220,19 @@ export default function HeroSlide({ slide, isActive }: Props) {
             >
               <div className="flex items-center gap-3">
                 <Image src="/images/accreditations/suzuki.webp" alt="Suzuki Authorized" width={100} height={100} className="w-auto h-5 md:h-6 object-contain" />
-                <div className="text-[10px] md:text-xs uppercase font-bold tracking-tighter leading-tight">
+                <div className="text-[10px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
                   Authorized<br/><span className="text-gray-400 font-normal">Service Station</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Image src="/images/accreditations/dti.webp" alt="DTI 5 Star" width={40} height={40} className="w-8 h-8 md:w-10 md:h-10 object-contain" />
-                <div className="text-[10px] md:text-xs uppercase font-bold tracking-tighter leading-tight">
+                <div className="text-[10px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
                   5 Star<br/><span className="text-gray-400 font-normal">Accredited</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Image src="/images/accreditations/bagwis.webp" alt="Bronze Bagwis" width={40} height={40} className="w-8 h-8 md:w-10 md:h-10 object-contain" />
-                <div className="text-[10px] md:text-xs uppercase font-bold tracking-tighter leading-tight">
+                <div className="text-[10px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
                   Bronze Bagwis<br/><span className="text-gray-400 font-normal">Seal of Excellence</span>
                 </div>
               </div>

@@ -5,8 +5,7 @@ import ChapterOne from "./ChapterOne";
 import ChapterTwo from "./ChapterTwo";
 import ChapterThree from "./ChapterThree";
 import AccreditationsPartners from "./AccreditationsPartners";
-import VisionMissionValues from "./VisionMissionValues";
-import AboutCTA from "./AboutCTA";
+import FoundationBlock from "./FoundationBlock";
 
 import "./about.css";
 
@@ -18,8 +17,7 @@ export default function AboutPage() {
       <ChapterTwo />
       <ChapterThree />
       <AccreditationsPartners />
-      <VisionMissionValues />
-      <AboutCTA />
+      <FoundationBlock />
     </div>
   );
 }

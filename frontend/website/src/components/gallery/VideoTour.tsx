@@ -31,14 +31,14 @@ export default function VideoTour() {
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6 video-reveal">
-            <div className="h-[2px] w-12 bg-brand-blue" />
-            <span className="text-sm font-extrabold tracking-[0.3em] uppercase text-brand-blue">
+            <div className="h-[2px] w-12 bg-brand-red" />
+            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
               Experience Trufit
             </span>
-            <div className="h-[2px] w-12 bg-brand-blue" />
+            <div className="h-[2px] w-12 bg-brand-red" />
           </div>
 
-          <h2 className="text-3xl md:text-5xl font-black text-brand-dark mb-6 font-brawler uppercase tracking-tight italic video-reveal">
+          <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark mb-6 uppercase tracking-tight video-reveal">
             Take a <span className="text-brand-red">Video Tour</span>
           </h2>
 
@@ -48,25 +48,27 @@ export default function VideoTour() {
         </div>
 
         {/* Video Player Container */}
-        <div className="video-reveal max-w-5xl mx-auto">
-          <div className="relative group aspect-video bg-brand-dark rounded-sm overflow-hidden shadow-2xl shadow-brand-dark/20 border border-gray-200">
-            {/* Placeholder / YouTube Embed */}
-            {/* Replace the src with your actual YouTube video ID later */}
-            <iframe
-              className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&rel=0"
-              title="Trufit Auto Center Tour"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            ></iframe>
-            
-            {/* Overlay (Optional: can be removed if using iframe directly) */}
-            <div className="absolute inset-0 bg-brand-dark/40 group-hover:bg-brand-dark/10 transition-all pointer-events-none flex items-center justify-center">
-                <div className="w-24 h-24 bg-brand-red text-white flex items-center justify-center rounded-full scale-90 group-hover:scale-100 transition-transform shadow-xl shadow-brand-red/40">
-                  <Play size={40} fill="currentColor" className="ml-1" />
-                </div>
-            </div>
+        <div className="video-reveal max-w-5xl mx-auto flex flex-col items-center">
+          <div className="relative group w-full aspect-video bg-brand-dark rounded-sm overflow-hidden shadow-2xl shadow-brand-dark/20 border border-gray-200">
+            {/* HTML5 Video Showcase */}
+            <video
+              className="absolute inset-0 w-full h-full object-cover outline-none"
+              src="/images/gallery/video_showcase.mp4"
+              controls
+              controlsList="nodownload"
+              playsInline
+              preload="metadata"
+            />
+          </div>
+
+          {/* Credits / Caption Below Video */}
+          <div className="mt-8 text-center px-4 w-full border-t border-gray-200 pt-6 flex flex-col gap-1">
+            <p className="text-sm text-gray-400 font-semibold uppercase tracking-[0.2em]">
+              Media recorded at <span className="text-brand-dark">Trufit Auto Center Facility</span>
+            </p>
+            <p className="text-xs text-brand-red font-semibold uppercase tracking-[0.2em]">
+              by CNTV
+            </p>
           </div>
         </div>
       </div>

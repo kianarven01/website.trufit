@@ -72,12 +72,12 @@ export default function ChapterOne() {
     >
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none select-none">
-        <div className="absolute top-20 left-10 text-[12vw] font-black leading-none opacity-[0.02] text-transparent"
+        <div className="absolute top-20 left-10 text-[12vw] font-semibold leading-none opacity-[0.02] text-transparent"
           style={{ WebkitTextStroke: '1px #0A0A0A' }}
         >
           TRUFIT<br />AUTO
         </div>
-        <div className="absolute top-1/4 -right-40 w-[600px] h-[600px] bg-brand-blue/[0.02] rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 -right-40 w-[600px] h-[600px] bg-brand-red/[0.02] rounded-full blur-[120px]" />
         <div className="absolute bottom-1/4 -left-40 w-[500px] h-[500px] bg-brand-red/[0.02] rounded-full blur-[100px]" />
       </div>
 
@@ -90,17 +90,14 @@ export default function ChapterOne() {
               {/* Main Image */}
               <div className="relative h-[400px] md:h-[550px] lg:h-[650px] w-full rounded-sm overflow-hidden shadow-2xl">
                 <div className="about-placeholder about-placeholder-corners w-full h-full">
-                  <Camera className="about-placeholder-icon" size={48} />
-                  <p className="about-placeholder-label">Workshop Photo</p>
-                  <p className="about-placeholder-sublabel">Team at work or shop interior</p>
+                  <img src="/images/about/workshop.jpg" alt="Workshop" className="w-full h-full object-cover" />
                 </div>
               </div>
 
               {/* Floating accent image */}
               <div className="absolute -bottom-8 -right-4 md:-right-8 w-[180px] md:w-[240px] h-[140px] md:h-[180px] rounded-sm overflow-hidden shadow-xl border-4 border-white z-10">
                 <div className="about-placeholder w-full h-full" style={{ borderStyle: 'none' }}>
-                  <Camera className="about-placeholder-icon" size={24} />
-                  <p className="about-placeholder-label text-[7px]">Detail Shot</p>
+                  <img src="/images/about/detailshot.jpg" alt="Workshop" className="w-full h-full object-cover" />
                 </div>
               </div>
 
@@ -116,12 +113,12 @@ export default function ChapterOne() {
               <span className="chapter-label-text">About Trufit</span>
             </div>
 
-            <h2 className="ch1-reveal text-3xl md:text-5xl font-black mb-4 font-brawler leading-tight text-brand-dark uppercase tracking-tight">
+            <h2 className="ch1-reveal text-3xl md:text-5xl font-semibold mb-4 leading-tight text-brand-dark uppercase tracking-tight">
               Who We Are
             </h2>
 
             <p className="ch1-reveal text-brand-red font-bold text-sm tracking-[0.2em] uppercase mb-8">
-              Founded 2021 · 25+ Years of Expertise
+              Founded 2019 · 25+ Years of Expertise
             </p>
 
             <p className="ch1-reveal text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl font-medium">
@@ -145,7 +142,7 @@ export default function ChapterOne() {
                     <CheckCircle2 className="text-brand-red w-5 h-5 transition-transform group-hover:scale-110" />
                   </div>
                   <div>
-                    <h4 className="font-black text-brand-dark uppercase text-xs tracking-widest mb-1.5">
+                    <h4 className="font-semibold text-brand-dark uppercase text-xs tracking-widest mb-1.5">
                       {feature.title}
                     </h4>
                     <p className="text-gray-500 text-xs leading-relaxed">
@@ -164,7 +161,7 @@ export default function ChapterOne() {
                   className="flex flex-col items-center p-4 md:p-6 border-r border-gray-100 last:border-0"
                 >
                   <div className="text-brand-red mb-2">{stat.icon}</div>
-                  <span className="text-2xl md:text-3xl font-black text-brand-dark">
+                  <span className="text-2xl md:text-3xl font-semibold text-brand-dark">
                     {stat.value}
                   </span>
                   <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 text-center">

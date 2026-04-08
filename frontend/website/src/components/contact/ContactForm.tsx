@@ -160,10 +160,10 @@ export default function ContactForm() {
         <button
           type="submit"
           disabled={sending}
-          className={`w-full py-4 rounded-sm font-bold text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${
+          className={`w-full py-4 rounded-sm font-bold text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 font-barlow ${
             sending
-              ? "bg-brand-blue/50 text-white/50 cursor-wait"
-              : "bg-brand-blue text-white hover:bg-brand-red shadow-lg hover:shadow-brand-red/20"
+              ? "bg-brand-red/50 text-white/50 cursor-wait"
+              : "bg-brand-red text-white hover:bg-red-700 shadow-lg hover:shadow-brand-red/30"
           }`}
         >
           {sending ? (
@@ -182,13 +182,13 @@ export default function ContactForm() {
 
       {/* PRIVACY NOTE */}
       <div className="md:col-span-2">
-        <p className="text-white/30 text-[11px] text-center leading-relaxed">
+        <p className="text-white/30 text-[11px] text-center leading-relaxed font-barlow">
           By submitting this form, you agree to our{" "}
-          <span className="text-brand-blue/60 hover:text-brand-blue cursor-pointer transition-colors">
+          <span className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
             Terms of Service
           </span>{" "}
           and{" "}
-          <span className="text-brand-blue/60 hover:text-brand-blue cursor-pointer transition-colors">
+          <span className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
             Privacy Policy
           </span>
           .

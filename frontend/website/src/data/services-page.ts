@@ -5,14 +5,14 @@ export const specializedServices: Service[] = [
     id: 1,
     title: "Euro Car Specialist",
     description: "Expert diagnostics and repair for high-performance European vehicles, ensuring precision and reliability.",
-    icon: "ShieldCheck",
+    icon: "Car",
     image: "/images/services/euro-cars.jpg",
   },
   {
     id: 2,
     title: "American Car Specialist",
     description: "Dedicated maintenance and restoration services for American-made trucks and passenger vehicles.",
-    icon: "Wrench",
+    icon: "Car",
     image: "/images/services/american-cars.jpg",
   },
   {
@@ -26,7 +26,7 @@ export const specializedServices: Service[] = [
     id: 4,
     title: "Maintenance & Inspection",
     description: "Comprehensive 21-point vehicle inspections and routine maintenance schedules to keep you on the road.",
-    icon: "Search",
+    icon: "ClipboardCheck",
     image: "/images/services/inspection.jpg",
   },
   {
@@ -40,14 +40,14 @@ export const specializedServices: Service[] = [
     id: 6,
     title: "Mechanical Repairs",
     description: "Full-service mechanical repairs, from engine overhauls to transmission and drivetrain maintenance.",
-    icon: "Settings",
+    icon: "Wrench",
     image: "/images/services/mechanical.jpg",
   },
   {
     id: 7,
     title: "Under Chassis Repairs",
     description: "Specialized suspension, steering, and chassis alignment to ensure a smooth and safe driving experience.",
-    icon: "ArrowDownCircle",
+    icon: "GitBranch",
     image: "/images/services/underchassis.jpg",
   },
   {
@@ -61,7 +61,7 @@ export const specializedServices: Service[] = [
     id: 9,
     title: "Diesel Common Rail Direct Inspection",
     description: "High-precision inspection and calibration of modern common-rail diesel injection systems.",
-    icon: "Activity",
+    icon: "Gauge",
     image: "/images/services/crdi.jpg",
   },
   {
@@ -75,7 +75,7 @@ export const specializedServices: Service[] = [
     id: 11,
     title: "Other Allied Services",
     description: "Custom automotive solutions including battery replacement, tire services, and specialized bodywork.",
-    icon: "PlusSquare",
+    icon: "Toolbox",
     image: "/images/services/allied-services.jpg",
   }
 ]

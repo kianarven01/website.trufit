@@ -100,7 +100,7 @@ export default function AboutHero() {
         </p>
 
         {/* Scroll Indicator */}
-        <div className="hero-scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0">
+        <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0">
           <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
             Scroll
           </span>

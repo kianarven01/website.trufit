@@ -146,15 +146,15 @@
 .chapter-label-line {
   height: 2px;
   width: 3rem;
-  background: var(--brand-blue);
+  background: var(--brand-red);
 }
 
 .chapter-label-text {
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--brand-blue);
+  color: var(--brand-red);
 }
 
 /* --------------- Horizontal Scroll Gallery (Chapter 2) --------------- */
@@ -313,7 +313,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue));
+  background: linear-gradient(90deg, var(--brand-red), #ff4d4d);
   opacity: 0;
   transition: opacity 0.4s ease;
 }
@@ -348,7 +348,7 @@
   left: -10%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
+  background: radial-gradient(circle, rgba(227, 27, 35, 0.03), transparent 70%);
   border-radius: 50%;
   pointer-events: none;
 }

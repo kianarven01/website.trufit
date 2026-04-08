@@ -6,11 +6,16 @@ import Link from "next/link"
 import { Phone, Mail, Clock, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import BibleVerseMarquee from "./BibleVerseMarquee"
+import { useModalStore } from "@/store/useModalStore"
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
+  
+  const openAppointment = useModalStore((s) => s.openAppointment)
+  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen)
+
   const isVisibleRef = useRef(true)
   const lastScrollY = useRef(0)
   const isLockedRef = useRef(false)
@@ -19,7 +24,7 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "Services", href: "/services" },
     { name: "Gallery", href: "/gallery" },
-    { name: "News", href: "/news" },
+
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ]
@@ -97,10 +102,10 @@ export default function Navbar() {
 
   // disable background scroll when mobile menu is open
   useEffect(() => {
-    if (isOpen) document.body.classList.add("overflow-hidden")
+    if (isOpen || isAppointmentOpen) document.body.classList.add("overflow-hidden")
     else document.body.classList.remove("overflow-hidden")
     return () => document.body.classList.remove("overflow-hidden")
-  }, [isOpen])
+  }, [isOpen, isAppointmentOpen])
 
   const linkStyle = `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${
     isScrolled ? "text-brand-dark" : "text-white"
@@ -174,25 +179,15 @@ export default function Navbar() {
 
             {/* desktop book button - hidden below lg */}
             <div className="hidden lg:flex ml-4">
-            <Link
-              href="/#appointment"
-              onClick={(e) => {
-                const el = document.getElementById("appointment");
-
-                if (el) {
-                  e.preventDefault();
-                  el.scrollIntoView(); // no smooth → instant jump
-                }
-              }}
-              className={`px-8 py-2.5 rounded-sm font-bold transition-all duration-300 shadow-lg ${
-                isScrolled
-                  ? "bg-brand-red text-white hover:bg-brand-dark"
-                  : "bg-white text-brand-dark hover:bg-brand-red hover:text-white"
-              }`}
-            >
-              Book Now
-            </Link>
-          </div>
+              <button
+                onClick={openAppointment}
+                className={`px-8 py-2.5 rounded-sm font-bold transition-all shadow-lg ${
+                  isScrolled ? "bg-brand-red text-white" : "bg-white text-brand-dark"
+                }`}
+              >
+                Book Now
+              </button>
+            </div>
 
             {/* hamburger - visible below lg */}
             <div className="lg:hidden ml-auto z-50">
@@ -234,22 +229,15 @@ export default function Navbar() {
                   </Link>
                 ))}
 
-                <Link
-                href="/#appointment"
-                onClick={(e) => {
-                  const el = document.getElementById("appointment");
-
-                  if (el) {
-                    e.preventDefault();
-                    el.scrollIntoView(); // instant jump
-                  }
-
-                  setIsOpen(false);
-                }}
-                className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
-              >
-                Book Now
-              </Link>
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    openAppointment()
+                  }}
+                  className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
+                >
+                  Book Now
+                </button>
 
                 <div className="mt-auto flex gap-6 text-white/40 pb-6">
                   <a href="tel:09187747788" className="hover:text-white transition-colors">
@@ -266,6 +254,7 @@ export default function Navbar() {
           )}
         </AnimatePresence>
       </motion.nav>
+      
     </header>
   )
 }

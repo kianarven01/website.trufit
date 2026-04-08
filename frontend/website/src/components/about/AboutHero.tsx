@@ -71,9 +71,8 @@ export default function AboutHero() {
       {/* Background Placeholder */}
       <div ref={bgRef} className="absolute inset-0 -top-[50px]">
         <div className="about-placeholder w-full h-[120%]">
-          <Camera className="about-placeholder-icon" size={64} />
-          <p className="about-placeholder-label">Hero Banner Photo</p>
-          <p className="about-placeholder-sublabel">Recommended: Workshop team or shop exterior</p>
+          <Camera className="about-placehoylder-icon" size={64} />
+          <img src="/images/about/header.jpg" alt="Hero Banner" className="w-full h-full object-cover" />
         </div>
       </div>
 
@@ -90,13 +89,13 @@ export default function AboutHero() {
           <div className="h-[1px] w-12 bg-brand-red" />
         </div>
 
-        <h1 className="hero-title text-4xl md:text-6xl lg:text-7xl font-black text-white font-brawler leading-[1.1] tracking-tight mb-6 opacity-0">
+        <h1 className="hero-title text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] tracking-tight mb-6 opacity-0">
           More Than A<br />
           <span className="text-gradient-red">Service Center</span>
         </h1>
 
         <p className="hero-subtitle text-white/60 text-base md:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed font-medium opacity-0">
-          We fix cars. We rescue communities. We race to win.
+          We fix cars. We build overland adventures. We race to win.
           This is the Trufit story.
         </p>
 

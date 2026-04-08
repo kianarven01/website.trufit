@@ -101,6 +101,8 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
     if (res.ok) {
       alert("appointment sent ♡")
+
+      window.dispatchEvent(new Event("appointmentSuccess")) // ✨ close modal
       setForm({
         firstName: "",
         lastName: "",

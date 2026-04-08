@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/navbar/navbar"
 import Footer from "@/components/layout/footer/footer"
 import ScrollToTopButton from "@/components/ui/scrolltotopbutton"
 import PromoPopup from "@/components/ui/promopopup"
+import GlobalModals from "@/components/global/GlobalModals"
 
 import "@/styles/globals.css"
 
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ScrollToTopButton />
 
         <PromoPopup/>
+        <GlobalModals />
       </body>
     </html>
   )

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useModalStore } from "@/store/useModalStore"
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -74,6 +75,9 @@ export default function AboutSection() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isOpen, setIsOpen] = useState(false)
 
+  const openAppointment = useModalStore((s) => s.openAppointment)
+  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen)
+  
   // Background shape refs
   const aura1Ref = useRef<HTMLDivElement>(null);
   const aura2Ref = useRef<HTMLDivElement>(null);
@@ -375,7 +379,7 @@ export default function AboutSection() {
             </div>
 
             <p className="text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl about-reveal font-medium">
-              Founded in 2021, Trufit pairs trusted techniques with dealership-level tools to keep your car running strong.
+              Founded in 2019, Trufit pairs trusted techniques with dealership-level tools to keep your car running strong.
             </p>
 
             <p className="text-gray-500 text-base mb-12 leading-relaxed max-w-2xl about-reveal">
@@ -409,20 +413,15 @@ export default function AboutSection() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-6 about-reveal">
-              <Link
-                href="/#appointment"
-                onClick={(e) => {
-                  const el = document.getElementById("appointment");
-                  if (el) {
-                    e.preventDefault();
-                    el.scrollIntoView(); // instant jump
-                  }
-                  setIsOpen(false);
-                }}
+              <button
+                onClick={() => {
+                    setIsOpen(false)
+                    openAppointment()
+                  }}
                 className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20 inline-block"
               >
                 Book Appointment
-              </Link>
+              </button>
               <a
                 href="https://www.google.com/maps/place/Trufit+Auto+Center/@14.1237854,122.9405256,17z/data=!4m8!3m7!1s0x3398affd09d7236b:0xcfccafc73d343d48!8m2!3d14.1237854!4d122.9431005!9m1!1b1!16s%2Fg%2F11fl9dschh?entry=ttu&g_ep=EgoyMDI2MDMyNC4wIKXMDSoASAFQAw%3D%3D"
                 target="_blank"

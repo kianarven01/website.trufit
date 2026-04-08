@@ -15,7 +15,7 @@ const categories = [
 export default function GalleryGrid() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 14;
+  const ITEMS_PER_PAGE = 16;
   const gridRef = useRef<HTMLDivElement>(null);
 
   const categoryFilteredItems = activeCategory === "all" 
@@ -45,13 +45,12 @@ export default function GalleryGrid() {
   };
 
   const getBentoClass = (index: number) => {
-    const i = index % 14;
-    // Enhanced mobile responsiveness, 2 columns on mobile
-    if (i === 0) return "col-span-2 md:col-span-2 md:row-span-2 h-[250px] md:h-auto";
-    if (i === 4) return "col-span-2 md:col-span-2 h-[200px] md:h-auto lg:h-[250px]";
-    if (i === 7) return "col-span-2 md:col-span-2 md:row-span-2 h-[250px] md:h-auto";
-    if (i === 11) return "col-span-2 md:col-span-2 h-[200px] md:h-auto lg:h-[250px]";
-    return "col-span-1 row-span-1 h-[150px] md:h-auto";
+    const i = index % 8;
+    // Mathematically perfect 12-unit bento repeating block. 
+    // Works flawlessly creating full rectangles on 2, 3, and 4 column grids!
+    if (i === 0) return "col-span-2 md:col-span-2 md:row-span-2";
+    if (i === 3) return "col-span-2 md:col-span-2";
+    return "col-span-1 row-span-1";
   };
 
   return (
@@ -79,7 +78,7 @@ export default function GalleryGrid() {
         <motion.div 
           ref={gridRef}
           layout
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 auto-rows-auto md:auto-rows-[300px] lg:auto-rows-[350px] grid-flow-dense"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6 auto-rows-[200px] md:auto-rows-[250px] lg:auto-rows-[280px] grid-flow-dense"
         >
           <AnimatePresence mode="popLayout">
             {filteredItems.map((item, index) => (
@@ -90,7 +89,7 @@ export default function GalleryGrid() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.4 }}
-                className={`group relative bg-gray-50 rounded-sm overflow-hidden border border-gray-100 shadow-sm ${getBentoClass(index)}`}
+                className={`group relative bg-gray-50 rounded-sm overflow-hidden border border-gray-100 shadow-sm w-full h-full ${getBentoClass(index)}`}
               >
                 {/* Image Placeholder / Asset */}
                 <div className="absolute inset-0 z-0">

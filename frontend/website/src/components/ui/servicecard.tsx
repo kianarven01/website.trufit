@@ -57,11 +57,11 @@ export default function ServiceCard({ service }: ServiceCardProps) {
         {/* Floating icon badge (Handles both) */}
         <div className="absolute bottom-4 left-4 bg-white/90 md:bg-transparent md:glass p-3 md:p-4 rounded-sm border border-white/50 shadow-xl transition-all duration-500 group-hover:scale-110 group-hover:bg-brand-red group-hover:border-brand-red">
           {isImagePath ? (
-            <div className="relative w-5 h-5 md:w-6 md:h-6 md:brightness-0 md:invert group-hover:brightness-0 group-hover:invert transition-all">
+            <div className="relative w-7 h-7 md:w-8 md:h-8 md:brightness-0 md:invert group-hover:brightness-0 group-hover:invert transition-all">
               <Image src={service.icon} alt={service.title} fill className="object-contain" />
             </div>
           ) : (
-            Icon && <Icon className="w-5 h-5 md:w-6 md:h-6 text-brand-red md:text-white group-hover:text-white" />
+            Icon && <Icon className="w-7 h-7 md:w-8 md:h- text-brand-red md:text-white group-hover:text-white" />
           )}
         </div>
       </div>

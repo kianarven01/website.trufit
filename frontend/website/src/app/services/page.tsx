@@ -3,8 +3,7 @@ import ServicesHero from "@/components/services/ServicesHero";
 import ServiceVideo from "@/components/services/ServiceVideo";
 import PMSService from "@/components/services/PMSService";
 import GeneralServices from "@/components/services/GeneralServices";
-import VehicleBrands from "@/components/services/VehicleBrands";
-import AppointmentSection from "@/components/home/appointment/appointment";
+import ServicesCTABlock from "@/components/services/ServicesCTABlock";
 
 export const metadata: Metadata = {
   title: "Services | Trufit Auto Center",
@@ -18,10 +17,9 @@ export default function ServicesPage() {
       <ServiceVideo />
       <PMSService />
       <GeneralServices />
-      <VehicleBrands />
       
-      {/* Reusing existing Appointment section for CTA */}
-      <AppointmentSection />
+      {/* Shared Parallax CTA block for Brands & Appointment */}
+      <ServicesCTABlock />
     </main>
   );
 }

@@ -159,7 +159,7 @@ export default function PMSService() {
               {/* Main Image */}
               <div className="relative aspect-[4/5] rounded-sm overflow-hidden shadow-2xl border-[12px] border-white z-10">
                 <Image
-                  src="/images/pms-highlight.jpg"
+                  src="/images/services/PMS.jpg"
                   alt="Preventive Maintenance Service"
                   fill
                   className="object-cover"

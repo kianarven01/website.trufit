@@ -11,13 +11,25 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function ServicesHero() {
   const container = useRef<HTMLDivElement>(null);
+  const bgImageRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLParagraphElement>(null);
-  const bgTextRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
+      // Parallax effect for background image
+      gsap.to(bgImageRef.current, {
+        yPercent: 25,
+        ease: "none",
+        scrollTrigger: {
+          trigger: container.current,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container.current,
@@ -43,18 +55,6 @@ export default function ServicesHero() {
         { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
         "-=0.5"
       );
-
-      // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -100,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
     },
     { scope: container }
   );
@@ -62,25 +62,28 @@ export default function ServicesHero() {
   return (
     <section
       ref={container}
-      className="relative min-h-[90vh] md:min-h-[85vh] w-full flex items-center justify-center overflow-hidden bg-brand-dark -mt-[112px] md:-mt-[120px]"
+      className="relative min-h-[70vh] flex items-center justify-center overflow-hidden -mt-[112px] md:-mt-[120px] pt-[140px] md:pt-[160px] pb-16 md:pb-24"
     >
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src="/images/suzuki-banner.jpg"
-          alt="Suzuki Authorized Service Center"
-          fill
-          className="object-cover opacity-40 grayscale-[20%]"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark via-brand-dark/40 to-brand-dark" />
+      {/* Background with Parallax */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
+          <Image
+            src="/images/services/entrance.jpg"
+            alt="Trufit Auto Center Entrance"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+        </div>
+        {/* Dark overlay matching ContactHero */}
+        <div className="absolute inset-0 bg-black/75 z-10" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto pt-32 md:pt-40 pb-20">
+      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto">
         <div 
           ref={subtitleRef}
-          className="services-chapter-label justify-center opacity-0"
+          className="services-chapter-label justify-center opacity-0 mb-6"
         >
           <div className="services-chapter-label-line" />
           <span className="services-chapter-label-text !text-white/60">
@@ -91,7 +94,7 @@ export default function ServicesHero() {
         
         <h1 
           ref={titleRef}
-          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white leading-[1.1] tracking-tight opacity-0"
+          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
         >
           Suzuki Authorized <br className="hidden md:block" />
           <span className="text-gradient-red font-semibold">Service Center</span>
@@ -99,11 +102,11 @@ export default function ServicesHero() {
         
         <p 
           ref={textRef}
-          className="mt-10 text-white/50 text-base md:text-lg lg:text-xl max-w-2xl mx-auto font-medium leading-relaxed opacity-0"
+          className="text-white/60 text-lg md:text-2xl font-medium max-w-3xl mx-auto leading-relaxed opacity-0"
         >
-          World-class maintenance and repair for your Suzuki vehicle, 
-          powered by genuine parts and factory-trained technicians 
-          who understand your engine better than anyone else.
+          We set the gold standard in automotive care. As an authorized Suzuki 
+          Service Center, we provide specialized maintenance that guarantees 
+          reliability, safety, and peak performance.
         </p>
 
         {/* Floating Accent badges could go here if needed, but keeping it clean for Hero */}

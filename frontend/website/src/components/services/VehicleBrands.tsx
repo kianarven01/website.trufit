@@ -8,7 +8,11 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function VehicleBrands() {
+interface VehicleBrandsProps {
+  isTransparent?: boolean;
+}
+
+export default function VehicleBrands({ isTransparent = false }: VehicleBrandsProps) {
   const container = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -34,7 +38,12 @@ export default function VehicleBrands() {
   );
 
   return (
-    <section ref={container} className="py-24 md:py-40 bg-brand-dark overflow-hidden px-6 sm:px-10 lg:px-24 border-t border-white/5">
+    <section 
+      ref={container} 
+      className={`py-24 md:py-40 overflow-hidden px-6 sm:px-10 lg:px-24 ${
+        isTransparent ? "bg-transparent border-none" : "bg-brand-dark border-t border-white/5"
+      }`}
+    >
       <div className="max-w-[1400px] mx-auto">
         <div className="mb-20 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">

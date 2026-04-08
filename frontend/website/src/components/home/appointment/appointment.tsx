@@ -10,7 +10,11 @@ import { useGSAP } from "@gsap/react"
 
 gsap.registerPlugin(ScrollTrigger)
 
-export default function AppointmentSection() {
+interface AppointmentSectionProps {
+  isTransparent?: boolean;
+}
+
+export default function AppointmentSection({ isTransparent = false }: AppointmentSectionProps) {
   const container = useRef<HTMLDivElement>(null)
   const backgroundImage = "" // Add your image path here
   
@@ -80,18 +84,26 @@ export default function AppointmentSection() {
   }, [])
 
   return (
-    <section ref={container} className="relative bg-brand-dark py-16 md:py-24 overflow-hidden" id="appointment">
+    <section 
+      ref={container} 
+      className={`relative py-16 md:py-24 overflow-hidden ${
+        isTransparent ? "bg-transparent" : "bg-brand-dark"
+      }`} 
+      id="appointment"
+    >
       {/* BACKGROUND IMAGE & OVERLAY */}
-      <div className="absolute inset-0 z-0 opacity-20">
-        {backgroundImage ? (
-          <Image src={backgroundImage} fill alt="Appointment Background" className="object-cover" />
-        ) : (
-          <div className="w-full h-full bg-brand-dark flex items-center justify-center">
-             <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_100%)]" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/80 to-transparent" />
-      </div>
+      {!isTransparent && (
+        <div className="absolute inset-0 z-0 opacity-20">
+          {backgroundImage ? (
+            <Image src={backgroundImage} fill alt="Appointment Background" className="object-cover" />
+          ) : (
+            <div className="w-full h-full bg-brand-dark flex items-center justify-center">
+               <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_100%)]" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/80 to-transparent" />
+        </div>
+      )}
 
       <div className="relative z-10 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">

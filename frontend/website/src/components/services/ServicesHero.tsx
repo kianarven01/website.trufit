@@ -62,7 +62,7 @@ export default function ServicesHero() {
   return (
     <section
       ref={container}
-      className="relative min-h-[70vh] flex items-center justify-center overflow-hidden -mt-[112px] md:-mt-[120px] pt-[140px] md:pt-[160px] pb-16 md:pb-24"
+      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] flex items-center justify-center overflow-hidden -mt-[112px] md:-mt-[120px]"
     >
       {/* Background with Parallax */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -80,7 +80,7 @@ export default function ServicesHero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto">
+      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto pt-[112px] md:pt-[120px]">
         <div 
           ref={subtitleRef}
           className="services-chapter-label justify-center opacity-0 mb-6"

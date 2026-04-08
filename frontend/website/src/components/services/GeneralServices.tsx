@@ -7,11 +7,13 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
+import "./services.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function GeneralServices() {
   const container = useRef<HTMLDivElement>(null);
+  const bgTextRef = useRef<HTMLDivElement>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
 
@@ -22,7 +24,7 @@ export default function GeneralServices() {
       cards.forEach((card: any) => {
         gsap.fromTo(
           card,
-          { y: 50, opacity: 0 },
+          { y: 40, opacity: 0 },
           {
             y: 0,
             opacity: 1,
@@ -30,11 +32,23 @@ export default function GeneralServices() {
             ease: "power3.out",
             scrollTrigger: {
               trigger: card,
-              start: "top 90%",
+              start: "top 92%",
               toggleActions: "play reverse play reverse",
             },
           }
         );
+      });
+
+      // Parallax for background text
+      gsap.to(bgTextRef.current, {
+        y: -60,
+        ease: "none",
+        scrollTrigger: {
+          trigger: container.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+        },
       });
     },
     { scope: container }
@@ -80,29 +94,42 @@ export default function GeneralServices() {
   };
 
   return (
-    <section ref={container} className="py-24 md:py-40 bg-gray-50 overflow-hidden px-6 sm:px-10 lg:px-24">
-      <div className="max-w-[1400px] mx-auto">
-        <div className="mb-16 md:mb-24 text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-12 h-[2px] bg-brand-red" />
-            <span className="text-brand-red font-bold text-sm md:text-sm tracking-[0.2em] uppercase">
+    <section ref={container} className="py-24 md:py-40 bg-white overflow-hidden px-6 sm:px-10 lg:px-24 relative">
+      {/* Background Decoration Text */}
+      <div 
+        ref={bgTextRef}
+        className="services-bg-text top-[10%] right-[-10%] left-auto opacity-[0.02]"
+      >
+        SOLUTIONS
+      </div>
+
+      <div className="max-w-[1700px] mx-auto relative z-10">
+        <div className="mb-20 md:mb-32">
+          <div className="services-chapter-label mb-6">
+            <div className="services-chapter-label-line" />
+            <span className="services-chapter-label-text">
               Full Spectrum
             </span>
-            <div className="w-12 h-[2px] bg-brand-red" />
           </div>
           
-          <h2 className="text-5xl md:text-6xl font-black text-brand-dark leading-tight uppercase tracking-tight mb-8">
-            Specialized <span className="text-brand-red">& Allied</span> Services
-          </h2>
-          
-          <p className="text-gray-600 text-lg md:text-xl font-medium leading-relaxed max-w-3xl mx-auto">
-            From European luxury to heavy-duty American trucks, our facility is equipped 
-            to handle every automotive challenge with surgical precision.
-          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end">
+            <div>
+              <h2 className="text-4xl md:text-6xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-0">
+                Specialized <br />
+                <span className="text-gradient-red font-semibold">& Allied</span> Services
+              </h2>
+            </div>
+            <div>
+              <p className="text-gray-500 text-lg md:text-xl font-medium leading-relaxed max-w-xl">
+                From European luxury to heavy-duty American trucks, our facility is equipped 
+                to handle every automotive challenge with surgical precision.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Desktop Grid View */}
-        <div className="hidden md:grid services-grid grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+        <div className="hidden md:grid services-grid grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
           {specializedServices.map((service) => (
             <div key={service.id} className="service-card-reveal">
               <ServiceCard service={service} />
@@ -137,7 +164,7 @@ export default function GeneralServices() {
             {specializedServices.map((_, idx) => (
               <div
                 key={idx}
-                className={`h-1.5 transition-all duration-300 rounded-full ${idx === currentIndex ? "w-8 bg-brand-red" : "w-2 bg-gray-300"}`}
+                className={`h-1.5 transition-all duration-300 rounded-full ${idx === currentIndex ? "w-8 bg-brand-red" : "w-1.5 bg-gray-200"}`}
               />
             ))}
           </div>

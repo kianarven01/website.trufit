@@ -2,35 +2,61 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { CheckCircle2 } from "lucide-react";
+import { 
+  ClipboardCheck, 
+  Droplets, 
+  Disc, 
+  Octagon, 
+  BatteryCharging, 
+  Activity, 
+  Thermometer,
+  ArrowRight
+} from "lucide-react";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import "./services.css";
+
+gsap.registerPlugin(ScrollTrigger);
+
+const pmsChecklist = [
+  { title: "21-Point Digital Inspection", icon: ClipboardCheck, desc: "Comprehensive health check for your vehicle." },
+  { title: "Oil & Filter Precision Change", icon: Droplets, desc: "Premium synthetic oil and OEM filter replacement." },
+  { title: "Tire & Suspension Analysis", icon: Disc, desc: "Checking pressure, tread depth, and alignment." },
+  { title: "Brake Performance Testing", icon: Octagon, desc: "Ensuring maximum stopping power and safety." },
+  { title: "Electrical System Diagnostic", icon: BatteryCharging, desc: "Battery, alternator, and starter motor testing." },
+  { title: "Vital Fluid Replenishment", icon: Thermometer, desc: "Coolant, brake, and transmission fluid levels." },
+];
 
 export default function PMSService() {
   const container = useRef<HTMLDivElement>(null);
   const leftContent = useRef<HTMLDivElement>(null);
   const rightImage = useRef<HTMLDivElement>(null);
+  const bgTextRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
+      // Content Reveal
       gsap.fromTo(
-        leftContent.current,
-        { x: -100, opacity: 0 },
+        ".pms-reveal",
+        { y: 30, opacity: 0 },
         {
-          x: 0,
+          y: 0,
           opacity: 1,
-          duration: 1.2,
-          ease: "power3.out",
+          duration: 0.8,
+          stagger: 0.1,
           scrollTrigger: {
             trigger: container.current,
-            start: "top 70%",
+            start: "top 80%",
             toggleActions: "play reverse play reverse",
           },
         }
       );
+
+      // Image Reveal with Parallax
       gsap.fromTo(
         rightImage.current,
-        { scale: 0.9, opacity: 0, x: 100 },
+        { scale: 0.95, opacity: 0, x: 50 },
         {
           scale: 1,
           opacity: 1,
@@ -43,78 +69,115 @@ export default function PMSService() {
           },
         }
       );
+
+      // Parallax for background text
+      gsap.to(bgTextRef.current, {
+        y: -80,
+        ease: "none",
+        scrollTrigger: {
+          trigger: container.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
     },
     { scope: container }
   );
 
-  const pmsChecklist = [
-    "Comprehensive 21-Point Inspection",
-    "Oil & Filter replacement",
-    "Tire pressure and tread checking",
-    "Brake system assessment",
-    "Battery and alternator testing",
-    "Belt and hose durability check",
-    "Coolant and fluid level monitoring",
-  ];
-
   return (
-    <section ref={container} className="py-24 md:py-40 bg-white overflow-hidden relative">
-      {/* Background Decorative Aura */}
-      <div className="absolute top-1/4 -right-1/4 w-[600px] h-[600px] bg-brand-blue/5 rounded-full blur-[100px] pointer-events-none" />
+    <section ref={container} className="py-24 md:py-40 bg-gray-50/50 overflow-hidden relative">
+      {/* Background Decoration Text */}
+      <div 
+        ref={bgTextRef}
+        className="services-bg-text top-[20%] left-[-2%] opacity-[0.02]"
+      >
+        PRECISION
+      </div>
       
-      <div className="max-w-[1400px] mx-auto px-6 sm:px-10 lg:px-24 flex flex-col lg:flex-row items-center gap-16 md:gap-24">
-        {/* Left Side: Content */}
-        <div ref={leftContent} className="flex-1 order-2 lg:order-1">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-[2px] bg-brand-blue" />
-            <span className="text-brand-blue font-bold text-sm md:text-sm tracking-[0.2em] uppercase">
-              Essential Care
-            </span>
-          </div>
+      <div className="max-w-[1700px] mx-auto px-6 sm:px-10 lg:px-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 xl:gap-32 items-center">
           
-          <h2 className="text-5xl md:text-6xl font-black text-brand-dark leading-tight uppercase tracking-tight mb-8">
-            Preventive Maintenance <br />
-            <span className="text-brand-blue">Service (PMS)</span>
-          </h2>
-          
-          <p className="text-gray-600 text-lg md:text-xl font-medium leading-relaxed mb-10 max-w-xl">
-            Proactive care is the heartbeat of longevity. Our comprehensive PMS program 
-            detects potential issues before they become expensive repairs, 
-            ensuring your vehicle remains in factory condition.
-          </p>
-
-          <ul className="space-y-4 mb-10">
-            {pmsChecklist.map((item, i) => (
-              <li key={i} className="flex items-start gap-4">
-                <CheckCircle2 className="text-brand-red mt-1 shrink-0" size={24} />
-                <span className="text-brand-dark font-semibold text-lg">{item}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="bg-brand-blue/5 border-l-4 border-brand-blue p-8 rounded-r-lg max-w-xl">
-            <p className="text-brand-blue font-bold italic text-lg leading-relaxed">
-              "We don't just fix cars; we preserve them. Trust our certified 
-              experts to keep your journey uninterrupted."
+          {/* Left Side: Content */}
+          <div ref={leftContent}>
+            <div className="pms-reveal services-chapter-label mb-6">
+              <div className="services-chapter-label-line" />
+              <span className="services-chapter-label-text">
+                Essential Care
+              </span>
+            </div>
+            
+            <h2 className="pms-reveal text-4xl md:text-6xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-8">
+              Preventive <br />
+              <span className="text-brand-red font-semibold">Maintenance Service</span>
+            </h2>
+            
+            <p className="pms-reveal text-gray-500 text-lg md:text-xl font-medium leading-relaxed mb-12 max-w-xl">
+              Proactive care is the heartbeat of longevity. Our comprehensive PMS program 
+              detects potential issues before they become expensive repairs, 
+              ensuring your vehicle remains in factory condition.
             </p>
-          </div>
-        </div>
 
-        {/* Right Side: Image/Graphics */}
-        <div ref={rightImage} className="flex-1 order-1 lg:order-2 w-full">
-          <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl skew-y-3 lg:skew-y-0 lg:rotate-2 group transition-transform duration-500 hover:rotate-0">
-            <Image
-              src="/images/pms-highlight.jpg"
-              alt="Preventive Maintenance Service"
-              fill
-              className="object-cover"
-            />
-            {/* Absolute Badges */}
-            <div className="absolute top-10 left-10 glass-dark p-6 rounded-2xl z-10">
-              <span className="text-brand-red font-black text-4xl block mb-1">100%</span>
-              <span className="text-white text-xs uppercase tracking-[0.3em] font-bold">Reliability Guarantee</span>
+            {/* Enhanced Vertical Checklist */}
+            <div className="space-y-4 mb-12">
+              {pmsChecklist.map((item, i) => (
+                <div key={i} className="pms-reveal pms-checklist-item group cursor-default">
+                  <div className="pms-icon-box">
+                    <item.icon size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-brand-dark font-bold uppercase text-xs tracking-widest mb-1">
+                      {item.title}
+                    </h4>
+                    <p className="text-gray-400 text-xs font-medium">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pms-reveal flex items-center gap-6">
+              <button className="bg-brand-dark text-white px-8 py-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-brand-red transition-all duration-300 flex items-center gap-3">
+                Book PMS Now
+                <ArrowRight size={16} />
+              </button>
+              <div className="hidden sm:block">
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 block mb-1">Total Reliability</span>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <div key={s} className="w-1.5 h-1.5 rounded-full bg-brand-red" />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Right Side: Visual Stack */}
+          <div ref={rightImage} className="relative">
+            <div className="services-image-wrap services-corner-accents">
+              {/* Main Image */}
+              <div className="relative aspect-[4/5] rounded-sm overflow-hidden shadow-2xl border-[12px] border-white z-10">
+                <Image
+                  src="/images/pms-highlight.jpg"
+                  alt="Preventive Maintenance Service"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/40 to-transparent" />
+              </div>
+
+              {/* Floating Badge */}
+              <div className="services-floating-badge top-12 -left-8 md:-left-12">
+                <span className="text-brand-red font-black text-4xl block mb-1">100%</span>
+                <span className="text-white text-[9px] uppercase tracking-[0.3em] font-bold">Reliability <br />Guarantee</span>
+              </div>
+
+              {/* Decorative Element */}
+              <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-brand-red/5 rounded-full blur-3xl -z-10" />
+            </div>
+          </div>
+
         </div>
       </div>
     </section>

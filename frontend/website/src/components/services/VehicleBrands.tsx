@@ -45,8 +45,8 @@ export default function VehicleBrands() {
             <div className="w-12 h-[2px] bg-brand-red" />
           </div>
           
-          <h2 className="text-5xl md:text-6xl font-black text-white leading-tight uppercase tracking-tight mb-8">
-            Expertise Across <span className="text-brand-red">All Major Brands</span>
+          <h2 className="text-4xl md:text-6xl font-semibold text-white leading-tight uppercase tracking-tight mb-8">
+            Expertise Across <span className="text-gradient-red font-bold">All Major Brands</span>
           </h2>
           
           <p className="text-gray-400 text-lg md:text-xl font-medium leading-relaxed max-w-3xl mx-auto">
@@ -62,7 +62,7 @@ export default function VehicleBrands() {
               key={i}
               className="brand-name group relative flex items-center justify-center p-6 bg-white/5 border border-white/10 rounded-sm hover:bg-brand-red hover:border-brand-red hover:-translate-y-1 transition-all duration-300 cursor-default"
             >
-              <span className="text-gray-400 group-hover:text-white font-black text-lg md:text-xl uppercase tracking-tighter transition-colors duration-300">
+              <span className="text-gray-400 group-hover:text-white font-semibold text-lg md:text-xl uppercase tracking-tighter transition-colors duration-300">
                 {brand}
               </span>
               
@@ -75,7 +75,7 @@ export default function VehicleBrands() {
         {/* SEO Hint / CTA */}
         <div className="mt-20 text-center">
           <p className="text-gray-500 font-bold text-base tracking-widest uppercase">
-            Don't see your brand? <a href="/contact" className="text-white hover:text-brand-red underline underline-offset-4 decoration-brand-red/50 transition-colors">Contact us</a> to inquire about specific model support.
+            Don&apos;t see your brand? <a href="/contact" className="text-white hover:text-brand-red underline underline-offset-4 decoration-brand-red/50 transition-colors">Contact us</a> to inquire about specific model support.
           </p>
         </div>
       </div>

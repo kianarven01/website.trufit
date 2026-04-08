@@ -5,6 +5,7 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import "./services.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -13,34 +14,47 @@ export default function ServicesHero() {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLParagraphElement>(null);
+  const bgTextRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: container.current,
-          start: "top bottom", // Guaranteed to trigger when page loads at top
+          start: "top bottom",
           toggleActions: "play reverse play reverse",
         },
       });
 
       tl.fromTo(
         subtitleRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" }
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
       )
       .fromTo(
         titleRef.current,
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1, ease: "power4.out" },
-        "-=0.5"
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
+        "-=0.4"
       )
       .fromTo(
         textRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, ease: "power3.out" },
-        "-=0.6"
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
+        "-=0.5"
       );
+
+      // Parallax for background text
+      gsap.to(bgTextRef.current, {
+        y: -100,
+        ease: "none",
+        scrollTrigger: {
+          trigger: container.current,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
     },
     { scope: container }
   );
@@ -48,7 +62,7 @@ export default function ServicesHero() {
   return (
     <section
       ref={container}
-      className="relative min-h-[85vh] md:min-h-[75vh] w-full flex items-center justify-center overflow-hidden bg-brand-dark -mt-[112px] md:-mt-[120px]"
+      className="relative min-h-[90vh] md:min-h-[85vh] w-full flex items-center justify-center overflow-hidden bg-brand-dark -mt-[112px] md:-mt-[120px]"
     >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
@@ -56,44 +70,47 @@ export default function ServicesHero() {
           src="/images/suzuki-banner.jpg"
           alt="Suzuki Authorized Service Center"
           fill
-          className="object-cover opacity-50"
+          className="object-cover opacity-40 grayscale-[20%]"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-transparent to-brand-dark/80" />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark via-brand-dark/40 to-brand-dark" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-5xl mx-auto pt-20 md:pt-28 pb-16 md:pb-24">
+      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto pt-32 md:pt-40 pb-20">
         <div 
           ref={subtitleRef}
-          className="flex items-center justify-center gap-3 mb-6"
+          className="services-chapter-label justify-center opacity-0"
         >
-          <div className="w-8 md:w-12 h-[2px] bg-brand-red" />
-          <span className="text-brand-red font-bold text-xs md:text-base tracking-[0.3em] uppercase">
+          <div className="services-chapter-label-line" />
+          <span className="services-chapter-label-text !text-white/60">
             Official Partner
           </span>
-          <div className="w-8 md:w-12 h-[2px] bg-brand-red" />
+          <div className="services-chapter-label-line" />
         </div>
         
         <h1 
           ref={titleRef}
-          className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black text-white leading-tight uppercase tracking-tighter"
+          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white leading-[1.1] tracking-tight opacity-0"
         >
           Suzuki Authorized <br className="hidden md:block" />
-          <span className="text-brand-red">Service Center</span>
+          <span className="text-gradient-red font-semibold">Service Center</span>
         </h1>
         
         <p 
           ref={textRef}
-          className="mt-8 text-gray-300 text-base md:text-xl max-w-2xl mx-auto font-medium"
+          className="mt-10 text-white/50 text-base md:text-lg lg:text-xl max-w-2xl mx-auto font-medium leading-relaxed opacity-0"
         >
           World-class maintenance and repair for your Suzuki vehicle, 
-          powered by genuine parts and factory-trained technicians.
+          powered by genuine parts and factory-trained technicians 
+          who understand your engine better than anyone else.
         </p>
+
+        {/* Floating Accent badges could go here if needed, but keeping it clean for Hero */}
       </div>
 
-      {/* Decorative Elements */}
-      <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-brand-dark to-transparent z-10" />
+      {/* Bottom transition */}
+      <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-brand-dark to-transparent z-10" />
     </section>
   );
 }

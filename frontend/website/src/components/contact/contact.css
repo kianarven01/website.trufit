@@ -9,43 +9,25 @@
   overflow: hidden;
 }
 
-.contact-hero::before {
-  content: '';
-  position: absolute;
-  top: -30%;
-  right: -15%;
-  width: 700px;
-  height: 700px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
-.contact-hero::after {
-  content: '';
-  position: absolute;
-  bottom: -20%;
-  left: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(227, 27, 35, 0.04), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
 /* --------------- Support Cards --------------- */
 .support-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(31px);
+  -webkit-backdrop-filter: blur(31px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 2px;
   padding: 1.75rem 1.5rem;
-  transition: all 0.4s ease;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease, border-color 0.4s ease;
   position: relative;
   overflow: hidden;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .support-card:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.12);
   transform: translateY(-3px);
 }
@@ -69,13 +51,17 @@
 /* --------------- Contact Form Card --------------- */
 .contact-form-card {
   background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(31px);
+  -webkit-backdrop-filter: blur(31px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
   padding: 2rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
   position: relative;
   overflow: hidden;
+  will-change: transform, opacity, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 @media (min-width: 768px) {
@@ -91,7 +77,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand-blue), var(--brand-red));
+  background: linear-gradient(90deg, var(--brand-red), var(--brand-blue));
 }
 
 /* --------------- Location Section --------------- */
@@ -150,21 +136,10 @@
 /* --------------- FAQ Section --------------- */
 .faq-section {
   position: relative;
-  background: var(--brand-dark);
   overflow: hidden;
 }
 
-.faq-section::before {
-  content: '';
-  position: absolute;
-  top: 30%;
-  right: -15%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.05), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
+
 
 .faq-item {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -199,7 +174,7 @@
 }
 
 .faq-trigger:hover {
-  color: var(--brand-blue);
+  color: var(--brand-red);
 }
 
 .faq-trigger-icon {
@@ -215,7 +190,7 @@
 }
 
 .faq-trigger-icon.active {
-  background: var(--brand-blue);
+  background: var(--brand-red);
   transform: rotate(180deg);
 }
 
@@ -241,33 +216,10 @@
 /* --------------- CTA Section --------------- */
 .contact-cta {
   position: relative;
-  background: linear-gradient(135deg, #0A0A0A 0%, #111 50%, #0A0A0A 100%);
   overflow: hidden;
 }
 
-.contact-cta::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -20%;
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(227, 27, 35, 0.08), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
-.contact-cta::after {
-  content: '';
-  position: absolute;
-  bottom: -30%;
-  left: -10%;
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(0, 43, 163, 0.06), transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
 
 /* --------------- Quick Contact Email Input --------------- */
 .quick-contact-input {
@@ -283,7 +235,7 @@
 
 .quick-contact-input:focus {
   outline: none;
-  border-color: var(--brand-blue);
+  border-color: var(--brand-red);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -306,8 +258,8 @@
 
 .contact-input-light:focus {
   outline: none;
-  border-color: var(--brand-blue);
-  box-shadow: 0 0 0 2px rgba(0, 43, 163, 0.15);
+  border-color: var(--brand-red);
+  box-shadow: 0 0 0 2px rgba(227, 27, 35, 0.15);
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -329,7 +281,7 @@
 }
 
 .contact-input-light:focus ~ .contact-float-label {
-  color: var(--brand-blue);
+  color: var(--brand-red);
 }
 
 /* --------------- Success Toast --------------- */

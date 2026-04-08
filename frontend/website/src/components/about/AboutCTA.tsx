@@ -9,7 +9,7 @@ import { useModalStore } from "@/store/useModalStore";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function AboutCTA() {
+export default function AboutCTA({ isTransparent = false }: { isTransparent?: boolean }) {
   const sectionRef = useRef<HTMLDivElement>(null);
 
   const openAppointment = useModalStore((s) => s.openAppointment);
@@ -41,7 +41,7 @@ export default function AboutCTA() {
   return (
     <section
       ref={sectionRef}
-      className="about-cta py-20 md:py-28"
+      className={`relative py-20 md:py-28 ${isTransparent ? "" : "about-cta"}`}
       id="about-cta"
     >
       <div className="max-w-3xl mx-auto px-6 sm:px-10 lg:px-16 text-center relative z-10">
@@ -53,7 +53,7 @@ export default function AboutCTA() {
           <div className="h-[1px] w-12 bg-brand-red/40" />
         </div>
 
-        <h2 className="cta-reveal text-3xl md:text-5xl font-black text-white font-brawler leading-tight uppercase tracking-tight mb-6">
+        <h2 className="cta-reveal text-3xl md:text-5xl font-semibold text-white leading-tight uppercase tracking-tight mb-6">
           Ready to Experience<br />
           <span className="text-brand-red">the Difference?</span>
         </h2>
@@ -65,15 +65,21 @@ export default function AboutCTA() {
         </p>
 
         <div className="cta-reveal flex flex-col sm:flex-row gap-4 justify-center">
+<<<<<<< HEAD
           <button
             onClick={openAppointment}
             className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20"
+=======
+          <Link
+            href="/#appointment"
+            className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/20"
+>>>>>>> story/website-about
           >
             Book Appointment
           </button>
           <Link
             href="/contact"
-            className="border-2 border-white/20 text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center"
+            className="border-2 border-white/20 text-white px-10 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center"
           >
             Contact Us
           </Link>

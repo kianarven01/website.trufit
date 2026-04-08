@@ -1,29 +1,45 @@
-import { useState, useMemo } from "react";
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { MasterDetailPanel, ColumnDef } from "@/components/MasterDetailPanel";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { ImageIcon } from "lucide-react";
 
-import { QuotationModal } from "@/components/popupModal/CreateEstimate";
-import { FinalizeEstimate } from "@/components/popupModal/FinalizeModal";
-import { CalendarClock } from "lucide-react";
-import { RefreshCcw } from "react-feather";
-
+/* TYPES */
 interface ServiceItem {
+  id: string;
   name: string;
   category: string;
-  price: number;
+  vehicleSize: string;
+  hourlyRate: number;
 }
 
 interface PartItem {
+  id: string;
+  image?: string;
   name: string;
-  img?: string;
-  sku?: string;
-  currentStock: number;
-  unit: string;
+  sku: string;
   quantity: number;
   price: number;
+  unit: string;
+  currentStock: number;
 }
 
 interface Estimate {
@@ -32,325 +48,254 @@ interface Estimate {
   services: ServiceItem[];
   parts: PartItem[];
   date: string;
-  status: "draft" | "issued";
+  status: "approved" | "issued";
+  total: number;
 }
 
-const dummyEstimates: Estimate[] = [
+/* STORAGE */
+const STORAGE_KEY = "estimates";
+
+/* DUMMY DATA */
+const generateDummyEstimates = (): Estimate[] => {
+  return Array.from({ length: 26 }, (_, i) => {
+    const services = Array.from(
+      { length: Math.floor(Math.random() * 5) + 1 },
+      (_, j) => ({
+        name: `Service ${j + 1}`,
+        category: "General",
+        price: Math.floor(Math.random() * 2000) + 500,
+      })
+    );
+
+    const parts = Array.from(
+      { length: Math.floor(Math.random() * 5) + 1 },
+      (_, j) => {
+        const qty = Math.floor(Math.random() * 5) + 1;
+        const price = Math.floor(Math.random() * 1500) + 200;
+
+        return {
+          name: `Part ${j + 1}`,
+          sku: `SKU-${i}${j}`,
+          currentStock: 10,
+          unit: "pcs",
+          quantity: qty,
+          price,
+        };
+      }
+    );
+
+    const total =
+      services.reduce((s, x) => s + x.price, 0) +
+      parts.reduce((s, x) => s + x.price * x.quantity, 0);
+
+    return {
+      id: `est-${i + 1}`,
+      estimateNo: `EST-${1000 + i}`,
+      services,
+      parts,
+      date: new Date().toISOString().split("T")[0],
+      status: i % 2 === 0 ? "approved" : "issued",
+      total,
+    };
+  });
+};
+
+/* STATUS CONFIG */
+type BadgeVariant = "approved" | "received";
+
+const statusConfig: Record<
+  Estimate["status"],
+  { variant: BadgeVariant; label: string }
+> = {
+  approved: { variant: "approved", label: "Approved" },
+  issued: { variant: "received", label: "Issued" },
+};
+
+/* STATUS FILTER OPTIONS */
+const statusFilterOptions: FilterOption[] = [
   {
-    id: "1",
-    estimateNo: "EST-001",
-    date: "2026-03-06T10:30:00",
-    status: "draft",
-    services: [
-      { name: "Oil Change", category: "Maintenance", price: 40 },
-      { name: "Brake Inspection", category: "Inspection", price: 30 },
-    ],
-    parts: [
-      { name: "Oil Filter", sku: "OF123", currentStock: 10, unit: "pc", quantity: 1, price: 12 },
-    ],
-  },
-  {
-    id: "2",
-    estimateNo: "EST-002",
-    date: "2026-03-05T15:10:00",
-    status: "issued",
-    services: [
-      { name: "Wheel Alignment", category: "Alignment", price: 60 },
-    ],
-    parts: [
-      { name: "Brake Pads", sku: "BP456", currentStock: 5, unit: "pc", quantity: 2, price: 50 },
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Approved", value: "approved" },
+      { label: "Issued", value: "issued" },
     ],
   },
 ];
 
 const Estimates: React.FC = () => {
-  const [estimates, setEstimates] = useState<Estimate[]>(dummyEstimates);
-  const [selectedEstimate, setSelectedEstimate] = useState<Estimate | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [estimates, setEstimates] = useState<Estimate[]>([]);
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string>>({
+    status: "all",
+  });
+  const navigate = useNavigate();
 
-  const [quotationModalOpen, setQuotationModalOpen] = useState(false);
-  const [editingEstimate, setEditingEstimate] = useState<Estimate | null>(null);
+  const { page, setPage, pageSize, setPageSize, paginate } =
+    usePagination(25);
 
-  const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
+  /* LOAD */
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
 
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
-    return d.toLocaleString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
+    if (stored) {
+      const parsed = JSON.parse(stored);
 
-  const calculateTotal = (e: Estimate) => {
-    const serviceTotal = e.services.reduce((a, s) => a + s.price, 0);
-    const partsTotal = e.parts.reduce((a, p) => a + p.price * p.quantity, 0);
-    return serviceTotal + partsTotal;
-  };
+      if (!parsed.length) {
+        const dummy = generateDummyEstimates();
+        setEstimates(dummy);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      } else {
+        setEstimates(parsed);
+      }
+    } else {
+      const dummy = generateDummyEstimates();
+      setEstimates(dummy);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+    }
+  }, []);
 
-  const columns: ColumnDef<Estimate>[] = [
-    {
-      key: "estimateNo",
-      label: "Estimate No.",
-      render: (e) => <div className="font-semibold">{e.estimateNo}</div>,
-    },
-    {
-      key: "services",
-      label: "Service",
-      render: (e) => `${e.services.length} service(s)`,
-    },
-    {
-      key: "parts",
-      label: "Parts",
-      render: (e) => `${e.parts.length} part(s)`,
-    },
-    {
-      key: "date",
-      label: "Date",
-      render: (e) => {
-        const d = new Date(e.date);
-        return (
-          <div>
-            <div>{d.toLocaleDateString()}</div>
-            <div className="text-xs text-muted-foreground">{d.toLocaleTimeString()}</div>
-          </div>
-        );
-      },
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (e) => <Badge variant={e.status === "draft" ? "secondary" : "default"}>{e.status}</Badge>,
-    },
-    {
-      key: "amount",
-      label: "Amount",
-      render: (e) => `$${calculateTotal(e).toFixed(2)}`,
-    },
-  ];
+  /* SAVE */
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(estimates));
+  }, [estimates]);
 
-  const handleEstimateSaved = (estimate: Estimate) => {
-    setEstimates((prev) => {
-      const exists = prev.find((e) => e.id === estimate.id);
-      if (exists) return prev.map((e) => (e.id === estimate.id ? estimate : e));
-      return [...prev, estimate];
-    });
-    setSelectedEstimate(estimate);
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [search, filters]);
 
-  const filteredEstimates = useMemo(() => {
-    return estimates.filter((e) =>
-      e.estimateNo.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [estimates, searchQuery]);
+  /* FILTERED + SEARCHED DATA */
+  const filtered = estimates.filter((e) => {
+    const matchesSearch = `${e.estimateNo} ${e.status}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
 
-  const serviceTotal = selectedEstimate
-    ? selectedEstimate.services.reduce((a, s) => a + s.price, 0)
-    : 0;
+    const matchesStatus =
+      filters.status === "all" || e.status === filters.status;
 
-  const partsTotal = selectedEstimate
-    ? selectedEstimate.parts.reduce((a, p) => a + p.price * p.quantity, 0)
-    : 0;
+    return matchesSearch && matchesStatus;
+  });
 
-  const tax = (serviceTotal + partsTotal) * 0.12;
-  const grandTotal = serviceTotal + partsTotal + tax;
+  const paginated = paginate(filtered);
 
   return (
-    <DashboardLayout>
-      <MasterDetailPanel<Estimate>
-        title="Estimates"
-        description="Manage service estimates"
-        items={filteredEstimates}
-        selectedItem={selectedEstimate}
-        onSelect={setSelectedEstimate}
-        getItemId={(e) => e.id}
-        columns={columns}
-        onSearch={setSearchQuery}
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
+
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Estimates</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {/* Toolbar */}
+      <DataToolbar
+        searchPlaceholder="Search estimates..."
+        onSearch={setSearch}
+        filters={statusFilterOptions}
+        activeFilters={filters}
+        onFilterChange={(key, value) =>
+          setFilters((prev) => ({ ...prev, [key]: value }))
+        }
         onAdd={() => {
-          setEditingEstimate(null);
-          setQuotationModalOpen(true);
+          navigate("/webapp/sales/estimates/new-estimate");
         }}
-        addLabel="New Estimate"
-      >
-        {selectedEstimate && (
-          <div className="space-y-6">
-
-            {/* Estimate Header */}
-            <div className="flex justify-between items-center">
-              <div className="w-full">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold">{selectedEstimate.estimateNo}</h2>
-                    <Badge variant={selectedEstimate.status === "draft" ? "secondary" : "default"}>
-                      {selectedEstimate.status}
-                    </Badge>
-
-                  </div>
-                  <div className="flex gap-2 pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setEditingEstimate(selectedEstimate);
-                        setQuotationModalOpen(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-
-                    {selectedEstimate.status === "draft" && (
-                      <Button onClick={() => setFinalizeModalOpen(true)}>
-                        Issue Job Order/Sales Order
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-6 mt-2">
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <CalendarClock size={14} />
-                      Created:
-                      <span className="text-sm text-foreground">
-                        {formatDate(selectedEstimate.date)}
-                      </span>                      
-                    </p>
-
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <RefreshCcw size={14} />
-                    Last Updated:
-                    <span className="text-foreground">{formatDate(selectedEstimate.date)}</span>
-                  </p>
-                  
-                </div>
-              </div>
-            </div>
-
-            {/* Services */}
-            <div>
-              <h3 className="font-semibold mb-2">Services</h3>
-
-              <div className="space-y-2">
-                {selectedEstimate.services.map((s, i) => (
-                  <div key={i} className="flex justify-between border rounded-md p-3">
-                    <div>
-                      <p className="font-medium">{s.name}</p>
-                      <p className="text-xs text-muted-foreground">{s.category}</p>
-                    </div>
-
-                    <p className="font-semibold">${s.price.toFixed(2)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Parts */}
-            <div>
-              <h3 className="font-semibold mb-2">Parts</h3>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Part</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Unit Price</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedEstimate.parts.map((p, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <div className="flex gap-4">
-                          {p.img && <img src={p.img} alt={p.name} className="w-10 h-10 rounded"/>}
-                          <div>
-                            <p className="font-semibold">{p.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              In Stock: {p.currentStock} {p.unit}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{p.sku}</TableCell>
-                      <TableCell>${p.price.toFixed(2)}</TableCell>
-                      <TableCell>{p.quantity}</TableCell>
-                      <TableCell>${(p.price * p.quantity).toFixed(2)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Totals */}
-            <div className="border-t pt-4 space-y-2 text-sm">
-              <div 
-                className="flex justify-between"
-              >
-                <span>Total Services</span>
-                <span>${serviceTotal.toFixed(2)}</span>
-              </div>
-
-              <div 
-                className="flex justify-between"
-              >
-                <span>Total Parts</span>
-                <span>${partsTotal.toFixed(2)}</span>
-              </div>
-              <div 
-                className="flex justify-between"
-              >
-                <span>Tax (12%)</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
-              <div 
-                className="flex justify-between font-bold text-lg"
-              >
-                <span>Grand Total</span>
-                <span>${grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
-
-          </div>
-        )}
-      </MasterDetailPanel>
-
-      {/* Quotation Modal */}
-      <QuotationModal
-        open={quotationModalOpen}
-        onOpenChange={setQuotationModalOpen}
-        estimate={editingEstimate}
-        onSaved={handleEstimateSaved}
+        addLabel="Create Estimate"
       />
 
-      {/* FinalizeEstimate Modal */}
-      {selectedEstimate && (
-        <FinalizeEstimate
-          open={finalizeModalOpen}
-          onOpenChange={setFinalizeModalOpen}
-          quotation={{
-            id: selectedEstimate.id,
-            taxRate: 0.12,
-            notes: "",
-          }}
-          totals={{
-            totalServices: serviceTotal,
-            totalParts: partsTotal,
-            subtotal: serviceTotal + partsTotal,
-            taxAmount: tax,
-            total: grandTotal,
-            validJO: selectedEstimate.services.map((s, i) => ({ id: `s-${i}`, service: s.name, amount: s.price })),
-            validSO: selectedEstimate.parts.map((p, i) => ({ id: `p-${i}`, itemName: p.name, partNo: p.sku || "", quantity: p.quantity, amount: p.price * p.quantity })),
-          }}
-          onFinalized={() => {
-            setEstimates((prev) =>
-              prev.map((e) => (e.id === selectedEstimate.id ? { ...e, status: "issued" } : e))
-            );
-            setFinalizeModalOpen(false);
-          }}
-        />
+      {/* TABLE + PAGINATION */}
+      {estimates.length > 0 ? (
+        <div className="flex-1 flex flex-col border rounded-xl overflow-hidden">
+
+          <ScrollArea className="flex-1 px-3">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Estimate No.</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Services</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead className="lg:w-[15%] text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {filtered.length > 0 ? (
+                  paginated.map((e) => {
+                    const { variant, label } = statusConfig[e.status];
+
+                    return (
+                      <TableRow
+                        key={e.id}
+                        onClick={() =>
+                          navigate(`/webapp/sales/estimates/${e.id}`)
+                        }
+                        className={cn(
+                          "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                          "hover:bg-accent/30"
+                        )}
+                      >
+                        <TableCell>{e.estimateNo}</TableCell>
+                        <TableCell>{e.date}</TableCell>
+                        <TableCell>{e.services.length}</TableCell>
+                        <TableCell>{e.parts.length}</TableCell>
+                        <TableCell>
+                          ₱ {e.total.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={variant} className="lg:w-1/2 justify-center">{label}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <div className="py-16 flex flex-col items-center text-center">
+                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">
+                          No estimate records found
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your search
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+
+          {filtered.length > 25 && (
+            <div className="border-t bg-background">
+              <Pagination
+                totalItems={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">
+              No estimate records available
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Create an estimate to get started
+            </p>
+          </CardContent>
+        </Card>
       )}
-    </DashboardLayout>
+    </div>
   );
 };
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { galleryItems, GalleryItem } from "@/data/galleryData";
-import { Play, Maximize2, Car, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Maximize2, Car, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 const categories = [
   { id: "all", name: "All Showcase" },
@@ -15,8 +15,21 @@ const categories = [
 export default function GalleryGrid() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null);
   const ITEMS_PER_PAGE = 16;
   const gridRef = useRef<HTMLDivElement>(null);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedItemIndex !== null) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [selectedItemIndex]);
 
   const categoryFilteredItems = activeCategory === "all" 
     ? galleryItems 
@@ -41,6 +54,20 @@ export default function GalleryGrid() {
         top: topPos,
         behavior: "smooth"
       });
+    }
+  };
+
+  const handleNextModal = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (selectedItemIndex !== null && selectedItemIndex < filteredItems.length - 1) {
+      setSelectedItemIndex(selectedItemIndex + 1);
+    }
+  };
+
+  const handlePrevModal = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (selectedItemIndex !== null && selectedItemIndex > 0) {
+      setSelectedItemIndex(selectedItemIndex - 1);
     }
   };
 
@@ -89,7 +116,8 @@ export default function GalleryGrid() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.4 }}
-                className={`group relative bg-gray-50 rounded-sm overflow-hidden border border-gray-100 shadow-sm w-full h-full ${getBentoClass(index)}`}
+                onClick={() => setSelectedItemIndex(index)}
+                className={`group relative bg-gray-50 rounded-sm overflow-hidden border border-gray-100 shadow-sm w-full h-full cursor-pointer ${getBentoClass(index)}`}
               >
                 {/* Image Placeholder / Asset */}
                 <div className="absolute inset-0 z-0">
@@ -193,6 +221,82 @@ export default function GalleryGrid() {
           </div>
         )}
       </div>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {selectedItemIndex !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 backdrop-blur-sm p-4 md:p-10"
+            onClick={() => setSelectedItemIndex(null)}
+          >
+            {/* Close Button */}
+            <button 
+              className="absolute top-4 right-4 md:top-6 md:right-6 z-[10000] w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-brand-red text-white transition-all border border-white/20"
+              onClick={() => setSelectedItemIndex(null)}
+            >
+              <X size={20} className="md:w-6 md:h-6" />
+            </button>
+
+            {/* Previous Button */}
+            {selectedItemIndex > 0 && (
+              <button 
+                className="absolute left-2 md:left-10 z-[10000] w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-brand-red text-white transition-all border border-white/20 hidden md:flex"
+                onClick={handlePrevModal}
+              >
+                <ChevronLeft size={24} />
+              </button>
+            )}
+
+            {/* Active Image */}
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={selectedItemIndex}
+                initial={{ x: 20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -20, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.8}
+                onDragEnd={(e, { offset }) => {
+                  if (offset.x < -50 && selectedItemIndex < filteredItems.length - 1) {
+                    handleNextModal();
+                  } else if (offset.x > 50 && selectedItemIndex > 0) {
+                    handlePrevModal();
+                  }
+                }}
+                className="relative w-full max-w-6xl h-[70vh] md:h-full md:max-h-[85vh] flex items-center justify-center cursor-grab active:cursor-grabbing"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Image 
+                  src={filteredItems[selectedItemIndex].image} 
+                  alt={filteredItems[selectedItemIndex].title}
+                  fill
+                  className="object-contain"
+                  priority
+                />
+                <div className="absolute -bottom-16 md:-bottom-10 left-0 right-0 text-center text-white pointer-events-none">
+                  <p className="text-lg md:text-xl font-bold uppercase tracking-widest">{filteredItems[selectedItemIndex].title}</p>
+                  <p className="text-xs md:text-sm text-brand-red font-semibold uppercase tracking-widest mt-1">{filteredItems[selectedItemIndex].category.replace("-", " ")}</p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Next Button */}
+            {selectedItemIndex < filteredItems.length - 1 && (
+              <button 
+                className="absolute right-2 md:right-10 z-[10000] w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-black/50 hover:bg-brand-red text-white transition-all border border-white/20 hidden md:flex"
+                onClick={handleNextModal}
+              >
+                <ChevronRight size={24} />
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

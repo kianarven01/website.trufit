@@ -83,6 +83,7 @@ export const specializedServices: Service[] = [
 export const vehicleBrands = [
   "Suzuki", "Toyota", "Mitsubishi", "Honda", "Ford", "Isuzu", 
   "Hyundai", "Kia", "BMW", "Mercedes-Benz", "Audi", "Volkswagen", 
-  "Nissan", "Mazda", "Chevrolet", "Subaru", "Land Rover", "Lexus",
-  "Volvo", "Jeep", "Dodge", "Chrysler", "Peugeot", "Mini"
+  "Nissan", "Mazda", "Chevrolet", "Subaru", "Land Rover", "Range Rover",
+  "Lexus", "Porsche", "Volvo", "Mini", "Jaguar", "Jeep", 
+  "MG", "Geely", "BYD", "Changan", "GWM", "Chery", "Jetour", "Foton"
 ]

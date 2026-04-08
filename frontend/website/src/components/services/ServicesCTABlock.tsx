@@ -16,12 +16,12 @@ export default function ServicesCTABlock() {
 
   useGSAP(
     () => {
-      // Shared parallax background
+      // Linear vertical parallax background only (no 3D tilt/zoom)
       gsap.fromTo(
         bgRef.current,
-        { y: -80 },
+        { y: -120 },
         {
-          y: 80,
+          y: 120,
           ease: "none",
           scrollTrigger: {
             trigger: containerRef.current,
@@ -40,14 +40,14 @@ export default function ServicesCTABlock() {
       ref={containerRef}
       className="relative bg-brand-dark overflow-hidden transition-all duration-700"
     >
-      {/* Shared Background Image */}
-      <div className="absolute inset-x-0 -top-[10%] h-[120%] z-0 overflow-hidden">
+      {/* Shared Parallax Background Image */}
+      <div className="absolute inset-x-0 -top-[15%] h-[130%] z-0">
         <div ref={bgRef} className="absolute inset-0 h-full w-full">
           <Image
             src="/images/services/brands.jpg"
             alt="Brands Background"
             fill
-            className="object-cover opacity-25"
+            className="object-cover opacity-30 scale-110" // Slight scale to prevent edges showing during parallax
           />
         </div>
         
@@ -59,7 +59,7 @@ export default function ServicesCTABlock() {
       </div>
 
       {/* Internal Sections with Transparency */}
-      <div className="relative z-10">
+      <div className="relative z-10 w-full">
         <VehicleBrands isTransparent />
         <AppointmentSection isTransparent />
       </div>

@@ -76,7 +76,7 @@ export default function ServicesHero() {
           />
         </div>
         {/* Dark overlay matching ContactHero */}
-        <div className="absolute inset-0 bg-black/75 z-10" />
+        <div className="absolute inset-0 bg-black/60 z-10" />
       </div>
 
       {/* Content */}

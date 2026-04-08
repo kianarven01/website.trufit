@@ -10,7 +10,7 @@ export default function GlobalModals() {
 
   return (
     <>
-      <AppointmentModal isOpen={isOpen} onClose={close} />
+      <AppointmentModal />
     </>
   )
 }

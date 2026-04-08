@@ -30,10 +30,10 @@ const StatItem = ({ icon, value, label }: StatProps) => {
   return (
     <div className="flex flex-col items-center p-4 border-r border-gray-100 last:border-0">
       <div className="text-brand-red mb-2">{icon}</div>
-      <span className="text-2xl md:text-3xl font-black text-brand-dark">
+      <span className="text-2xl md:text-3xl font-semibold text-brand-dark">
         {value}
       </span>
-      <span className="text-[10px] uppercase tracking-widest font-bold text-gray-400 text-center">
+      <span className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 text-center">
         {label}
       </span>
     </div>
@@ -272,7 +272,7 @@ export default function AboutSection() {
         {/* Large Outlined Text Background */}
         <div 
           ref={bgTextRef}
-          className="absolute top-20 left-10 text-[15vw] font-black leading-none opacity-[0.03] text-transparent stroke-brand-dark"
+          className="absolute top-20 left-10 text-[15vw] font-semibold leading-none opacity-[0.03] text-transparent stroke-brand-dark"
           style={{ WebkitTextStroke: '1px currentColor' }}
         >
           TRUFIT<br />AUTO
@@ -320,7 +320,7 @@ export default function AboutSection() {
         {/* Soft Depth Shapes */}
         <div 
           ref={aura1Ref}
-          className="absolute top-1/4 -left-40 w-[800px] h-[800px] bg-brand-blue/[0.03] rounded-full blur-[130px]" 
+          className="absolute top-1/4 -left-40 w-[800px] h-[800px] bg-brand-red/[0.03] rounded-full blur-[130px]" 
         />
         <div 
           ref={aura2Ref}
@@ -334,15 +334,15 @@ export default function AboutSection() {
           {/* Content Side */}
           <div className="order-1 lg:order-2">
             <div className="flex items-center gap-3 mb-6 about-reveal">
-              <div className="h-[2px] w-12 bg-brand-blue" />
-              <span className="text-sm font-extrabold tracking-[0.3em] uppercase text-brand-blue">
+              <div className="h-[2px] w-12 bg-brand-red" />
+              <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
                 About Trufit
               </span>
             </div>
 
-            <h2 className="text-3xl md:text-5xl font-black mb-8 font-brawler leading-tight text-brand-dark about-reveal uppercase tracking-tight">
+            <h2 className="text-3xl md:text-5xl font-semibold mb-8 leading-tight text-brand-dark about-reveal uppercase tracking-tight">
               Decades of Wisdom. <br />
-              <span className="text-brand-red font-bold">Modern Precision.</span>
+              <span className="text-brand-red font-semibold">Modern Precision.</span>
             </h2>
 
             {/* Mobile Slider */}
@@ -394,7 +394,7 @@ export default function AboutSection() {
                     <CheckCircle2 className="text-brand-red w-6 h-6 transition-transform group-hover:scale-110" />
                   </div>
                   <div>
-                    <h4 className="font-black text-brand-dark uppercase text-xs tracking-widest mb-2">
+                    <h4 className="font-semibold text-brand-dark uppercase text-xs tracking-widest mb-2">
                       {feature.title}
                     </h4>
                     <p className="text-gray-500 text-xs leading-relaxed">
@@ -418,7 +418,7 @@ export default function AboutSection() {
                     setIsOpen(false)
                     openAppointment()
                   }}
-                className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20 inline-block"
+                className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/20 inline-block"
               >
                 Book Appointment
               </button>
@@ -426,7 +426,7 @@ export default function AboutSection() {
                 href="https://www.google.com/maps/place/Trufit+Auto+Center/@14.1237854,122.9405256,17z/data=!4m8!3m7!1s0x3398affd09d7236b:0xcfccafc73d343d48!8m2!3d14.1237854!4d122.9431005!9m1!1b1!16s%2Fg%2F11fl9dschh?entry=ttu&g_ep=EgoyMDI2MDMyNC4wIKXMDSoASAFQAw%3D%3D"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="border-2 border-brand-dark text-brand-dark px-10 py-5 rounded-sm font-black hover:bg-brand-dark hover:text-white transition-all uppercase tracking-[0.2em] text-xs text-center"
+                className="border-2 border-brand-dark text-brand-dark px-10 py-5 rounded-sm font-semibold hover:bg-brand-dark hover:text-white transition-all uppercase tracking-[0.2em] text-xs text-center"
               >
                 Read Reviews
               </a>
@@ -458,8 +458,8 @@ export default function AboutSection() {
                         <Car className="w-24 h-24 text-brand-red/10" />
                         <div className="absolute inset-0 bg-brand-red/5 blur-3xl rounded-full" />
                       </div>
-                      <h3 className="text-white/20 font-black text-2xl mb-2 tracking-tighter uppercase italic">Trufit Excellence</h3>
-                      <p className="text-white/10 font-bold uppercase tracking-[0.3em] text-[10px]">Image Gallery Under Construction</p>
+                      <h3 className="text-white/20 font-semibold text-2xl mb-2 tracking-tighter uppercase italic">Trufit Excellence</h3>
+                      <p className="text-white/10 font-semibold uppercase tracking-[0.3em] text-[10px]">Image Gallery Under Construction</p>
                       
                       {/* Decorative elements to make it look "designed" even without image */}
                       <div className="absolute top-10 left-10 w-20 h-[1px] bg-white/5" />

@@ -196,7 +196,7 @@ export default function ServicesSection() {
         <div className="absolute inset-0">
           <div
             ref={aura1Ref}
-            className="absolute -top-20 -left-20 w-[800px] md:w-[1000px] h-[800px] bg-brand-blue/10 rounded-full blur-[100px] md:blur-[130px]"
+            className="absolute -top-20 -left-20 w-[800px] md:w-[1000px] h-[800px] bg-brand-red/5 rounded-full blur-[100px] md:blur-[130px]"
           />
           <div
             ref={aura2Ref}
@@ -204,11 +204,11 @@ export default function ServicesSection() {
           />
           <div
             ref={accent1Ref}
-            className="hidden md:block absolute top-1/2 left-1/4 w-[400px] h-[400px] bg-brand-blue/10 rounded-full blur-[100px]"
+            className="hidden md:block absolute top-1/2 left-1/4 w-[400px] h-[400px] bg-brand-red/5 rounded-full blur-[100px]"
           />
           <div
             ref={accent2Ref}
-            className="hidden md:block absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-brand-blue/5 rounded-full blur-[110px]"
+            className="hidden md:block absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-brand-red/5 rounded-full blur-[110px]"
           />
         </div>
       </div>
@@ -220,12 +220,12 @@ export default function ServicesSection() {
       >
         <div className="mb-12 md:mb-20 section-header">
           <div className="flex items-center gap-3 mb-4 opacity-0">
-            <div className="w-12 h-[2px] bg-brand-blue" />
-            <span className="text-brand-blue font-bold text-sm md:text-xs tracking-[0.2em] uppercase">
+            <div className="w-12 h-[2px] bg-brand-red" />
+            <span className="text-brand-red font-semibold text-sm md:text-xs tracking-[0.2em] uppercase">
               What We Do
             </span>
           </div>
-          <h2 className="text-5xl md:text-6xl lg:text-8xl font-black text-brand-dark leading-tight uppercase tracking-tight opacity-0">
+          <h2 className="text-5xl md:text-6xl lg:text-8xl font-semibold text-brand-dark leading-tight uppercase tracking-tight opacity-0">
             Our Services
           </h2>
           <p className="mt-4 md:mt-8 text-gray-600 md:text-gray-500 max-w-2xl leading-relaxed text-base md:text-xl font-medium md:font-normal opacity-0">

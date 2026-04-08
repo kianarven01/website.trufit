@@ -20,6 +20,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
   return (
     <div className="group relative w-full bg-white border border-gray-100 rounded-sm overflow-hidden transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-2 cursor-pointer shadow-sm">
       
+      <div className="hidden md:block absolute -bottom-10 -right-10 w-32 h-32 bg-brand-red/10 rounded-full blur-2xl group-hover:bg-brand-red/20 transition-colors duration-700" />
       {/* Subtle brand red accent on hover */}
       <div className="absolute top-0 left-0 w-[3px] h-0 bg-brand-red group-hover:h-full transition-all duration-500 z-20" />
       
@@ -82,4 +83,4 @@ export default function ServiceCard({ service }: ServiceCardProps) {
       </div>
     </div>
   )
-}
+}

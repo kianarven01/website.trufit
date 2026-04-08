@@ -37,7 +37,7 @@ export default function GalleryHero() {
   return (
     <section 
       ref={containerRef}
-      className="relative pt-[200px] md:pt-[240px] pb-20 bg-brand-dark overflow-hidden -mt-[112px] md:-mt-[120px] min-h-[70vh] flex items-center"
+      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] pt-[200px] md:pt-[240px] pb-20 bg-brand-dark overflow-hidden -mt-[112px] md:-mt-[120px] flex items-center"
     >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">

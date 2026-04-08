@@ -16,8 +16,6 @@ export default function GalleryPage() {
       <GalleryHero />
       <VideoTour />
       <GalleryGrid />
-      
-      {/* Call to Action Section */}
       <GalleryCTA />
     </main>
   );

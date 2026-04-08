@@ -65,15 +65,9 @@ export default function AboutCTA({ isTransparent = false }: { isTransparent?: bo
         </p>
 
         <div className="cta-reveal flex flex-col sm:flex-row gap-4 justify-center">
-<<<<<<< HEAD
           <button
             onClick={openAppointment}
-            className="bg-brand-blue text-white px-10 py-5 rounded-sm font-black hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-blue/20"
-=======
-          <Link
-            href="/#appointment"
             className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/20"
->>>>>>> story/website-about
           >
             Book Appointment
           </button>

@@ -15,35 +15,35 @@ const steps = [
     title: "CONSULTATION",
     description:
       "We begin by understanding your concerns and performing a preliminary assessment of your vehicle's needs.",
-    image: "",
+    image: "/images/home/our_work/consultation.jpg",
   },
   {
     id: "diagnostics",
     title: "DIAGNOSTICS",
     description:
       "We utilize advanced diagnostic technology to look beyond surface symptoms, performing an exhaustive digital analysis that identifies the root cause of any issue. This data-driven approach allows us to act as your technical consultants, providing a transparent, high-definition view of your vehicle's health so you can make the most strategic maintenance decisions.",
-    image: "",
+    image: "/images/home/our_work/diagnostics.jpg",
   },
   {
     id: "maintenance",
     title: "Repair",
     description:
       "Our expert technicians perform the necessary repairs and maintenance with surgical precision using premium parts.",
-    image: "",
+    image: "/images/home/our_work/repair.jpg",
   },
   {
     id: "quality",
     title: "QUALITY CONTROL",
     description:
       "Every vehicle undergoes a rigorous multi-point inspection to ensure all work meets our high standards.",
-    image: "",
+    image: "/images/home/our_work/quality_control.jpg",
   },
   {
     id: "delivery",
     title: "DELIVERY",
     description:
       "We return your vehicle in peak condition, providing a detailed report of all services performed.",
-    image: "",
+    image: "/images/home/our_work/delivery.jpg",
   },
 ]
 
@@ -96,12 +96,13 @@ export default function ProcessSection() {
             pin: true,
             scrub: 0.4, // Reduced from 1 to 0.4 for better responsiveness on mid-range devices
             onUpdate: (self) => {
-              const progress = self.progress
+              const time = self.animation ? self.animation.time() : 0;
+              // Make activeStep update when we are at the halfway point of transitioning
               const index = Math.min(
-                Math.floor(progress * steps.length),
+                Math.floor(time + 0.2), // slightly earlier than before to feel responsive
                 steps.length - 1
               )
-              setActiveStep(index)
+              setActiveStep(Math.max(0, index));
             },
           },
         })
@@ -127,17 +128,19 @@ export default function ProcessSection() {
         steps.forEach((_, i) => {
           if (i === 0) return // First step is default state
 
-          tl.to(`.step-content-${i-1}`, { opacity: 0, y: -20, duration: 0.5, force3D: true }, i)
+          // Shift transitions so they happen *while* the progress line is approaching the dot.
+          // Center the fade around 'i' (time=i is exactly when the line hits the dot).
+          tl.to(`.step-content-${i-1}`, { opacity: 0, y: -20, duration: 0.4, force3D: true }, i - 0.4)
             .fromTo(`.step-content-${i}`, 
               { opacity: 0, y: 20 }, 
-              { opacity: 1, y: 0, duration: 0.5, force3D: true }, 
-              i + 0.2
+              { opacity: 1, y: 0, duration: 0.4, force3D: true }, 
+              i - 0.1
             )
-            .to(`.step-image-${i-1}`, { opacity: 0, scale: 1.1, duration: 0.5, force3D: true }, i)
+            .to(`.step-image-${i-1}`, { opacity: 0, scale: 1.1, duration: 0.4, force3D: true }, i - 0.4)
             .fromTo(`.step-image-${i}`,
               { opacity: 0, scale: 0.9 },
-              { opacity: 1, scale: 1, duration: 0.5, force3D: true },
-              i + 0.2
+              { opacity: 1, scale: 1, duration: 0.4, force3D: true },
+              i - 0.1
             )
         })
       })
@@ -215,7 +218,7 @@ export default function ProcessSection() {
           {steps.map((step, idx) => (
             <div
               key={`bg-${step.id}`}
-              className={`step-image-${idx} absolute inset-0 transition-opacity duration-500 ${idx === activeStep ? "opacity-100" : "opacity-0"}`}
+              className={`step-image-${idx} absolute inset-0 ${idx === 0 ? "opacity-100" : "opacity-0"}`}
             >
               {step.image ? (
                 <Image
@@ -260,10 +263,9 @@ export default function ProcessSection() {
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative">
               {steps.map((step, idx) => (
-                <button
+                <div
                   key={step.id}
-                  onClick={() => scrollToStep(idx)}
-                  className="group relative flex flex-col items-center focus:outline-none z-20"
+                  className="group relative flex flex-col items-center z-20"
                 >
                   {/* Circle with Background Cutout */}
                   <div className="bg-brand-dark p-2 rounded-full relative z-30">
@@ -281,7 +283,7 @@ export default function ProcessSection() {
                     <span className="text-[10px] font-semibold text-brand-red mb-1">STEP {idx + 1}</span>
                     <span className="text-[11px] font-semibold tracking-[0.2em] uppercase whitespace-nowrap">{step.title}</span>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -294,7 +296,7 @@ export default function ProcessSection() {
                 {steps.map((step, idx) => (
                   <div 
                     key={`content-${step.id}`}
-                    className={`step-content-${idx} ${idx === activeStep ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
+                    className={`step-content-${idx} ${idx === 0 ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
                   >
                     <h3 className="text-2xl md:text-4xl font-semibold mb-4 text-brand-red uppercase tracking-tighter leading-tight
                     ">
@@ -313,7 +315,7 @@ export default function ProcessSection() {
                 {steps.map((step, idx) => (
                   <div
                     key={`img-${step.id}`}
-                    className={`step-image-${idx} absolute inset-0 transition-all duration-1000 ${idx === activeStep ? "opacity-100 scale-100" : "opacity-0 scale-110"}`}
+                    className={`step-image-${idx} absolute inset-0 ${idx === 0 ? "opacity-100 scale-100" : "opacity-0 scale-110"}`}
                   >
                     {step.image ? (
                       <Image

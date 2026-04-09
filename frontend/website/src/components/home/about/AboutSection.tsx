@@ -41,9 +41,9 @@ const StatItem = ({ icon, value, label }: StatProps) => {
 };
 
 const images: string[] = [
-  "", // Workshop Placeholder
-  "", // Diagnostics Placeholder
-  "", // Equipment Placeholder
+  "/images/home/about_trufit/workshop.JPG",
+  "/images/home/about_trufit/bagwis.jpg",
+  "/images/home/about_trufit/laboratory_tools.JPG",
 ];
 
 // Custom F1 Car SVG Component

@@ -13,7 +13,11 @@ const PARTNERS = [
   { name: 'Wurth', logo: '/images/partners/wurth.webp' },
 ];
  
-export default function PartnersSection() {
+interface PartnersSectionProps {
+  isTransparent?: boolean;
+}
+
+export default function PartnersSection({ isTransparent = false }: PartnersSectionProps) {
   const sectionRef = useRef<HTMLDivElement>(null); // Added for the observer
   const sliderRef = useRef<HTMLDivElement>(null);
   const [imagesLoaded, setImagesLoaded] = useState(0);
@@ -92,14 +96,17 @@ export default function PartnersSection() {
   }, [shouldStart]);
 
   return (
-    <section ref={sectionRef} className="w-full py-10 md:py-16 bg-white overflow-hidden border-y border-gray-100">
+    <section 
+      ref={sectionRef} 
+      className={`w-full py-10 md:py-16 overflow-hidden ${isTransparent ? 'bg-transparent text-white' : 'bg-white border-y border-gray-100'}`}
+    >
       {/* HEADER SECTION - Keeps vertical state */}
       <div className="flex flex-col items-center mb-8 md:mb-12 partners-header">
-        <h3 className="text-center text-gray-400 text-sm font-bold tracking-widest uppercase opacity-0 translate-y-12">
+        <h3 className={`text-center text-sm font-bold tracking-widest uppercase opacity-0 translate-y-12 ${isTransparent ? 'text-white/60' : 'text-gray-400'}`}>
           Our Trusted Partners
         </h3>
         {/* Dash */}
-        <div className="mt-2 h-[2px] w-8 bg-gray-200 rounded-full opacity-0 translate-y-12"></div>
+        <div className={`mt-2 h-[2px] w-8 rounded-full opacity-0 translate-y-12 ${isTransparent ? 'bg-white/20' : 'bg-gray-200'}`}></div>
       </div>
       
       {/* Slider Wrapper - Initial state changed to translate-x for Right-to-Left reveal */}

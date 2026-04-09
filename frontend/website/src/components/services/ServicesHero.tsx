@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -54,6 +55,12 @@ export default function ServicesHero() {
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
         "-=0.5"
+      )
+      .fromTo(
+        ".hero-scroll-indicator",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, ease: "power2.out" },
+        "-=0.2"
       );
     },
     { scope: container }
@@ -112,6 +119,14 @@ export default function ServicesHero() {
         </p>
 
         {/* Floating Accent badges could go here if needed, but keeping it clean for Hero */}
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 z-10">
+        <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
+          Scroll
+        </span>
+        <ChevronDown className="text-white/40 animate-bounce" size={20} />
       </div>
 
       {/* Bottom transition */}

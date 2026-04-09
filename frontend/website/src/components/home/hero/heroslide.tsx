@@ -118,7 +118,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
   }, [slide, isActive]);
 
   return (
-    <div ref={containerRef} className="relative h-screen w-full">
+    <div ref={containerRef} className="relative h-[100dvh] w-full">
       {/* background image */}
       {slide.image ? (
         <Image

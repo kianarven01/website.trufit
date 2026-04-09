@@ -243,7 +243,7 @@ export default function ProcessSection() {
               </span>
               <div className="h-[2px] w-8 bg-brand-red" />
             </div>
-            <h2 className="text-4xl md:text-6xl font-semibold uppercase tracking-tighter italic">Quality at Every Step</h2>
+            <h2 className="text-4xl md:text-6xl font-semibold uppercase tracking-tighter">Quality at Every Step</h2>
           </div>
 
           {/* Timeline Dots */}
@@ -278,7 +278,7 @@ export default function ProcessSection() {
 
                   {/* Label with increased spacing */}
                   <div className={`absolute top-full mt-1 flex flex-col items-center transition-all duration-500 ${idx === activeStep ? "opacity-100 translate-y-0" : "opacity-40 -translate-y-2"}`}>
-                    <span className="text-[10px] font-semibold italic text-brand-red mb-1">STEP {idx + 1}</span>
+                    <span className="text-[10px] font-semibold text-brand-red mb-1">STEP {idx + 1}</span>
                     <span className="text-[11px] font-semibold tracking-[0.2em] uppercase whitespace-nowrap">{step.title}</span>
                   </div>
                 </button>
@@ -296,7 +296,7 @@ export default function ProcessSection() {
                     key={`content-${step.id}`}
                     className={`step-content-${idx} ${idx === activeStep ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
                   >
-                    <h3 className="text-2xl md:text-4xl font-semibold mb-4 text-brand-red uppercase italic tracking-tighter leading-tight
+                    <h3 className="text-2xl md:text-4xl font-semibold mb-4 text-brand-red uppercase tracking-tighter leading-tight
                     ">
                       {step.title}
                     </h3>
@@ -325,7 +325,7 @@ export default function ProcessSection() {
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-brand-dark">
                         <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-brand-dark shadow-xl">
-                          <span className="text-brand-red font-semibold text-2xl italic tracking-tighter">{idx + 1}</span>
+                          <span className="text-brand-red font-semibold text-2xl tracking-tighter">{idx + 1}</span>
                         </div>
                         <h4 className="text-white/40 font-black uppercase tracking-[0.2em] text-[10px] mb-2">{step.title}</h4>
                         <p className="text-white/5 text-[9px] uppercase font-bold">Trufit Excellence / Process Documentation</p>
@@ -347,7 +347,7 @@ export default function ProcessSection() {
       {/* MOBILE & TABLET VIEW (Vertical Stack) */}
       <div className="block lg:hidden relative z-10 min-h-screen py-16 px-6 mt-16">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-semibold uppercase tracking-tighter italic">Quality at Every Step</h2>
+          <h2 className="text-4xl font-semibold uppercase tracking-tighter">Quality at Every Step</h2>
           <p className="text-brand-red font-semibold tracking-widest uppercase text-sm mt-4">Our Work</p>
         </div>
         
@@ -358,8 +358,8 @@ export default function ProcessSection() {
                 {step.id}
               </span>
               <div className="relative z-10">
-                <span className="text-brand-red font-semibold italic text-xs mb-2 block tracking-[0.2em]">STEP</span>
-                <h3 className="text-2xl font-semibold italic uppercase tracking-tighter text-white mb-3">{step.title}</h3>
+                <span className="text-brand-red font-semibold text-xs mb-2 block tracking-[0.2em]">STEP</span>
+                <h3 className="text-2xl font-semibold uppercase tracking-tighter text-white mb-3">{step.title}</h3>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6 font-medium">{step.description}</p>
               </div>
               {step.image ? (
@@ -370,7 +370,7 @@ export default function ProcessSection() {
               ) : (
                 <div className="relative w-full h-48 rounded-sm overflow-hidden mt-2 shadow-2xl border border-white/10 bg-brand-dark flex flex-col items-center justify-center text-center p-4 z-10">
                   <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-4 bg-brand-dark shadow-xl">
-                    <span className="text-brand-red font-semibold text-xl italic tracking-tighter">{idx + 1}</span>
+                    <span className="text-brand-red font-semibold text-xl tracking-tighter">{idx + 1}</span>
                   </div>
                   <h4 className="text-white/40 font-semibold uppercase tracking-[0.2em] text-[10px] mb-2">{step.title}</h4>
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent h-10 w-full animate-pulse" />

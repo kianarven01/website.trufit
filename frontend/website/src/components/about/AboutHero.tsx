@@ -80,7 +80,7 @@ export default function AboutHero() {
       <div className="about-hero-overlay" />
 
       {/* Content */}
-      <div ref={contentRef} className="about-hero-content max-w-4xl mx-auto pt-[112px] md:pt-[120px]">
+      <div ref={contentRef} className="about-hero-content max-w-4xl mx-auto" style={{ paddingTop: '60px' }}>
         <div className="hero-label flex items-center justify-center gap-3 mb-6 opacity-0">
           <div className="h-[1px] w-12 bg-brand-red" />
           <span className="text-white/70 text-xs font-bold tracking-[0.4em] uppercase">
@@ -89,23 +89,30 @@ export default function AboutHero() {
           <div className="h-[1px] w-12 bg-brand-red" />
         </div>
 
-        <h1 className="hero-title text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] tracking-tight mb-6 opacity-0">
+        <h1 
+          className="hero-title font-semibold text-white leading-[1.1] tracking-tight mb-6 opacity-0"
+          style={{ fontSize: 'clamp(2.25rem, 5vw, 5rem)' }}
+        >
           More Than A<br />
           <span className="text-gradient-red">Service Center</span>
         </h1>
 
-        <p className="hero-subtitle text-white/60 text-base md:text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed font-medium opacity-0">
+        <p 
+          className="hero-subtitle text-white/60 max-w-2xl mx-auto leading-relaxed font-medium opacity-0"
+          style={{ fontSize: 'clamp(0.95rem, 1.3vw, 1.35rem)' }}
+        >
           We fix cars. We build overland adventures. We race to win.
           This is the Trufit story.
         </p>
 
-        {/* Scroll Indicator */}
-        <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0">
-          <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
-            Scroll
-          </span>
-          <ChevronDown className="text-white/40 scroll-indicator" size={20} />
-        </div>
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 z-10">
+        <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
+          Scroll
+        </span>
+        <ChevronDown className="text-white/40 animate-bounce" size={20} />
       </div>
     </section>
   );

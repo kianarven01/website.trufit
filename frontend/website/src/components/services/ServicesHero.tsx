@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -54,6 +55,12 @@ export default function ServicesHero() {
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
         "-=0.5"
+      )
+      .fromTo(
+        ".hero-scroll-indicator",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.6, ease: "power2.out" },
+        "-=0.2"
       );
     },
     { scope: container }
@@ -80,7 +87,7 @@ export default function ServicesHero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto pt-[112px] md:pt-[120px]">
+      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto" style={{ paddingTop: '60px' }}>
         <div 
           ref={subtitleRef}
           className="section-label justify-center opacity-0 mb-6"
@@ -94,7 +101,8 @@ export default function ServicesHero() {
         
         <h1 
           ref={titleRef}
-          className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
+          className="font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
+          style={{ fontSize: 'clamp(2.25rem, 5vw, 5rem)' }}
         >
           Suzuki Authorized <br className="hidden md:block" />
           <span className="text-gradient-red font-semibold">Service Center</span>
@@ -102,7 +110,8 @@ export default function ServicesHero() {
         
         <p 
           ref={textRef}
-          className="text-white/60 text-lg md:text-2xl font-medium max-w-3xl mx-auto leading-relaxed opacity-0"
+          className="text-white/60 font-medium max-w-3xl mx-auto leading-relaxed opacity-0"
+          style={{ fontSize: 'clamp(1rem, 1.3vw, 1.5rem)' }}
         >
           We set the gold standard in automotive care. As an authorized Suzuki 
           Service Center, we provide specialized maintenance that guarantees 
@@ -110,6 +119,14 @@ export default function ServicesHero() {
         </p>
 
         {/* Floating Accent badges could go here if needed, but keeping it clean for Hero */}
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 z-10">
+        <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
+          Scroll
+        </span>
+        <ChevronDown className="text-white/40 animate-bounce" size={20} />
       </div>
 
       {/* Bottom transition */}

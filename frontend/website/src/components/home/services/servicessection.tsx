@@ -221,11 +221,11 @@ export default function ServicesSection() {
         <div className="mb-12 md:mb-20 section-header">
           <div className="flex items-center gap-3 mb-4 opacity-0">
             <div className="w-12 h-[2px] bg-brand-red" />
-            <span className="text-brand-red font-semibold text-sm md:text-xs tracking-[0.2em] uppercase">
+            <span className="text-brand-red font-semibold text-xs tracking-[0.3em] uppercase">
               What We Do
             </span>
           </div>
-          <h2 className="text-5xl md:text-6xl lg:text-8xl font-semibold text-brand-dark leading-tight uppercase tracking-tight opacity-0">
+          <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark leading-tight uppercase tracking-tight opacity-0">
             Our Services
           </h2>
           <p className="mt-4 md:mt-8 text-gray-600 md:text-gray-500 max-w-2xl leading-relaxed text-base md:text-xl font-medium md:font-normal opacity-0">

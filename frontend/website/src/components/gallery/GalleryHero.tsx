@@ -60,12 +60,12 @@ export default function GalleryHero() {
           <div ref={textRef} className="max-w-3xl">
             <div className="flex items-center gap-3 mb-6 hero-reveal">
               <div className="h-[2px] w-12 bg-brand-red" />
-              <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
+              <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
                 Visual Showcase
               </span>
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-semibold text-white mb-6 uppercase tracking-tight hero-reveal leading-none">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white mb-6 tracking-tight hero-reveal leading-none">
               Witness Our <br />
               <span className="text-brand-red">Precision</span>
             </h1>

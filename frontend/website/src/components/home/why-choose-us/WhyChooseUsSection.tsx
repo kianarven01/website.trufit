@@ -76,12 +76,12 @@ export default function WhyChooseUsSection() {
         <div className="text-center mb-20 why-header">
           <div className="flex items-center justify-center gap-2 mb-4 opacity-0 translate-y-12">
             <div className="h-[2px] w-8 bg-brand-red" />
-            <span className="text-sm font-semibold tracking-widest uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
               Why Choose Us
             </span>
             <div className="h-[2px] w-8 bg-brand-red" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-semibold text-brand-dark opacity-0 translate-y-12">Built on Trust & Precision</h2>
+          <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark opacity-0 translate-y-12">Built on Trust & Precision</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 why-grid">

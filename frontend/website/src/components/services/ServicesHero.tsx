@@ -83,18 +83,18 @@ export default function ServicesHero() {
       <div className="relative z-10 text-center px-6 max-w-6xl mx-auto pt-[112px] md:pt-[120px]">
         <div 
           ref={subtitleRef}
-          className="services-chapter-label justify-center opacity-0 mb-6"
+          className="section-label justify-center opacity-0 mb-6"
         >
-          <div className="services-chapter-label-line" />
-          <span className="services-chapter-label-text !text-white/60">
+          <div className="section-label-line" />
+          <span className="section-label-text !text-white/60">
             Official Partner
           </span>
-          <div className="services-chapter-label-line" />
+          <div className="section-label-line" />
         </div>
         
         <h1 
           ref={titleRef}
-          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
+          className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
         >
           Suzuki Authorized <br className="hidden md:block" />
           <span className="text-gradient-red font-semibold">Service Center</span>

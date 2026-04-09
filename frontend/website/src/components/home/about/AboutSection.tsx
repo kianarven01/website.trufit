@@ -335,7 +335,7 @@ export default function AboutSection() {
           <div className="order-1 lg:order-2">
             <div className="flex items-center gap-3 mb-6 about-reveal">
               <div className="h-[2px] w-12 bg-brand-red" />
-              <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
+              <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
                 About Trufit
               </span>
             </div>

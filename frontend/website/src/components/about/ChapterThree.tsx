@@ -105,9 +105,9 @@ export default function ChapterThree() {
         {/* Header */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-end mb-12 md:mb-16">
           <div>
-            <div className="ch3-reveal chapter-label">
-              <div className="chapter-label-line" />
-              <span className="chapter-label-text">Sports & Fitness</span>
+            <div className="ch3-reveal section-label">
+              <div className="section-label-line" />
+              <span className="section-label-text">Sports & Fitness</span>
             </div>
 
             <h2 className="ch3-reveal text-3xl md:text-5xl lg:text-6xl font-semibold leading-tight uppercase tracking-tight mb-6 text-brand-dark">

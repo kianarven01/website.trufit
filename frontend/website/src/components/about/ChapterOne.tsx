@@ -108,9 +108,9 @@ export default function ChapterOne() {
 
           {/* Content Side */}
           <div className="order-1 lg:order-2">
-            <div className="ch1-reveal chapter-label">
-              <div className="chapter-label-line" />
-              <span className="chapter-label-text">About Trufit</span>
+            <div className="ch1-reveal section-label">
+              <div className="section-label-line" />
+              <span className="section-label-text">About Trufit</span>
             </div>
 
             <h2 className="ch1-reveal text-3xl md:text-5xl font-semibold mb-4 leading-tight text-brand-dark uppercase tracking-tight">

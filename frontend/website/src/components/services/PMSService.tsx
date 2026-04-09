@@ -101,14 +101,14 @@ export default function PMSService() {
           
           {/* Content Wrapper - handles Title, Detail, List, Button order */}
           <div className="flex flex-col">
-            <div className="pms-reveal services-chapter-label mb-6 order-1">
-              <div className="services-chapter-label-line" />
-              <span className="services-chapter-label-text">
+            <div className="pms-reveal section-label mb-6 order-1">
+              <div className="section-label-line" />
+              <span className="section-label-text">
                 Essential Care
               </span>
             </div>
             
-            <h2 className="pms-reveal text-4xl md:text-6xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-8 order-2">
+            <h2 className="pms-reveal text-3xl md:text-5xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-8 order-2">
               Preventive <br />
               <span className="text-brand-red font-semibold">Maintenance Service</span>
             </h2>

@@ -108,9 +108,9 @@ export default function ChapterTwo() {
 
       {/* Header Section */}
       <div className="relative z-10 pt-20 md:pt-32 pb-12 md:pb-16 max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16">
-        <div className="ch2-reveal chapter-label">
-          <div className="chapter-label-line" />
-          <span className="chapter-label-text">Overland</span>
+        <div className="ch2-reveal section-label">
+          <div className="section-label-line" />
+          <span className="section-label-text">Overland</span>
         </div>
 
         <h2 className="ch2-reveal text-3xl md:text-5xl lg:text-6xl font-semibold leading-tight uppercase tracking-tight mb-6">

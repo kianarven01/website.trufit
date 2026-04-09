@@ -105,16 +105,16 @@ export default function GeneralServices() {
 
       <div className="max-w-[1700px] mx-auto relative z-10">
         <div className="mb-20 md:mb-32">
-          <div className="services-chapter-label mb-6">
-            <div className="services-chapter-label-line" />
-            <span className="services-chapter-label-text">
+          <div className="section-label mb-6">
+            <div className="section-label-line" />
+            <span className="section-label-text">
               Full Spectrum
             </span>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end">
             <div>
-              <h2 className="text-4xl md:text-6xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-0">
+              <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-0">
                 Specialized <br />
                 <span className="text-gradient-red font-semibold">& Allied</span> Services
               </h2>

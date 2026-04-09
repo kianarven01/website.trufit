@@ -168,11 +168,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* title */}
           <h1
             ref={titleRef}
-            className="text-3xl sm:text-4xl md:text-8xl font-semibold mb-3 md:mb-3 leading-tight uppercase landscape:text-2xl lg:landscape:text-8xl"
+            className="text-4xl md:text-6xl lg:text-7xl font-semibold mb-3 md:mb-3 leading-tight uppercase landscape:text-2xl lg:landscape:text-7xl tracking-tight"
             style={{ 
                 opacity: isActive ? 0 : 1,
-                ...consistentTextStyle, 
-                fontSize: "clamp(2.5rem, 5vw, 4rem)"
+                ...consistentTextStyle
             }}
           >
             <span className="text-brand-red">{firstWord}</span> {restOfTitle}
@@ -181,11 +180,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
           {/* subtitle */}
           <p
             ref={subtitleRef}
-            className="text-[11px] sm:text-sm md:text-xl mb-4 md:mb-5 max-w-2xl text-gray-300 font-light leading-relaxed landscape:hidden lg:landscape:block"
+            className="text-sm md:text-xl mb-4 md:mb-5 max-w-2xl text-gray-300 font-light leading-relaxed landscape:hidden lg:landscape:block"
             style={{ 
                 opacity: isActive ? 0 : 1,
-                ...consistentTextStyle, 
-                fontSize: "clamp(0.9rem, 1.2vw, 1.25rem)"
+                ...consistentTextStyle
             }}
           >
             {slide.subtitle}

@@ -48,13 +48,13 @@ export default function VehicleBrands({ isTransparent = false }: VehicleBrandsPr
         <div className="mb-16 md:mb-24 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="w-12 h-[1px] bg-brand-red/50" />
-            <span className="text-brand-red font-bold text-[10px] md:text-xs tracking-[0.4em] uppercase">
+            <span className="text-xs font-bold tracking-[0.4em] uppercase text-brand-red">
               Brand Compatibility
             </span>
             <div className="w-12 h-[1px] bg-brand-red/50" />
           </div>
           
-          <h2 className="text-4xl md:text-6xl font-semibold text-white leading-tight uppercase tracking-tight mb-6">
+          <h2 className="text-3xl md:text-5xl font-semibold text-white leading-tight uppercase tracking-tight mb-6">
             Expertise Across <span className="text-gradient-red font-bold">All Major Brands</span>
           </h2>
           

@@ -113,7 +113,7 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
         <div className="text-center mb-14 md:mb-20">
           <div className="vmv-animate flex items-center justify-center gap-3 mb-4">
             <div className="h-[2px] w-8 bg-brand-red" />
-            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
               Our Foundation
             </span>
             <div className="h-[2px] w-8 bg-brand-red" />

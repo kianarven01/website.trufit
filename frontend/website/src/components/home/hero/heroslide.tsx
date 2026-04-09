@@ -161,7 +161,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           >
             <div className="h-[2px] w-8 bg-brand-red" />
             <span className="text-[10px] md:text-xs font-semibold tracking-[0.3em] uppercase text-white/80">
-              Quality Auto Care
+              {slide.smallHeader}
             </span>
           </div>
 

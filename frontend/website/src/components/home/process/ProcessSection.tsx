@@ -14,35 +14,35 @@ const steps = [
     id: "consultation",
     title: "CONSULTATION",
     description:
-      "We begin by understanding your concerns and performing a preliminary assessment of your vehicle's needs.",
+      "We will ask you about your car’s issues and do a quick check to see what needs to be done",
     image: "/images/home/our_work/consultation.jpg",
   },
   {
     id: "diagnostics",
     title: "DIAGNOSTICS",
     description:
-      "We utilize advanced diagnostic technology to look beyond surface symptoms, performing an exhaustive digital analysis that identifies the root cause of any issue. This data-driven approach allows us to act as your technical consultants, providing a transparent, high-definition view of your vehicle's health so you can make the most strategic maintenance decisions.",
+      "We will run an extensive inspection with our special diagnostic tools to help us find the exact problem.",
     image: "/images/home/our_work/diagnostics.jpg",
   },
   {
     id: "maintenance",
     title: "Repair",
     description:
-      "Our expert technicians perform the necessary repairs and maintenance with surgical precision using premium parts.",
+      "Our expert technicians will perform the necessary repairs and maintenance with proper tools and using premium parts.",
     image: "/images/home/our_work/repair.jpg",
   },
   {
     id: "quality",
     title: "QUALITY CONTROL",
     description:
-      "Every vehicle undergoes a rigorous multi-point inspection to ensure all work meets our high standards.",
+      "We will test-drive and inspect your car one last time to make sure everything is working properly.",
     image: "/images/home/our_work/quality_control.jpg",
   },
   {
     id: "delivery",
     title: "DELIVERY",
     description:
-      "We return your vehicle in peak condition, providing a detailed report of all services performed.",
+      "We will hand over your car in great condition while providing a detailed report of all services performed.",
     image: "/images/home/our_work/delivery.jpg",
   },
 ]

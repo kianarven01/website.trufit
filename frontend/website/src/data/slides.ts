@@ -28,7 +28,7 @@ export const slides: Slide[] = [
   {
     image: "/images/home/dti_accreditation.jpg",
     smallHeader: "DTI 5-star Accredited Workshop",
-    title: "Award Winning Service You Can Trust",
+    title: "Service You Can Trust",
     subtitle: "Our service is backed by DTI’s Bagwis Seal of excellence, proving the quality and reliability of our services.",
     primaryLink: "/services",
     secondaryLink: "/",

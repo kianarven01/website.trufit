@@ -220,10 +220,10 @@ export default function AboutSection() {
   }, { scope: sectionRef });
 
   const features = [
-    { title: "OEM-Certified Diagnostic Tools", desc: "Dealership-level precision for all makes." },
-    { title: "Master-Level Diagnostics", desc: "Overseen by 25+ years of industry wisdom." },
-    { title: "Genuine & Premium Parts", desc: "We never compromise on your car's integrity." },
-    { title: "Transparency Guarantee", desc: "Full reports and photos of every repair." },
+    { title: "Bronze Bagwis Seal", desc: "DTI certified for fair prices and honest customer service." },
+    { title: "Service Warranty Included", desc: "We stand behind our work, so we give warranty on all our repairs." },
+    { title: "Special Repair Tools", desc: "We use the right tools to find fix your problems fast." },
+    { title: "Genuine Parts", desc: "We use the best parts for your car to keep you safe on the road" },
   ];
 
   return (
@@ -341,8 +341,8 @@ export default function AboutSection() {
             </div>
 
             <h2 className="text-3xl md:text-5xl font-semibold mb-8 leading-tight text-brand-dark about-reveal uppercase tracking-tight">
-              Decades of Wisdom. <br />
-              <span className="text-brand-red font-semibold">Modern Precision.</span>
+              Quality Care <br />
+              <span className="text-brand-red font-semibold">For Every Car</span>
             </h2>
 
             {/* Mobile Slider */}
@@ -379,11 +379,11 @@ export default function AboutSection() {
             </div>
 
             <p className="text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl about-reveal font-medium">
-              Founded in 2019, Trufit pairs trusted techniques with dealership-level tools to keep your car running strong.
+              We started in 2019 to provide repairs using 25 years of experience in the automotive field. We use special tools to find problems fast and fix them properly.
             </p>
 
             <p className="text-gray-500 text-base mb-12 leading-relaxed max-w-2xl about-reveal">
-              With over 25 years of automotive expertise, we've built a reputation for transparency and uncompromising quality. We don't just fix cars; we restore confidence.
+              As a DTI 5-Star shop, we are officially recognized for doing honest work. We only use real parts to keep you and your car safe.
             </p>
 
             {/* Benefits Grid */}

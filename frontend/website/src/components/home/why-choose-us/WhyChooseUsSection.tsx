@@ -8,22 +8,22 @@ const features = [
   {
     icon: <ShieldCheck className="w-10 h-10 text-brand-red" />,
     title: "DTI Certified",
-    description: "DTI 5-star accreditation, a distinction that guarantees you world-class technical expertise, fair pricing, and a commitment to consumer rights that sets the gold standard for automotive service.",
+    description: "We are a DTI 5-star Accredited Repair Center recognized for high quality, fair prices and honest service.",
   },
   {
     icon: <Leaf className="w-10 h-10 text-brand-red" />,
     title: "ECO Friendly",
-    description: "We prioritize sustainable shop practices and precision diagnostics to maximize your vehicle's efficiency, ensuring a smaller carbon footprint and a cleaner road ahead.",
+    description: "We follow safe practices of disposal not just to keep our shop clean but the environment as well.",
   },
   {
     icon: <Award className="w-10 h-10 text-brand-red" />,
     title: "Quality Guarantee",
-    description: "We back every repair with a quality guarantee and a comprehensive warranty, giving you the peace of mind that we stand firmly behind our craftsmanship and the premium parts we install.",
+    description: "We back our services with a warranty, using only genuine parts and our skills to do the job right.",
   },
   {
     icon: <Heart className="w-10 h-10 text-brand-red" />,
     title: "Customer First",
-    description: "We place your needs at the heart of every service, ensuring transparent communication and personalized solutions that make your safety and satisfaction our absolute priority.",
+    description: "We put your needs as our first priority, we provide clear updates and professional solutions to keep your car safe on the road",
   },
 ]
 

@@ -139,7 +139,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
       )}
 
       {/* dark overlay */}
-      <div className="absolute inset-0 bg-black/60" />
+      <div className="absolute inset-0 bg-black/70" />
 
       {/* left shadow */}
       <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/80 to-transparent" />

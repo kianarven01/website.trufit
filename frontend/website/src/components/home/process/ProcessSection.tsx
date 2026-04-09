@@ -26,7 +26,7 @@ const steps = [
   },
   {
     id: "maintenance",
-    title: "PRECISE MAINTENANCE",
+    title: "Repair",
     description:
       "Our expert technicians perform the necessary repairs and maintenance with surgical precision using premium parts.",
     image: "",

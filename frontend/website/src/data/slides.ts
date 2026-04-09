@@ -5,7 +5,7 @@ export const slides: Slide[] = [
     image: "",
     smallHeader: "Official Service Center",
     title: "Authorized Suzuki Service Center",
-    subtitle: "We are an official Suzuki service center here at Daet. We follow Suzuki’s Standard Quality Services to keep you safe on the road.",
+    subtitle: "We are an authorized Suzuki Service Station here at Daet. We follow Suzuki’s Standard Quality Services to keep you safe on the road.",
     primaryLink: "/services",
     secondaryLink: "/about",
   },

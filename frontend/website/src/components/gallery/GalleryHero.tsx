@@ -57,7 +57,7 @@ export default function GalleryHero() {
   return (
     <section 
       ref={containerRef}
-      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] pt-[200px] md:pt-[240px] pb-20 bg-brand-dark overflow-hidden -mt-[112px] md:-mt-[120px] flex items-center"
+      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] pb-20 bg-brand-dark overflow-hidden -mt-[112px] md:-mt-[120px] flex items-center justify-center"
     >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -75,7 +75,7 @@ export default function GalleryHero() {
 
 
 
-      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10 w-full text-center">
+      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10 w-full text-center" style={{ paddingTop: '60px' }}>
         <div ref={textRef} className="max-w-4xl mx-auto flex flex-col items-center">
           <div className="flex items-center gap-3 mb-6 hero-reveal">
             <div className="h-[2px] w-12 bg-brand-red" />
@@ -85,12 +85,18 @@ export default function GalleryHero() {
             <div className="h-[2px] w-12 bg-brand-red" />
           </div>
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white mb-6 tracking-tight hero-reveal leading-none uppercase">
+          <h1 
+            className="font-semibold text-white mb-6 tracking-tight hero-reveal leading-none"
+            style={{ fontSize: 'clamp(2.25rem, 5vw, 5rem)' }}
+          >
             Witness Our <br />
             <span className="text-brand-red">Precision</span>
           </h1>
 
-          <p className="text-white/80 text-base md:text-lg lg:text-xl max-w-2xl hero-reveal font-medium leading-relaxed">
+          <p 
+            className="text-white/80 max-w-2xl hero-reveal font-medium leading-relaxed"
+            style={{ fontSize: 'clamp(0.95rem, 1.3vw, 1.35rem)' }}
+          >
             Explore our state-of-the-art facility and the advanced diagnostic 
             technologies that set Trufit Auto Center apart.
           </p>

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, ChevronDown } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -22,6 +22,13 @@ export default function GalleryHero() {
       { opacity: 1, y: 0, duration: 1, stagger: 0.2, ease: "power3.out" }
     );
 
+    tl.fromTo(
+      ".hero-scroll-indicator",
+      { opacity: 0 },
+      { opacity: 1, duration: 0.6, ease: "power2.out" },
+      "-=0.2"
+    );
+
     gsap.to(".parallax-bg", {
       yPercent: 30,
       ease: "none",
@@ -29,6 +36,19 @@ export default function GalleryHero() {
         trigger: containerRef.current,
         start: "top top",
         end: "bottom top",
+        scrub: true,
+      },
+    });
+
+    // Dynamic text positioning on scroll (Fade and slide up)
+    gsap.to(textRef.current, {
+      y: -50,
+      opacity: 0,
+      ease: "none",
+      scrollTrigger: {
+        trigger: containerRef.current,
+        start: "top top",
+        end: "50% top",
         scrub: true,
       },
     });
@@ -55,29 +75,34 @@ export default function GalleryHero() {
 
 
 
-      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10 w-full">
-        <div className="flex flex-col md:flex-row items-end justify-between gap-8 text-shadow-lg">
-          <div ref={textRef} className="max-w-3xl">
-            <div className="flex items-center gap-3 mb-6 hero-reveal">
-              <div className="h-[2px] w-12 bg-brand-red" />
-              <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
-                Visual Showcase
-              </span>
-            </div>
-
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white mb-6 tracking-tight hero-reveal leading-none">
-              Witness Our <br />
-              <span className="text-brand-red">Precision</span>
-            </h1>
-
-            <p className="text-white/80 text-lg md:text-xl max-w-xl hero-reveal font-medium leading-relaxed">
-              Explore our state-of-the-art facility and the advanced diagnostic 
-              technologies that set Trufit Auto Center apart.
-            </p>
+      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10 w-full text-center">
+        <div ref={textRef} className="max-w-4xl mx-auto flex flex-col items-center">
+          <div className="flex items-center gap-3 mb-6 hero-reveal">
+            <div className="h-[2px] w-12 bg-brand-red" />
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
+              Visual Showcase
+            </span>
+            <div className="h-[2px] w-12 bg-brand-red" />
           </div>
 
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold text-white mb-6 tracking-tight hero-reveal leading-none uppercase">
+            Witness Our <br />
+            <span className="text-brand-red">Precision</span>
+          </h1>
 
+          <p className="text-white/80 text-base md:text-lg lg:text-xl max-w-2xl hero-reveal font-medium leading-relaxed">
+            Explore our state-of-the-art facility and the advanced diagnostic 
+            technologies that set Trufit Auto Center apart.
+          </p>
         </div>
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 z-10">
+        <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
+          Scroll
+        </span>
+        <ChevronDown className="text-white/40 animate-bounce" size={20} />
       </div>
 
       {/* Decorative line */}

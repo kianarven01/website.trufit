@@ -16,28 +16,6 @@
   border: 2px dashed rgba(255, 255, 255, 0.08);
 }
 
-.about-placeholder::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: 
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 40px,
-      rgba(255, 255, 255, 0.015) 40px,
-      rgba(255, 255, 255, 0.015) 41px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 40px,
-      rgba(255, 255, 255, 0.015) 40px,
-      rgba(255, 255, 255, 0.015) 41px
-    );
-  pointer-events: none;
-}
-
 .about-placeholder-icon {
   color: rgba(255, 255, 255, 0.08);
   margin-bottom: 1rem;

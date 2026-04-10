@@ -118,7 +118,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
   }, [slide, isActive]);
 
   return (
-    <div ref={containerRef} className="relative h-[100dvh] w-full">
+    <div ref={containerRef} className="relative h-full w-full">
       {/* background image */}
       {slide.image ? (
         <Image
@@ -148,7 +148,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
       <div className="relative z-10 flex h-full items-center">
         <div
           className="px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 text-white text-left max-w-[1820px] mx-auto w-full 
-                      pt-20 md:pt-18 lg:pt-20 pb-6 md:pb-2 flex flex-col justify-center"
+                      pt-20 md:pt-18 lg:pt-20 pb-16 md:pb-2 flex flex-col justify-center -translate-y-4 sm:-translate-y-6 md:translate-y-0"
         >
           {/* Quality Auto Care badge */}
           <div

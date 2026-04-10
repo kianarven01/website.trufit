@@ -52,6 +52,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   })
 
   const [otherService, setOtherService] = useState("")
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     const handleClaim = (e: any) => {
@@ -119,14 +120,23 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSending(true)
     const finalService = form.service === "other" ? otherService : form.service
-    const res = await fetch("/api/appointment", {
-      method: "POST",
-      body: JSON.stringify({ ...form, service: finalService }),
-    })
+    
+    try {
+      const res = await fetch("/api/appointment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...form, service: finalService }),
+      })
 
-    if (res.ok) {
-      alert("appointment sent ♡")
+      if (!res.ok) {
+        throw new Error("Failed to send appointment request")
+      }
+
+      alert("Appointment request sent successfully! We'll contact you soon.")
 
       window.dispatchEvent(new Event("appointmentSuccess")) // ✨ close modal
       setForm({
@@ -139,6 +149,11 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         message: ""
       })
       setOtherService("")
+    } catch (error) {
+      console.error(error)
+      alert("Failed to send request. Please try again or call us directly.")
+    } finally {
+      setSending(false)
     }
   }
 
@@ -243,9 +258,21 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       <div className="md:col-span-2">
         <button
           type="submit"
-          className="w-full bg-brand-red text-white py-4 rounded-sm font-semibold hover:bg-red-700 transition shadow-lg hover:shadow-red-900/20"
+          disabled={sending}
+          className={`w-full text-white py-4 rounded-sm font-semibold transition flex justify-center items-center gap-2 shadow-lg ${
+            sending 
+              ? "bg-brand-red/50 cursor-wait" 
+              : "bg-brand-red hover:bg-red-700 hover:shadow-red-900/20"
+          }`}
         >
-          Book Appointment
+          {sending ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Sending...
+            </>
+          ) : (
+            "Book Appointment"
+          )}
         </button>
       </div>
 

@@ -37,12 +37,28 @@ export default function ContactForm() {
     e.preventDefault();
     setSending(true);
 
-    // Simulate submission delay (replace with actual API call later)
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
 
-    setSending(false);
-    setSubmitted(true);
+      if (!res.ok) {
+        throw new Error("Failed to send message: " + res.statusText);
+      }
 
+      setSending(false);
+      setSubmitted(true);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send message. Please try again or email us directly at trufitautocenter@gmail.com.");
+      setSending(false);
+      return;
+    }
+    
     // Reset after 4 seconds
     setTimeout(() => {
       setSubmitted(false);

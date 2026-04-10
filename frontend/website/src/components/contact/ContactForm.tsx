@@ -21,6 +21,18 @@ export default function ContactForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 11) val = val.substring(0, 11);
+    let formatted = val;
+    if (val.length > 7) {
+      formatted = `${val.substring(0, 4)}-${val.substring(4, 7)}-${val.substring(7)}`;
+    } else if (val.length > 4) {
+      formatted = `${val.substring(0, 4)}-${val.substring(4)}`;
+    }
+    setForm({ ...form, phone: formatted });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
@@ -110,7 +122,7 @@ export default function ContactForm() {
           name="phone"
           placeholder="09XX-XXX-XXXX"
           value={form.phone}
-          onChange={handleChange}
+          onChange={handlePhoneChange}
           required
           className="contact-input-light"
         />

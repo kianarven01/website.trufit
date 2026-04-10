@@ -20,48 +20,64 @@ export default function ServicesHero() {
   useGSAP(
     () => {
       // Parallax effect for background image
-      gsap.to(bgImageRef.current, {
-        yPercent: 25,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (bgImageRef.current && container.current) {
+        gsap.to(bgImageRef.current, {
+          yPercent: 25,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
 
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          toggleActions: "play reverse play reverse",
-        },
-      });
+      if (container.current) {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            toggleActions: "play reverse play reverse",
+          },
+        });
 
-      tl.fromTo(
-        subtitleRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
-      )
-      .fromTo(
-        titleRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
-        "-=0.4"
-      )
-      .fromTo(
-        textRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
-        "-=0.5"
-      )
-      .fromTo(
-        ".hero-scroll-indicator",
-        { opacity: 0 },
-        { opacity: 1, duration: 0.6, ease: "power2.out" },
-        "-=0.2"
-      );
+        if (subtitleRef.current) {
+          tl.fromTo(
+            subtitleRef.current,
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
+          );
+        }
+
+        if (titleRef.current) {
+          tl.fromTo(
+            titleRef.current,
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
+            "-=0.4"
+          );
+        }
+
+        if (textRef.current) {
+          tl.fromTo(
+            textRef.current,
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
+            "-=0.5"
+          );
+        }
+
+        const scrollIndicator = gsap.utils.toArray(".hero-scroll-indicator");
+        if (scrollIndicator.length > 0) {
+          tl.fromTo(
+            scrollIndicator,
+            { opacity: 0 },
+            { opacity: 1, duration: 0.6, ease: "power2.out" },
+            "-=0.2"
+          );
+        }
+      }
     },
     { scope: container }
   );

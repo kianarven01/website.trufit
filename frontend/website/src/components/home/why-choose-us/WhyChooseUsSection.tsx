@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react"
 import { ShieldCheck, Leaf, Award, Heart } from "lucide-react"
 import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 
 const features = [
   {
@@ -30,34 +31,47 @@ const features = [
 export default function WhyChooseUsSection() {
   const container = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  useGSAP(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           // Section Header Reveal
-          gsap.to(".why-header > *", {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.2,
-            ease: "power3.out",
-            overwrite: "auto"
-          })
+          const headerElements = gsap.utils.toArray(".why-header > *");
+          if (headerElements.length > 0) {
+            gsap.to(headerElements, {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              stagger: 0.2,
+              ease: "power3.out",
+              overwrite: "auto"
+            })
+          }
 
           // Features Grid Reveal
-          gsap.to(".why-feature", {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.15,
-            ease: "power2.out",
-            delay: 0.4,
-            overwrite: "auto"
-          })
+          const featureElements = gsap.utils.toArray(".why-feature");
+          if (featureElements.length > 0) {
+            gsap.to(featureElements, {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              stagger: 0.15,
+              ease: "power2.out",
+              delay: 0.4,
+              overwrite: "auto"
+            })
+          }
         } else {
-          // Reverss
-          gsap.to(".why-header > *", { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
-          gsap.to(".why-feature", { opacity: 0, y: 60, duration: 0.5, overwrite: "auto" })
+          // Reverse
+          const headerElements = gsap.utils.toArray(".why-header > *");
+          const featureElements = gsap.utils.toArray(".why-feature");
+
+          if (headerElements.length > 0) {
+            gsap.to(headerElements, { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
+          }
+          if (featureElements.length > 0) {
+            gsap.to(featureElements, { opacity: 0, y: 60, duration: 0.5, overwrite: "auto" })
+          }
         }
       },
       { threshold: 0.15 }
@@ -68,7 +82,7 @@ export default function WhyChooseUsSection() {
     }
 
     return () => observer.disconnect()
-  }, [])
+  }, { scope: container })
 
   return (
     <section ref={container} className="section-padding bg-white overflow-hidden" id="why-choose-us">

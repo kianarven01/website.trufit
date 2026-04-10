@@ -122,22 +122,9 @@ export default function AboutSection() {
 
     mm.add("(min-width: 768px)", () => {
       // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -150,
-        ease: "none",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true
-        }
-      });
-
-      // Parallax inner content
-      gsap.fromTo(innerRef.current,
-        { y: 80 },
-        {
-          y: -80,
+      if (bgTextRef.current) {
+        gsap.to(bgTextRef.current, {
+          y: -150,
           ease: "none",
           scrollTrigger: {
             trigger: sectionRef.current,
@@ -145,75 +132,99 @@ export default function AboutSection() {
             end: "bottom top",
             scrub: true
           }
-        }
-      );
-
-      // Dynamic Diagnostic Graphs Animation
-      gsap.utils.toArray(".diagnostic-graph").forEach((graph: any, i) => {
-        gsap.to(graph, {
-          x: i % 2 === 0 ? -100 : 100, // Move horizontally
-          y: i % 2 === 0 ? -120 : -80, // Move vertically
-          scaleX: 1.1,
-          ease: "none",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: 1.5
-          }
         });
-      });
+      }
 
-      // Simple Reveal - Fixed to work from both scroll directions
-      const reveals = gsap.utils.toArray(".about-reveal");
-      reveals.forEach((item: any) => {
-        gsap.fromTo(item,
-          { opacity: 0, y: 40 },
+      // Parallax inner content
+      if (innerRef.current) {
+        gsap.fromTo(innerRef.current,
+          { y: 80 },
           {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            ease: "power2.out",
+            y: -80,
+            ease: "none",
             scrollTrigger: {
-              trigger: item,
-              start: "top 92%",
-              end: "bottom 8%",
-              toggleActions: "play reverse play reverse"
+              trigger: sectionRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: true
             }
           }
         );
-      });
+      }
+
+      // Dynamic Diagnostic Graphs Animation
+      const graphs = gsap.utils.toArray(".diagnostic-graph");
+      if (graphs.length > 0) {
+        graphs.forEach((graph: any, i) => {
+          gsap.to(graph, {
+            x: i % 2 === 0 ? -100 : 100, // Move horizontally
+            y: i % 2 === 0 ? -120 : -80, // Move vertically
+            scaleX: 1.1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: 1.5
+            }
+          });
+        });
+      }
+
+      // Simple Reveal - Fixed to work from both scroll directions
+      const reveals = gsap.utils.toArray(".about-reveal");
+      if (reveals.length > 0) {
+        reveals.forEach((item: any) => {
+          gsap.fromTo(item,
+            { opacity: 0, y: 40 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: item,
+                start: "top 92%",
+                end: "bottom 8%",
+                toggleActions: "play reverse play reverse"
+              }
+            }
+          );
+        });
+      }
 
       // Synchronized F1 Car & Path Timeline
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top bottom",
-          end: "top top",
-          scrub: 1, // Reduced scrub for tighter sync
-        }
-      });
+      if (carRef.current && activePathRef.current) {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top bottom",
+            end: "top top",
+            scrub: 1, // Reduced scrub for tighter sync
+          }
+        });
 
-      tl.fromTo(carRef.current,
-        { x: "0vw", opacity: 0 },
-        { x: "100vw", opacity: 1, ease: "none" },
-        0
-      );
+        tl.fromTo(carRef.current,
+          { x: "0vw", opacity: 0 },
+          { x: "100vw", opacity: 1, ease: "none" },
+          0
+        );
 
-      tl.fromTo(activePathRef.current,
-        { width: "0%" },
-        { width: "100%", ease: "none" },
-        0
-      );
+        tl.fromTo(activePathRef.current,
+          { width: "0%" },
+          { width: "100%", ease: "none" },
+          0
+        );
 
-      // High-frequency vibration for an F1 engine feel
-      gsap.to(carRef.current, {
-        y: "+=1.5",
-        repeat: -1,
-        yoyo: true,
-        duration: 0.05,
-        ease: "sine.inOut"
-      });
+        // High-frequency vibration for an F1 engine feel
+        gsap.to(carRef.current, {
+          y: "+=1.5",
+          repeat: -1,
+          yoyo: true,
+          duration: 0.05,
+          ease: "sine.inOut"
+        });
+      }
     });
 
     return () => mm.revert();

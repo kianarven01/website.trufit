@@ -17,20 +17,22 @@ export default function HomeCTABlock() {
   useGSAP(
     () => {
       // Linear vertical parallax background only (no 3D tilt/zoom)
-      gsap.fromTo(
-        bgRef.current,
-        { y: -120 },
-        {
-          y: 120,
-          ease: "none",
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: true,
-          },
-        }
-      );
+      if (bgRef.current && containerRef.current) {
+        gsap.fromTo(
+          bgRef.current,
+          { y: -120 },
+          {
+            y: 120,
+            ease: "none",
+            scrollTrigger: {
+              trigger: containerRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: true,
+            },
+          }
+        );
+      }
     },
     { scope: containerRef }
   );

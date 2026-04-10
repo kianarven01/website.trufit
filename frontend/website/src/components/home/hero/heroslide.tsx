@@ -18,7 +18,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const buttonsRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<HTMLDivElement>(null);
   const accreditationsRef = useRef<HTMLDivElement>(null);
 
   const [firstWord, ...restWords] = slide.title.split(" ");
@@ -40,7 +39,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
           titleRef.current,
           subtitleRef.current,
           buttonsRef.current,
-          statsRef.current,
           accreditationsRef.current,
         ],
         {
@@ -61,7 +59,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
           titleRef.current,
           subtitleRef.current,
           buttonsRef.current,
-          statsRef.current,
           accreditationsRef.current,
         ],
         {
@@ -102,12 +99,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
         )
         .fromTo(
           accreditationsRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0 },
-          "-=1.4",
-        )
-        .fromTo(
-          statsRef.current,
           { opacity: 0, y: 20 },
           { opacity: 1, y: 0 },
           "-=1.4",

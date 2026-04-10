@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
+import { useGSAP } from "@gsap/react";
 
 const PARTNERS = [
   { name: 'Frontrunner', logo: '/images/partners/frontrunner.webp' },
@@ -24,33 +25,46 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
   const [shouldStart, setShouldStart] = useState(false);
 
   // Intersection Observer for Reveal Animation
-  useEffect(() => {
+  useGSAP(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           // Header Reveal (Keeps original vertical reveal)
-          gsap.to(".partners-header > *", {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.2,
-            ease: "power3.out",
-            overwrite: "auto"
-          })
+          const headerElements = gsap.utils.toArray(".partners-header > *");
+          if (headerElements.length > 0) {
+            gsap.to(headerElements, {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              stagger: 0.2,
+              ease: "power3.out",
+              overwrite: "auto"
+            })
+          }
 
           // Slider Reveal (Updated to Right to Left)
-          gsap.to(".partners-slider", {
-            opacity: 1,
-            x: 0, // Moves to center
-            duration: 1,
-            ease: "power2.out",
-            delay: 0.4,
-            overwrite: "auto"
-          })
+          const sliderElement = gsap.utils.toArray(".partners-slider");
+          if (sliderElement.length > 0) {
+            gsap.to(sliderElement, {
+              opacity: 1,
+              x: 0, // Moves to center
+              duration: 1,
+              ease: "power2.out",
+              delay: 0.4,
+              overwrite: "auto"
+            })
+          }
         } else {
           // Reset
-          gsap.to(".partners-header > *", { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
-          gsap.to(".partners-slider", { opacity: 0, x: 100, duration: 0.5, overwrite: "auto" })
+          const headerElements = gsap.utils.toArray(".partners-header > *");
+          const sliderElement = gsap.utils.toArray(".partners-slider");
+
+          if (headerElements.length > 0) {
+            gsap.to(headerElements, { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
+          }
+          if (sliderElement.length > 0) {
+            gsap.to(sliderElement, { opacity: 0, x: 100, duration: 0.5, overwrite: "auto" })
+          }
         }
       },
       { threshold: 0.15 }
@@ -61,7 +75,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
     }
 
     return () => observer.disconnect()
-  }, [])
+  }, { scope: sectionRef })
 
   // Infinite Slider Logic
   useEffect(() => {
@@ -70,7 +84,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
     return () => clearTimeout(timer);
   }, [imagesLoaded]);
 
-  useEffect(() => {
+  useGSAP(() => {
     if (!shouldStart) return;
 
     const slider = sliderRef.current;
@@ -80,20 +94,16 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
 
     const totalWidth = slider.scrollWidth / 3;
 
-    const ctx = gsap.context(() => {
-      gsap.to(slider, {
-        x: -totalWidth,
-        duration: 25,
-        ease: "none",
-        repeat: -1,
-        modifiers: {
-          x: gsap.utils.unitize((x) => parseFloat(x) % totalWidth)
-        }
-      });
+    gsap.to(slider, {
+      x: -totalWidth,
+      duration: 25,
+      ease: "none",
+      repeat: -1,
+      modifiers: {
+        x: gsap.utils.unitize((x) => parseFloat(x) % totalWidth)
+      }
     });
-
-    return () => ctx.revert();
-  }, [shouldStart]);
+  }, { dependencies: [shouldStart], scope: sectionRef });
 
   return (
     <section 

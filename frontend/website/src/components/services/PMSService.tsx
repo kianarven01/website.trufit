@@ -52,50 +52,57 @@ export default function PMSService() {
   useGSAP(
     () => {
       // Content Reveal
-      gsap.fromTo(
-        ".pms-reveal",
-        { y: 30, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
-          scrollTrigger: {
-            trigger: container.current,
-            start: "top 80%",
-            toggleActions: "play reverse play reverse",
-          },
-        }
-      );
+      const reveals = gsap.utils.toArray(".pms-reveal");
+      if (reveals.length > 0 && container.current) {
+        gsap.fromTo(
+          reveals,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            stagger: 0.1,
+            scrollTrigger: {
+              trigger: container.current,
+              start: "top 80%",
+              toggleActions: "play reverse play reverse",
+            },
+          }
+        );
+      }
 
       // Image Reveal with Parallax
-      gsap.fromTo(
-        rightImage.current,
-        { scale: 0.95, opacity: 0, x: 50 },
-        {
-          scale: 1,
-          opacity: 1,
-          x: 0,
-          duration: 1.2,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: container.current,
-            start: "top 70%",
-          },
-        }
-      );
+      if (rightImage.current && container.current) {
+        gsap.fromTo(
+          rightImage.current,
+          { scale: 0.95, opacity: 0, x: 50 },
+          {
+            scale: 1,
+            opacity: 1,
+            x: 0,
+            duration: 1.2,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: container.current,
+              start: "top 70%",
+            },
+          }
+        );
+      }
 
       // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -80,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (bgTextRef.current && container.current) {
+        gsap.to(bgTextRef.current, {
+          y: -80,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
     },
     { scope: container }
   );

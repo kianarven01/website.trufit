@@ -21,35 +21,39 @@ export default function GeneralServices() {
     () => {
       const cards = gsap.utils.toArray(".service-card-reveal");
       
-      cards.forEach((card: any) => {
-        gsap.fromTo(
-          card,
-          { y: 40, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: card,
-              start: "top 92%",
-              toggleActions: "play reverse play reverse",
-            },
-          }
-        );
-      });
+      if (cards.length > 0) {
+        cards.forEach((card: any) => {
+          gsap.fromTo(
+            card,
+            { y: 40, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.8,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: card,
+                start: "top 92%",
+                toggleActions: "play reverse play reverse",
+              },
+            }
+          );
+        });
+      }
 
       // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -60,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (bgTextRef.current && container.current) {
+        gsap.to(bgTextRef.current, {
+          y: -60,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
     },
     { scope: container }
   );

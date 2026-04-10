@@ -94,7 +94,7 @@ export default function ContactForm() {
         <input
           type="text"
           name="firstName"
-          placeholder="John"
+          placeholder=""
           value={form.firstName}
           onChange={handleChange}
           required
@@ -108,7 +108,7 @@ export default function ContactForm() {
         <input
           type="text"
           name="lastName"
-          placeholder="Doe"
+          placeholder=""
           value={form.lastName}
           onChange={handleChange}
           required
@@ -122,7 +122,7 @@ export default function ContactForm() {
         <input
           type="email"
           name="email"
-          placeholder="john@example.com"
+          placeholder=""
           value={form.email}
           onChange={handleChange}
           required
@@ -136,7 +136,7 @@ export default function ContactForm() {
         <input
           type="tel"
           name="phone"
-          placeholder="09XX-XXX-XXXX"
+          placeholder=""
           value={form.phone}
           onChange={handlePhoneChange}
           required

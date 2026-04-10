@@ -162,25 +162,25 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
       {/* FIRST NAME */}
       <div className="relative">
-        <input type="text" name="firstName" placeholder="John" value={form.firstName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="firstName" placeholder="" value={form.firstName} onChange={handleChange} required className={inputClass} />
         <label className={labelClass}>First Name</label>
       </div>
 
       {/* LAST NAME */}
       <div className="relative">
-        <input type="text" name="lastName" placeholder="Doe" value={form.lastName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="lastName" placeholder="" value={form.lastName} onChange={handleChange} required className={inputClass} />
         <label className={labelClass}>Last Name</label>
       </div>
 
       {/* EMAIL */}
       <div className="relative">
-        <input type="email" name="email" placeholder="john@example.com" value={form.email} onChange={handleChange} required className={inputClass} />
+        <input type="email" name="email" placeholder="" value={form.email} onChange={handleChange} required className={inputClass} />
         <label className={labelClass}>Email</label>
       </div>
 
       {/* PHONE */}
       <div className="relative">
-        <input type="tel" name="phone" placeholder="09XX-XXX-XXXX" value={form.phone} onChange={handlePhoneChange} required className={inputClass} />
+        <input type="tel" name="phone" placeholder="" value={form.phone} onChange={handlePhoneChange} required className={inputClass} />
         <label className={labelClass}>Phone</label>
       </div>
 

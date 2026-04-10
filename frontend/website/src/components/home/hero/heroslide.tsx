@@ -227,7 +227,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
               <div className="flex items-center gap-2 md:gap-3">
                 <Image src="/images/accreditations/dti.webp" alt="DTI 5 Star" width={40} height={40} className="w-6 h-6 md:w-10 md:h-10 object-contain" />
                 <div className="text-[8px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
-                  5 Star<br/><span className="text-gray-400 font-normal">Accredited</span>
+                  5 Star Classification<br/><span className="text-gray-400 font-normal">Motor Vehicle and Heavy Equipment</span>
                 </div>
               </div>
               <div className="flex items-center gap-2 md:gap-3">

@@ -2,7 +2,7 @@ import { Slide } from "@/types/slide"
 
 export const slides: Slide[] = [
   {
-    image: "/images/home/suzuki_certification.jpg",
+    image: "/images/about/accreditation_real/suzuki.jpg",
     smallHeader: "Official Service Center",
     title: "Authorized Suzuki Service Center",
     subtitle: "We are an authorized Suzuki Service Station here at Daet. We follow Suzuki’s Standard Quality Services to keep you safe on the road.",

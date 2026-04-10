@@ -75,7 +75,7 @@ export default function ServicesHero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
           <Image
-            src="/images/services/entrance.jpg"
+            src="/images/services/entrance1.jpg"
             alt="Trufit Auto Center Entrance"
             fill
             className="object-cover object-center"

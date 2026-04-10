@@ -20,8 +20,8 @@ const ACCREDITATIONS = [
     name: "DTI",
     logo: "/images/accreditations/dti.webp",
     realImage: "/images/about/accreditation_real/dti.jpg",
-    title: "5 STAR",
-    subtitle: "ACCREDITED",
+    title: "5 Star Classification",
+    subtitle: "Motor Vehicle and Heavy Equipment",
   },
   {
     name: "Bagwis",

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { services } from '@/data/services';
 
 export async function POST(req: Request) {
   try {
     const data = await req.json();
     const { firstName, lastName, email, phone, date, service, message } = data;
+
+    // Map service ID to name
+    const serviceName = services.find(s => s.id === service)?.name || service;
 
     // Create a Nodemailer transporter using Gmail SMTP
     const transporter = nodemailer.createTransport({
@@ -28,14 +32,14 @@ export async function POST(req: Request) {
     const mailOptions = {
       from: `"${firstName} ${lastName}" <${email}>`,
       to: process.env.EMAIL_USER, // Send to the same address
-      subject: `New Appointment Request - Trufit Auto Center (${service})`,
+      subject: `New Appointment Request - Trufit Auto Center (${serviceName})`,
       html: `
-        <h2>New Appointment Request</h2>
+        <h2 style="color: #E31B23;">New Appointment Request</h2>
         <p><strong>Name:</strong> ${firstName} ${lastName}</p>
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Phone:</strong> ${phone}</p>
         <p><strong>Requested Date & Time:</strong> ${formattedDate}</p>
-        <p><strong>Service Needed:</strong> ${service}</p>
+        <p><strong>Service Needed:</strong> ${serviceName}</p>
         <br />
         <p><strong>Additional Message:</strong></p>
         <p>${message || '<i>No additional message provided.</i>'}</p>

@@ -67,8 +67,22 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       setOtherService("");
     };
 
+    const handlePrefill = (e: any) => {
+      const { service, message } = e.detail;
+      setForm(prev => ({
+        ...prev,
+        service: service || prev.service,
+        message: message || prev.message
+      }));
+      if (service !== "other") setOtherService("");
+    };
+
     window.addEventListener("claimOffer", handleClaim);
-    return () => window.removeEventListener("claimOffer", handleClaim);
+    window.addEventListener("prefillAppointment", handlePrefill);
+    return () => {
+      window.removeEventListener("claimOffer", handleClaim);
+      window.removeEventListener("prefillAppointment", handlePrefill);
+    };
   }, []);
 
   const handleChange = (

@@ -15,6 +15,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useModalStore } from "@/store/useModalStore";
 import "./services.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -34,6 +35,19 @@ export default function PMSService() {
   const rightImage = useRef<HTMLDivElement>(null);
   const extraImageRef = useRef<HTMLDivElement>(null);
   const bgTextRef = useRef<HTMLDivElement>(null);
+
+  const openAppointment = useModalStore((s) => s.openAppointment);
+
+  const handleBookPMS = () => {
+    openAppointment();
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("prefillAppointment", {
+          detail: { service: "pms" },
+        })
+      );
+    }, 100);
+  };
 
   useGSAP(
     () => {
@@ -158,7 +172,10 @@ export default function PMSService() {
             </div>
 
             <div className="pms-reveal flex items-center gap-6 order-6">
-              <button className="bg-brand-dark text-white px-8 py-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-brand-red transition-all duration-300 flex items-center gap-3">
+              <button 
+                onClick={handleBookPMS}
+                className="bg-brand-dark text-white px-8 py-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-brand-red transition-all duration-300 flex items-center gap-3 outline-none"
+              >
                 Book PMS Now
                 <ArrowRight size={16} />
               </button>

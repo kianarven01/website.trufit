@@ -49,6 +49,7 @@ export default function ContactPage() {
               alt="Trufit Auto Center"
               fill
               className="object-cover object-center"
+              sizes="100vw"
             />
           </div>
           <div className="absolute inset-0 bg-black/75 z-10" />

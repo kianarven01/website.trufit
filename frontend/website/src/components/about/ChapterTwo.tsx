@@ -149,6 +149,7 @@ export default function ChapterTwo() {
                 alt={card.title}
                 fill
                 className="object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700"
+                sizes="(max-width: 1024px) 100vw, 50vw"
               />
 
               {/* Caption Overlay */}

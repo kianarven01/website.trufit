@@ -167,8 +167,9 @@ export default function ChapterThree() {
                 alt={img.label}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
-              
+
               {/* Caption Overlay */}
               <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-brand-dark/80 to-transparent z-20">
                 <p className="text-white font-semibold text-[10px] uppercase tracking-widest mb-1">{img.label}</p>

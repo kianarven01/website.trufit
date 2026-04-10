@@ -68,6 +68,7 @@ export default function GalleryHero() {
               fill
               priority
               className="object-cover opacity-40"
+              sizes="100vw"
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/40 to-brand-dark" />

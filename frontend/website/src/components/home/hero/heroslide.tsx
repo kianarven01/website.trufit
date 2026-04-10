@@ -118,6 +118,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
           fill
           priority
           className="object-cover"
+          sizes="100vw"
         />
       ) : (
         <div className="absolute inset-0 bg-brand-dark flex items-center justify-center">

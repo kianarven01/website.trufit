@@ -96,6 +96,7 @@ export default function ServicesHero() {
             fill
             className="object-cover object-center"
             priority
+            sizes="100vw"
           />
         </div>
         {/* Dark overlay matching ContactHero */}

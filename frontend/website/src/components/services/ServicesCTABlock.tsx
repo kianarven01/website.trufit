@@ -48,6 +48,7 @@ export default function ServicesCTABlock() {
             alt="Brands Background"
             fill
             className="object-cover opacity-30 scale-110" // Slight scale to prevent edges showing during parallax
+            sizes="100vw"
           />
         </div>
         

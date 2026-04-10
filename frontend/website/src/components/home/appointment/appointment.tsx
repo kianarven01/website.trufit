@@ -95,7 +95,7 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
       {!isTransparent && (
         <div className="absolute inset-0 z-0 opacity-20">
           {backgroundImage ? (
-            <Image src={backgroundImage} fill alt="Appointment Background" className="object-cover" />
+            <Image src={backgroundImage} fill alt="Appointment Background" className="object-cover" sizes="100vw" />
           ) : (
             <div className="w-full h-full bg-brand-dark flex items-center justify-center">
                <div className="w-full h-full bg-[radial-gradient(circle_at_center,rgba(227,27,35,0.05)_0%,transparent_100%)]" />

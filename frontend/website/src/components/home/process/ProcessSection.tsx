@@ -226,6 +226,7 @@ export default function ProcessSection() {
                   alt={`Process Background ${idx}`}
                   fill
                   className="object-cover"
+                  sizes="100vw"
                 />
               ) : (
                 <div className="w-full h-full bg-transparent flex items-center justify-center" />
@@ -323,6 +324,7 @@ export default function ProcessSection() {
                         alt={step.title}
                         fill
                         className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-brand-dark">
@@ -366,7 +368,13 @@ export default function ProcessSection() {
               </div>
               {step.image ? (
                 <div className="relative w-full h-48 rounded-sm overflow-hidden mt-2 shadow-2xl border border-white/10 z-10">
-                  <Image src={step.image} alt={step.title} fill className="object-cover" />
+                  <Image 
+                    src={step.image} 
+                    alt={step.title} 
+                    fill 
+                    className="object-cover" 
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
                   <div className="absolute inset-0 bg-brand-red/10 mix-blend-overlay" />
                 </div>
               ) : (

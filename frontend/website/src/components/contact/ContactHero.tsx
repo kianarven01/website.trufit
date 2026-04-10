@@ -163,6 +163,7 @@ export default function ContactHero() {
             fill
             className="object-cover object-center"
             priority
+            sizes="100vw"
           />
         </div>
         {/* Dark overlay */}

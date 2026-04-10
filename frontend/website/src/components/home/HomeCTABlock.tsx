@@ -50,6 +50,7 @@ export default function HomeCTABlock() {
             alt="Partners & Appointment Background"
             fill
             className="object-cover opacity-30 scale-110" // dimming based on Services section
+            sizes="100vw"
           />
         </div>
         

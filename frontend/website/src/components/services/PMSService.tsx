@@ -143,6 +143,7 @@ export default function PMSService() {
                     alt="Preventive Maintenance Service"
                     fill
                     className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/40 to-transparent" />
                 </div>
@@ -208,6 +209,7 @@ export default function PMSService() {
                     alt="Preventive Maintenance Service"
                     fill
                     className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/40 to-transparent" />
                 </div>

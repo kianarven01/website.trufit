@@ -377,6 +377,7 @@ export default function AboutSection() {
                         alt="Trufit Service"
                         fill
                         className="object-cover pointer-events-none"
+                        sizes="100vw"
                       />
                     ) : (
                       <div className="w-full h-full bg-brand-dark/5 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200">
@@ -462,6 +463,7 @@ export default function AboutSection() {
                       alt={`Trufit Service ${currentImage + 1}`}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 1024px) 100vw, 50vw"
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-brand-dark to-brand-dark flex flex-col items-center justify-center p-12 text-center">

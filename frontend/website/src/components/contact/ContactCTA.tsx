@@ -6,11 +6,13 @@ import { Phone } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useModalStore } from "@/store/useModalStore";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function ContactCTA() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const openAppointment = useModalStore((s) => s.openAppointment);
 
   useGSAP(
     () => {
@@ -69,12 +71,12 @@ export default function ContactCTA() {
 
         {/* Buttons */}
         <div className="contact-cta-reveal flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            href="/#appointment"
-            className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/30 font-barlow"
+          <button
+            onClick={openAppointment}
+            className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/30 font-barlow outline-none"
           >
             Book Appointment
-          </Link>
+          </button>
           <a
             href="tel:09187747788"
             className="border-2 border-brand-red/40 text-white px-10 py-5 rounded-sm font-semibold hover:bg-brand-red hover:border-brand-red transition-all uppercase tracking-[0.2em] text-xs text-center flex items-center justify-center gap-2 font-barlow"

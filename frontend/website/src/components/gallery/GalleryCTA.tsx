@@ -6,11 +6,13 @@ import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useModalStore } from "@/store/useModalStore";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function GalleryCTA() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const openAppointment = useModalStore((s) => s.openAppointment);
 
   useGSAP(() => {
     gsap.to(".cta-parallax-bg", {
@@ -44,12 +46,12 @@ export default function GalleryCTA() {
           <h2 className="text-3xl md:text-5xl font-semibold text-white mb-8 uppercase tracking-tight">Ready to see the <br className="md:hidden" /> <span className="text-brand-red">Trufit difference?</span></h2>
           <p className="text-white/60 mb-12 max-w-2xl mx-auto font-medium">Experience professional-grade automotive care with the technologies you've seen here. Book your appointment today.</p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
-            <Link 
-              href="/#appointment"
-              className="bg-brand-red text-white px-12 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-brand-red/20"
+            <button 
+              onClick={openAppointment}
+              className="bg-brand-red text-white px-12 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs shadow-xl shadow-brand-red/20 outline-none"
             >
               Book Appointment
-            </Link>
+            </button>
              <Link 
               href="/contact"
               className="border-2 border-white/20 text-white px-12 py-5 rounded-sm font-semibold hover:bg-white hover:text-brand-dark transition-all uppercase tracking-[0.2em] text-xs backdrop-blur-sm"

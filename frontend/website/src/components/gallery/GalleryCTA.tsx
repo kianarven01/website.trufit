@@ -33,7 +33,7 @@ export default function GalleryCTA() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="cta-parallax-bg absolute top-[-20%] left-0 w-full h-[140%]">
           <Image 
-              src="/images/gallery/laboratory.jpg"
+              src="/images/gallery/laboratory.webp"
               alt="Trufit Automotive Facility"
               fill
               className="object-cover opacity-40"

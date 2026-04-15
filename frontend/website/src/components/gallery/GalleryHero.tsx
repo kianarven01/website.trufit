@@ -63,7 +63,7 @@ export default function GalleryHero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="parallax-bg absolute top-[-20%] left-0 w-full h-[140%]">
           <Image 
-              src="/images/gallery/tools.jpg"
+              src="/images/gallery/tools.webp"
               alt="Trufit Precision Laboratory"
               fill
               priority

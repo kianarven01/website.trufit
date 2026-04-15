@@ -14,25 +14,25 @@ const triathlonImages = [
     label: "Race Day", 
     sublabel: "Triathlon event photo", 
     className: "grid-item-1",
-    src: "/images/about/triathlon/race_day.jpg" 
+    src: "/images/about/triathlon/race_day.webp" 
   },
   { 
     label: "Team Prep", 
     sublabel: "Pre-race preparation", 
     className: "grid-item-2",
-    src: "/images/about/triathlon/team_prep.jpg" 
+    src: "/images/about/triathlon/team_prep.webp" 
   },
   { 
     label: "On Course", 
     sublabel: "In-action shot", 
     className: "grid-item-3",
-    src: "/images/about/triathlon/on_course.jpg" 
+    src: "/images/about/triathlon/on_course.webp" 
   },
   { 
     label: "Finish Line", 
     sublabel: "Victory moment", 
     className: "grid-item-4",
-    src: "/images/about/triathlon/finish_line.jpg" 
+    src: "/images/about/triathlon/finish_line.webp" 
   },
 ];
 

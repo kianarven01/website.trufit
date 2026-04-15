@@ -11,8 +11,8 @@ class Manufacturers extends Model
 
     protected $table = 'Main.Manufacturers';
     protected $primaryKey = 'id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'name',
@@ -21,6 +21,6 @@ class Manufacturers extends Model
 
     public function vehicleModels()
     {
-        return $this->hasMany(VehicleModel::class, 'manufacturer_id');
+        return $this->hasMany(VehicleModel::class, 'manufacturer_id', 'id');
     }
 }

@@ -41,9 +41,9 @@ const StatItem = ({ icon, value, label }: StatProps) => {
 };
 
 const images: string[] = [
-  "/images/home/about_trufit/workshop.JPG",
-  "/images/home/about_trufit/bagwis.jpg",
-  "/images/home/about_trufit/laboratory_tools.JPG",
+  "/images/home/about_trufit/workshop.webp",
+  "/images/home/about_trufit/bagwis.webp",
+  "/images/home/about_trufit/laboratory_tools.webp",
 ];
 
 // Custom F1 Car SVG Component

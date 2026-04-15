@@ -14,7 +14,7 @@ export default function Footer() {
         <div className="flex flex-col items-start lg:pr-8">
           <Link href="/">
             <Image
-              src="/images/logo-dark1.png"
+              src="/images/logo-dark1.webp"
               alt="TruFit Auto Center"
               width={180}
               height={48}

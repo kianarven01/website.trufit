@@ -91,7 +91,7 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
         <>
           <div ref={localBgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
             <img 
-              src="/images/about/foundation.jpg" 
+              src="/images/about/foundation.webp" 
               alt="Foundation Background" 
               className="w-full h-full object-cover opacity-30" 
             />

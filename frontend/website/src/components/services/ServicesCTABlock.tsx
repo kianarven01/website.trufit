@@ -44,7 +44,7 @@ export default function ServicesCTABlock() {
       <div className="absolute inset-x-0 -top-[15%] h-[130%] z-0">
         <div ref={bgRef} className="absolute inset-0 h-full w-full">
           <Image
-            src="/images/services/brands.jpg"
+            src="/images/services/brands.webp"
             alt="Brands Background"
             fill
             className="object-cover opacity-30 scale-110" // Slight scale to prevent edges showing during parallax

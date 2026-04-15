@@ -14,25 +14,25 @@ const overlandCards = [
     title: "Adventure Ready",
     caption: "Equipping vehicles for the toughest terrains — ensuring every journey is backed by performance and reliability.",
     icon: <Truck size={20} />,
-    image: "/images/about/overland_contents/adventure_ready.jpg",
+    image: "/images/about/overland_contents/adventure_ready.webp",
   },
   {
     title: "Custom Builds",
     caption: "Tailored off-road solutions for explorers, from suspension upgrades to full overland rig preparations.",
     icon: <Shield size={20} />,
-    image: "/images/about/overland_contents/custom_builds.jpg",
+    image: "/images/about/overland_contents/custom_builds.webp",
   },
   {
     title: "Expert Support",
     caption: "Our team brings mechanical excellence to the trail, offering support for off-road enthusiasts across the region.",
     icon: <Heart size={20} />,
-    image: "/images/about/overland_contents/expert_support.jpg",
+    image: "/images/about/overland_contents/expert_support.webp",
   },
   {
     title: "Overland Community",
     caption: "Beyond the workshop, we foster a community of explorers who share a passion for the great outdoors and rugged discovery.",
     icon: <Camera size={20} />,
-    image: "/images/about/overland_contents/overland_community.jpg",
+    image: "/images/about/overland_contents/overland_community.webp",
   },
 ];
 
@@ -87,7 +87,7 @@ export default function ChapterTwo() {
       {/* Background Image with Overlay */}
       <div ref={bgRef} className="absolute inset-x-0 -top-[20%] h-[140%] z-0">
         <img 
-          src="/images/about/overland.jpg" 
+          src="/images/about/overland.webp" 
           alt="Overland Background" 
           className="w-full h-full object-cover opacity-30" 
         />

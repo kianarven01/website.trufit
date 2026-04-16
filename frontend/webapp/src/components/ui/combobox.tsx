@@ -1,4 +1,4 @@
-import { FC, useRef, useState } from "react";
+import { FC, useState, useEffect, useMemo } from "react";
 import {
   Popover,
   PopoverContent,
@@ -12,17 +12,18 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Check, ChevronDown, X } from "lucide-react";
-
 import { cn } from "@/lib/utils";
+
+export type ComboboxItem = { label: string; value: string };
 
 interface MakeComboboxProps {
   value: string;
   onChange: (val: string) => void;
-  items: string[];
+  items: (string | ComboboxItem)[];
   placeholder?: string;
   allowAdd?: boolean;
-  addLabel?: string;       
-  onAdd?: () => void;      
+  addLabel?: string;
+  onAdd?: (currentSearch: string) => void; // trigger popup modal
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -35,11 +36,26 @@ const Combobox: FC<MakeComboboxProps> = ({
   onAdd,
 }) => {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const filteredItems = items.filter((item) =>
-    item.toLowerCase().includes(search.toLowerCase())
+  // Normalize items to objects with label & value
+  const normalizedItems = useMemo(() => {
+    return items.map((item) =>
+      typeof item === "string" ? { label: item, value: item } : item
+    );
+  }, [items]);
+
+  // Initial label based on current value
+  const initialLabel = normalizedItems.find((i) => i.value === value)?.label || value;
+  const [search, setSearch] = useState(initialLabel);
+
+  useEffect(() => {
+    const label = normalizedItems.find((i) => i.value === value)?.label || value;
+    setSearch(label);
+  }, [value, normalizedItems]);
+
+  // Filter items based on search input
+  const filteredItems = normalizedItems.filter((item) =>
+    item.label.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleClear = () => {
@@ -48,25 +64,28 @@ const Combobox: FC<MakeComboboxProps> = ({
     setOpen(false);
   };
 
+  const handleAddClick = () => {
+    if (onAdd) onAdd(search); // Trigger popup modal
+    setOpen(false);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div className="relative w-full">
           <Input
-            ref={inputRef}
             placeholder={placeholder || "Type or select..."}
             value={search}
             onChange={(e) => {
               const val = e.target.value;
               setSearch(val);
               onChange(val);
-              if (val.length > 0) setOpen(true);
-              else setOpen(false);
+              setOpen(true);
             }}
             className="w-full pr-10"
           />
 
-          {value ? (
+          {search ? (
             <button
               type="button"
               onClick={handleClear}
@@ -76,77 +95,62 @@ const Combobox: FC<MakeComboboxProps> = ({
             </button>
           ) : (
             <ChevronDown
-              onClick={() => setOpen((prev) => !prev)}
               className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 cursor-pointer"
+              onClick={() => setOpen(true)}
             />
           )}
         </div>
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-[--radix-popover-trigger-width] p-0 shadow-md border-border"
         side="bottom"
+        align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <Command>
-          <CommandList
-            className="max-h-[260px] overflow-y-auto overscroll-contain scroll-smooth"
-            onWheel={(e) => e.stopPropagation()}
-          >
-            {filteredItems.length > 0 ? (
+        <Command className="border-none">
+          <CommandList className="max-h-[260px] overflow-y-auto">
+            {filteredItems.length > 0 && (
               <CommandGroup>
                 {filteredItems.map((item) => {
-                  const isSelected =
-                    value.toLowerCase() === item.toLowerCase();
-
+                  const isSelected = value === item.value;
                   return (
                     <CommandItem
-                      key={item}
-                      value={item}
-                      data-selected={isSelected} 
+                      key={item.value}
+                      value={item.label}
                       onSelect={() => {
-                        onChange(item);
-                        setSearch(item);
+                        onChange(item.value);
+                        setSearch(item.label);
                         setOpen(false);
                       }}
                       className={cn(
-                        "relative flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none justify-between",
-                        "data-[disabled=true]:pointer-events-none",
-                        "hover:bg-blue-50 hover:text-blue-600 data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-600"
+                        "flex cursor-pointer items-center justify-between px-2 py-1.5",
+                        isSelected ? "bg-accent text-accent-foreground" : ""
                       )}
                     >
-                      <span>{item}</span>
-                      {isSelected && <Check className="h-4 w-4 text-blue-700" />} 
+                      <span className="truncate">{item.label}</span>
+                      {isSelected && <Check className="h-4 w-4" />}
                     </CommandItem>
                   );
                 })}
               </CommandGroup>
-            ) : (
-              <CommandItem disabled>No results found</CommandItem>
             )}
 
-            {/* Updated Add button */}
-            {allowAdd && onAdd && (
-              <CommandItem
-                onSelect={() => {
-                  setOpen(false);
-                  onAdd();
-                }}
-                className={cn(
-                  "relative flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none justify-between",
-                  "data-[disabled=true]:pointer-events-none",
-                  "hover:bg-blue-50 hover:text-blue-600",
-                  "data-[selected=true]:bg-blue-50 data-[selected=true]:text-blue-600"
-                )}
+            {/* Add new item */}
+            {allowAdd && search.trim() !== "" && (
+              <div
+                onClick={handleAddClick}
+                className="flex cursor-pointer items-center gap-2 border-t px-2 py-2 text-sm text-primary font-medium hover:bg-accent"
               >
-                <span className="flex-1 text-blue-600">
-                  {search
-                    ? `+ Add "${search}" ${addLabel || ""}`
-                    : `+ Add new ${addLabel || ""}`}
-                </span>
+                + Add {addLabel || "new item"}
+              </div>
+            )}
 
-              </CommandItem>
+            {filteredItems.length === 0 && !allowAdd && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                No results found.
+              </div>
             )}
           </CommandList>
         </Command>

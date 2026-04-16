@@ -28,6 +28,7 @@ import api from "@/api/axios";
 interface Product {
   id: string;
   image?: string;
+  image?: string;
   name: string;
   brand: string;
   manufacturer: string;
@@ -119,6 +120,8 @@ const ProductsList: React.FC = () => {
   const location = useLocation();
   const { vehicleSlug, variantSlug, categorySlug } = useParams<{
     vehicleSlug: string;
+    variantSlug: string;
+    categorySlug: string;
     variantSlug: string;
     categorySlug: string;
   }>();
@@ -368,6 +371,9 @@ const ProductsList: React.FC = () => {
 
           <BreadcrumbSeparator />
 
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() => navigate("/webapp/products/product-catalog")}
@@ -375,6 +381,9 @@ const ProductsList: React.FC = () => {
               {`${make} ${model}`}
             </BreadcrumbLink>
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
 
           <BreadcrumbSeparator />
 
@@ -396,6 +405,9 @@ const ProductsList: React.FC = () => {
 
           <BreadcrumbSeparator />
 
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() =>
@@ -414,6 +426,9 @@ const ProductsList: React.FC = () => {
 
           <BreadcrumbSeparator />
 
+
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbPage>Products</BreadcrumbPage>
           </BreadcrumbItem>
@@ -421,6 +436,15 @@ const ProductsList: React.FC = () => {
       </Breadcrumb>
 
       <DataToolbar
+        searchPlaceholder={`Search ${categoryName} products...`}
+        onSearch={setSearch}
+        filters={filters}
+        activeFilters={filtersState}
+        onFilterChange={(key, value) =>
+          setFiltersState((prev) => ({ ...prev, [key]: value }))
+        }
+        onAdd={() => setOpenModal(true)}
+        addLabel="Add Product"
         searchPlaceholder={`Search ${categoryName} products...`}
         onSearch={setSearch}
         filters={filters}
@@ -568,4 +592,5 @@ const ProductsList: React.FC = () => {
   );
 };
 
+export default ProductsList;
 export default ProductsList;

@@ -88,7 +88,7 @@ const navItems: NavItem[] = [
     icon: ShoppingCart,
     children: [
       { label: "Purchase Orders", path: "/webapp/purchasing/purchase-orders", icon: Truck },
-      { label: "Vendors", path: "/webapp/purchasing/vendors", icon: Users },
+      { label: "suppliers", path: "/webapp/purchasing/suppliers", icon: Users },
     ],
   },
   { 
@@ -164,7 +164,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [openGroups, setOpenGroups] = useState<string[]>(["Sales"]);
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 

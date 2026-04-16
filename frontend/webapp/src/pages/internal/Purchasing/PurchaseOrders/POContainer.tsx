@@ -1,13 +1,12 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Outlet } from "react-router-dom";
 
-
-const ProductCatalog: React.FC = () => {
+const PurchOrderContainer: React.FC = () => {
   return (
     <DashboardLayout>
-      <Outlet /> 
+       <Outlet />
     </DashboardLayout>
   );
 };
 
-export default ProductCatalog;
+export default PurchOrderContainer;

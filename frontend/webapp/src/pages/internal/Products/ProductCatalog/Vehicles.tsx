@@ -202,6 +202,10 @@ const VehiclesPage: React.FC = () => {
               className="cursor-pointer"
               onClick={() => navigate("/webapp/products/product-catalog")}
             >
+            <BreadcrumbLink
+              className="cursor-pointer"
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
               Product Catalog
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -333,6 +337,7 @@ const VehiclesPage: React.FC = () => {
             : null
         }
         makerList={makers}
+        onSaved={handleSaveVehicle}
         onSaved={handleSaveVehicle}
       />
     </div>

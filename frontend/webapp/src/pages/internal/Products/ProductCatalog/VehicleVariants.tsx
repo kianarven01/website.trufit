@@ -13,6 +13,8 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Button } from "@/components/ui/button";
 import Combobox from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
+import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
+
 import {
   Car,
   Gauge,
@@ -388,6 +390,8 @@ const VehicleVariantsPage: React.FC = () => {
 
           <BreadcrumbSeparator />
 
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() => navigate("/webapp/products/product-catalog")}
@@ -400,7 +404,10 @@ const VehicleVariantsPage: React.FC = () => {
 
           <BreadcrumbSeparator />
 
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
+            <BreadcrumbPage>Vehicle Variants</BreadcrumbPage>
             <BreadcrumbPage>Vehicle Variants</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>

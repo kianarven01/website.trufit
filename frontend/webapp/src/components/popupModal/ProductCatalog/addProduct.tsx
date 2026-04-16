@@ -106,6 +106,22 @@ const ProductModal: React.FC<ProductModalProps> = ({
     return null;
   }, [suppliers, product]);
 
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isOEM, setIsOEM] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Form states
+  const [form, setForm] = useState<any>({});
+
+  // Pricing states
+  const [costPrice, setCostPrice] = useState<number>(0);
+  const [markup, setMarkup] = useState<number>(0);
+  const [sellingPrice, setSellingPrice] = useState<number>(0);
+
+  const [costInput, setCostInput] = useState<string>("");
+  const [markupInput, setMarkupInput] = useState<string>("");
+
+  // Auto compute selling price
   useEffect(() => {
     if (open) {
       setImage(product?.image || "");
@@ -303,6 +319,9 @@ const ProductModal: React.FC<ProductModalProps> = ({
       </DialogContent>
     </Dialog>
   );
+};
+
+export default ProductModal;
 };
 
 export default ProductModal;

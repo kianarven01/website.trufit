@@ -472,290 +472,391 @@ const VehicleVariantsPage: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <section className="space-y-4">
-            <Card className="h-full cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1 has-[.no-hover:hover]:hover:shadow-none has-[.no-hover:hover]:hover:translate-y-0">
-              <CardContent className="p-0">
-                <div className="w-full h-48 relative overflow-hidden flex items-center justify-center bg-muted/30">
-                  {currentVehicle.image ? (
-                    <img
-                      src={currentVehicle.image}
-                      alt={`${currentVehicle.makeName} ${currentVehicle.model}`}
-                      className="object-contain w-full h-full"
-                    />
-                  ) : (
-                    <Car className="w-16 h-16 text-muted-foreground/40" />
-                  )}
-
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-30 transition-opacity" />
-
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Button
-                      variant="outline"
-                      size="icon_xs"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingVehicle(currentVehicle);
-                        setVehicleModalOpen(true);
-                      }}
-                      className="p-1 rounded-lg bg-white/90 hover:bg-white text-gray-800"
-                      title="Edit"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-
-              <div className="flex flex-col px-4 py-3 bg-white transition-colors duration-200 group-hover:bg-blue-900">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex flex-col">
-                    <p className="text-gray-900 font-semibold text-sm group-hover:text-white">
-                      {currentVehicle.makeName}
-                    </p>
-                    <p className="text-gray-700 text-sm group-hover:text-white">
-                      {currentVehicle.model}
-                    </p>
-                  </div>
-
-                  <Badge variant="outline" className="group-hover:text-white">
-                    {variantList.length} Variants
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground group-hover:text-blue-100">
-                    Selected Variant
-                  </p>
-
-                  <Combobox
-                    value={selectedVariantLabel}
-                    onChange={(label) => {
-                      const found = variantList.find((variant) => {
-                        const extra = [
-                          variant.year,
-                          variant.engine,
-                          variant.transmission,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ");
-                        const composed = extra
-                          ? `${variant.name} — ${extra}`
-                          : variant.name;
-                        return composed === label;
-                      });
-
-                      if (found) setSelectedVariantId(found.id);
-                    }}
-                    items={variantComboItems}
-                    placeholder="Select variant..."
-                  />
-                </div>
-
-                {selectedVariant && (
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-700 group-hover:text-blue-100">
-                    <div>
-                      <span className="font-medium">Year:</span>{" "}
-                      {selectedVariant.year || "-"}
-                    </div>
-                    <div>
-                      <span className="font-medium">Engine:</span>{" "}
-                      {selectedVariant.engine || "-"}
-                    </div>
-                    <div>
-                      <span className="font-medium">Transmission:</span>{" "}
-                      {selectedVariant.transmission || "-"}
-                    </div>
-                    <div>
-                      <span className="font-medium">Drive:</span>{" "}
-                      {selectedVariant.drivetrain || "-"}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Variants</h3>
-                  <Badge variant="secondary">{variantList.length}</Badge>
-                </div>
-
-                <ScrollArea className="h-[360px] pr-2">
-                  <div className="space-y-2">
-                    {variantList.length === 0 ? (
-                      <div className="text-sm text-muted-foreground py-10 text-center">
-                        No variants found.
-                      </div>
+        <>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <section className="xl:col-span-1 space-y-4">
+              <Card className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="w-full h-48 relative overflow-hidden flex items-center justify-center bg-muted/30">
+                    {currentVehicle.image ? (
+                      <img
+                        src={currentVehicle.image}
+                        alt={`${currentVehicle.makeName} ${currentVehicle.model}`}
+                        className="object-contain w-full h-full"
+                      />
                     ) : (
-                      variantList.map((variant) => {
-                        const isSelected = variant.id === selectedVariantId;
+                      <Car className="w-16 h-16 text-muted-foreground/40" />
+                    )}
 
-                        return (
-                          <div
-                            key={variant.id}
-                            onClick={() => setSelectedVariantId(variant.id)}
-                            className={`rounded-xl border p-3 cursor-pointer transition ${
-                              isSelected
-                                ? "border-primary bg-primary/5"
-                                : "hover:bg-muted/40"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="font-medium">{variant.name}</p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  {[variant.year, variant.engine, variant.transmission]
-                                    .filter(Boolean)
-                                    .join(" • ") || "No extra details"}
-                                </p>
-                              </div>
+                    <div className="absolute top-2 right-2 flex gap-2 z-10">
+                      <Button
+                        variant="outline"
+                        size="icon_xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingVehicle(currentVehicle);
+                          setVehicleModalOpen(true);
+                        }}
+                        className="p-1 rounded-lg bg-white/90 hover:bg-white text-gray-800"
+                        title="Edit Vehicle"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
 
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon_xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingVariant(variant);
-                                    setVariantModalOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                  <div className="px-4 py-3 bg-white border-t">
+                    <div className="flex justify-between items-start gap-3 mb-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {currentVehicle.makeName}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          {currentVehicle.model}
+                        </p>
+                      </div>
 
-                                <Button
-                                  variant="ghost"
-                                  size="icon_xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setVariantToDelete(variant);
-                                    setDeleteVariantOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
+                      <Badge variant="outline">
+                        {variantList.length} Variants
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Selected Variant
+                      </p>
+
+                      <Combobox
+                        value={selectedVariantLabel}
+                        onChange={(label) => {
+                          const found = variantList.find((variant) => {
+                            const extra = [
+                              variant.year,
+                              variant.engine,
+                              variant.transmission,
+                            ]
+                              .filter(Boolean)
+                              .join(" • ");
+                            const composed = extra
+                              ? `${variant.name} — ${extra}`
+                              : variant.name;
+                            return composed === label;
+                          });
+
+                          if (found) setSelectedVariantId(found.id);
+                        }}
+                        items={variantComboItems}
+                        placeholder="Select variant..."
+                      />
+                    </div>
+
+                    {selectedVariant && (
+                      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-gray-700">
+                        <div>
+                          <span className="font-medium">Year:</span>{" "}
+                          {selectedVariant.year || "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Engine:</span>{" "}
+                          {selectedVariant.engine || "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Transmission:</span>{" "}
+                          {selectedVariant.transmission || "-"}
+                        </div>
+                        <div>
+                          <span className="font-medium">Drive:</span>{" "}
+                          {selectedVariant.drivetrain || "-"}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </section>
+                </CardContent>
+              </Card>
 
-          <section className="lg:col-span-2">
-            <Card className="h-full">
-              <CardContent className="p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">Part Categories</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedVariant
-                        ? `Browsing categories for ${selectedVariant.name}`
-                        : "Select a variant to continue"}
-                    </p>
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold">Variants</h3>
+                    <Badge variant="secondary">{variantList.length}</Badge>
                   </div>
 
+                  <ScrollArea className="h-[220px] pr-2">
+                    <div className="space-y-2">
+                      {variantList.length === 0 ? (
+                        <div className="text-sm text-muted-foreground py-10 text-center">
+                          No variants found.
+                        </div>
+                      ) : (
+                        variantList.map((variant) => {
+                          const isSelected = variant.id === selectedVariantId;
+
+                          return (
+                            <div
+                              key={variant.id}
+                              onClick={() => setSelectedVariantId(variant.id)}
+                              className={`rounded-xl border p-3 cursor-pointer transition ${
+                                isSelected
+                                  ? "border-primary bg-primary/5"
+                                  : "hover:bg-muted/40"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="font-medium">{variant.name}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {[
+                                      variant.year,
+                                      variant.engine,
+                                      variant.transmission,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" • ") || "No extra details"}
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon_xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingVariant(variant);
+                                      setVariantModalOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+
+                                  <Button
+                                    variant="ghost"
+                                    size="icon_xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setVariantToDelete(variant);
+                                      setDeleteVariantOpen(true);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="xl:col-span-2">
+              <Card className="h-full">
+                <CardContent className="p-4 h-full">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="font-semibold">Variant Details</h3>
+
+                    {selectedVariant && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon_xs"
+                          onClick={() => {
+                            setEditingVariant(selectedVariant);
+                            setVariantModalOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon_xs"
+                          onClick={() => {
+                            setVariantToDelete(selectedVariant);
+                            setDeleteVariantOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedVariant ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Name</p>
+                        <p className="font-medium">{selectedVariant.name || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Year</p>
+                        <p className="font-medium">{selectedVariant.year || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Engine</p>
+                        <p className="font-medium">{selectedVariant.engine || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Transmission
+                        </p>
+                        <p className="font-medium">
+                          {selectedVariant.transmission || "-"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Drivetrain
+                        </p>
+                        <p className="font-medium">
+                          {selectedVariant.drivetrain || "-"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Service Class
+                        </p>
+                        <p className="font-medium">
+                          {selectedVariant.serviceClass || "-"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-full min-h-[200px] flex items-center justify-center text-sm text-muted-foreground">
+                      Select a variant to view details.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
+          </div>
+
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">Parts Categories</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedVariant
+                      ? `Browsing categories for ${selectedVariant.name}`
+                      : "Select a variant to continue"}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <Badge variant="secondary">
                     {categoryList.length} Categories
                   </Badge>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditingCategory(null);
+                      setCategoryModalOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Category
+                  </Button>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {categoryList.length === 0 ? (
-                    <div className="md:col-span-2 xl:col-span-3 py-16 text-center text-muted-foreground">
-                      No categories found.
-                    </div>
-                  ) : (
-                    categoryList.map((category) => {
-                      const Icon = CATEGORY_ICONS[category.name] || FolderOpen;
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                {categoryList.length === 0 ? (
+                  <div className="md:col-span-2 xl:col-span-4 py-16 text-center text-muted-foreground">
+                    No categories found.
+                  </div>
+                ) : (
+                  categoryList.map((category) => {
+                    const Icon = CATEGORY_ICONS[category.name] || FolderOpen;
 
-                      return (
-                        <Card
-                          key={category.id}
-                          onClick={() => {
-                            if (!selectedVariant) return;
+                    return (
+                      <Card
+                        key={category.id}
+                        onClick={() => {
+                          if (!selectedVariant) return;
 
-                            navigate(
-                              `/webapp/products/product-catalog/${vehicleSlug}/${toVariantSlug(
-                                selectedVariant.name
-                              )}/${toCategorySlug(category.name)}/products`,
-                              {
-                                state: {
-                                  vehicleId: currentVehicle.id,
-                                  vehicle: currentVehicle,
-                                  variantId: selectedVariant.id,
-                                  variant: selectedVariant,
-                                  categoryId: category.id,
-                                  category,
-                                },
-                              }
-                            );
-                          }}
-                          className={`transition cursor-pointer hover:shadow-md ${
-                            selectedVariant
-                              ? ""
-                              : "opacity-60 pointer-events-none"
-                          }`}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex items-start gap-3">
-                                <div className="rounded-xl bg-muted p-3">
-                                  <Icon className="h-5 w-5" />
-                                </div>
-
-                                <div>
-                                  <p className="font-medium">{category.name}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {category.parts} parts
-                                  </p>
-                                </div>
+                          navigate(
+                            `/webapp/products/product-catalog/${vehicleSlug}/${toVariantSlug(
+                              selectedVariant.name
+                            )}/${toCategorySlug(category.name)}/products`,
+                            {
+                              state: {
+                                vehicleId: currentVehicle.id,
+                                vehicle: currentVehicle,
+                                variantId: selectedVariant.id,
+                                variant: selectedVariant,
+                                categoryId: category.id,
+                                category,
+                              },
+                            }
+                          );
+                        }}
+                        className={`transition cursor-pointer hover:shadow-md ${
+                          selectedVariant ? "" : "opacity-60 pointer-events-none"
+                        }`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className="rounded-xl bg-muted p-3">
+                                <Icon className="h-5 w-5" />
                               </div>
 
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon_xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCategory(category);
-                                    setCategoryModalOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-
-                                <Button
-                                  variant="ghost"
-                                  size="icon_xs"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCategoryToDelete(category);
-                                    setDeleteCategoryOpen(true);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <p className="font-medium">{category.name}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {category.parts > 0
+                                    ? `${category.parts} parts`
+                                    : "No part listed"}
+                                </p>
                               </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        </div>
+
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon_xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCategory(category);
+                                  setCategoryModalOpen(true);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon_xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCategoryToDelete(category);
+                                  setDeleteCategoryOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       <VehicleModal

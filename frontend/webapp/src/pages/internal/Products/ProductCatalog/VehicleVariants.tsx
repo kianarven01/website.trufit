@@ -31,6 +31,7 @@ import {
   Droplets,
   FolderOpen,
 } from "lucide-react";
+
 import DataToolbar from "@/components/DataToolbar";
 import AddVehicleVariant, {
   VehicleVariantFormData,
@@ -91,6 +92,7 @@ const slugify = (value: string) =>
 
 const fromVehicleSlug = (slug?: string) => {
   if (!slug) return { make: "", model: "" };
+
   const parts = slug.split("-");
   return {
     make: parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : "",
@@ -132,13 +134,14 @@ const VehicleVariantsPage: React.FC = () => {
   const [variantToDelete, setVariantToDelete] = useState<Variant | null>(null);
 
   const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<PartCategory | null>(
-    null
-  );
+  const [categoryToDelete, setCategoryToDelete] =
+    useState<PartCategory | null>(null);
 
   const [variantList, setVariantList] = useState<Variant[]>([]);
   const [categoryList, setCategoryList] = useState<PartCategory[]>([]);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    null
+  );
   const [makers, setMakers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -155,12 +158,23 @@ const VehicleVariantsPage: React.FC = () => {
     ]
       .filter(Boolean)
       .join(" • ");
+
     return extra ? `${selectedVariant.name} — ${extra}` : selectedVariant.name;
   }, [selectedVariant]);
+
+  const variantComboItems = useMemo(() => {
+    return variantList.map((variant) => {
+      const extra = [variant.year, variant.engine, variant.transmission]
+        .filter(Boolean)
+        .join(" • ");
+      return extra ? `${variant.name} — ${extra}` : variant.name;
+    });
+  }, [variantList]);
 
   const loadManufacturers = async () => {
     const res = await api.get("/vehicles/manufacturers");
     const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
     setMakers(
       (Array.isArray(rows) ? rows : []).map((item: any) => ({
         id: String(item.id),
@@ -198,13 +212,12 @@ const VehicleVariantsPage: React.FC = () => {
       })
     );
 
-    const found =
+    return (
       normalized.find(
         (v) =>
           `${slugify(v.makeName)}-${slugify(v.model)}` === String(vehicleSlug)
-      ) || null;
-
-    return found;
+      ) || null
+    );
   };
 
   const loadVariants = async (vehicleId: string) => {
@@ -253,6 +266,7 @@ const VehicleVariantsPage: React.FC = () => {
     setLoading(true);
     try {
       await loadManufacturers();
+
       const foundVehicle = await loadVehicleBySlug();
       setCurrentVehicle(foundVehicle);
 
@@ -294,6 +308,7 @@ const VehicleVariantsPage: React.FC = () => {
     }
 
     await loadPageData();
+    setVehicleModalOpen(false);
   };
 
   const handleVariantSaved = async (variant: VehicleVariantFormData) => {
@@ -318,9 +333,13 @@ const VehicleVariantsPage: React.FC = () => {
 
     await loadVariants(currentVehicle.id);
     setVariantModalOpen(false);
+    setEditingVariant(null);
   };
 
-  const handleCategorySaved = async (category: { name: string; id?: string }) => {
+  const handleCategorySaved = async (category: {
+    name: string;
+    id?: string;
+  }) => {
     const payload = {
       name: category.name,
     };
@@ -333,6 +352,7 @@ const VehicleVariantsPage: React.FC = () => {
 
     await loadCategories();
     setCategoryModalOpen(false);
+    setEditingCategory(null);
   };
 
   const confirmDeleteVariant = async () => {
@@ -367,15 +387,6 @@ const VehicleVariantsPage: React.FC = () => {
     }
   };
 
-  const variantComboItems = variantList.map((variant) => {
-    const extra = [variant.year, variant.engine, variant.transmission]
-      .filter(Boolean)
-      .join(" • ");
-    return extra ? `${variant.name} — ${extra}` : variant.name;
-  });
-
-  const selectedCategoryCards = categoryList;
-
   return (
     <div className="w-full h-full p-4 flex flex-col space-y-4 select-none overflow-auto">
       <Breadcrumb>
@@ -387,8 +398,6 @@ const VehicleVariantsPage: React.FC = () => {
               Product Catalog
             </BreadcrumbLink>
           </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
 
           <BreadcrumbSeparator />
 
@@ -404,49 +413,51 @@ const VehicleVariantsPage: React.FC = () => {
 
           <BreadcrumbSeparator />
 
-          <BreadcrumbSeparator />
-
           <BreadcrumbItem>
-            <BreadcrumbPage>Vehicle Variants</BreadcrumbPage>
             <BreadcrumbPage>Vehicle Variants</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => navigate("/webapp/products/product-catalog")}
-        >
-          Back
-        </Button>
-
-        <div className="flex items-center gap-2">
+      <DataToolbar
+        variant="detail"
+        title={
           <Button
             size="sm"
             variant="outline"
-            onClick={() => {
-              setEditingCategory(null);
-              setCategoryModalOpen(true);
-            }}
+            onClick={() => navigate("/webapp/products/product-catalog")}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Category
+            Back
           </Button>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingCategory(null);
+                setCategoryModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
 
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingVariant(null);
-              setVariantModalOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Variant
-          </Button>
-        </div>
-      </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingVariant(null);
+                setVariantModalOpen(true);
+              }}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Variant
+            </Button>
+          </div>
+        }
+      />
 
       {loading ? (
         <Card>
@@ -463,7 +474,7 @@ const VehicleVariantsPage: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <section className="space-y-4">
-            <Card className="h-full cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1">
+            <Card className="h-full cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1 has-[.no-hover:hover]:hover:shadow-none has-[.no-hover:hover]:hover:translate-y-0">
               <CardContent className="p-0">
                 <div className="w-full h-48 relative overflow-hidden flex items-center justify-center bg-muted/30">
                   {currentVehicle.image ? (
@@ -506,6 +517,7 @@ const VehicleVariantsPage: React.FC = () => {
                       {currentVehicle.model}
                     </p>
                   </div>
+
                   <Badge variant="outline" className="group-hover:text-white">
                     {variantList.length} Variants
                   </Badge>
@@ -520,7 +532,11 @@ const VehicleVariantsPage: React.FC = () => {
                     value={selectedVariantLabel}
                     onChange={(label) => {
                       const found = variantList.find((variant) => {
-                        const extra = [variant.year, variant.engine, variant.transmission]
+                        const extra = [
+                          variant.year,
+                          variant.engine,
+                          variant.transmission,
+                        ]
                           .filter(Boolean)
                           .join(" • ");
                         const composed = extra
@@ -529,9 +545,7 @@ const VehicleVariantsPage: React.FC = () => {
                         return composed === label;
                       });
 
-                      if (found) {
-                        setSelectedVariantId(found.id);
-                      }
+                      if (found) setSelectedVariantId(found.id);
                     }}
                     items={variantComboItems}
                     placeholder="Select variant..."
@@ -648,19 +662,18 @@ const VehicleVariantsPage: React.FC = () => {
                   </div>
 
                   <Badge variant="secondary">
-                    {selectedCategoryCards.length} Categories
+                    {categoryList.length} Categories
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {selectedCategoryCards.length === 0 ? (
+                  {categoryList.length === 0 ? (
                     <div className="md:col-span-2 xl:col-span-3 py-16 text-center text-muted-foreground">
                       No categories found.
                     </div>
                   ) : (
-                    selectedCategoryCards.map((category) => {
-                      const Icon =
-                        CATEGORY_ICONS[category.name] || FolderOpen;
+                    categoryList.map((category) => {
+                      const Icon = CATEGORY_ICONS[category.name] || FolderOpen;
 
                       return (
                         <Card
@@ -764,14 +777,20 @@ const VehicleVariantsPage: React.FC = () => {
 
       <AddVehicleVariant
         open={variantModalOpen}
-        onOpenChange={setVariantModalOpen}
+        onOpenChange={(open) => {
+          setVariantModalOpen(open);
+          if (!open) setEditingVariant(null);
+        }}
         variant={editingVariant}
         onSaved={handleVariantSaved}
       />
 
       <AddPartsCategory
         open={categoryModalOpen}
-        onOpenChange={setCategoryModalOpen}
+        onOpenChange={(open) => {
+          setCategoryModalOpen(open);
+          if (!open) setEditingCategory(null);
+        }}
         category={editingCategory}
         onSaved={handleCategorySaved}
       />

@@ -1,353 +1,308 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import Combobox from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scrollArea";
-import { X, ImagePlus } from "lucide-react";
-import { toast } from "sonner";
+import Combobox from "@/components/ui/combobox";
 import api from "@/api/axios";
 
-interface CategoryOption {
+export interface ProductModalCategory {
   id: string;
   name: string;
-  code: string;
+  code?: string;
 }
 
-
-interface SupplierOption {
+export interface ProductModalSupplier {
   id: string;
   name: string;
-  supplier_code: string;
+  supplier_code?: string;
 }
 
-interface ProductModalItem {
-  id: string;
-  image: string;
+export interface ProductModalProduct {
+  id?: string;
+  image?: string;
   name: string;
   sku: string;
-  category: string;
-  description: string;
-  cost: number;
+  category?: string;
+  description?: string;
+  cost?: number;
+  price?: number;
   partNumber: string;
-  barcode: string;
-  supplierName: string;
-  unit: string;
-  categoryId?: number | null;
-  supplierCode: string;
+  barcode?: string;
+  supplierName?: string;
+  unit?: string;
+  categoryId?: string | number | null;
+  supplierCode?: string;
 }
 
-interface Props {
+interface ProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product?: ProductModalItem | null;
-  categories: CategoryOption[];
-  suppliers: SupplierOption[];
-  onSaved: () => void | Promise<void>;
+  product?: ProductModalProduct | null;
+  categories: ProductModalCategory[];
+  suppliers: ProductModalSupplier[];
+  onSaved: () => Promise<void> | void;
 }
 
-export function ProductModal({
+const ProductModal: React.FC<ProductModalProps> = ({
   open,
   onOpenChange,
   product,
   categories,
   suppliers,
   onSaved,
-}: Props) {
-  const isEdit = !!product;
-
+}) => {
+  const [image, setImage] = useState("");
   const [name, setName] = useState("");
-  const [categoryId, setCategoryId] = useState("");
   const [sku, setSku] = useState("");
-  const [barcode, setBarcode] = useState("");
   const [partNumber, setPartNumber] = useState("");
+  const [barcode, setBarcode] = useState("");
+  const [categoryName, setCategoryName] = useState("");
+  const [supplierName, setSupplierName] = useState("");
   const [unit, setUnit] = useState("");
-  const [description, setDescription] = useState("");
-  const [supplierId, setSupplierId] = useState("");
   const [cost, setCost] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedCategory = useMemo(() => {
+    if (!categories.length) return null;
+
+    if (product?.categoryId != null) {
+      const byId = categories.find(
+        (category) => String(category.id) === String(product.categoryId)
+      );
+      if (byId) return byId;
+    }
+
+    if (product?.category) {
+      const byName = categories.find((category) => category.name === product.category);
+      if (byName) return byName;
+    }
+
+    return null;
+  }, [categories, product]);
+
+  const selectedSupplier = useMemo(() => {
+    if (!suppliers.length) return null;
+
+    if (product?.supplierCode) {
+      const byCode = suppliers.find(
+        (supplier) => supplier.supplier_code === product.supplierCode
+      );
+      if (byCode) return byCode;
+    }
+
+    if (product?.supplierName) {
+      const byName = suppliers.find((supplier) => supplier.name === product.supplierName);
+      if (byName) return byName;
+    }
+
+    return null;
+  }, [suppliers, product]);
 
   useEffect(() => {
-    if (!open) return;
-
-    if (product) {
-      setName(product.name ?? "");
-      setCategoryId(product.categoryId != null ? String(product.categoryId) : "");
-      setSku(product.sku ?? "");
-      setBarcode(product.barcode ?? "");
-      setPartNumber(product.partNumber ?? "");
-      setUnit(product.unit ?? "");
-      setDescription(product.description ?? "");
-      setSupplierId(product.supplierCode ?? "");
-      setCost(product.cost != null ? String(product.cost) : "");
-      setImageUrl(product.image ?? "");
+    if (open) {
+      setImage(product?.image || "");
+      setName(product?.name || "");
+      setSku(product?.sku || "");
+      setPartNumber(product?.partNumber || "");
+      setBarcode(product?.barcode || "");
+      setCategoryName(selectedCategory?.name || "");
+      setSupplierName(selectedSupplier?.name || "");
+      setUnit(product?.unit || "");
+      setCost(product?.cost !== undefined ? String(product.cost) : "");
+      setPrice(product?.price !== undefined ? String(product.price) : "");
+      setDescription(product?.description || "");
     } else {
+      setImage("");
       setName("");
-      setCategoryId("");
       setSku("");
-      setBarcode("");
       setPartNumber("");
+      setBarcode("");
+      setCategoryName("");
+      setSupplierName("");
       setUnit("");
-      setDescription("");
-      setSupplierId("");
       setCost("");
-      setImageUrl("");
+      setPrice("");
+      setDescription("");
     }
-  }, [open, product]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => setImageUrl(reader.result as string);
-    reader.readAsDataURL(file);
-  };
+  }, [open, product, selectedCategory, selectedSupplier]);
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      toast.error("Product name is required.");
-      return;
-    }
+    if (!name.trim() || !partNumber.trim()) return;
 
-    if (!partNumber.trim()) {
-      toast.error("Part number is required.");
-      return;
-    }
+    const chosenCategory =
+      categories.find((category) => category.name === categoryName) || null;
 
-    if (!unit) {
-      toast.error("Unit of measure is required.");
-      return;
-    }
-
-    if (!supplierId) {
-      toast.error("Supplier is required.");
-      return;
-    }
-
-    if (!cost || Number.isNaN(Number(cost))) {
-      toast.error("Valid cost is required.");
-      return;
-    }
+    const chosenSupplier =
+      suppliers.find((supplier) => supplier.name === supplierName) || null;
 
     const payload = {
       name: name.trim(),
       SKU: sku.trim() || null,
-      cost: Number(cost),
-      description: description.trim() || null,
-      image_URL: imageUrl.trim() || null,
-      category_id: categoryId ? Number(categoryId) : null,
-      unit: unit.trim(),
-      barcode: barcode.trim() || null,
       part_number: partNumber.trim(),
-      supplier_code: supplierId,
+      barcode: barcode.trim() || null,
+      description: description.trim() || null,
+      cost: cost.trim() ? Number(cost) : 0,
+      selling_price: price.trim() ? Number(price) : 0,
+      image_URL: image.trim() || null,
+      category_id: chosenCategory ? chosenCategory.id : null,
+      supplier_id: chosenSupplier ? chosenSupplier.id : null,
+      unit: unit.trim() || null,
     };
 
-    setIsSaving(true);
-
     try {
-      if (isEdit && product?.id) {
+      setSaving(true);
+
+      if (product?.id) {
         await api.put(`/products/${product.id}`, payload);
-        toast.success("Product updated successfully.");
       } else {
         await api.post("/products", payload);
-        toast.success("Product added successfully.");
       }
 
       await onSaved();
       onOpenChange(false);
-    } catch (err: any) {
-      console.error("Failed to save product:", err?.response?.data || err);
-      toast.error(err?.response?.data?.message || "Failed to save product.");
+    } catch (error) {
+      console.error("Failed to save product:", error);
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>{isEdit ? "Edit Product" : "Add Product"}</DialogTitle>
+      <DialogContent className="sm:max-w-[720px] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">
+            {product ? "Edit Product" : "Add Product"}
+          </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[68vh]">
-          <div className="px-6 pb-4 space-y-4">
-            <div>
-              <Label className="text-xs">Product Image</Label>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
-
-              {imageUrl ? (
-                <div className="relative w-full h-32 rounded-md border border-border overflow-hidden bg-muted">
-                  <img
-                    src={imageUrl}
-                    alt="Product"
-                    className="w-full h-full object-contain"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageUrl("");
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
-                    className="absolute top-1 right-1 bg-background/80 rounded-full p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-32 rounded-md border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-1.5 hover:border-primary/50 hover:bg-muted transition-colors"
-                >
-                  <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    Click to upload image
-                  </span>
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label className="text-xs">Product Name *</Label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter product name"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Category</Label>
-                <Combobox
-                  value={categoryId ? categories.find(c => c.id === categoryId)?.name || "" : ""}
-                  onChange={(val) => {
-                    const cat = categories.find(c => c.name === val);
-                    setCategoryId(cat ? String(cat.id) : ""); 
-                  }}
-                  items={categories.map(c => c.name)}
-                  placeholder="Select or type category..."
-                  allowAdd
-                  addLabel="category"
-                  onAdd={() => {
-                    toast("Open add category modal here");
-                  }}
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">SKU</Label>
-                <Input
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="SKU"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Barcode</Label>
-                <Input
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="Barcode"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Part Number *</Label>
-                <Input
-                  value={partNumber}
-                  onChange={(e) => setPartNumber(e.target.value)}
-                  placeholder="Part number"
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Unit *</Label>
-                <Input
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  placeholder="pcs, boxes, etc."
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Supplier *</Label>
-                <Combobox
-                  value={supplierId ? suppliers.find(s => s.id === supplierId)?.name || "" : ""}
-                  onChange={(val) => {
-                    const sup = suppliers.find(s => s.name === val);
-                    setSupplierId(sup ? sup.id : "");
-                  }}
-                  items={suppliers.map(s => s.name)}
-                  placeholder="Select or type supplier..."
-                  allowAdd
-                  addLabel="supplier"
-                  onAdd={() => {
-                    toast("Open add supplier modal here");
-                  }}
-                />
-              </div>
-
-              <div>
-                <Label className="text-xs">Cost (₱) *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs">Description</Label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Product description..."
-                className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-medium">Product Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter product name"
+            />
           </div>
-        </ScrollArea>
 
-        <DialogFooter className="px-6 pb-6 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">SKU</label>
+            <Input
+              value={sku}
+              onChange={(e) => setSku(e.target.value)}
+              placeholder="Enter SKU"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Part Number</label>
+            <Input
+              value={partNumber}
+              onChange={(e) => setPartNumber(e.target.value)}
+              placeholder="Enter part number"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Barcode</label>
+            <Input
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              placeholder="Enter barcode"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Unit</label>
+            <Input
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              placeholder="e.g. pc, set, box"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Category</label>
+            <Combobox
+              items={categories.map((category) => category.name)}
+              value={categoryName}
+              onChange={setCategoryName}
+              placeholder="Select category"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Supplier</label>
+            <Combobox
+              items={suppliers.map((supplier) => supplier.name)}
+              value={supplierName}
+              onChange={setSupplierName}
+              placeholder="Select supplier"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Cost</label>
+            <Input
+              type="number"
+              step="0.01"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Selling Price</label>
+            <Input
+              type="number"
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-medium">Image URL</label>
+            <Input
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="Paste image URL"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-medium">Description</label>
+            <textarea
+              className="w-full min-h-[120px] rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter product description"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : isEdit ? "Update" : "Add Product"}
+          <Button onClick={handleSave} disabled={saving || !name.trim() || !partNumber.trim()}>
+            {saving ? "Saving..." : product ? "Save Changes" : "Add Product"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};
+
+export default ProductModal;

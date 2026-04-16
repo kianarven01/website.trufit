@@ -1,152 +1,176 @@
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-export type VehicleVariantFormValue = {
+export interface VehicleVariantFormData {
   id?: string;
   name: string;
-  year: string;
-  engine: string;
-  transmission: string;
+  year?: string;
+  engine?: string;
+  transmission?: string;
+  drivetrain?: string;
   oilCapacity?: number;
   serviceClass?: string;
-};
+}
 
-type Props = {
+interface AddVehicleVariantProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  variant?: VehicleVariantFormValue | null;
-  onSaved: (variant: VehicleVariantFormValue) => void | Promise<void>;
-};
+  variant?: VehicleVariantFormData | null;
+  onSaved: (variant: VehicleVariantFormData) => Promise<void> | void;
+}
 
-const AddVehicleVariant: React.FC<Props> = ({
+const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
   open,
   onOpenChange,
   variant,
   onSaved,
 }) => {
-  const isEdit = !!variant;
-
   const [name, setName] = useState("");
   const [year, setYear] = useState("");
   const [engine, setEngine] = useState("");
   const [transmission, setTransmission] = useState("");
-  const [oilCapacity, setOilCapacity] = useState<number | undefined>();
+  const [drivetrain, setDrivetrain] = useState("");
+  const [oilCapacity, setOilCapacity] = useState("");
   const [serviceClass, setServiceClass] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (variant) {
-      setName(variant.name ?? "");
-      setYear(variant.year ?? "");
-      setEngine(variant.engine ?? "");
-      setTransmission(variant.transmission ?? "");
-      setOilCapacity(variant.oilCapacity);
-      setServiceClass(variant.serviceClass ?? "");
-      return;
+    if (open) {
+      setName(variant?.name || "");
+      setYear(variant?.year || "");
+      setEngine(variant?.engine || "");
+      setTransmission(variant?.transmission || "");
+      setDrivetrain(variant?.drivetrain || "");
+      setOilCapacity(
+        variant?.oilCapacity !== undefined ? String(variant.oilCapacity) : ""
+      );
+      setServiceClass(variant?.serviceClass || "");
+    } else {
+      setName("");
+      setYear("");
+      setEngine("");
+      setTransmission("");
+      setDrivetrain("");
+      setOilCapacity("");
+      setServiceClass("");
     }
-
-    setName("");
-    setYear(new Date().getFullYear().toString());
-    setEngine("");
-    setTransmission("");
-    setOilCapacity(undefined);
-    setServiceClass("");
-  }, [variant, open]);
+  }, [open, variant]);
 
   const handleSave = async () => {
-    if (!name.trim() || !year.trim()) return;
+    if (!name.trim()) return;
 
-    await onSaved({
-      id: variant?.id,
-      name: name.trim(),
-      year: year.trim(),
-      engine: engine.trim(),
-      transmission: transmission.trim(),
-      oilCapacity: oilCapacity ?? 0,
-      serviceClass: serviceClass.trim(),
-    });
+    try {
+      setSaving(true);
+
+      await onSaved({
+        id: variant?.id,
+        name: name.trim(),
+        year: year.trim() || "",
+        engine: engine.trim() || "",
+        transmission: transmission.trim() || "",
+        drivetrain: drivetrain.trim() || "",
+        oilCapacity: oilCapacity.trim() ? Number(oilCapacity) : undefined,
+        serviceClass: serviceClass.trim() || "",
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save variant:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[560px] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Variant" : "Add Variant"}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            {variant ? "Edit Vehicle Variant" : "Add Vehicle Variant"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Variant Name</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+          <div className="space-y-2 md:col-span-2">
+            <label className="text-sm font-medium">Variant Name</label>
             <Input
-              placeholder="e.g. 2.8 GR-S 4x4 AT"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. GLX AT"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Year</Label>
+            <label className="text-sm font-medium">Year</label>
             <Input
-              placeholder="e.g. 2026"
               value={year}
               onChange={(e) => setYear(e.target.value)}
+              placeholder="e.g. 2024"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Engine</Label>
+            <label className="text-sm font-medium">Engine</label>
             <Input
-              placeholder="e.g. 1.1L"
               value={engine}
               onChange={(e) => setEngine(e.target.value)}
+              placeholder="e.g. 1.5L"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Transmission</Label>
+            <label className="text-sm font-medium">Transmission</label>
             <Input
-              placeholder="A/T or M/T"
               value={transmission}
               onChange={(e) => setTransmission(e.target.value)}
+              placeholder="e.g. Automatic"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Oil Capacity (ml)</Label>
+            <label className="text-sm font-medium">Drivetrain</label>
+            <Input
+              value={drivetrain}
+              onChange={(e) => setDrivetrain(e.target.value)}
+              placeholder="e.g. FWD"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Oil Capacity</label>
             <Input
               type="number"
-              value={oilCapacity ?? ""}
-              onChange={(e) =>
-                setOilCapacity(e.target.value === "" ? undefined : Number(e.target.value))
-              }
+              step="0.1"
+              value={oilCapacity}
+              onChange={(e) => setOilCapacity(e.target.value)}
+              placeholder="e.g. 4.5"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Service Class</Label>
+            <label className="text-sm font-medium">Service Class</label>
             <Input
-              placeholder="e.g. API SN"
               value={serviceClass}
               onChange={(e) => setServiceClass(e.target.value)}
+              placeholder="e.g. Premium"
             />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-
-          <Button onClick={handleSave} disabled={!name.trim() || !year.trim()}>
-            {isEdit ? "Save Changes" : "Add Variant"}
+          <Button onClick={handleSave} disabled={saving || !name.trim()}>
+            {saving ? "Saving..." : variant ? "Save Changes" : "Add Variant"}
           </Button>
         </DialogFooter>
       </DialogContent>

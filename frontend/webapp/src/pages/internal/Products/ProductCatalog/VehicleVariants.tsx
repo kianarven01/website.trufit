@@ -772,14 +772,14 @@ const VehicleVariantsPage: React.FC = () => {
       <DeleteVariantDialog
         open={deleteVariantOpen}
         onOpenChange={setDeleteVariantOpen}
-        variant={variantToDelete?.name || ""}
+        variant={variantToDelete}
         onConfirm={confirmDeleteVariant}
       />
 
       <DeleteCategoryDialog
         open={deleteCategoryOpen}
         onOpenChange={setDeleteCategoryOpen}
-        category={categoryToDelete?.name || ""} 
+        category={categoryToDelete}
         onConfirm={confirmDeleteCategory}
       />
     </div>

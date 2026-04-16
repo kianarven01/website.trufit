@@ -28,7 +28,6 @@ import api from "@/api/axios";
 interface Product {
   id: string;
   image?: string;
-  image?: string;
   name: string;
   brand: string;
   manufacturer: string;
@@ -122,8 +121,6 @@ const ProductsList: React.FC = () => {
     vehicleSlug: string;
     variantSlug: string;
     categorySlug: string;
-    variantSlug: string;
-    categorySlug: string;
   }>();
 
   const routeState = location.state as
@@ -163,12 +160,7 @@ const ProductsList: React.FC = () => {
     routeState?.categoryId || null
   );
 
-  const [make, model] = vehicleSlug
-    ? vehicleSlug
-        .split("-")
-        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    : ["", ""];
-
+  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
   const variantName = routeState?.variant?.name || fromSlug(variantSlug) || "Variant";
   const categoryName =
     routeState?.category?.name || fromSlug(categorySlug) || "Category";
@@ -362,28 +354,18 @@ const ProductsList: React.FC = () => {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() => navigate("/webapp/products/product-catalog")}
-            >
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
               Product Catalog
             </BreadcrumbLink>
           </BreadcrumbItem>
 
           <BreadcrumbSeparator />
 
-
-          <BreadcrumbSeparator />
-
           <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() => navigate("/webapp/products/product-catalog")}
-            >
-              {`${make} ${model}`}
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+              {makeModel}
             </BreadcrumbLink>
           </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
 
           <BreadcrumbSeparator />
 
@@ -405,9 +387,6 @@ const ProductsList: React.FC = () => {
 
           <BreadcrumbSeparator />
 
-
-          <BreadcrumbSeparator />
-
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() =>
@@ -426,9 +405,6 @@ const ProductsList: React.FC = () => {
 
           <BreadcrumbSeparator />
 
-
-          <BreadcrumbSeparator />
-
           <BreadcrumbItem>
             <BreadcrumbPage>Products</BreadcrumbPage>
           </BreadcrumbItem>
@@ -436,15 +412,6 @@ const ProductsList: React.FC = () => {
       </Breadcrumb>
 
       <DataToolbar
-        searchPlaceholder={`Search ${categoryName} products...`}
-        onSearch={setSearch}
-        filters={filters}
-        activeFilters={filtersState}
-        onFilterChange={(key, value) =>
-          setFiltersState((prev) => ({ ...prev, [key]: value }))
-        }
-        onAdd={() => setOpenModal(true)}
-        addLabel="Add Product"
         searchPlaceholder={`Search ${categoryName} products...`}
         onSearch={setSearch}
         filters={filters}
@@ -592,5 +559,4 @@ const ProductsList: React.FC = () => {
   );
 };
 
-export default ProductsList;
 export default ProductsList;

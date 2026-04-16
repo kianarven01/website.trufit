@@ -36,7 +36,7 @@ import AddVehicleVariant, {
   VehicleVariantFormData,
 } from "@/components/popupModal/ProductCatalog/addVehicleVariant";
 import AddPartsCategory from "@/components/popupModal/ProductCatalog/addPartsCategory";
-import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
+
 import DeleteCategoryDialog from "@/components/popupModal/AlertDialog/RemovePartsCategory";
 import DeleteVariantDialog from "@/components/popupModal/AlertDialog/RemoveVehicleVariant";
 import api from "@/api/axios";

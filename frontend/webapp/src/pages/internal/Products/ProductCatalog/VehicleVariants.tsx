@@ -30,7 +30,9 @@ import {
   FolderOpen,
 } from "lucide-react";
 import DataToolbar from "@/components/DataToolbar";
-import AddVehicleVariant from "@/components/popupModal/ProductCatalog/addVehicleVariant";
+import AddVehicleVariant, {
+  VehicleVariantFormData,
+} from "@/components/popupModal/ProductCatalog/addVehicleVariant";
 import AddPartsCategory from "@/components/popupModal/ProductCatalog/addPartsCategory";
 import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
 import DeleteCategoryDialog from "@/components/popupModal/AlertDialog/RemovePartsCategory";
@@ -292,7 +294,7 @@ const VehicleVariantsPage: React.FC = () => {
     await loadPageData();
   };
 
-  const handleVariantSaved = async (variant: Variant) => {
+  const handleVariantSaved = async (variant: VehicleVariantFormData) => {
     if (!currentVehicle?.id) return;
 
     const payload = {
@@ -404,44 +406,40 @@ const VehicleVariantsPage: React.FC = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <DataToolbar
-        variant="detail"
-        title={
+      <div className="flex items-center justify-between gap-3">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => navigate("/webapp/products/product-catalog")}
+        >
+          Back
+        </Button>
+
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="outline"
-            onClick={() => navigate("/webapp/products/product-catalog")}
+            onClick={() => {
+              setEditingCategory(null);
+              setCategoryModalOpen(true);
+            }}
           >
-            Back
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
           </Button>
-        }
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingCategory(null);
-                setCategoryModalOpen(true);
-              }}
-              variant="outline"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Category
-            </Button>
 
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingVariant(null);
-                setVariantModalOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Variant
-            </Button>
-          </div>
-        }
-      />
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingVariant(null);
+              setVariantModalOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Variant
+          </Button>
+        </div>
+      </div>
 
       {loading ? (
         <Card>
@@ -774,14 +772,14 @@ const VehicleVariantsPage: React.FC = () => {
       <DeleteVariantDialog
         open={deleteVariantOpen}
         onOpenChange={setDeleteVariantOpen}
-        variantName={variantToDelete?.name || ""}
+        variant={variantToDelete?.name || ""}
         onConfirm={confirmDeleteVariant}
       />
 
       <DeleteCategoryDialog
         open={deleteCategoryOpen}
         onOpenChange={setDeleteCategoryOpen}
-        categoryName={categoryToDelete?.name || ""}
+        category={categoryToDelete?.name || ""} 
         onConfirm={confirmDeleteCategory}
       />
     </div>

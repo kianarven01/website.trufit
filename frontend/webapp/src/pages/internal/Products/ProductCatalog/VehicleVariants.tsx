@@ -8,12 +8,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Button } from "@/components/ui/button";
 import Combobox from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import api from "@/api/axios";
 import {
   Car,
   Gauge,
@@ -28,30 +27,31 @@ import {
   Zap,
   Shield,
   Droplets,
+  FolderOpen,
 } from "lucide-react";
-
 import DataToolbar from "@/components/DataToolbar";
 import AddVehicleVariant from "@/components/popupModal/ProductCatalog/addVehicleVariant";
 import AddPartsCategory from "@/components/popupModal/ProductCatalog/addPartsCategory";
+import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
 import DeleteCategoryDialog from "@/components/popupModal/AlertDialog/RemovePartsCategory";
 import DeleteVariantDialog from "@/components/popupModal/AlertDialog/RemoveVehicleVariant";
+import api from "@/api/axios";
+
+interface Vehicle {
+  id: string;
+  makeId: string;
+  makeName: string;
+  model: string;
+  image?: string;
+}
 
 interface Variant {
   id: string;
   name: string;
-  year: string;
-  engine: string;
-  transmission: string;
-  oilCapacity?: number;
-  serviceClass?: string;
-}
-
-interface VariantFormInput {
-  id?: string;
-  name: string;
-  year: string;
-  engine: string;
-  transmission: string;
+  year?: string;
+  engine?: string;
+  transmission?: string;
+  drivetrain?: string;
   oilCapacity?: number;
   serviceClass?: string;
 }
@@ -59,17 +59,8 @@ interface VariantFormInput {
 interface PartCategory {
   id: string;
   name: string;
-  code: string;
-}
-
-interface VehicleRouteState {
-  vehicle?: {
-    id: string;
-    make: string;
-    manufacturer_id: string;
-    model: string;
-    image_url?: string | null;
-  };
+  parts: number;
+  code?: string;
 }
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -87,477 +78,688 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Tyres & Wheels": Disc,
 };
 
-const VehicleVariantsPage: React.FC = () => {
-  const { vehicleModelId, vehicleSlug } = useParams<{
-    vehicleModelId: string;
-    vehicleSlug: string;
-  }>();
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 
+const fromVehicleSlug = (slug?: string) => {
+  if (!slug) return { make: "", model: "" };
+  const parts = slug.split("-");
+  return {
+    make: parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : "",
+    model: parts.slice(1).join(" ").replace(/\b\w/g, (c) => c.toUpperCase()),
+  };
+};
+
+const toCategorySlug = (name: string) => slugify(name);
+const toVariantSlug = (name: string) => slugify(name);
+
+const VehicleVariantsPage: React.FC = () => {
+  const { vehicleSlug } = useParams<{ vehicleSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const routeState = location.state as VehicleRouteState | null;
-  const vehicleFromState = routeState?.vehicle ?? null;
+
+  const locationState = location.state as
+    | {
+        vehicleId?: string;
+        vehicle?: Vehicle;
+      }
+    | undefined;
+
+  const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(
+    locationState?.vehicle || null
+  );
+
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
 
   const [variantModalOpen, setVariantModalOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<PartCategory | null>(null);
-
-  const [variantList, setVariantList] = useState<Variant[]>([]);
-  const [categoryList, setCategoryList] = useState<PartCategory[]>([]);
-
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [editingCategory, setEditingCategory] = useState<PartCategory | null>(
+    null
+  );
 
   const [deleteVariantOpen, setDeleteVariantOpen] = useState(false);
   const [variantToDelete, setVariantToDelete] = useState<Variant | null>(null);
 
   const [deleteCategoryOpen, setDeleteCategoryOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<PartCategory | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<PartCategory | null>(
+    null
+  );
 
-  const [loadingVariants, setLoadingVariants] = useState(false);
+  const [variantList, setVariantList] = useState<Variant[]>([]);
+  const [categoryList, setCategoryList] = useState<PartCategory[]>([]);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [makers, setMakers] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const vehicleTitle = useMemo(() => {
-    if (vehicleFromState) {
-      return `${vehicleFromState.make} ${vehicleFromState.model}`;
-    }
+  const slugParts = fromVehicleSlug(vehicleSlug);
 
-    if (!vehicleSlug) return "Vehicle";
+  const selectedVariant = variantList.find((v) => v.id === selectedVariantId);
 
-    return vehicleSlug
-      .split("-")
-      .map((s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s))
-      .join(" ");
-  }, [vehicleSlug, vehicleFromState]);
+  const selectedVariantLabel = useMemo(() => {
+    if (!selectedVariant) return "";
+    const extra = [
+      selectedVariant.year,
+      selectedVariant.engine,
+      selectedVariant.transmission,
+    ]
+      .filter(Boolean)
+      .join(" • ");
+    return extra ? `${selectedVariant.name} — ${extra}` : selectedVariant.name;
+  }, [selectedVariant]);
 
-  const selectedVariant = variantList.find((v) => v.id === selectedVariantId) ?? null;
+  const loadManufacturers = async () => {
+    const res = await api.get("/vehicles/manufacturers");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    setMakers(
+      (Array.isArray(rows) ? rows : []).map((item: any) => ({
+        id: String(item.id),
+        name: String(item.name),
+      }))
+    );
+  };
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await api.get<PartCategory[] | { data: PartCategory[] }>(
-          "/products/categories"
-        );
+  const loadVehicleBySlug = async (): Promise<Vehicle | null> => {
+    if (locationState?.vehicle) return locationState.vehicle;
 
-        const categories = Array.isArray(res.data) ? res.data : res.data.data ?? [];
-        setCategoryList(categories);
-      } catch (error) {
-        console.error("Failed to fetch categories:", error);
-      }
-    };
+    const res = await api.get("/vehicles");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
-    fetchCategories();
-  }, []);
+    const normalized: Vehicle[] = (Array.isArray(rows) ? rows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        makeId: String(
+          row.makeId ||
+            row.make_id ||
+            row.manufacturerId ||
+            row.manufacturer_id ||
+            row.Manufacturer?.id ||
+            ""
+        ),
+        makeName: String(
+          row.makeName ||
+            row.make_name ||
+            row.Manufacturer?.name ||
+            row.manufacturer ||
+            "Unknown"
+        ),
+        model: String(row.model || row.Model || ""),
+        image: row.image || row.image_URL || undefined,
+      })
+    );
 
-  useEffect(() => {
-    const fetchVariants = async () => {
-      if (!vehicleModelId) return;
+    const found =
+      normalized.find(
+        (v) =>
+          `${slugify(v.makeName)}-${slugify(v.model)}` === String(vehicleSlug)
+      ) || null;
 
-      setLoadingVariants(true);
+    return found;
+  };
 
-      try {
-        const res = await api.get<Variant[]>(
-          `/vehicles/models/${vehicleModelId}/variants`
-        );
+  const loadVariants = async (vehicleId: string) => {
+    const res = await api.get(`/vehicles/models/${vehicleId}/variants`);
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
-        const variants = Array.isArray(res.data) ? res.data : [];
-        setVariantList(variants);
+    const normalized: Variant[] = (Array.isArray(rows) ? rows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        name: String(row.name || row.variant || row.variant_name || ""),
+        year: row.year ? String(row.year) : "",
+        engine: row.engine || row.engine_displacement || "",
+        transmission: row.transmission || row.transmission_type || "",
+        drivetrain: row.drivetrain || row.drive_type || "",
+        oilCapacity: row.oil_capacity ?? undefined,
+        serviceClass: row.service_class ?? "",
+      })
+    );
 
-        if (variants.length > 0) {
-          setSelectedVariantId(variants[0].id);
-        } else {
-          setSelectedVariantId(null);
-        }
-      } catch (error) {
-        console.error("Failed to fetch variants:", error);
-      } finally {
-        setLoadingVariants(false);
-      }
-    };
+    setVariantList(normalized);
 
-    fetchVariants();
-  }, [vehicleModelId]);
-
-  const handleVariantSaved = async (formVariant: VariantFormInput) => {
-    if (!vehicleModelId) {
-      console.error("vehicleModelId is missing from route.");
-      return;
-    }
-
-    const payload = {
-      variant_name: formVariant.name.trim(),
-      year: Number(formVariant.year),
-      engine_displacement: formVariant.engine.trim(),
-      transmission_type: formVariant.transmission.trim(),
-      oil_capacity: formVariant.oilCapacity ?? 0,
-      service_class: formVariant.serviceClass?.trim() ?? "",
-    };
-
-    try {
-      if (editingVariant?.id) {
-        const res = await api.put<Variant>(
-          `/vehicles/variants/${editingVariant.id}`,
-          payload
-        );
-
-        setVariantList((prev) =>
-          prev.map((v) => (v.id === editingVariant.id ? res.data : v))
-        );
-
-        setSelectedVariantId(editingVariant.id);
-      } else {
-        const res = await api.post<Variant>(
-          `/vehicles/models/${vehicleModelId}/variants`,
-          payload
-        );
-
-        setVariantList((prev) => [...prev, res.data]);
-        setSelectedVariantId(res.data.id);
-      }
-
-      setVariantModalOpen(false);
-      setEditingVariant(null);
-    } catch (error) {
-      console.error("Failed to save variant:", error);
+    if (normalized.length > 0) {
+      setSelectedVariantId((prev) => prev || normalized[0].id);
+    } else {
+      setSelectedVariantId(null);
     }
   };
 
-  const handleCategorySaved = (category: { name: string; code?: string }) => {
-    setCategoryList((prev) => {
-      const exists = prev.find((c) => c.name.toLowerCase() === category.name.toLowerCase());
-      if (exists) return prev;
+  const loadCategories = async () => {
+    const res = await api.get("/products/categories");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
-      return [
-        ...prev,
-        {
-          id: String(Date.now()),
-          name: category.name,
-          code: category.code || category.name,
-        },
-      ];
-    });
+    const normalized: PartCategory[] = (Array.isArray(rows) ? rows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        name: String(row.name),
+        parts: Number(row.parts_count || row.products_count || 0),
+        code: row.code || undefined,
+      })
+    );
+
+    setCategoryList(normalized);
+  };
+
+  const loadPageData = async () => {
+    setLoading(true);
+    try {
+      await loadManufacturers();
+      const foundVehicle = await loadVehicleBySlug();
+      setCurrentVehicle(foundVehicle);
+
+      if (foundVehicle?.id) {
+        await Promise.all([loadVariants(foundVehicle.id), loadCategories()]);
+      } else {
+        setVariantList([]);
+        setCategoryList([]);
+      }
+    } catch (error) {
+      console.error("Failed to load vehicle variants page:", error);
+      setVariantList([]);
+      setCategoryList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPageData();
+  }, [vehicleSlug]);
+
+  const handleSaveVehicle = async (vehicleData: {
+    id?: string;
+    makeId: string;
+    model: string;
+    image?: string;
+  }) => {
+    const payload = {
+      manufacturer: vehicleData.makeId,
+      model: vehicleData.model,
+      image_URL: vehicleData.image || null,
+    };
+
+    if (vehicleData.id) {
+      await api.put(`/vehicles/${vehicleData.id}`, payload);
+    } else {
+      await api.post("/vehicles", payload);
+    }
+
+    await loadPageData();
+  };
+
+  const handleVariantSaved = async (variant: Variant) => {
+    if (!currentVehicle?.id) return;
+
+    const payload = {
+      vehicle_model_id: currentVehicle.id,
+      name: variant.name,
+      year: variant.year || null,
+      engine: variant.engine || null,
+      transmission: variant.transmission || null,
+      drivetrain: variant.drivetrain || null,
+      oil_capacity: variant.oilCapacity ?? null,
+      service_class: variant.serviceClass || null,
+    };
+
+    if (variant.id) {
+      await api.put(`/vehicle-variants/${variant.id}`, payload);
+    } else {
+      await api.post("/vehicle-variants", payload);
+    }
+
+    await loadVariants(currentVehicle.id);
+    setVariantModalOpen(false);
+  };
+
+  const handleCategorySaved = async (category: { name: string; id?: string }) => {
+    const payload = {
+      name: category.name,
+    };
+
+    if (category.id) {
+      await api.put(`/products/categories/${category.id}`, payload);
+    } else {
+      await api.post("/products/categories", payload);
+    }
+
+    await loadCategories();
+    setCategoryModalOpen(false);
   };
 
   const confirmDeleteVariant = async () => {
-    if (!variantToDelete) return;
+    if (!variantToDelete || !currentVehicle?.id) return;
 
     try {
-      await api.delete(`/vehicles/variants/${variantToDelete.id}`);
+      await api.delete(`/vehicle-variants/${variantToDelete.id}`);
+      await loadVariants(currentVehicle.id);
 
-      const deletedId = variantToDelete.id;
-
-      setVariantList((prev) => {
-        const next = prev.filter((v) => v.id !== deletedId);
-
-        if (selectedVariantId === deletedId) {
-          setSelectedVariantId(next.length > 0 ? next[0].id : null);
-        }
-
-        return next;
-      });
-
-      setDeleteVariantOpen(false);
-      setVariantToDelete(null);
+      if (selectedVariantId === variantToDelete.id) {
+        setSelectedVariantId(null);
+      }
     } catch (error) {
       console.error("Failed to delete variant:", error);
+    } finally {
+      setDeleteVariantOpen(false);
+      setVariantToDelete(null);
     }
   };
 
-  const confirmDeleteCategory = () => {
+  const confirmDeleteCategory = async () => {
     if (!categoryToDelete) return;
 
-    setCategoryList((prev) => prev.filter((c) => c.id !== categoryToDelete.id));
-    setDeleteCategoryOpen(false);
-    setCategoryToDelete(null);
+    try {
+      await api.delete(`/products/categories/${categoryToDelete.id}`);
+      await loadCategories();
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+    } finally {
+      setDeleteCategoryOpen(false);
+      setCategoryToDelete(null);
+    }
   };
+
+  const variantComboItems = variantList.map((variant) => {
+    const extra = [variant.year, variant.engine, variant.transmission]
+      .filter(Boolean)
+      .join(" • ");
+    return extra ? `${variant.name} — ${extra}` : variant.name;
+  });
+
+  const selectedCategoryCards = categoryList;
 
   return (
     <div className="w-full h-full p-4 flex flex-col space-y-4 select-none overflow-auto">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+            <BreadcrumbLink
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
               Product Catalog
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
 
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
-            <BreadcrumbPage>{vehicleTitle}</BreadcrumbPage>
+            <BreadcrumbLink
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
+              {currentVehicle
+                ? `${currentVehicle.makeName} ${currentVehicle.model}`
+                : `${slugParts.make} ${slugParts.model}`}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbPage>Vehicle Variants</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <DataToolbar
-        searchPlaceholder="Search Vehicles..."
-        onSearch={() => {}}
-        filters={[]}
-        onFilterChange={() => {}}
-        onAdd={() => {}}
-        addLabel="Add Vehicle"
+        variant="detail"
+        title={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate("/webapp/products/product-catalog")}
+          >
+            Back
+          </Button>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingCategory(null);
+                setCategoryModalOpen(true);
+              }}
+              variant="outline"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingVariant(null);
+                setVariantModalOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Variant
+            </Button>
+          </div>
+        }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="space-y-4">
-          <div>
-            <Card className="cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1">
+      {loading ? (
+        <Card>
+          <CardContent className="py-16 text-center text-muted-foreground">
+            Loading vehicle details...
+          </CardContent>
+        </Card>
+      ) : !currentVehicle ? (
+        <Card>
+          <CardContent className="py-16 text-center text-muted-foreground">
+            Vehicle not found.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <section className="space-y-4">
+            <Card className="h-full cursor-pointer overflow-hidden relative group transition-transform duration-300 hover:shadow-xl hover:-translate-y-1">
               <CardContent className="p-0">
                 <div className="w-full h-48 relative overflow-hidden flex items-center justify-center bg-muted/30">
-                  {vehicleFromState?.image_url ? (
+                  {currentVehicle.image ? (
                     <img
-                      src={vehicleFromState.image_url}
-                      alt={`${vehicleFromState.make} ${vehicleFromState.model}`}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      src={currentVehicle.image}
+                      alt={`${currentVehicle.makeName} ${currentVehicle.model}`}
+                      className="object-contain w-full h-full"
                     />
                   ) : (
                     <Car className="w-16 h-16 text-muted-foreground/40" />
                   )}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-30 transition-opacity"></div>
+
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-30 transition-opacity" />
+
+                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <Button
+                      variant="outline"
+                      size="icon_xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingVehicle(currentVehicle);
+                        setVehicleModalOpen(true);
+                      }}
+                      className="p-1 rounded-lg bg-white/90 hover:bg-white text-gray-800"
+                      title="Edit"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
 
-              <div className="flex justify-between items-center px-4 py-3 bg-white transition-colors duration-200 group-hover:bg-gray-900">
-                <div className="flex flex-col">
-                  <p className="text-gray-900 font-semibold text-sm group-hover:text-white">
-                    {vehicleTitle}
-                  </p>
-                </div>
-
-                <div className="flex items-center text-gray-500 text-xs font-medium">
+              <div className="flex flex-col px-4 py-3 bg-white transition-colors duration-200 group-hover:bg-blue-900">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex flex-col">
+                    <p className="text-gray-900 font-semibold text-sm group-hover:text-white">
+                      {currentVehicle.makeName}
+                    </p>
+                    <p className="text-gray-700 text-sm group-hover:text-white">
+                      {currentVehicle.model}
+                    </p>
+                  </div>
                   <Badge variant="outline" className="group-hover:text-white">
                     {variantList.length} Variants
                   </Badge>
-                  <ChevronRight className="ml-1 w-4 h-4" />
                 </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground group-hover:text-blue-100">
+                    Selected Variant
+                  </p>
+
+                  <Combobox
+                    value={selectedVariantLabel}
+                    onChange={(label) => {
+                      const found = variantList.find((variant) => {
+                        const extra = [variant.year, variant.engine, variant.transmission]
+                          .filter(Boolean)
+                          .join(" • ");
+                        const composed = extra
+                          ? `${variant.name} — ${extra}`
+                          : variant.name;
+                        return composed === label;
+                      });
+
+                      if (found) {
+                        setSelectedVariantId(found.id);
+                      }
+                    }}
+                    items={variantComboItems}
+                    placeholder="Select variant..."
+                  />
+                </div>
+
+                {selectedVariant && (
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-700 group-hover:text-blue-100">
+                    <div>
+                      <span className="font-medium">Year:</span>{" "}
+                      {selectedVariant.year || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Engine:</span>{" "}
+                      {selectedVariant.engine || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Transmission:</span>{" "}
+                      {selectedVariant.transmission || "-"}
+                    </div>
+                    <div>
+                      <span className="font-medium">Drive:</span>{" "}
+                      {selectedVariant.drivetrain || "-"}
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
-          </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Variants</CardTitle>
-            </CardHeader>
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">Variants</h3>
+                  <Badge variant="secondary">{variantList.length}</Badge>
+                </div>
 
-            <CardContent className="pt-0">
-              <Combobox
-                value={selectedVariant?.name || ""}
-                onChange={(val) => {
-                  if (!val) return;
-                  const variant = variantList.find(
-                    (v) => v.name.toLowerCase() === val.toLowerCase()
-                  );
-                  setSelectedVariantId(variant ? variant.id : null);
-                }}
-                items={variantList.map((v) => v.name)}
-                placeholder={loadingVariants ? "Loading variants..." : "Search variants..."}
-              />
+                <ScrollArea className="h-[360px] pr-2">
+                  <div className="space-y-2">
+                    {variantList.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-10 text-center">
+                        No variants found.
+                      </div>
+                    ) : (
+                      variantList.map((variant) => {
+                        const isSelected = variant.id === selectedVariantId;
 
-              <Button
-                className="w-full mt-3"
-                variant="outline"
-                onClick={() => {
-                  setEditingVariant(null);
-                  setVariantModalOpen(true);
-                }}
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add New Variant
-              </Button>
-            </CardContent>
-          </Card>
-        </section>
+                        return (
+                          <div
+                            key={variant.id}
+                            onClick={() => setSelectedVariantId(variant.id)}
+                            className={`rounded-xl border p-3 cursor-pointer transition ${
+                              isSelected
+                                ? "border-primary bg-primary/5"
+                                : "hover:bg-muted/40"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-medium">{variant.name}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {[variant.year, variant.engine, variant.transmission]
+                                    .filter(Boolean)
+                                    .join(" • ") || "No extra details"}
+                                </p>
+                              </div>
 
-        <section className="lg:col-span-2 space-y-4">
-          <Card>
-            {selectedVariant ? (
-              <>
-                <CardHeader className="flex flex-row items-center justify-between pb-3">
-                  <CardTitle className="text-md font-medium">Variant Details</CardTitle>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon_xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingVariant(variant);
+                                    setVariantModalOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon_xs"
-                      onClick={() => {
-                        setEditingVariant(selectedVariant);
-                        setVariantModalOpen(true);
-                      }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="icon_xs"
-                      className="text-destructive"
-                      onClick={() => {
-                        setVariantToDelete(selectedVariant);
-                        setDeleteVariantOpen(true);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon_xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setVariantToDelete(variant);
+                                    setDeleteVariantOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
-                </CardHeader>
-
-                <CardContent className="grid grid-cols-2 gap-4 pt-0">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Name</p>
-                    <p className="text-sm font-medium">{selectedVariant.name}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Year</p>
-                    <p className="text-sm font-medium">{selectedVariant.year}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Engine</p>
-                    <p className="text-sm font-medium">{selectedVariant.engine || "—"}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Transmission</p>
-                    <p className="text-sm font-medium">{selectedVariant.transmission || "—"}</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Oil Capacity</p>
-                    <p className="text-sm font-medium">
-                      {selectedVariant.oilCapacity ?? "—"}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Service Class</p>
-                    <p className="text-sm font-medium">
-                      {selectedVariant.serviceClass || "—"}
-                    </p>
-                  </div>
-                </CardContent>
-              </>
-            ) : (
-              <CardContent className="py-12 text-center text-muted-foreground flex flex-col items-center justify-center">
-                <Car className="w-16 h-16 mb-3 opacity-30" />
-                {loadingVariants ? (
-                  <p>Loading variants...</p>
-                ) : variantList.length > 0 ? (
-                  <p>Select a variant to see details</p>
-                ) : (
-                  <p>No existing variant available. Create a new one.</p>
-                )}
+                </ScrollArea>
               </CardContent>
-            )}
-          </Card>
+            </Card>
+          </section>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-md font-medium">Parts Categories</CardTitle>
+          <section className="lg:col-span-2">
+            <Card className="h-full">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">Part Categories</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedVariant
+                        ? `Browsing categories for ${selectedVariant.name}`
+                        : "Select a variant to continue"}
+                    </p>
+                  </div>
 
-              <Button
-                variant="outline"
-                size="xs"
-                className="text-xs"
-                onClick={() => {
-                  setEditingCategory(null);
-                  setCategoryModalOpen(true);
-                }}
-              >
-                <Plus />
-                Add Category
-              </Button>
-            </CardHeader>
+                  <Badge variant="secondary">
+                    {selectedCategoryCards.length} Categories
+                  </Badge>
+                </div>
 
-            <CardContent className="pt-0">
-              {categoryList.length > 0 ? (
-                <ScrollArea style={{ maxHeight: 240 }}>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {categoryList.map((cat) => {
-                      const Icon = CATEGORY_ICONS[cat.name] || Wrench;
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {selectedCategoryCards.length === 0 ? (
+                    <div className="md:col-span-2 xl:col-span-3 py-16 text-center text-muted-foreground">
+                      No categories found.
+                    </div>
+                  ) : (
+                    selectedCategoryCards.map((category) => {
+                      const Icon =
+                        CATEGORY_ICONS[category.name] || FolderOpen;
 
                       return (
                         <Card
-                          key={cat.id}
-                          className="relative group cursor-pointer hover:shadow-md transition rounded-lg"
+                          key={category.id}
                           onClick={() => {
-                            if (!selectedVariantId) {
-                              alert("Please select a variant first.");
-                              return;
-                            }
+                            if (!selectedVariant) return;
 
                             navigate(
-                              `/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}/${selectedVariantId}/${cat.id}/products`
+                              `/webapp/products/product-catalog/${vehicleSlug}/${toVariantSlug(
+                                selectedVariant.name
+                              )}/${toCategorySlug(category.name)}/products`,
+                              {
+                                state: {
+                                  vehicleId: currentVehicle.id,
+                                  vehicle: currentVehicle,
+                                  variantId: selectedVariant.id,
+                                  variant: selectedVariant,
+                                  categoryId: category.id,
+                                  category,
+                                },
+                              }
                             );
                           }}
+                          className={`transition cursor-pointer hover:shadow-md ${
+                            selectedVariant
+                              ? ""
+                              : "opacity-60 pointer-events-none"
+                          }`}
                         >
-                          <CardContent className="p-4 flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                              <Icon className="w-6 h-6 text-primary" />
-                            </div>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3">
+                                <div className="rounded-xl bg-muted p-3">
+                                  <Icon className="h-5 w-5" />
+                                </div>
 
-                            <div className="flex flex-col flex-1 min-w-0">
-                              <p className="font-semibold truncate">{cat.name}</p>
-
-                              <div className="flex items-center justify-between mt-1 min-w-0">
-                                <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                                  <Settings className="w-3 h-3 flex-shrink-0" />
-                                  {cat.code || "No code"}
-                                </p>
-                                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium">{category.name}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {category.parts} parts
+                                  </p>
+                                </div>
                               </div>
-                            </div>
 
-                            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                              <Button
-                                variant="ghost"
-                                size="icon_xs"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCategory(cat);
-                                  setCategoryModalOpen(true);
-                                }}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon_xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingCategory(category);
+                                    setCategoryModalOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
 
-                              <Button
-                                variant="ghost"
-                                size="icon_xs"
-                                className="text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setCategoryToDelete(cat);
-                                  setDeleteCategoryOpen(true);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon_xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCategoryToDelete(category);
+                                    setDeleteCategoryOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
                       );
-                    })}
-                  </div>
-                </ScrollArea>
-              ) : (
-                <Card className="flex items-center justify-center h-40 border-dashed border-2 border-muted/50 rounded-lg">
-                  <CardContent className="text-center text-muted-foreground space-y-2">
-                    <p className="font-medium">No Available Parts Category</p>
-                    <p className="text-sm">Add a new category to get started.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-      </div>
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      )}
+
+      <VehicleModal
+        open={vehicleModalOpen}
+        onOpenChange={setVehicleModalOpen}
+        vehicle={
+          editingVehicle
+            ? {
+                id: editingVehicle.id,
+                makeId: editingVehicle.makeId,
+                model: editingVehicle.model,
+                image: editingVehicle.image || "",
+              }
+            : null
+        }
+        makerList={makers}
+        onSaved={handleSaveVehicle}
+      />
 
       <AddVehicleVariant
         open={variantModalOpen}
-        onOpenChange={(open) => {
-          setVariantModalOpen(open);
-          if (!open) setEditingVariant(null);
-        }}
+        onOpenChange={setVariantModalOpen}
         variant={editingVariant}
         onSaved={handleVariantSaved}
       />
@@ -572,14 +774,14 @@ const VehicleVariantsPage: React.FC = () => {
       <DeleteVariantDialog
         open={deleteVariantOpen}
         onOpenChange={setDeleteVariantOpen}
-        variant={variantToDelete}
+        variantName={variantToDelete?.name || ""}
         onConfirm={confirmDeleteVariant}
       />
 
       <DeleteCategoryDialog
         open={deleteCategoryOpen}
         onOpenChange={setDeleteCategoryOpen}
-        category={categoryToDelete}
+        categoryName={categoryToDelete?.name || ""}
         onConfirm={confirmDeleteCategory}
       />
     </div>

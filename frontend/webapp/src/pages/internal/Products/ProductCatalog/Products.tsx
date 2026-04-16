@@ -1,275 +1,571 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import api from "@/api/axios";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import {
   Breadcrumb,
+  BreadcrumbList,
   BreadcrumbItem,
   BreadcrumbLink,
-  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
+import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Search, Plus, Package } from "lucide-react";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { ImageIcon } from "lucide-react";
+import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
+import api from "@/api/axios";
 
-interface ProductListItem {
+interface Product {
   id: string;
+  image?: string;
   name: string;
-  SKU: string;
-  cost: number;
-  description?: string | null;
-  image_URL?: string | null;
-  barcode?: string | null;
-  part_number?: string | null;
-  category_id?: number | null;
-  category_name?: string | null;
-  unit?: string | null;
-  unit_name?: string | null;
-  supplier_code?: string | null;
-  supplier_name?: string | null;
-  quantity_on_hand?: number | null;
-  sell_price?: number | null;
+  brand: string;
+  manufacturer: string;
+  supplier: string;
+  sku: string;
+  partNumber: string;
+  unit: string;
+  price: number;
+  cost?: number;
+  description?: string;
+  barcode?: string;
+  categoryId?: string | number | null;
+  category?: string;
+  supplierCode?: string;
 }
 
 interface CategoryOption {
   id: string;
   name: string;
-  code: string;
+  code?: string;
 }
 
-interface VariantOption {
+interface SupplierOption {
   id: string;
   name: string;
-  year: string;
-  engine: string;
-  transmission: string;
-  oilCapacity?: number;
-  serviceClass?: string;
+  supplier_code?: string;
 }
 
-const ProductsPage: React.FC = () => {
-  const navigate = useNavigate();
+interface VariantInfo {
+  id: string;
+  name: string;
+}
 
-  const { vehicleModelId, vehicleSlug, variantId, categoryId } = useParams<{
-    vehicleModelId: string;
+const slugify = (str: string) =>
+  str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
+const fromSlug = (slug?: string) =>
+  slug
+    ?.split("-")
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(" ") || "";
+
+const normalizeProduct = (row: any): Product => ({
+  id: String(row.id),
+  image: row.image || row.image_URL || undefined,
+  name: String(row.name || ""),
+  brand:
+    row.brand?.name ||
+    row.Brand?.name ||
+    row.brand_name ||
+    row.manufacturer ||
+    "",
+  manufacturer:
+    row.manufacturer ||
+    row.brand?.name ||
+    row.Brand?.name ||
+    row.brand_name ||
+    "",
+  supplier:
+    row.supplier?.CompanyName ||
+    row.Supplier?.CompanyName ||
+    row.supplier_name ||
+    row.supplier ||
+    "",
+  sku: String(row.SKU || row.sku || ""),
+  partNumber: String(row.part_number || row.partNumber || ""),
+  unit:
+    row.unit?.name ||
+    row.Unit?.name ||
+    row.unit_name ||
+    row.unit ||
+    "",
+  price: Number(row.selling_price || row.price || row.sell_price || 0),
+  cost: Number(row.cost || 0),
+  description: row.description || "",
+  barcode: row.barcode || "",
+  categoryId: row.category_id ?? row.categoryId ?? null,
+  category:
+    row.category?.name || row.Category?.name || row.category_name || "",
+  supplierCode:
+    row.supplier_code ||
+    row.supplier?.supplier_code ||
+    row.Supplier?.supplier_code ||
+    "",
+});
+
+const ProductsList: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { vehicleSlug, variantSlug, categorySlug } = useParams<{
     vehicleSlug: string;
-    variantId: string;
-    categoryId: string;
+    variantSlug: string;
+    categorySlug: string;
   }>();
 
-  const [products, setProducts] = useState<ProductListItem[]>([]);
+  const routeState = location.state as
+    | {
+        vehicleId?: string;
+        vehicle?: { id: string; makeName: string; model: string };
+        variantId?: string;
+        variant?: VariantInfo;
+        categoryId?: string;
+        category?: CategoryOption;
+      }
+    | undefined;
+
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [variants, setVariants] = useState<VariantOption[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [variants, setVariants] = useState<VariantInfo[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const vehicleTitle = useMemo(() => {
-    if (!vehicleSlug) return "Vehicle";
-    return vehicleSlug
-      .split("-")
-      .map((s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s))
-      .join(" ");
-  }, [vehicleSlug]);
+  const [filtersState, setFiltersState] = useState<Record<string, string>>({
+    manufacturer: "all",
+    supplier: "all",
+  });
 
-  const selectedCategory = useMemo(
-    () => categories.find((c) => c.id === categoryId) ?? null,
-    [categories, categoryId]
+  const [imgError, setImgError] = useState<Record<string, boolean>>({});
+  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
+  const [openModal, setOpenModal] = useState(false);
+
+  const [resolvedVehicleId, setResolvedVehicleId] = useState<string | null>(
+    routeState?.vehicleId || null
+  );
+  const [resolvedVariantId, setResolvedVariantId] = useState<string | null>(
+    routeState?.variantId || null
+  );
+  const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(
+    routeState?.categoryId || null
   );
 
-  const selectedVariant = useMemo(
-    () => variants.find((v) => v.id === variantId) ?? null,
-    [variants, variantId]
-  );
+  const [make, model] = vehicleSlug
+    ? vehicleSlug
+        .split("-")
+        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    : ["", ""];
+
+  const variantName = routeState?.variant?.name || fromSlug(variantSlug) || "Variant";
+  const categoryName =
+    routeState?.category?.name || fromSlug(categorySlug) || "Category";
+
+  const loadVehiclesAndResolveIds = async () => {
+    const vehiclesRes = await api.get("/vehicles");
+    const vehicleRows = Array.isArray(vehiclesRes.data?.data)
+      ? vehiclesRes.data.data
+      : vehiclesRes.data;
+
+    const normalizedVehicles = (Array.isArray(vehicleRows) ? vehicleRows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        makeName: String(
+          row.makeName ||
+            row.make_name ||
+            row.Manufacturer?.name ||
+            row.manufacturer ||
+            "Unknown"
+        ),
+        model: String(row.model || row.Model || ""),
+      })
+    );
+
+    const matchedVehicle =
+      routeState?.vehicle ||
+      normalizedVehicles.find(
+        (vehicle: any) =>
+          `${slugify(vehicle.makeName)}-${slugify(vehicle.model)}` === vehicleSlug
+      );
+
+    const vehicleId = matchedVehicle?.id ? String(matchedVehicle.id) : null;
+    setResolvedVehicleId(vehicleId);
+
+    if (!vehicleId) {
+      setResolvedVariantId(null);
+      return;
+    }
+
+    const variantsRes = await api.get(`/vehicles/models/${vehicleId}/variants`);
+    const variantRows = Array.isArray(variantsRes.data?.data)
+      ? variantsRes.data.data
+      : variantsRes.data;
+
+    const normalizedVariants: VariantInfo[] = (Array.isArray(variantRows)
+      ? variantRows
+      : []
+    ).map((row: any) => ({
+      id: String(row.id),
+      name: String(row.name || row.variant || row.variant_name || ""),
+    }));
+
+    setVariants(normalizedVariants);
+
+    const matchedVariant =
+      routeState?.variant ||
+      normalizedVariants.find((variant) => slugify(variant.name) === variantSlug);
+
+    setResolvedVariantId(matchedVariant?.id ? String(matchedVariant.id) : null);
+  };
+
+  const loadCategories = async () => {
+    const res = await api.get("/products/categories");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+    const normalized: CategoryOption[] = (Array.isArray(rows) ? rows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        name: String(row.name),
+        code: row.code || undefined,
+      })
+    );
+
+    setCategories(normalized);
+
+    const matchedCategory =
+      routeState?.category ||
+      normalized.find((category) => slugify(category.name) === categorySlug);
+
+    setResolvedCategoryId(matchedCategory?.id ? String(matchedCategory.id) : null);
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const res = await api.get("/suppliers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setSuppliers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.CompanyName || row.name || ""),
+          supplier_code: row.supplier_code || "",
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load suppliers:", error);
+      setSuppliers([]);
+    }
+  };
+
+  const loadProducts = async (
+    vehicleId?: string | null,
+    variantId?: string | null,
+    categoryId?: string | null
+  ) => {
+    const params: Record<string, string> = {};
+
+    if (vehicleId) params.vehicle_model_id = vehicleId;
+    if (variantId) params.variant_id = variantId;
+    if (categoryId) params.category_id = categoryId;
+
+    const res = await api.get("/products", { params });
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    setProducts((Array.isArray(rows) ? rows : []).map(normalizeProduct));
+  };
+
+  const loadPageData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([loadCategories(), loadSuppliers(), loadVehiclesAndResolveIds()]);
+    } catch (error) {
+      console.error("Failed initial load on products page:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPageData = async () => {
-      if (!vehicleModelId || !variantId || !categoryId) return;
+    void loadPageData();
+  }, [vehicleSlug, variantSlug, categorySlug]);
 
-      setLoading(true);
+  useEffect(() => {
+    if (resolvedVehicleId === null && resolvedVariantId === null && resolvedCategoryId === null) {
+      return;
+    }
 
-      try {
-        const [categoriesRes, variantsRes, productsRes] = await Promise.all([
-          api.get<CategoryOption[] | { data: CategoryOption[] }>("/products/categories"),
-          api.get<VariantOption[]>(`/vehicles/models/${vehicleModelId}/variants`),
-          api.get<ProductListItem[]>("/products", {
-            params: {
-              variant_id: variantId,
-              category_id: categoryId,
-            },
-          }),
-        ]);
+    void loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId);
+  }, [resolvedVehicleId, resolvedVariantId, resolvedCategoryId]);
 
-        const fetchedCategories = Array.isArray(categoriesRes.data)
-          ? categoriesRes.data
-          : categoriesRes.data.data ?? [];
+  useEffect(() => {
+    setPage(1);
+  }, [search, filtersState]);
 
-        const fetchedVariants = Array.isArray(variantsRes.data) ? variantsRes.data : [];
-        const fetchedProducts = Array.isArray(productsRes.data) ? productsRes.data : [];
+  const manufacturerOptions = Array.from(
+    new Set(products.map((product) => product.manufacturer).filter(Boolean))
+  ).map((m) => ({ label: m, value: m }));
 
-        setCategories(fetchedCategories);
-        setVariants(fetchedVariants);
-        setProducts(fetchedProducts);
-      } catch (error) {
-        console.error("Failed to fetch products page data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const supplierOptions = Array.from(
+    new Set(products.map((product) => product.supplier).filter(Boolean))
+  ).map((s) => ({ label: s, value: s }));
 
-    fetchPageData();
-  }, [vehicleModelId, variantId, categoryId]);
+  const filters: FilterOption[] = [
+    {
+      key: "manufacturer",
+      label: "Manufacturer",
+      options: manufacturerOptions,
+    },
+    {
+      key: "supplier",
+      label: "Supplier",
+      options: supplierOptions,
+    },
+  ];
 
-  const filteredProducts = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return products;
-
+  const filtered = useMemo(() => {
     return products.filter((product) => {
-      return (
-        product.name?.toLowerCase().includes(term) ||
-        product.SKU?.toLowerCase().includes(term) ||
-        product.part_number?.toLowerCase().includes(term) ||
-        product.supplier_name?.toLowerCase().includes(term)
-      );
+      const matchesSearch = `${product.name} ${product.brand} ${product.sku} ${product.partNumber}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
+
+      const matchesManufacturer =
+        filtersState.manufacturer === "all" ||
+        product.manufacturer === filtersState.manufacturer;
+
+      const matchesSupplier =
+        filtersState.supplier === "all" ||
+        product.supplier === filtersState.supplier;
+
+      return matchesSearch && matchesManufacturer && matchesSupplier;
     });
-  }, [products, search]);
+  }, [products, search, filtersState]);
+
+  const paginated = paginate(filtered);
+
+  const refreshProducts = async () => {
+    await loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId);
+  };
 
   return (
-    <div className="w-full h-full p-4 flex flex-col gap-4 overflow-auto">
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+            <BreadcrumbLink
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
               Product Catalog
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
+              {`${make} ${model}`}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
 
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() =>
-                navigate(`/webapp/products/product-catalog/${vehicleModelId}/${vehicleSlug}`)
+                navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                  state: {
+                    vehicleId: resolvedVehicleId,
+                    variantId: resolvedVariantId,
+                    categoryId: resolvedCategoryId,
+                  },
+                })
               }
             >
-              {vehicleTitle}
+              {variantName}
             </BreadcrumbLink>
-            <BreadcrumbSeparator />
           </BreadcrumbItem>
 
+          <BreadcrumbSeparator />
+
           <BreadcrumbItem>
-            <BreadcrumbPage>{selectedCategory?.name ?? "Parts List"}</BreadcrumbPage>
+            <BreadcrumbLink
+              onClick={() =>
+                navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                  state: {
+                    vehicleId: resolvedVehicleId,
+                    variantId: resolvedVariantId,
+                    categoryId: resolvedCategoryId,
+                  },
+                })
+              }
+            >
+              {categoryName}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbPage>Products</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">
-            {selectedCategory?.name ?? "Parts List"}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
-            {selectedVariant && <span>{selectedVariant.name}</span>}
-            {selectedCategory?.code && <Badge variant="outline">{selectedCategory.code}</Badge>}
-          </div>
-        </div>
-
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Product
-        </Button>
-      </div>
-
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Search products..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <DataToolbar
+        searchPlaceholder={`Search ${categoryName} products...`}
+        onSearch={setSearch}
+        filters={filters}
+        activeFilters={filtersState}
+        onFilterChange={(key, value) =>
+          setFiltersState((prev) => ({ ...prev, [key]: value }))
+        }
+        onAdd={() => setOpenModal(true)}
+        addLabel="Add Product"
+      />
 
       {loading ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            Loading products...
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <p className="text-sm font-medium">Loading products...</p>
           </CardContent>
         </Card>
-      ) : filteredProducts.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-muted-foreground flex flex-col items-center gap-3">
-            <Package className="w-10 h-10 opacity-40" />
-            <div>
-              <p className="font-medium">No products found</p>
-              <p className="text-sm">
-                There are no compatible products under this category and variant yet.
-              </p>
+      ) : products.length > 0 ? (
+        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
+          <div className="flex-1 overflow-auto">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-2/6">Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Part Number</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Selling Price</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {filtered.length > 0 ? (
+                  paginated.map((product) => (
+                    <TableRow
+                      key={product.id}
+                      onClick={() =>
+                        navigate(
+                          `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${slugify(
+                            product.name
+                          )}`,
+                          {
+                            state: {
+                              productId: product.id,
+                              product,
+                              vehicleId: resolvedVehicleId,
+                              variantId: resolvedVariantId,
+                              categoryId: resolvedCategoryId,
+                              vehicleSlug,
+                              variantSlug,
+                              categorySlug,
+                            },
+                          }
+                        )
+                      }
+                      className={cn(
+                        "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                        "hover:bg-accent/30"
+                      )}
+                    >
+                      <TableCell className="py-2">
+                        <div className="flex items-center gap-3">
+                          {product.image && !imgError[product.id] ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-12 h-10 rounded-md object-cover border"
+                              onError={() =>
+                                setImgError((prev) => ({
+                                  ...prev,
+                                  [product.id]: true,
+                                }))
+                              }
+                            />
+                          ) : (
+                            <div className="w-12 h-10 flex items-center justify-center rounded-md border">
+                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                            </div>
+                          )}
+
+                          <div className="flex flex-col">
+                            <span className="font-medium">{product.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {product.brand}
+                            </span>
+                          </div>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>{product.sku || "-"}</TableCell>
+                      <TableCell>{product.partNumber || "-"}</TableCell>
+                      <TableCell>{product.unit || "-"}</TableCell>
+                      <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      <div className="py-16 flex flex-col items-center text-center">
+                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">No products found</p>
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your search or filters
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {filtered.length > 25 && (
+            <div className="sticky bottom-0 bg-background z-10">
+              <Pagination
+                totalItems={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             </div>
+          )}
+        </ScrollArea>
+      ) : (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No products available</p>
+            <p className="text-xs text-muted-foreground">
+              Add a product to get started
+            </p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {filteredProducts.map((product) => (
-            <Card key={product.id} className="hover:shadow-md transition">
-              <CardContent className="p-4 flex gap-4">
-                <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {product.image_URL ? (
-                    <img
-                      src={product.image_URL}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Package className="w-8 h-8 text-muted-foreground" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold leading-tight">{product.name}</h3>
-                    {product.sell_price != null && (
-                      <Badge variant="secondary">₱{Number(product.sell_price).toFixed(2)}</Badge>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-muted-foreground">
-                    SKU: {product.SKU || "—"}
-                  </p>
-
-                  {product.part_number && (
-                    <p className="text-sm text-muted-foreground">
-                      Part No: {product.part_number}
-                    </p>
-                  )}
-
-                  {product.supplier_name && (
-                    <p className="text-sm text-muted-foreground">
-                      Supplier: {product.supplier_name}
-                    </p>
-                  )}
-
-                  {product.description && (
-                    <p className="text-sm line-clamp-2 text-muted-foreground">
-                      {product.description}
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {product.unit_name && <Badge variant="outline">{product.unit_name}</Badge>}
-                    {product.category_name && (
-                      <Badge variant="outline">{product.category_name}</Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       )}
+
+      <ProductModal
+        open={openModal}
+        onOpenChange={setOpenModal}
+        categories={categories}
+        suppliers={suppliers}
+        onSaved={refreshProducts}
+      />
     </div>
   );
 };
 
-export default ProductsPage;
+export default ProductsList;

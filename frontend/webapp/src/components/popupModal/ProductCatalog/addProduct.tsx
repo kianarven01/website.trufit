@@ -321,7 +321,5 @@ const ProductModal: React.FC<ProductModalProps> = ({
   );
 };
 
-export default ProductModal;
-};
 
 export default ProductModal;

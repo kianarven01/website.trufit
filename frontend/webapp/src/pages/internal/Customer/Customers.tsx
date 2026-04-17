@@ -2,9 +2,21 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import AddCustomer from "@/components/popupModal/Customers/addCustomer";
@@ -18,34 +30,67 @@ interface Customer {
   landline?: string;
   email: string;
   businessPhone?: string;
-  vehicles?: any[];
 }
 
 const STORAGE_KEY = "customers";
+
+/* ✅ DUMMY DATA */
+const generateDummyCustomers = (): Customer[] => {
+  return Array.from({ length: 30 }, (_, i) => ({
+    id: `cust-${i + 1}`,
+    name: `Customer ${i + 1}`,
+    address: `Street ${i + 1}, City`,
+    mobileNumber: `0917${String(1000000 + i)}`,
+    landline: i % 2 === 0 ? `02-${String(8000000 + i)}` : "",
+    email: `customer${i + 1}@mail.com`,
+    businessPhone: `02-${String(7000000 + i)}`,
+  }));
+};
 
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const navigate = useNavigate();
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  // Load customers from localStorage
+  const { page, setPage, pageSize, setPageSize, paginate } =
+    usePagination(25);
+
+  /* ✅ LOAD WITH AUTO-SEED */
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setCustomers(JSON.parse(stored));
+
+      if (stored) {
+        const parsed: Customer[] = JSON.parse(stored);
+
+        if (!parsed.length) {
+          const dummy = generateDummyCustomers();
+          setCustomers(dummy);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+        } else {
+          setCustomers(parsed);
+        }
+      } else {
+        const dummy = generateDummyCustomers();
+        setCustomers(dummy);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      }
     } catch (err) {
       console.error("Failed to load customers", err);
-      localStorage.removeItem(STORAGE_KEY);
+
+      const dummy = generateDummyCustomers();
+      setCustomers(dummy);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
     }
   }, []);
 
-  // Save customers to localStorage
+  /* SAVE */
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
   }, [customers]);
 
+  /* FILTER */
   const filtered = useMemo(() => {
     return customers.filter(
       (c) =>
@@ -59,10 +104,10 @@ const CustomersList: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize, setPage]);
+  }, [search, pageSize]);
 
   return (
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4">
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -79,8 +124,9 @@ const CustomersList: React.FC = () => {
       />
 
       {customers.length > 0 ? (
-        <div className="flex-1 min-h-0 flex flex-col border rounded-xl px-2">
-          <ScrollArea className="flex-1 min-h-0">
+        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
+
+          <ScrollArea className="flex-1">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -90,8 +136,9 @@ const CustomersList: React.FC = () => {
                   <TableHead className="w-1/5">Landline</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {paginated.length > 0 ? (
+                {filtered.length > 0 ? (
                   paginated.map((c) => (
                     <TableRow
                       key={c.id}
@@ -104,7 +151,9 @@ const CustomersList: React.FC = () => {
                       <TableCell className="py-0.5">
                         <div className="flex flex-col">
                           <p className="font-medium">{c.name}</p>
-                          <p className="text-xs text-muted-foreground">{c.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {c.email}
+                          </p>
                         </div>
                       </TableCell>
                       <TableCell>{c.address}</TableCell>
@@ -117,8 +166,12 @@ const CustomersList: React.FC = () => {
                     <TableCell colSpan={5}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">No customers found</p>
-                        <p className="text-xs text-muted-foreground">Try adjusting your search</p>
+                        <p className="text-sm font-medium">
+                          No customers found
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your search
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -127,9 +180,8 @@ const CustomersList: React.FC = () => {
             </Table>
           </ScrollArea>
 
-          {/* Pagination always at bottom of div */}
-          {filtered.length > 25 && (
-            <div className="mt-2">
+          {filtered.length > 0 && (
+            <div className="border-t bg-background">
               <Pagination
                 totalItems={filtered.length}
                 page={page}
@@ -145,7 +197,9 @@ const CustomersList: React.FC = () => {
           <CardContent className="py-16 flex flex-col items-center text-center">
             <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
             <p className="text-sm font-medium">No customers available</p>
-            <p className="text-xs text-muted-foreground">Add a customer to get started</p>
+            <p className="text-xs text-muted-foreground">
+              Add a customer to get started
+            </p>
           </CardContent>
         </Card>
       )}

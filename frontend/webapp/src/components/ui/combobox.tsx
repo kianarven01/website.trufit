@@ -138,17 +138,22 @@ const Combobox: FC<MakeComboboxProps> = ({
             )}
 
             {/* Add new item */}
-            {allowAdd && search.trim() !== "" && (
-              <div
-                onClick={handleAddClick}
-                className="flex cursor-pointer items-center gap-2 border-t px-2 py-2 text-sm text-primary font-medium hover:bg-accent"
-              >
-                + Add {addLabel || "new item"}
-              </div>
+            {allowAdd && (
+              <>
+                {/* Always show add option when empty OR typing */}
+                {(filteredItems.length === 0 || search.trim() !== "") && (
+                  <div
+                    onClick={handleAddClick}
+                    className="flex cursor-pointer items-center gap-2 border-t px-2 py-2 text-sm text-primary font-medium hover:bg-accent"
+                  >
+                    + Add {addLabel || "new item"}
+                  </div>
+                )}
+              </>
             )}
 
             {filteredItems.length === 0 && !allowAdd && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
+              <div className="p-2 text-center text-sm text-muted-foreground">
                 No results found.
               </div>
             )}

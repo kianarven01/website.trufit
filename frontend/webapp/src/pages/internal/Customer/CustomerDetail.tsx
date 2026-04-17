@@ -1,26 +1,44 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card, CardContent, CardHeader, CardTitle
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb";
-import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@/components/ui/table";
+import {
+  Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage
+} from "@/components/ui/breadcrumb";
+import {
+  Table, TableHeader, TableHead, TableBody, TableRow, TableCell
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import DataToolbar from "@/components/DataToolbar";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import AddCustomerVehicle from "@/components/popupModal/Customers/addCustomerVehicle";
 import { ScrollArea, ScrollBar } from "@/components/ui/scrollArea";
-import { ArrowLeft, Edit, Mail, Phone, MapPin, Car, ClipboardClock } from "lucide-react";
+import {
+  ArrowLeft, Edit, Mail, Phone, MapPin, Car, ClipboardClock
+} from "lucide-react";
 
+/* ================= STORAGE ================= */
 const STORAGE_KEY = "customers";
+const VEHICLE_STORAGE_KEY = "vehicles";
+const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+const INTERVIEW_STORAGE_KEY = "interviews";
 
-/* TYPES */
-interface Vehicle {
+/* ================= TYPES ================= */
+interface VehicleModel {
   id: string;
   year: number;
   make: string;
   model: string;
   variant: string;
+}
+
+interface Vehicle {
+  id: string;
+  customerId: string;
+  vehicleModelId: string;
   color: string;
   plateNo: string;
   engineNo: string;
@@ -38,93 +56,111 @@ interface Customer {
   mobileNumber: string;
   landline?: string;
   businessPhone?: string;
-  vehicles?: Vehicle[];
-  interviews?: InterviewSheet[];
 }
 
 interface InterviewSheet {
   id: string;
+  vehicleId: string;
   date: string;
   time: string;
   transactionRecord: string;
   status: "Completed" | "Pending" | "Cancelled";
 }
 
+/* ================= COMPONENT ================= */
 const CustomerDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [hoveredVehicleId, setHoveredVehicleId] = useState<string | null>(null);
-  const [openAddVehicle, setOpenAddVehicle] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
   const [customerData, setCustomerData] = useState<Customer | null>(null);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
+  const [interviews, setInterviews] = useState<InterviewSheet[]>([]);
 
-  // Load customer from localStorage
+  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [hoveredVehicleId, setHoveredVehicleId] = useState<string | null>(null);
+
+  const [openAddVehicle, setOpenAddVehicle] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+
+  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
+
+  /* ================= LOAD ================= */
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const customers: Customer[] = JSON.parse(stored);
-        const found = customers.find((c) => c.id === id);
-        if (found) setCustomerData(found);
-      }
-    } catch (err) {
-      console.error("Failed to load customer", err);
-    }
+    const customers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    setCustomerData(customers.find((c: Customer) => c.id === id));
   }, [id]);
 
   useEffect(() => {
-    if (!customerData || hasInitializedSelection) return;
+    const allVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
+    setVehicles(allVehicles.filter((v: Vehicle) => v.customerId === id));
+  }, [id]);
 
-    const vehicles = customerData.vehicles || [];
-    const hasMultipleVehicles = vehicles.length > 1;
+  useEffect(() => {
+    setVehicleModels(JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"));
+  }, []);
 
-    setSelectedVehicle(hasMultipleVehicles ? null : vehicles[0] || null);
+  useEffect(() => {
+    const all = JSON.parse(localStorage.getItem(INTERVIEW_STORAGE_KEY) || "[]");
+    setInterviews(all);
+  }, []);
 
-    setHasInitializedSelection(true);
-  }, [customerData, hasInitializedSelection]);
 
-  // Save customer updates to localStorage
-  const saveCustomerToStorage = (updated: Customer) => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      const customers: Customer[] = stored ? JSON.parse(stored) : [];
-      const updatedCustomers = customers.map((c) => (c.id === updated.id ? updated : c));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCustomers));
-    } catch (err) {
-      console.error("Failed to save customer", err);
-    }
+  
+
+  /* ================= MAP ================= */
+  const vehicleModelMap = useMemo(() => {
+    const map: Record<string, VehicleModel> = {};
+    vehicleModels.forEach(v => (map[v.id] = v));
+    return map;
+  }, [vehicleModels]);
+
+  const enrichedVehicles = useMemo(() => {
+    return vehicles.map(v => {
+      const m = vehicleModelMap[v.vehicleModelId];
+      return {
+        ...v,
+        year: m?.year,
+        make: m?.make,
+        model: m?.model,
+        variant: m?.variant,
+      };
+    });
+  }, [vehicles, vehicleModelMap]);
+
+  const vehicleInterviews = useMemo(() => {
+    if (!selectedVehicle) return [];
+    return interviews.filter(i => i.vehicleId === selectedVehicle.id);
+  }, [interviews, selectedVehicle]);
+
+  const paginatedInterviews = paginate(vehicleInterviews);
+
+  /* ================= INIT SELECTION ================= */
+  useEffect(() => {
+    if (!enrichedVehicles.length) return;
+    if (enrichedVehicles.length === 1) setSelectedVehicle(enrichedVehicles[0]);
+  }, [enrichedVehicles]);
+
+  /* ================= SAVE ================= */
+  const saveCustomer = (updated: Customer) => {
+    const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const next = list.map((c: Customer) => (c.id === updated.id ? updated : c));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   };
 
-  const handleSaveCustomer = (updated: any) => {
-    setCustomerData(updated);
-    saveCustomerToStorage(updated);
-
-    if (updated.__lastAddedVehicle) {
-      setSelectedVehicle(updated.__lastAddedVehicle);
-    }
-  };
-
+  /* ================= UI ================= */
   if (!customerData) {
     return (
       <Card>
-        <CardContent className="py-16 flex flex-col items-center text-center">
-          <ClipboardClock className="h-6 w-6 mb-2 text-muted-foreground" />
-          <p className="text-sm font-medium">Customer not found</p>
+        <CardContent className="py-16 text-center">
+          <ClipboardClock className="h-6 w-6 mx-auto mb-2" />
+          Customer not found
         </CardContent>
       </Card>
     );
   }
 
-  const vehicles = customerData.vehicles || [];
   const hasMultipleVehicles = vehicles.length > 1;
-
-  const interviews: InterviewSheet[] = customerData.interviews || [];
-  const paginatedInterviews = paginate(interviews);
-
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto select-none">
@@ -228,7 +264,7 @@ const CustomerDetail: React.FC = () => {
               ) : !selectedVehicle ? (
                 <ScrollArea className="w-full flex-1 pb-2">
                   <div className="grid grid-flow-col auto-cols-[calc(75%-1rem)] lg:auto-cols-[calc(33.333%-1rem)] gap-4 min-w-full pt-3 px-1">
-                    {vehicles.map((v) => {
+                    {enrichedVehicles.map((v) => {
                       const isHovered = hoveredVehicleId === v.id;
                       const isAnyHovered = hoveredVehicleId !== null;
 
@@ -283,7 +319,7 @@ const CustomerDetail: React.FC = () => {
                         cursor-pointer lg:h-[18rem] flex flex-col items-center justify-center text-center border-dashed border-2 transition-all duration-300
                         ${hoveredVehicleId === 'add-vehicle' 
                           ? 'bg-blue-50 border-blue-500 border-solid shadow-xl -translate-y-2 ring-2 ring-blue-500/20' 
-                          : hoveredVehicleId 
+                          : hoveredVehicleId !== 'add-vehicle'
                             ? 'opacity-40 blur-[1px]' 
                             : 'border-muted hover:border-blue-400'}
                       `}
@@ -378,12 +414,12 @@ const CustomerDetail: React.FC = () => {
         ) : (
           <Card className="flex flex-col">
             <CardHeader>
-              <CardTitle className="text-lg">Customer History</CardTitle>
+              <CardTitle className="text-lg">Vehicle History</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col items-center justify-center text-center pb-8">
               <ClipboardClock className="h-10 w-10 stroke-1 mb-2 text-muted-foreground" />
               <p className="text-sm font-light tracking-wide text-muted-foreground">
-                There is no history available for this customer.
+                There is no history available for this vehicle.
               </p>
             </CardContent>
           </Card>
@@ -395,22 +431,36 @@ const CustomerDetail: React.FC = () => {
         open={openEdit}
         onOpenChange={setOpenEdit}
         customer={customerData}
-        onSaved={handleSaveCustomer}
+        onSaved={(c: Customer) => {
+          setCustomerData(c);
+          saveCustomer(c);
+        }}
       />
 
       <AddCustomerVehicle
         open={openAddVehicle}
         onOpenChange={setOpenAddVehicle}
-        onSaved={(newVehicles) => { const updatedVehicles = [ ...(customerData.vehicles || []), ...newVehicles, ];
+        onSaved={(newVehicles) => {
+          const stored = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
 
-          const updatedCustomer = { ...customerData, vehicles: updatedVehicles, };
+          const updated = [...stored, ...newVehicles.map(v => ({
+            ...v,
+            customerId: customerData.id
+          }))];
 
-          setCustomerData(updatedCustomer);
-          saveCustomerToStorage(updatedCustomer);
+          localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(updated));
 
-          if (newVehicles.length > 0) {
-            setSelectedVehicle(newVehicles[newVehicles.length - 1]);
-          }
+          const customerVehicles = updated.filter(v => v.customerId === customerData.id);
+
+          setVehicles([...customerVehicles]);
+
+          const models = JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
+          setVehicleModels (models);
+
+          requestAnimationFrame(() => {
+            const latest = customerVehicles[customerVehicles.length - 1];
+            setSelectedVehicle(latest);
+          });
         }}
       />
     </div>

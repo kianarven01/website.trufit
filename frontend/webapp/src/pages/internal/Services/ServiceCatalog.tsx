@@ -21,6 +21,7 @@ interface ServiceItem {
   service: string;
   category: string;
   price: number;
+  additionalPerHour: number | null;
 }
 
 const ServiceCatalog: React.FC = () => {
@@ -30,12 +31,14 @@ const ServiceCatalog: React.FC = () => {
       service: "Oil Change",
       category: "Engine Maintenance",
       price: 1500,
+      additionalPerHour: 500,
     },
     {
       id: "2",
       service: "Brake Pad Replacement",
       category: "Brake System",
       price: 3500,
+      additionalPerHour: 500,
     },
   ]);
 
@@ -48,6 +51,7 @@ const ServiceCatalog: React.FC = () => {
     service: "",
     category: "",
     price: "",
+    additionalPerHour: "",
   });
 
   const filteredServices = useMemo(() => {
@@ -66,6 +70,7 @@ const ServiceCatalog: React.FC = () => {
       service: "",
       category: "",
       price: "",
+      additionalPerHour: "",
     });
     setOpen(true);
   };
@@ -76,12 +81,19 @@ const ServiceCatalog: React.FC = () => {
       service: item.service,
       category: item.category,
       price: String(item.price),
+      additionalPerHour:
+        item.additionalPerHour !== null ? String(item.additionalPerHour) : "",
     });
     setOpen(true);
   };
 
   const handleSave = () => {
     if (!form.service || !form.category || !form.price) return;
+
+    const additionalPerHourValue =
+      form.additionalPerHour.trim() === ""
+        ? null
+        : Number(form.additionalPerHour);
 
     if (editing) {
       setServices((prev) =>
@@ -92,6 +104,7 @@ const ServiceCatalog: React.FC = () => {
                 service: form.service,
                 category: form.category,
                 price: Number(form.price),
+                additionalPerHour: additionalPerHourValue,
               }
             : s
         )
@@ -102,6 +115,7 @@ const ServiceCatalog: React.FC = () => {
         service: form.service,
         category: form.category,
         price: Number(form.price),
+        additionalPerHour: additionalPerHourValue,
       };
 
       setServices((prev) => [...prev, newItem]);
@@ -123,6 +137,14 @@ const ServiceCatalog: React.FC = () => {
       key: "price",
       label: "Price",
       render: (item) => `₱ ${item.price.toLocaleString()}`,
+    },
+    {
+      key: "additionalPerHour",
+      label: "Additional Per Hour",
+      render: (item) =>
+        item.additionalPerHour !== null
+          ? `₱ ${item.additionalPerHour.toLocaleString()}`
+          : "—",
     },
     {
       key: "actions",
@@ -198,6 +220,20 @@ const ServiceCatalog: React.FC = () => {
                   setForm((f) => ({
                     ...f,
                     price: e.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Additional Per Hour</Label>
+              <Input
+                type="number"
+                value={form.additionalPerHour}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    additionalPerHour: e.target.value,
                   }))
                 }
               />

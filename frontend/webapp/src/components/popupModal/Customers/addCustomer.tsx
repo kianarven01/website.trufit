@@ -36,7 +36,13 @@ interface Vehicle {
   hasWarranty?: boolean;
 }
 
-const genId = () => crypto.randomUUID();
+const genId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // fallback
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+};
 
 const emptyVehicle = (): any => ({
   id: genId(),

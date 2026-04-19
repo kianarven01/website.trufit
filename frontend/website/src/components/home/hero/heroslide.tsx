@@ -192,11 +192,6 @@ export default function HeroSlide({ slide, isActive }: Props) {
                 <ArrowRightCircle className="w-3 md:w-4 h-3 md:h-4" />
               </div>
             </Link>
-
-            <Link href={slide.secondaryLink} className="inline-flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 md:px-8 md:py-4 rounded-sm font-semibold transition-all bg-white/10 border border-white/20 text-white hover:bg-brand-blue/20 hover:border-brand-blue text-[9px] sm:text-xs md:text-base">
-              <Play className="w-3 md:w-4 h-3 md:h-4" />
-              View More
-            </Link>
           </div>
 
           {/* Accreditations and Stats combined in one line */}

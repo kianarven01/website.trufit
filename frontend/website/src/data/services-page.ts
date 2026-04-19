@@ -47,7 +47,7 @@ export const specializedServices: Service[] = [
     id: 7,
     title: "Under Chassis Repairs",
     description: "Specialized suspension, steering, and chassis alignment to ensure a smooth and safe driving experience.",
-    icon: "/images/icons/brakes.webp",
+    icon: "/images/icons/damper.webp",
     image: "/images/services/spectrum/under_chassis.jpg",
   },
   {

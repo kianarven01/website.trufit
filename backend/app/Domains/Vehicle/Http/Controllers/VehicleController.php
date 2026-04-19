@@ -172,6 +172,7 @@ class VehicleController extends Controller
             'year' => (string) $variant->year,
             'engine' => $variant->engine_displacement ?? '',
             'transmission' => $variant->transmission_type ?? '',
+            'drivetrain' => $variant->drivetrain ?? '',
             'oilCapacity' => $variant->oil_capacity,
             'serviceClass' => $variant->service_class ?? '',
         ];

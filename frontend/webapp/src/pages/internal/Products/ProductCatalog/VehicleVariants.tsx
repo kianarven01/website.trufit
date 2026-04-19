@@ -9,7 +9,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scrollArea";
 import { Button } from "@/components/ui/button";
 import Combobox from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
@@ -227,20 +226,23 @@ const VehicleVariantsPage: React.FC = () => {
     const normalized: Variant[] = (Array.isArray(rows) ? rows : []).map(
       (row: any) => ({
         id: String(row.id),
-        name: String(row.name || row.variant || row.variant_name || ""),
+        name: String(row.name || row.variant_name || row.variant || ""),
         year: row.year ? String(row.year) : "",
         engine: row.engine || row.engine_displacement || "",
         transmission: row.transmission || row.transmission_type || "",
-        drivetrain: row.drivetrain || row.drive_type || "",
-        oilCapacity: row.oil_capacity ?? undefined,
-        serviceClass: row.service_class ?? "",
+        drivetrain: row.drivetrain || "",
+        oilCapacity: row.oilCapacity ?? row.oil_capacity ?? undefined,
+        serviceClass: row.serviceClass ?? row.service_class ?? "",
       })
     );
 
     setVariantList(normalized);
 
     if (normalized.length > 0) {
-      setSelectedVariantId((prev) => prev || normalized[0].id);
+      setSelectedVariantId((prev) => {
+        if (prev && normalized.some((item) => item.id === prev)) return prev;
+        return normalized[0].id;
+      });
     } else {
       setSelectedVariantId(null);
     }
@@ -296,9 +298,9 @@ const VehicleVariantsPage: React.FC = () => {
     image?: string;
   }) => {
     const payload = {
-      manufacturer: vehicleData.makeId,
+      manufacturer_id: vehicleData.makeId,
       model: vehicleData.model,
-      image_URL: vehicleData.image || null,
+      image_url: vehicleData.image || null,
     };
 
     if (vehicleData.id) {
@@ -309,26 +311,27 @@ const VehicleVariantsPage: React.FC = () => {
 
     await loadPageData();
     setVehicleModalOpen(false);
+    setEditingVehicle(null);
   };
 
   const handleVariantSaved = async (variant: VehicleVariantFormData) => {
     if (!currentVehicle?.id) return;
 
     const payload = {
-      vehicle_model_id: currentVehicle.id,
-      name: variant.name,
-      year: variant.year || null,
-      engine: variant.engine || null,
-      transmission: variant.transmission || null,
+      car_model_id: Number(currentVehicle.id),
+      variant_name: variant.name,
+      year: variant.year ? Number(variant.year) : null,
+      engine_displacement: variant.engine || null,
+      transmission_type: variant.transmission || null,
       drivetrain: variant.drivetrain || null,
       oil_capacity: variant.oilCapacity ?? null,
       service_class: variant.serviceClass || null,
     };
 
     if (variant.id) {
-      await api.put(`/vehicle-variants/${variant.id}`, payload);
+      await api.put(`/vehicles/variants/${variant.id}`, payload);
     } else {
-      await api.post("/vehicle-variants", payload);
+      await api.post(`/vehicles/models/${currentVehicle.id}/variants`, payload);
     }
 
     await loadVariants(currentVehicle.id);
@@ -359,12 +362,14 @@ const VehicleVariantsPage: React.FC = () => {
     if (!variantToDelete || !currentVehicle?.id) return;
 
     try {
-      await api.delete(`/vehicle-variants/${variantToDelete.id}`);
+      await api.delete(`/vehicles/variants/${variantToDelete.id}`);
       await loadVariants(currentVehicle.id);
 
-      if (selectedVariantId === variantToDelete.id) {
-        setSelectedVariantId(null);
-      }
+      setSelectedVariantId((prev) => {
+        if (prev !== variantToDelete.id) return prev;
+        const remaining = variantList.filter((v) => v.id !== variantToDelete.id);
+        return remaining.length > 0 ? remaining[0].id : null;
+      });
     } catch (error) {
       console.error("Failed to delete variant:", error);
     } finally {
@@ -540,6 +545,7 @@ const VehicleVariantsPage: React.FC = () => {
                             const composed = extra
                               ? `${variant.name} — ${extra}`
                               : variant.name;
+
                             return composed === label;
                           });
 
@@ -571,82 +577,6 @@ const VehicleVariantsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Variants</h3>
-                    <Badge variant="secondary">{variantList.length}</Badge>
-                  </div>
-
-                  <ScrollArea className="h-[220px] pr-2">
-                    <div className="space-y-2">
-                      {variantList.length === 0 ? (
-                        <div className="text-sm text-muted-foreground py-10 text-center">
-                          No variants found.
-                        </div>
-                      ) : (
-                        variantList.map((variant) => {
-                          const isSelected = variant.id === selectedVariantId;
-
-                          return (
-                            <div
-                              key={variant.id}
-                              onClick={() => setSelectedVariantId(variant.id)}
-                              className={`rounded-xl border p-3 cursor-pointer transition ${
-                                isSelected
-                                  ? "border-primary bg-primary/5"
-                                  : "hover:bg-muted/40"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="font-medium">{variant.name}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {[
-                                      variant.year,
-                                      variant.engine,
-                                      variant.transmission,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" • ") || "No extra details"}
-                                  </p>
-                                </div>
-
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon_xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingVariant(variant);
-                                      setVariantModalOpen(true);
-                                    }}
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-
-                                  <Button
-                                    variant="ghost"
-                                    size="icon_xs"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setVariantToDelete(variant);
-                                      setDeleteVariantOpen(true);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </ScrollArea>
                 </CardContent>
               </Card>
             </section>

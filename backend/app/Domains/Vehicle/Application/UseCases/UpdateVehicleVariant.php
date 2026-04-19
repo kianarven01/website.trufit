@@ -11,54 +11,38 @@ class UpdateVehicleVariant
 
     public function execute(int $id, array $data): ?VehicleVariant
     {
-        // Convert engine from "2.8L" format to integer (2800)
-        if (isset($data['engine'])) {
-            $engineStr = $data['engine'];
-            if (preg_match('/(\d+(?:\.\d+)?)L/i', $engineStr, $matches)) {
-                $data['engine_displacement'] = (int) ($matches[1] * 1000);
-            }
-            unset($data['engine']);
-        }
-
-        // Handle year range
-        if (isset($data['year'])) {
-            $yearStr = $data['year'];
-            if (strpos($yearStr, '-') !== false) {
-                [$start, $end] = explode('-', $yearStr, 2);
-                $data['year_start'] = (int) trim($start);
-                $data['year_end'] = (int) trim($end);
-            } else {
-                $data['year_start'] = (int) $yearStr;
-                $data['year_end'] = (int) $yearStr;
-            }
-            unset($data['year']);
-        }
-
-        // Map frontend fields to database fields
         $mappedData = [];
-        if (isset($data['name'])) {
-            $mappedData['variant_name'] = $data['name'];
+
+        if (array_key_exists('variant_name', $data) || array_key_exists('name', $data) || array_key_exists('variant', $data)) {
+            $mappedData['variant_name'] = $data['variant_name'] ?? $data['name'] ?? $data['variant'];
         }
-        if (isset($data['engine_displacement'])) {
+
+        if (array_key_exists('engine_displacement', $data)) {
             $mappedData['engine_displacement'] = $data['engine_displacement'];
         }
-        if (isset($data['year_start'])) {
-            $mappedData['year_start'] = $data['year_start'];
+
+        if (array_key_exists('year', $data)) {
+            $mappedData['year'] = $data['year'] !== null && $data['year'] !== '' ? (int) $data['year'] : null;
         }
-        if (isset($data['year_end'])) {
-            $mappedData['year_end'] = $data['year_end'];
+
+        if (array_key_exists('transmission_type', $data) || array_key_exists('transmission', $data)) {
+            $mappedData['transmission_type'] = $data['transmission_type'] ?? $data['transmission'];
         }
-        if (isset($data['transmission'])) {
-            $mappedData['transmission_type'] = $data['transmission'];
+
+        if (array_key_exists('drivetrain', $data)) {
+            $mappedData['drivetrain'] = $data['drivetrain'];
         }
-        if (isset($data['oilCapacity'])) {
-            $mappedData['oil_capacity'] = $data['oilCapacity'];
+
+        if (array_key_exists('oil_capacity', $data) || array_key_exists('oilCapacity', $data)) {
+            $mappedData['oil_capacity'] = $data['oil_capacity'] ?? $data['oilCapacity'];
         }
-        if (isset($data['serviceClass'])) {
-            $mappedData['service_class'] = $data['serviceClass'];
+
+        if (array_key_exists('service_class', $data) || array_key_exists('serviceClass', $data)) {
+            $mappedData['service_class'] = $data['service_class'] ?? $data['serviceClass'];
         }
 
         $success = $this->repository->update($id, $mappedData);
+
         return $success ? $this->repository->findById($id) : null;
     }
 }

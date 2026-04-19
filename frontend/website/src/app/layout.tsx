@@ -33,11 +33,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Navbar />
         <main>{children}</main>
         <Footer />
-
         {/* scroll-to-top button */}
         <ScrollToTopButton />
-
-        <PromoPopup/>
         <GlobalModals />
       </body>
     </html>

@@ -4,14 +4,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Plus, Trash2, Car } from "lucide-react";
 import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
 
 /* ================= CONSTANTS ================= */
-const VEHICLE_STORAGE_KEY = "vehicles";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
 
 /* ================= TYPES ================= */
@@ -25,7 +23,7 @@ interface VehicleModel {
 
 interface Vehicle {
   id: string;
-  customerId?: string;
+  customerId: string; // parent will assign this
   vehicleModelId: string;
   color: string;
   plateNo: string;
@@ -50,10 +48,19 @@ interface VehicleForm {
   sellingDealer: string;
 }
 
+
+type EnrichedVehicle = Vehicle & {
+  year?: number;
+  make?: string;
+  model?: string;
+  variant?: string;
+};
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: (vehicles: Vehicle[]) => void;
+  onSaved?: (vehicles: Omit<Vehicle, "customerId">[]) => void;
+  vehicleToEdit?: EnrichedVehicle | null;
 }
 
 /* ================= HELPERS ================= */
@@ -61,7 +68,6 @@ const genId = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // fallback
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 };
 
@@ -84,6 +90,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
   open,
   onOpenChange,
   onSaved,
+  vehicleToEdit,
 }) => {
   const [vehicles, setVehicles] = useState<VehicleForm[]>([emptyVehicle()]);
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
@@ -95,30 +102,59 @@ const AddCustomerVehicle: React.FC<Props> = ({
   }, [open]);
 
   useEffect(() => {
-    if (open) setVehicles([emptyVehicle()]);
-  }, [open]);
+    if (!open) return;
 
-  /* ================= CASCADING FILTER ================= */
+    if (vehicleToEdit) {
+      // EDIT MODE
+      setVehicles([
+        {
+          id: vehicleToEdit.id,
+          year: String(vehicleToEdit.year || ""),
+          make: vehicleToEdit.make || "",
+          model: vehicleToEdit.model || "",
+          variant: vehicleToEdit.variant || "",
+          color: vehicleToEdit.color || "",
+          plateNo: vehicleToEdit.plateNo || "",
+          engineNo: vehicleToEdit.engineNo || "",
+          vin: vehicleToEdit.vin || "",
+          registrationNo: vehicleToEdit.registrationNo || "",
+          sellingDealer: vehicleToEdit.sellingDealer || "",
+        },
+      ]);
+    } else {
+      // ADD MODE
+      setVehicles([emptyVehicle()]);
+    }
+  }, [open, vehicleToEdit]);
+
+  /* ================= FILTERS ================= */
   const years = useMemo(
     () => [...new Set(vehicleModels.map(v => String(v.year)))],
     [vehicleModels]
   );
 
+  const normalize = (val: string) => val?.trim().toLowerCase();
+
+  const findCanonical = (list: string[], input: string) => {
+    const normalized = normalize(input);
+    return list.find(item => normalize(item) === normalized);
+  };
+
   const makes = () =>
-    [...new Set(vehicleModels.map(v => v.make))];
+    [...new Set(vehicleModels.map(v => v.make.trim()))];
 
   const models = (make: string) =>
     [...new Set(
       vehicleModels
-        .filter(v => v.make === make)
-        .map(v => v.model)
+        .filter(v => normalize(v.make) === normalize(make))
+        .map(v => v.model.trim())
     )];
 
   const variants = (make: string, model: string) =>
     vehicleModels
       .filter(v =>
-        v.make === make &&
-        v.model === model
+        normalize(v.make) === normalize(make) &&
+        normalize(v.model) === normalize(model)
       )
       .map(v => v.variant);
 
@@ -145,26 +181,23 @@ const AddCustomerVehicle: React.FC<Props> = ({
     const storedModels: VehicleModel[] =
       JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
 
-    const existingVehicles: Vehicle[] =
-      JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
-
     let updatedModels = [...storedModels];
 
-    const normalizedVehicles: Vehicle[] = validVehicles.map(v => {
+    const normalizedVehicles = validVehicles.map(v => {
       let model = updatedModels.find(m =>
         m.year === Number(v.year) &&
-        m.make === v.make &&
-        m.model === v.model &&
-        m.variant === v.variant
+        normalize(m.make) === normalize(v.make) &&
+        normalize(m.model) === normalize(v.model) &&
+        normalize(m.variant) === normalize(v.variant)
       );
 
       if (!model) {
         model = {
           id: genId(),
           year: Number(v.year),
-          make: v.make,
-          model: v.model,
-          variant: v.variant,
+          make: v.make.trim(),
+          model: v.model.trim(),
+          variant: v.variant.trim(),
         };
         updatedModels.push(model);
       }
@@ -181,18 +214,13 @@ const AddCustomerVehicle: React.FC<Props> = ({
       };
     });
 
+    /* SAVE MODELS ONLY */
     localStorage.setItem(
       VEHICLE_MODEL_STORAGE_KEY,
       JSON.stringify(updatedModels)
     );
 
-    const mergedVehicles = [...existingVehicles, ...normalizedVehicles];
-
-    localStorage.setItem(
-      VEHICLE_STORAGE_KEY,
-      JSON.stringify(mergedVehicles)
-    );
-
+    /* PASS TO PARENT */
     onSaved?.(normalizedVehicles);
 
     toast.success("Vehicle(s) added");
@@ -215,9 +243,11 @@ const AddCustomerVehicle: React.FC<Props> = ({
                 <Car className="h-4 w-4" /> Vehicles
               </p>
 
-              <Button size="sm" onClick={addVehicleRow}>
-                <Plus className="h-3 w-3" /> Add Vehicle
-              </Button>
+              {!vehicleToEdit && (
+                <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={addVehicleRow}>
+                  <Plus className="h-3 w-3" /> Add Vehicle
+                </Button>
+              )}
             </div>
 
             {vehicles.map((v, idx) => (
@@ -249,7 +279,9 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   <Combobox
                     value={v.make}
                     onChange={(val) => {
-                      updateVehicle(idx, "make", val);
+                      const canonical = findCanonical(makes(), val) || val;
+
+                      updateVehicle(idx, "make", canonical);
                       updateVehicle(idx, "model", "");
                       updateVehicle(idx, "variant", "");
                     }}
@@ -260,7 +292,9 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   <Combobox
                     value={v.model}
                     onChange={(val) => {
-                      updateVehicle(idx, "model", val);
+                      const canonical = findCanonical(models(v.make), val) || val;
+
+                      updateVehicle(idx, "model", canonical);
                       updateVehicle(idx, "variant", "");
                     }}
                     items={models(v.make)}
@@ -268,14 +302,18 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   />
                 </div>
 
-                <Combobox
-                  value={v.variant}
-                  onChange={(val) => updateVehicle(idx, "variant", val)}
-                  items={variants(v.make, v.model)}
-                  placeholder="Variant"
-                />
-
                 <div className="grid md:grid-cols-2 gap-2">
+                  <Combobox
+                    value={v.variant}
+                    onChange={(val) => {
+                      const canonical = findCanonical(variants(v.make, v.model), val) || val;
+
+                      updateVehicle(idx, "variant", canonical);
+                    }}
+                    items={variants(v.make, v.model)}
+                    placeholder="Variant"
+                  />
+
                   <Input placeholder="Color" value={v.color}
                     onChange={(e) => updateVehicle(idx, "color", e.target.value)} />
 
@@ -291,7 +329,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   <Input placeholder="Registration No" value={v.registrationNo}
                     onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value)} />
 
-                  <Input placeholder="Selling Dealer" value={v.sellingDealer}
+                  <Input className="col-span-2" placeholder="Selling Dealer" value={v.sellingDealer}
                     onChange={(e) => updateVehicle(idx, "sellingDealer", e.target.value)} />
                 </div>
 

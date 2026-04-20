@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
@@ -11,9 +11,21 @@ import { Plus, Trash2, Car } from "lucide-react";
 import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
 
+/* ================= STORAGE ================= */
 const STORAGE_KEY = "customers";
 const VEHICLE_STORAGE_KEY = "vehicles";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+
+/* ================= TYPES ================= */
+interface Customer {
+  id: string;
+  name: string;
+  address: string;
+  mobileNumber: string;
+  landline?: string;
+  email?: string;
+  businessPhone?: string;
+}
 
 interface VehicleModel {
   id: string;
@@ -33,18 +45,32 @@ interface Vehicle {
   vin: string;
   registrationNo: string;
   sellingDealer: string;
-  hasWarranty?: boolean;
 }
 
-const genId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  // fallback
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-};
+interface VehicleForm {
+  id: string;
+  year: string;
+  make: string;
+  model: string;
+  variant: string;
+  color: string;
+  plateNo: string;
+  engineNo: string;
+  vin: string;
+  registrationNo: string;
+  sellingDealer: string;
+  _deleted?: boolean;
+}
 
-const emptyVehicle = (): any => ({
+/* ================= HELPERS ================= */
+const genId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+const normalize = (val: string) => val?.trim().toLowerCase();
+
+const emptyVehicle = (): VehicleForm => ({
   id: genId(),
   year: "",
   make: "",
@@ -56,13 +82,26 @@ const emptyVehicle = (): any => ({
   vin: "",
   registrationNo: "",
   sellingDealer: "",
+  _deleted: false,
 });
 
-const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
-  const isEdit = !!customer;
+  /* ================= COMPONENT ================= */
+  const CustomerFormModal = ({
+    open,
+    onOpenChange,
+    customer,
+    onSaved,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    customer?: Customer | null;
+    onSaved?: (customer: Customer) => void;
+  }) => {
+    const isEdit = !!customer;
 
+  /* ================= STATE ================= */
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
-  const [vehicles, setVehicles] = useState<any[]>([emptyVehicle()]);
+  const [vehicles, setVehicles] = useState<VehicleForm[]>([emptyVehicle()]);
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -77,105 +116,141 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
     if (stored) setVehicleModels(JSON.parse(stored));
   }, []);
 
-  /* ================= EDIT HYDRATION ================= */
+  /* ================= RESET ================= */
+  const resetForm = useCallback(() => {
+    setName("");
+    setAddress("");
+    setMobileNumber("");
+    setLandline("");
+    setEmail("");
+    setBusinessPhone("");
+    setVehicles([emptyVehicle()]);
+  }, []);
+
+  /* ================= HYDRATION ================= */
   useEffect(() => {
     if (!open) return;
 
-    if (customer) {
-      setName(customer.name || "");
-      setAddress(customer.address || "");
-      setMobileNumber(customer.mobileNumber || "");
-      setLandline(customer.landline || "");
-      setEmail(customer.email || "");
-      setBusinessPhone(customer.businessPhone || "");
-    } else {
-      setName("");
-      setAddress("");
-      setMobileNumber("");
-      setLandline("");
-      setEmail("");
-      setBusinessPhone("");
+    if (!customer) {
+      resetForm();
+      return;
     }
 
-    if (!vehicleModels.length) return;
+    setName(customer.name || "");
+    setAddress(customer.address || "");
+    setMobileNumber(customer.mobileNumber || "");
+    setLandline(customer.landline || "");
+    setEmail(customer.email || "");
+    setBusinessPhone(customer.businessPhone || "");
 
-    const stored = localStorage.getItem(VEHICLE_STORAGE_KEY);
-    const all: Vehicle[] = stored ? JSON.parse(stored) : [];
+    const storedVehicles = localStorage.getItem(VEHICLE_STORAGE_KEY);
+    const all: Vehicle[] = storedVehicles ? JSON.parse(storedVehicles) : [];
 
-    const customerVehicles = customer
-      ? all.filter(v => v.customerId === customer.id)
-      : [];
+    const customerVehicles = all.filter(v => v.customerId === customer.id);
 
-    const mapped = customerVehicles.map(v => {
+    const mapped: VehicleForm[] = customerVehicles.map(v => {
       const model = vehicleModels.find(m => m.id === v.vehicleModelId);
 
       return {
         id: v.id,
-        vehicleModelId: v.vehicleModelId,
+        year: model?.year?.toString() || "",
+        make: model?.make || "",
+        model: model?.model || "",
+        variant: model?.variant || "",
         color: v.color,
         plateNo: v.plateNo,
         engineNo: v.engineNo,
         vin: v.vin,
         registrationNo: v.registrationNo,
         sellingDealer: v.sellingDealer,
-
-        year: model?.year?.toString() || "",
-        make: model?.make || "",
-        model: model?.model || "",
-        variant: model?.variant || "",
+        _deleted: false,
       };
     });
 
     setVehicles(mapped.length ? mapped : [emptyVehicle()]);
-  }, [open, customer, vehicleModels]);
+  }, [open, customer, vehicleModels, resetForm]);
 
-  /* ================= FILTERS ================= */
+  /* ================= DERIVED ================= */
+  const visibleVehicles = useMemo(
+    () => vehicles.filter(v => !v._deleted),
+    [vehicles]
+  );
+
   const years = useMemo(
     () => [...new Set(vehicleModels.map(v => String(v.year)))],
     [vehicleModels]
   );
 
-  const makes = () =>
-    [...new Set(vehicleModels.map(v => v.make))];
+  const makes = useMemo(
+    () => [...new Set(vehicleModels.map(v => v.make.trim()))],
+    [vehicleModels]
+  );
 
-  const models = (make: string) =>
-    [...new Set(vehicleModels
-      .filter(v => v.make === make)
-      .map(v => v.model))];
+  const models = useCallback(
+    (make: string) =>
+      [...new Set(
+        vehicleModels
+          .filter(v => normalize(v.make) === normalize(make))
+          .map(v => v.model.trim())
+      )],
+    [vehicleModels]
+  );
 
-  const variants = (make: string, model: string) =>
-    vehicleModels
-      .filter(v =>
-        v.make === make &&
-        v.model === model
-      )
-      .map(v => v.variant);
+  const variants = useCallback(
+    (make: string, model: string) =>
+      vehicleModels
+        .filter(
+          v =>
+            normalize(v.make) === normalize(make) &&
+            normalize(v.model) === normalize(model)
+        )
+        .map(v => v.variant),
+    [vehicleModels]
+  );
 
-  /* ================= VEHICLE STATE ================= */
-  const updateVehicle = (idx: number, field: string, value: string) => {
+  const findCanonical = (options: string[], input: string) =>
+    options.find(o => normalize(o) === normalize(input)) || input;
+
+  /* ================= VEHICLE HANDLERS ================= */
+  const updateVehicle = (
+    id: string,
+    field: keyof VehicleForm,
+    value: string
+  ) => {
     setVehicles(prev =>
-      prev.map((v, i) =>
-        i === idx ? { ...v, [field]: value } : v
+      prev.map(v =>
+        v.id === id ? { ...v, [field]: value } : v
       )
     );
   };
 
-  const addVehicleRow = () => setVehicles(p => [...p, emptyVehicle()]);
-  const removeVehicle = (idx: number) =>
-    setVehicles(p => p.filter((_, i) => i !== idx));
+  const addVehicleRow = () => {
+    setVehicles(prev => [...prev, emptyVehicle()]);
+  };
 
-  /* ================= SAVE ================= */
+  const removeVehicle = (id: string) => {
+    setVehicles(prev =>
+      prev.map(v =>
+        v.id === id ? { ...v, _deleted: true } : v
+      )
+    );
+  };
+
+  /* ================= SAVE (INCREMENTAL DIFF UPDATE) ================= */
   const handleSave = () => {
     if (!name || !mobileNumber) {
-      toast.error("Required fields missing");
+      toast.error("Name and mobile are required");
       return;
     }
 
-    const storedCustomer = localStorage.getItem(STORAGE_KEY);
-    const existingCustomers = storedCustomer ? JSON.parse(storedCustomer) : [];
     const customerId = customer?.id || genId();
 
-    const customerPayload = {
+    const storedCustomers = localStorage.getItem(STORAGE_KEY);
+    const existingCustomers: Customer[] = storedCustomers
+      ? JSON.parse(storedCustomers)
+      : [];
+
+    const customerPayload: Customer = {
       id: customerId,
       name,
       address,
@@ -186,41 +261,54 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
     };
 
     const updatedCustomers = isEdit
-      ? existingCustomers.map((c: any) =>
+      ? existingCustomers.map(c =>
           c.id === customerId ? customerPayload : c
         )
       : [...existingCustomers, customerPayload];
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCustomers));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCustomers));
 
-    let updatedModels = [...vehicleModels];
     const storedVehicles = localStorage.getItem(VEHICLE_STORAGE_KEY);
-    const existingVehicles: Vehicle[] = storedVehicles ? JSON.parse(storedVehicles) : [];
+    const existingVehicles: Vehicle[] = storedVehicles
+      ? JSON.parse(storedVehicles)
+      : [];
 
+    const customerExisting = existingVehicles.filter(
+      v => v.customerId === customerId
+    );
 
-    const finalVehicles: Vehicle[] = vehicles.map(v => {
-      if (!v.year || !v.make || !v.model) return null;
+    const existingMap = new Map(customerExisting.map(v => [v.id, v]));
 
-      let match = updatedModels.find(m =>
-        m.year === Number(v.year) &&
-        m.make === v.make &&
-        m.model === v.model &&
-        m.variant === v.variant
+    const validVehicles = vehicles.filter(
+      v => !v._deleted && v.year && v.make && v.model
+    );
+
+    const updatedModels: VehicleModel[] = [...vehicleModels];
+
+    const finalVehicles: Vehicle[] = validVehicles.map(v => {
+      let match = updatedModels.find(
+        m =>
+          m.year === Number(v.year) &&
+          normalize(m.make) === normalize(v.make) &&
+          normalize(m.model) === normalize(v.model) &&
+          normalize(m.variant) === normalize(v.variant)
       );
 
       if (!match) {
         match = {
           id: genId(),
           year: Number(v.year),
-          make: v.make,
-          model: v.model,
-          variant: v.variant,
+          make: v.make.trim(),
+          model: v.model.trim(),
+          variant: v.variant.trim(),
         };
         updatedModels.push(match);
       }
 
+      const existing = existingMap.get(v.id);
+
       return {
-        id: v.id || genId(),
+        id: existing?.id ?? v.id ?? genId(),
         customerId,
         vehicleModelId: match.id,
         color: v.color,
@@ -230,15 +318,8 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
         registrationNo: v.registrationNo,
         sellingDealer: v.sellingDealer,
       };
-    }).filter(Boolean) as Vehicle[];
+    });
 
-    /* SAVE MODELS */
-    localStorage.setItem(
-      VEHICLE_MODEL_STORAGE_KEY,
-      JSON.stringify(updatedModels)
-    );
-
-    /* SAVE VEHICLES (flat) */
     const updatedVehicles = [
       ...existingVehicles.filter(v => v.customerId !== customerId),
       ...finalVehicles,
@@ -249,11 +330,16 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
       JSON.stringify(updatedVehicles)
     );
 
-    onSaved?.(customerPayload);
+    localStorage.setItem(
+      VEHICLE_MODEL_STORAGE_KEY,
+      JSON.stringify(updatedModels)
+    );
 
-    toast.success(isEdit ? "Updated" : "Created");
+    toast.success(isEdit ? "Updated successfully" : "Created successfully");
+    onSaved?.(customerPayload);
     onOpenChange(false);
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -351,7 +437,9 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
               </div>
 
               <div className="space-y-4">
-                {vehicles.map((v, idx) => (
+                {vehicles
+                  .filter(v => !v._deleted)
+                  .map((v, idx) => (
                   <div key={v.id} className="rounded-lg border p-3 space-y-3 bg-muted/30">
 
                     {/* Header */}
@@ -365,7 +453,7 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => removeVehicle(idx)}
+                          onClick={() => removeVehicle(v.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
@@ -375,30 +463,36 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
                     <div className="grid md:grid-cols-3 gap-2">
 
                       <div>
-                        <Label className="text-xs">Year</Label>
                         <Combobox
                           value={v.year}
-                          onChange={(val) => updateVehicle(idx, "year", val)}
+                          onChange={(val) => updateVehicle(v.id, "year", val)}
                           items={years}
                           placeholder="Year"
                         />
                       </div>
 
                       <div>
-                        <Label className="text-xs">Make</Label>
                         <Combobox
                           value={v.make}
-                          onChange={(val) => updateVehicle(idx, "make", val)}
-                          items={makes()}
+                          onChange={(val) => {
+                            updateVehicle(v.id, "make", val);
+                            updateVehicle(v.id, "model", "");
+                            updateVehicle(v.id, "variant", "");
+                          }}
+                          items={makes}
                           placeholder="Make"
                         />                        
                       </div>
 
                       <div>
-                        <Label className="text-xs">Model</Label>
                         <Combobox
                           value={v.model}
-                          onChange={(val) => updateVehicle(idx, "model", val)}
+                          onChange={(val) => {
+                            const canonical = findCanonical(models(v.make), val) || val;
+
+                            updateVehicle(v.id, "model", canonical);
+                            updateVehicle(v.id, "variant", "");
+                          }}
                           items={models(v.make)}
                           placeholder="Model"
                         />
@@ -408,66 +502,63 @@ const CustomerFormModal = ({ open, onOpenChange, customer, onSaved }: any) => {
                     <div className="grid md:grid-cols-2 gap-2">
 
                       <div>
-                        <Label className="text-xs">Variant</Label>
                         <Combobox
                           value={v.variant}
-                          onChange={(val) => updateVehicle(idx, "variant", val)}
+                          onChange={(val) => {
+                            const canonical = findCanonical(variants(v.make, v.model), val) || val;
+
+                            updateVehicle(v.id, "variant", canonical);
+                          }}
                           items={variants(v.make, v.model)}
                           placeholder="Variant"
                         />
                       </div>
 
                       <div>
-                        <Label className="text-xs">Color</Label>
                         <Input
                           placeholder="Color"
                           value={v.color}
-                          onChange={(e) => updateVehicle(idx, "color", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "color", e.target.value)}
                         />                        
                       </div>
 
                       <div>
-                        <Label className="text-xs">Plate No</Label>
                         <Input
                           placeholder="Plate No"
                           value={v.plateNo}
-                          onChange={(e) => updateVehicle(idx, "plateNo", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "plateNo", e.target.value)}
                         />                        
                       </div>
 
                       <div>
-                        <Label className="text-xs">Engine No</Label>
                         <Input
                           placeholder="Engine No"
                           value={v.engineNo}
-                          onChange={(e) => updateVehicle(idx, "engineNo", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "engineNo", e.target.value)}
                         />                        
                       </div>
 
                       <div>
-                        <Label className="text-xs">VIN</Label>
                         <Input
                           placeholder="VIN"
                           value={v.vin}
-                          onChange={(e) => updateVehicle(idx, "vin", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "vin", e.target.value)}
                         />                     
                       </div>
 
                       <div>
-                        <Label className="text-xs">Registration No</Label>
                         <Input
                           placeholder="Registration No"
                           value={v.registrationNo}
-                          onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "registrationNo", e.target.value)}
                         />                       
                       </div>
  
                       <div className="col-span-2">
-                        <Label className="text-xs">Selling Dealer</Label>
                         <Input
                           placeholder="Selling Dealer"
                           value={v.sellingDealer}
-                          onChange={(e) => updateVehicle(idx, "sellingDealer", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "sellingDealer", e.target.value)}
                         />                        
                       </div>
 

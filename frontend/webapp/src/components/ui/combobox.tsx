@@ -23,7 +23,7 @@ interface MakeComboboxProps {
   placeholder?: string;
   allowAdd?: boolean;
   addLabel?: string;
-  onAdd?: (currentSearch: string) => void; // trigger popup modal
+  onAdd?: (currentSearch: string) => void;
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -58,6 +58,13 @@ const Combobox: FC<MakeComboboxProps> = ({
     item.label.toLowerCase().includes(search.toLowerCase())
   );
 
+  const resolveValue = (input: string) => {
+    const match = normalizedItems.find(
+      i => i.value.trim().toLowerCase() === input.trim().toLowerCase()
+    );
+    return match ? match.value : input;
+  };  
+
   const handleClear = () => {
     setSearch("");
     onChange("");
@@ -65,7 +72,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   };
 
   const handleAddClick = () => {
-    if (onAdd) onAdd(search); // Trigger popup modal
+    if (onAdd) onAdd(search); 
     setOpen(false);
   };
 
@@ -79,7 +86,7 @@ const Combobox: FC<MakeComboboxProps> = ({
             onChange={(e) => {
               const val = e.target.value;
               setSearch(val);
-              onChange(val);
+              onChange(resolveValue(val));
               setOpen(true);
             }}
             className="w-full pr-10"
@@ -114,7 +121,8 @@ const Combobox: FC<MakeComboboxProps> = ({
             {filteredItems.length > 0 && (
               <CommandGroup>
                 {filteredItems.map((item) => {
-                  const isSelected = value === item.value;
+                  const isSelected = value?.trim().toLowerCase() === item.value?.trim().toLowerCase();
+
                   return (
                     <CommandItem
                       key={item.value}

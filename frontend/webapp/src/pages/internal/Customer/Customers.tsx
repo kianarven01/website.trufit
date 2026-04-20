@@ -28,8 +28,29 @@ interface Customer {
   address: string;
   mobileNumber: string;
   landline?: string;
-  email: string;
+  email?: string;
   businessPhone?: string;
+}
+
+interface VehicleModel {
+  id: string;
+  year: number;
+  make: string;
+  model: string;
+  variant: string;
+}
+
+interface Vehicle {
+  id: string;
+  customerId: string;
+  vehicleModelId: string;
+  color: string;
+  plateNo: string;
+  engineNo: string;
+  vin: string;
+  registrationNo: string;
+  sellingDealer: string;
+  hasWarranty?: boolean;
 }
 
 const STORAGE_KEY = "customers";
@@ -95,7 +116,6 @@ const CustomersList: React.FC = () => {
     return customers.filter(
       (c) =>
         c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.email.toLowerCase().includes(search.toLowerCase()) ||
         c.mobileNumber.toLowerCase().includes(search.toLowerCase())
     );
   }, [customers, search]);

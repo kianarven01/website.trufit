@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +41,9 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [model, setModel] = useState("");
   const [image, setImage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedMaker = useMemo(
     () => makerList.find((maker) => maker.id === vehicle?.makeId) || null,
@@ -56,8 +59,16 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setMakeName("");
       setModel("");
       setImage("");
+      setIsDragging(false);
     }
   }, [open, vehicle, selectedMaker]);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setImage(previewUrl);
+  };
 
   const handleSave = async () => {
     const chosenMaker = makerList.find((maker) => maker.name === makeName);
@@ -112,20 +123,76 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Image URL</label>
-            <Input
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="Paste image URL"
+            <label className="text-sm font-medium">Vehicle Image</label>
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleFile(file);
+              }}
+              className={`flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 text-center transition ${
+                isDragging
+                  ? "border-primary bg-muted/50"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              {image ? (
+                <div className="w-full space-y-3">
+                  <img
+                    src={image}
+                    alt="Vehicle Preview"
+                    className="mx-auto max-h-40 rounded-lg object-contain"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Click or drag another image to replace
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Drag and drop an image here
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    or click to browse
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
             />
           </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !makeName || !model.trim()}>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !makeName || !model.trim()}
+          >
             {saving ? "Saving..." : vehicle ? "Save Changes" : "Add Vehicle"}
           </Button>
         </DialogFooter>

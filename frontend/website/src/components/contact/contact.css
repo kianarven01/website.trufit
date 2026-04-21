@@ -26,12 +26,6 @@
   transform: translateZ(0);
 }
 
-.support-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-3px);
-}
-
 .support-card::before {
   content: '';
   position: absolute;
@@ -42,10 +36,6 @@
   background: linear-gradient(90deg, var(--brand-red), var(--brand-blue));
   opacity: 0;
   transition: opacity 0.4s ease;
-}
-
-.support-card:hover::before {
-  opacity: 1;
 }
 
 /* --------------- Contact Form Card --------------- */

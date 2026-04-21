@@ -12,21 +12,21 @@ const ACCREDITATIONS = [
   {
     name: "Suzuki",
     logo: "/images/accreditations/suzuki.webp",
-    realImage: "/images/about/accreditation_real/suzuki.jpg",
+    realImage: "/images/about/accreditation_real/suzuki.webp",
     title: "AUTHORIZED",
     subtitle: "SERVICE STATION",
   },
   {
     name: "DTI",
     logo: "/images/accreditations/dti.webp",
-    realImage: "/images/about/accreditation_real/dti.jpg",
-    title: "5 STAR",
-    subtitle: "ACCREDITED",
+    realImage: "/images/about/accreditation_real/dti.webp",
+    title: "5 Star Classification",
+    subtitle: "Motor Vehicle and Heavy Equipment",
   },
   {
     name: "Bagwis",
     logo: "/images/accreditations/bagwis.webp",
-    realImage: "/images/about/accreditation_real/bagwis.jpg",
+    realImage: "/images/about/accreditation_real/bagwis.webp",
     title: "BRONZE BAGWIS",
     subtitle: "SEAL OF EXCELLENCE",
   },
@@ -140,6 +140,7 @@ export default function AccreditationsPartners() {
                   fill
                   priority
                   className="object-cover opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                  sizes="(max-width: 768px) 100vw, 33vw"
                 />
                 
                 {/* Overlay with small logo to confirm what it is */}

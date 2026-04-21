@@ -21,35 +21,39 @@ export default function GeneralServices() {
     () => {
       const cards = gsap.utils.toArray(".service-card-reveal");
       
-      cards.forEach((card: any) => {
-        gsap.fromTo(
-          card,
-          { y: 40, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: card,
-              start: "top 92%",
-              toggleActions: "play reverse play reverse",
-            },
-          }
-        );
-      });
+      if (cards.length > 0) {
+        cards.forEach((card: any) => {
+          gsap.fromTo(
+            card,
+            { y: 40, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.8,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: card,
+                start: "top 92%",
+                toggleActions: "play reverse play reverse",
+              },
+            }
+          );
+        });
+      }
 
       // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -60,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (bgTextRef.current && container.current) {
+        gsap.to(bgTextRef.current, {
+          y: -60,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
     },
     { scope: container }
   );
@@ -105,16 +109,16 @@ export default function GeneralServices() {
 
       <div className="max-w-[1700px] mx-auto relative z-10">
         <div className="mb-20 md:mb-32">
-          <div className="services-chapter-label mb-6">
-            <div className="services-chapter-label-line" />
-            <span className="services-chapter-label-text">
+          <div className="section-label mb-6">
+            <div className="section-label-line" />
+            <span className="section-label-text">
               Full Spectrum
             </span>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-end">
             <div>
-              <h2 className="text-4xl md:text-6xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-0">
+              <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-0">
                 Specialized <br />
                 <span className="text-gradient-red font-semibold">& Allied</span> Services
               </h2>

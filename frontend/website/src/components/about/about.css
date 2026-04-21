@@ -16,28 +16,6 @@
   border: 2px dashed rgba(255, 255, 255, 0.08);
 }
 
-.about-placeholder::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: 
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 40px,
-      rgba(255, 255, 255, 0.015) 40px,
-      rgba(255, 255, 255, 0.015) 41px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 40px,
-      rgba(255, 255, 255, 0.015) 40px,
-      rgba(255, 255, 255, 0.015) 41px
-    );
-  pointer-events: none;
-}
-
 .about-placeholder-icon {
   color: rgba(255, 255, 255, 0.08);
   margin-bottom: 1rem;
@@ -132,28 +110,6 @@
   animation: scrollBounce 2s ease-in-out infinite;
 }
 
-/* --------------- Section Chapter Labels --------------- */
-.chapter-label {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.chapter-label-line {
-  height: 2px;
-  width: 3rem;
-  background: var(--brand-red);
-}
-
-.chapter-label-text {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--brand-red);
-}
-
 /* --------------- Horizontal Scroll Gallery (Chapter 2) --------------- */
 .horizontal-gallery {
   display: flex;
@@ -232,7 +188,7 @@
 .staggered-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: auto;
+  grid-template-rows: repeat(2, 200px);
   gap: 1rem;
 }
 

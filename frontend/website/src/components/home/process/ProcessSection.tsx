@@ -14,36 +14,36 @@ const steps = [
     id: "consultation",
     title: "CONSULTATION",
     description:
-      "We begin by understanding your concerns and performing a preliminary assessment of your vehicle's needs.",
-    image: "",
+      "We will ask you about your car’s issues and do a quick check to see what needs to be done",
+    image: "/images/home/our_work/consultation.webp",
   },
   {
     id: "diagnostics",
     title: "DIAGNOSTICS",
     description:
-      "We utilize advanced diagnostic technology to look beyond surface symptoms, performing an exhaustive digital analysis that identifies the root cause of any issue. This data-driven approach allows us to act as your technical consultants, providing a transparent, high-definition view of your vehicle's health so you can make the most strategic maintenance decisions.",
-    image: "",
+      "We will run an extensive inspection with our special diagnostic tools to help us find the exact problem.",
+    image: "/images/home/our_work/diagnostics.webp",
   },
   {
     id: "maintenance",
-    title: "PRECISE MAINTENANCE",
+    title: "Repair",
     description:
-      "Our expert technicians perform the necessary repairs and maintenance with surgical precision using premium parts.",
-    image: "",
+      "Our expert technicians will perform the necessary repairs and maintenance with proper tools and using premium parts.",
+    image: "/images/home/our_work/repair.webp",
   },
   {
     id: "quality",
     title: "QUALITY CONTROL",
     description:
-      "Every vehicle undergoes a rigorous multi-point inspection to ensure all work meets our high standards.",
-    image: "",
+      "We will test-drive and inspect your car one last time to make sure everything is working properly.",
+    image: "/images/home/our_work/quality_control.webp",
   },
   {
     id: "delivery",
     title: "DELIVERY",
     description:
-      "We return your vehicle in peak condition, providing a detailed report of all services performed.",
-    image: "",
+      "We will hand over your car in great condition while providing a detailed report of all services performed.",
+    image: "/images/home/our_work/delivery.webp",
   },
 ]
 
@@ -96,12 +96,13 @@ export default function ProcessSection() {
             pin: true,
             scrub: 0.4, // Reduced from 1 to 0.4 for better responsiveness on mid-range devices
             onUpdate: (self) => {
-              const progress = self.progress
+              const time = self.animation ? self.animation.time() : 0;
+              // Make activeStep update when we are at the halfway point of transitioning
               const index = Math.min(
-                Math.floor(progress * steps.length),
+                Math.floor(time + 0.2), // slightly earlier than before to feel responsive
                 steps.length - 1
               )
-              setActiveStep(index)
+              setActiveStep(Math.max(0, index));
             },
           },
         })
@@ -127,17 +128,19 @@ export default function ProcessSection() {
         steps.forEach((_, i) => {
           if (i === 0) return // First step is default state
 
-          tl.to(`.step-content-${i-1}`, { opacity: 0, y: -20, duration: 0.5, force3D: true }, i)
+          // Shift transitions so they happen *while* the progress line is approaching the dot.
+          // Center the fade around 'i' (time=i is exactly when the line hits the dot).
+          tl.to(`.step-content-${i-1}`, { opacity: 0, y: -20, duration: 0.4, force3D: true }, i - 0.4)
             .fromTo(`.step-content-${i}`, 
               { opacity: 0, y: 20 }, 
-              { opacity: 1, y: 0, duration: 0.5, force3D: true }, 
-              i + 0.2
+              { opacity: 1, y: 0, duration: 0.4, force3D: true }, 
+              i - 0.1
             )
-            .to(`.step-image-${i-1}`, { opacity: 0, scale: 1.1, duration: 0.5, force3D: true }, i)
+            .to(`.step-image-${i-1}`, { opacity: 0, scale: 1.1, duration: 0.4, force3D: true }, i - 0.4)
             .fromTo(`.step-image-${i}`,
               { opacity: 0, scale: 0.9 },
-              { opacity: 1, scale: 1, duration: 0.5, force3D: true },
-              i + 0.2
+              { opacity: 1, scale: 1, duration: 0.4, force3D: true },
+              i - 0.1
             )
         })
       })
@@ -215,7 +218,7 @@ export default function ProcessSection() {
           {steps.map((step, idx) => (
             <div
               key={`bg-${step.id}`}
-              className={`step-image-${idx} absolute inset-0 transition-opacity duration-500 ${idx === activeStep ? "opacity-100" : "opacity-0"}`}
+              className={`step-image-${idx} absolute inset-0 ${idx === 0 ? "opacity-100" : "opacity-0"}`}
             >
               {step.image ? (
                 <Image
@@ -223,6 +226,7 @@ export default function ProcessSection() {
                   alt={`Process Background ${idx}`}
                   fill
                   className="object-cover"
+                  sizes="100vw"
                 />
               ) : (
                 <div className="w-full h-full bg-transparent flex items-center justify-center" />
@@ -243,7 +247,7 @@ export default function ProcessSection() {
               </span>
               <div className="h-[2px] w-8 bg-brand-red" />
             </div>
-            <h2 className="text-4xl md:text-6xl font-semibold uppercase tracking-tighter italic">Quality at Every Step</h2>
+            <h2 className="text-4xl md:text-6xl font-semibold uppercase tracking-tighter">Quality at Every Step</h2>
           </div>
 
           {/* Timeline Dots */}
@@ -260,10 +264,9 @@ export default function ProcessSection() {
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative">
               {steps.map((step, idx) => (
-                <button
+                <div
                   key={step.id}
-                  onClick={() => scrollToStep(idx)}
-                  className="group relative flex flex-col items-center focus:outline-none z-20"
+                  className="group relative flex flex-col items-center z-20"
                 >
                   {/* Circle with Background Cutout */}
                   <div className="bg-brand-dark p-2 rounded-full relative z-30">
@@ -278,10 +281,10 @@ export default function ProcessSection() {
 
                   {/* Label with increased spacing */}
                   <div className={`absolute top-full mt-1 flex flex-col items-center transition-all duration-500 ${idx === activeStep ? "opacity-100 translate-y-0" : "opacity-40 -translate-y-2"}`}>
-                    <span className="text-[10px] font-semibold italic text-brand-red mb-1">STEP {idx + 1}</span>
+                    <span className="text-[10px] font-semibold text-brand-red mb-1">STEP {idx + 1}</span>
                     <span className="text-[11px] font-semibold tracking-[0.2em] uppercase whitespace-nowrap">{step.title}</span>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -294,9 +297,9 @@ export default function ProcessSection() {
                 {steps.map((step, idx) => (
                   <div 
                     key={`content-${step.id}`}
-                    className={`step-content-${idx} ${idx === activeStep ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
+                    className={`step-content-${idx} ${idx === 0 ? "relative z-10" : "absolute inset-0 opacity-0 pointer-events-none"} flex flex-col justify-center`}
                   >
-                    <h3 className="text-2xl md:text-4xl font-semibold mb-4 text-brand-red uppercase italic tracking-tighter leading-tight
+                    <h3 className="text-2xl md:text-4xl font-semibold mb-4 text-brand-red uppercase tracking-tighter leading-tight
                     ">
                       {step.title}
                     </h3>
@@ -313,7 +316,7 @@ export default function ProcessSection() {
                 {steps.map((step, idx) => (
                   <div
                     key={`img-${step.id}`}
-                    className={`step-image-${idx} absolute inset-0 transition-all duration-1000 ${idx === activeStep ? "opacity-100 scale-100" : "opacity-0 scale-110"}`}
+                    className={`step-image-${idx} absolute inset-0 ${idx === 0 ? "opacity-100 scale-100" : "opacity-0 scale-110"}`}
                   >
                     {step.image ? (
                       <Image
@@ -321,11 +324,12 @@ export default function ProcessSection() {
                         alt={step.title}
                         fill
                         className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-brand-dark">
                         <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center mb-6 bg-brand-dark shadow-xl">
-                          <span className="text-brand-red font-semibold text-2xl italic tracking-tighter">{idx + 1}</span>
+                          <span className="text-brand-red font-semibold text-2xl tracking-tighter">{idx + 1}</span>
                         </div>
                         <h4 className="text-white/40 font-black uppercase tracking-[0.2em] text-[10px] mb-2">{step.title}</h4>
                         <p className="text-white/5 text-[9px] uppercase font-bold">Trufit Excellence / Process Documentation</p>
@@ -347,7 +351,7 @@ export default function ProcessSection() {
       {/* MOBILE & TABLET VIEW (Vertical Stack) */}
       <div className="block lg:hidden relative z-10 min-h-screen py-16 px-6 mt-16">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-semibold uppercase tracking-tighter italic">Quality at Every Step</h2>
+          <h2 className="text-4xl font-semibold uppercase tracking-tighter">Quality at Every Step</h2>
           <p className="text-brand-red font-semibold tracking-widest uppercase text-sm mt-4">Our Work</p>
         </div>
         
@@ -358,19 +362,25 @@ export default function ProcessSection() {
                 {step.id}
               </span>
               <div className="relative z-10">
-                <span className="text-brand-red font-semibold italic text-xs mb-2 block tracking-[0.2em]">STEP</span>
-                <h3 className="text-2xl font-semibold italic uppercase tracking-tighter text-white mb-3">{step.title}</h3>
+                <span className="text-brand-red font-semibold text-xs mb-2 block tracking-[0.2em]">STEP</span>
+                <h3 className="text-2xl font-semibold uppercase tracking-tighter text-white mb-3">{step.title}</h3>
                 <p className="text-gray-300 text-sm leading-relaxed mb-6 font-medium">{step.description}</p>
               </div>
               {step.image ? (
                 <div className="relative w-full h-48 rounded-sm overflow-hidden mt-2 shadow-2xl border border-white/10 z-10">
-                  <Image src={step.image} alt={step.title} fill className="object-cover" />
+                  <Image 
+                    src={step.image} 
+                    alt={step.title} 
+                    fill 
+                    className="object-cover" 
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
                   <div className="absolute inset-0 bg-brand-red/10 mix-blend-overlay" />
                 </div>
               ) : (
                 <div className="relative w-full h-48 rounded-sm overflow-hidden mt-2 shadow-2xl border border-white/10 bg-brand-dark flex flex-col items-center justify-center text-center p-4 z-10">
                   <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center mb-4 bg-brand-dark shadow-xl">
-                    <span className="text-brand-red font-semibold text-xl italic tracking-tighter">{idx + 1}</span>
+                    <span className="text-brand-red font-semibold text-xl tracking-tighter">{idx + 1}</span>
                   </div>
                   <h4 className="text-white/40 font-semibold uppercase tracking-[0.2em] text-[10px] mb-2">{step.title}</h4>
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-transparent h-10 w-full animate-pulse" />

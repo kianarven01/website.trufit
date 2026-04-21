@@ -41,9 +41,9 @@ const StatItem = ({ icon, value, label }: StatProps) => {
 };
 
 const images: string[] = [
-  "", // Workshop Placeholder
-  "", // Diagnostics Placeholder
-  "", // Equipment Placeholder
+  "/images/home/about_trufit/workshop.webp",
+  "/images/home/about_trufit/bagwis.webp",
+  "/images/home/about_trufit/laboratory_tools.webp",
 ];
 
 // Custom F1 Car SVG Component
@@ -122,22 +122,9 @@ export default function AboutSection() {
 
     mm.add("(min-width: 768px)", () => {
       // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -150,
-        ease: "none",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true
-        }
-      });
-
-      // Parallax inner content
-      gsap.fromTo(innerRef.current,
-        { y: 80 },
-        {
-          y: -80,
+      if (bgTextRef.current) {
+        gsap.to(bgTextRef.current, {
+          y: -150,
           ease: "none",
           scrollTrigger: {
             trigger: sectionRef.current,
@@ -145,85 +132,109 @@ export default function AboutSection() {
             end: "bottom top",
             scrub: true
           }
-        }
-      );
-
-      // Dynamic Diagnostic Graphs Animation
-      gsap.utils.toArray(".diagnostic-graph").forEach((graph: any, i) => {
-        gsap.to(graph, {
-          x: i % 2 === 0 ? -100 : 100, // Move horizontally
-          y: i % 2 === 0 ? -120 : -80, // Move vertically
-          scaleX: 1.1,
-          ease: "none",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: 1.5
-          }
         });
-      });
+      }
 
-      // Simple Reveal - Fixed to work from both scroll directions
-      const reveals = gsap.utils.toArray(".about-reveal");
-      reveals.forEach((item: any) => {
-        gsap.fromTo(item,
-          { opacity: 0, y: 40 },
+      // Parallax inner content
+      if (innerRef.current) {
+        gsap.fromTo(innerRef.current,
+          { y: 80 },
           {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            ease: "power2.out",
+            y: -80,
+            ease: "none",
             scrollTrigger: {
-              trigger: item,
-              start: "top 92%",
-              end: "bottom 8%",
-              toggleActions: "play reverse play reverse"
+              trigger: sectionRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: true
             }
           }
         );
-      });
+      }
+
+      // Dynamic Diagnostic Graphs Animation
+      const graphs = gsap.utils.toArray(".diagnostic-graph");
+      if (graphs.length > 0) {
+        graphs.forEach((graph: any, i) => {
+          gsap.to(graph, {
+            x: i % 2 === 0 ? -100 : 100, // Move horizontally
+            y: i % 2 === 0 ? -120 : -80, // Move vertically
+            scaleX: 1.1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top bottom",
+              end: "bottom top",
+              scrub: 1.5
+            }
+          });
+        });
+      }
+
+      // Simple Reveal - Fixed to work from both scroll directions
+      const reveals = gsap.utils.toArray(".about-reveal");
+      if (reveals.length > 0) {
+        reveals.forEach((item: any) => {
+          gsap.fromTo(item,
+            { opacity: 0, y: 40 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: item,
+                start: "top 92%",
+                end: "bottom 8%",
+                toggleActions: "play reverse play reverse"
+              }
+            }
+          );
+        });
+      }
 
       // Synchronized F1 Car & Path Timeline
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top bottom",
-          end: "top top",
-          scrub: 1, // Reduced scrub for tighter sync
-        }
-      });
+      if (carRef.current && activePathRef.current) {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: "top bottom",
+            end: "top top",
+            scrub: 1, // Reduced scrub for tighter sync
+          }
+        });
 
-      tl.fromTo(carRef.current,
-        { x: "0vw", opacity: 0 },
-        { x: "100vw", opacity: 1, ease: "none" },
-        0
-      );
+        tl.fromTo(carRef.current,
+          { x: "0vw", opacity: 0 },
+          { x: "100vw", opacity: 1, ease: "none" },
+          0
+        );
 
-      tl.fromTo(activePathRef.current,
-        { width: "0%" },
-        { width: "100%", ease: "none" },
-        0
-      );
+        tl.fromTo(activePathRef.current,
+          { width: "0%" },
+          { width: "100%", ease: "none" },
+          0
+        );
 
-      // High-frequency vibration for an F1 engine feel
-      gsap.to(carRef.current, {
-        y: "+=1.5",
-        repeat: -1,
-        yoyo: true,
-        duration: 0.05,
-        ease: "sine.inOut"
-      });
+        // High-frequency vibration for an F1 engine feel
+        gsap.to(carRef.current, {
+          y: "+=1.5",
+          repeat: -1,
+          yoyo: true,
+          duration: 0.05,
+          ease: "sine.inOut"
+        });
+      }
     });
 
     return () => mm.revert();
   }, { scope: sectionRef });
 
   const features = [
-    { title: "OEM-Certified Diagnostic Tools", desc: "Dealership-level precision for all makes." },
-    { title: "Master-Level Diagnostics", desc: "Overseen by 25+ years of industry wisdom." },
-    { title: "Genuine & Premium Parts", desc: "We never compromise on your car's integrity." },
-    { title: "Transparency Guarantee", desc: "Full reports and photos of every repair." },
+    { title: "Bronze Bagwis Seal", desc: "DTI certified for fair prices and honest customer service." },
+    { title: "Service Warranty Included", desc: "We stand behind our work, so we give warranty on all our repairs." },
+    { title: "Special Repair Tools", desc: "We use the right tools to find fix your problems fast." },
+    { title: "Genuine Parts", desc: "We use the best parts for your car to keep you safe on the road" },
   ];
 
   return (
@@ -335,14 +346,14 @@ export default function AboutSection() {
           <div className="order-1 lg:order-2">
             <div className="flex items-center gap-3 mb-6 about-reveal">
               <div className="h-[2px] w-12 bg-brand-red" />
-              <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
+              <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
                 About Trufit
               </span>
             </div>
 
             <h2 className="text-3xl md:text-5xl font-semibold mb-8 leading-tight text-brand-dark about-reveal uppercase tracking-tight">
-              Decades of Wisdom. <br />
-              <span className="text-brand-red font-semibold">Modern Precision.</span>
+              Quality Care <br />
+              <span className="text-brand-red font-semibold">For Every Car</span>
             </h2>
 
             {/* Mobile Slider */}
@@ -366,6 +377,7 @@ export default function AboutSection() {
                         alt="Trufit Service"
                         fill
                         className="object-cover pointer-events-none"
+                        sizes="100vw"
                       />
                     ) : (
                       <div className="w-full h-full bg-brand-dark/5 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200">
@@ -379,11 +391,11 @@ export default function AboutSection() {
             </div>
 
             <p className="text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl about-reveal font-medium">
-              Founded in 2019, Trufit pairs trusted techniques with dealership-level tools to keep your car running strong.
+              We started in 2019 to provide repairs using 25 years of experience in the automotive field. We use special tools to find problems fast and fix them properly.
             </p>
 
             <p className="text-gray-500 text-base mb-12 leading-relaxed max-w-2xl about-reveal">
-              With over 25 years of automotive expertise, we've built a reputation for transparency and uncompromising quality. We don't just fix cars; we restore confidence.
+              As a DTI 5-Star shop, we are officially recognized for doing honest work. We only use real parts to keep you and your car safe.
             </p>
 
             {/* Benefits Grid */}
@@ -451,6 +463,7 @@ export default function AboutSection() {
                       alt={`Trufit Service ${currentImage + 1}`}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 1024px) 100vw, 50vw"
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-brand-dark to-brand-dark flex flex-col items-center justify-center p-12 text-center">

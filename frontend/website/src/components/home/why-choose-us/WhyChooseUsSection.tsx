@@ -3,61 +3,75 @@
 import { useRef, useEffect } from "react"
 import { ShieldCheck, Leaf, Award, Heart } from "lucide-react"
 import gsap from "gsap"
+import { useGSAP } from "@gsap/react"
 
 const features = [
   {
     icon: <ShieldCheck className="w-10 h-10 text-brand-red" />,
     title: "DTI Certified",
-    description: "DTI 5-star accreditation, a distinction that guarantees you world-class technical expertise, fair pricing, and a commitment to consumer rights that sets the gold standard for automotive service.",
+    description: "We are a DTI 5-star Accredited Repair Center recognized for high quality, fair prices and honest service.",
   },
   {
     icon: <Leaf className="w-10 h-10 text-brand-red" />,
     title: "ECO Friendly",
-    description: "We prioritize sustainable shop practices and precision diagnostics to maximize your vehicle's efficiency, ensuring a smaller carbon footprint and a cleaner road ahead.",
+    description: "We follow safe practices of disposal not just to keep our shop clean but the environment as well.",
   },
   {
     icon: <Award className="w-10 h-10 text-brand-red" />,
     title: "Quality Guarantee",
-    description: "We back every repair with a quality guarantee and a comprehensive warranty, giving you the peace of mind that we stand firmly behind our craftsmanship and the premium parts we install.",
+    description: "We back our services with a warranty, using only genuine parts and our skills to do the job right.",
   },
   {
     icon: <Heart className="w-10 h-10 text-brand-red" />,
     title: "Customer First",
-    description: "We place your needs at the heart of every service, ensuring transparent communication and personalized solutions that make your safety and satisfaction our absolute priority.",
+    description: "We put your needs as our first priority, we provide clear updates and professional solutions to keep your car safe on the road",
   },
 ]
 
 export default function WhyChooseUsSection() {
   const container = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
+  useGSAP(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           // Section Header Reveal
-          gsap.to(".why-header > *", {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.2,
-            ease: "power3.out",
-            overwrite: "auto"
-          })
+          const headerElements = gsap.utils.toArray(".why-header > *");
+          if (headerElements.length > 0) {
+            gsap.to(headerElements, {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              stagger: 0.2,
+              ease: "power3.out",
+              overwrite: "auto"
+            })
+          }
 
           // Features Grid Reveal
-          gsap.to(".why-feature", {
-            opacity: 1,
-            y: 0,
-            duration: 1,
-            stagger: 0.15,
-            ease: "power2.out",
-            delay: 0.4,
-            overwrite: "auto"
-          })
+          const featureElements = gsap.utils.toArray(".why-feature");
+          if (featureElements.length > 0) {
+            gsap.to(featureElements, {
+              opacity: 1,
+              y: 0,
+              duration: 1,
+              stagger: 0.15,
+              ease: "power2.out",
+              delay: 0.4,
+              overwrite: "auto"
+            })
+          }
         } else {
-          // Reverss
-          gsap.to(".why-header > *", { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
-          gsap.to(".why-feature", { opacity: 0, y: 60, duration: 0.5, overwrite: "auto" })
+          // Reverse
+          const headerElements = gsap.utils.toArray(".why-header > *");
+          const featureElements = gsap.utils.toArray(".why-feature");
+
+          if (headerElements.length > 0) {
+            gsap.to(headerElements, { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
+          }
+          if (featureElements.length > 0) {
+            gsap.to(featureElements, { opacity: 0, y: 60, duration: 0.5, overwrite: "auto" })
+          }
         }
       },
       { threshold: 0.15 }
@@ -68,7 +82,7 @@ export default function WhyChooseUsSection() {
     }
 
     return () => observer.disconnect()
-  }, [])
+  }, { scope: container })
 
   return (
     <section ref={container} className="section-padding bg-white overflow-hidden" id="why-choose-us">
@@ -76,12 +90,12 @@ export default function WhyChooseUsSection() {
         <div className="text-center mb-20 why-header">
           <div className="flex items-center justify-center gap-2 mb-4 opacity-0 translate-y-12">
             <div className="h-[2px] w-8 bg-brand-red" />
-            <span className="text-sm font-semibold tracking-widest uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
               Why Choose Us
             </span>
             <div className="h-[2px] w-8 bg-brand-red" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-semibold text-brand-dark opacity-0 translate-y-12">Built on Trust & Precision</h2>
+          <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark opacity-0 translate-y-12">Built on Trust & Precision</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 why-grid">

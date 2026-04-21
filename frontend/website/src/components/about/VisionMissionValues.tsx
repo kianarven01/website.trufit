@@ -91,7 +91,7 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
         <>
           <div ref={localBgRef} className="absolute inset-x-0 -top-[10%] h-[120%] z-0">
             <img 
-              src="/images/about/foundation.jpg" 
+              src="/images/about/foundation.webp" 
               alt="Foundation Background" 
               className="w-full h-full object-cover opacity-30" 
             />
@@ -113,7 +113,7 @@ export default function VisionMissionValues({ isTransparent = false }: { isTrans
         <div className="text-center mb-14 md:mb-20">
           <div className="vmv-animate flex items-center justify-center gap-3 mb-4">
             <div className="h-[2px] w-8 bg-brand-red" />
-            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
               Our Foundation
             </span>
             <div className="h-[2px] w-8 bg-brand-red" />

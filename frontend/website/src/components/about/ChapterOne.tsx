@@ -90,14 +90,14 @@ export default function ChapterOne() {
               {/* Main Image */}
               <div className="relative h-[400px] md:h-[550px] lg:h-[650px] w-full rounded-sm overflow-hidden shadow-2xl">
                 <div className="about-placeholder about-placeholder-corners w-full h-full">
-                  <img src="/images/about/workshop.jpg" alt="Workshop" className="w-full h-full object-cover" />
+                  <img src="/images/about/workshop.webp" alt="Workshop" className="w-full h-full object-cover" />
                 </div>
               </div>
 
               {/* Floating accent image */}
               <div className="absolute -bottom-8 -right-4 md:-right-8 w-[180px] md:w-[240px] h-[140px] md:h-[180px] rounded-sm overflow-hidden shadow-xl border-4 border-white z-10">
                 <div className="about-placeholder w-full h-full" style={{ borderStyle: 'none' }}>
-                  <img src="/images/about/detailshot.jpg" alt="Workshop" className="w-full h-full object-cover" />
+                  <img src="/images/about/detailshot.webp" alt="Workshop" className="w-full h-full object-cover" />
                 </div>
               </div>
 
@@ -108,9 +108,9 @@ export default function ChapterOne() {
 
           {/* Content Side */}
           <div className="order-1 lg:order-2">
-            <div className="ch1-reveal chapter-label">
-              <div className="chapter-label-line" />
-              <span className="chapter-label-text">About Trufit</span>
+            <div className="ch1-reveal section-label">
+              <div className="section-label-line" />
+              <span className="section-label-text">About Trufit</span>
             </div>
 
             <h2 className="ch1-reveal text-3xl md:text-5xl font-semibold mb-4 leading-tight text-brand-dark uppercase tracking-tight">

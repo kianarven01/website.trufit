@@ -159,8 +159,8 @@ export default function Navbar() {
           <div className="flex items-center h-16 w-full">
             {/* logo - swapped logic for user files */}
             <Link href="/" className="flex items-center">
-              <Image
-                src={isScrolled ? "/images/logo-white1.png" : "/images/logo-dark1.png"}
+              <Image 
+                src={isScrolled ? "/images/logo-white1.webp" : "/images/logo-dark1.webp"}
                 alt="logo"
                 width={220}
                 height={58}

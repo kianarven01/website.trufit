@@ -33,6 +33,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
             priority 
             unoptimized
             className="object-cover transition-transform duration-1000 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
           <div className="w-full h-full bg-brand-dark flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
@@ -41,7 +42,13 @@ export default function ServiceCard({ service }: ServiceCardProps) {
             {/* Background Placeholder Icon (Dynamic) */}
             <div className="relative w-16 h-16 mb-4 opacity-10 z-10 text-white">
               {isImagePath ? (
-                <Image src={service.icon} alt="" fill className="object-contain brightness-0 invert" />
+                <Image 
+                  src={service.icon} 
+                  alt="" 
+                  fill 
+                  className="object-contain brightness-0 invert" 
+                  sizes="64px"
+                />
               ) : (
                 Icon && <Icon className="w-full h-full" />
               )}
@@ -59,11 +66,17 @@ export default function ServiceCard({ service }: ServiceCardProps) {
         {/* Floating icon badge */}
         <div className="absolute bottom-5 left-5 bg-white p-3 md:p-4 rounded-sm shadow-xl transition-all duration-500 group-hover:bg-brand-red">
           {isImagePath ? (
-            <div className="relative w-5 h-5 md:w-6 md:h-6 group-hover:brightness-0 group-hover:invert transition-all">
-              <Image src={service.icon} alt={service.title} fill className="object-contain" />
+            <div className="relative w-7 h-7 md:w-8 md:h-8 group-hover:brightness-0 group-hover:invert transition-all">
+              <Image 
+                src={service.icon} 
+                alt={service.title} 
+                fill 
+                className="object-contain" 
+                sizes="(max-width: 768px) 28px, 32px"
+              />
             </div>
           ) : (
-            Icon && <Icon className="w-5 h-5 md:w-6 md:h-6 text-brand-red group-hover:text-white transition-colors" />
+            Icon && <Icon className="w-7 h-7 md:w-8 md:h-8 text-brand-red group-hover:text-white" />
           )}
         </div>
       </div>

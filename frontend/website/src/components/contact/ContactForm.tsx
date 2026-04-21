@@ -21,16 +21,44 @@ export default function ContactForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 11) val = val.substring(0, 11);
+    let formatted = val;
+    if (val.length > 7) {
+      formatted = `${val.substring(0, 4)}-${val.substring(4, 7)}-${val.substring(7)}`;
+    } else if (val.length > 4) {
+      formatted = `${val.substring(0, 4)}-${val.substring(4)}`;
+    }
+    setForm({ ...form, phone: formatted });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
 
-    // Simulate submission delay (replace with actual API call later)
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
 
-    setSending(false);
-    setSubmitted(true);
+      if (!res.ok) {
+        throw new Error("Failed to send message: " + res.statusText);
+      }
 
+      setSending(false);
+      setSubmitted(true);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send message. Please try again or email us directly at trufitautocenter@gmail.com.");
+      setSending(false);
+      return;
+    }
+    
     // Reset after 4 seconds
     setTimeout(() => {
       setSubmitted(false);
@@ -66,7 +94,7 @@ export default function ContactForm() {
         <input
           type="text"
           name="firstName"
-          placeholder="John"
+          placeholder=""
           value={form.firstName}
           onChange={handleChange}
           required
@@ -80,7 +108,7 @@ export default function ContactForm() {
         <input
           type="text"
           name="lastName"
-          placeholder="Doe"
+          placeholder=""
           value={form.lastName}
           onChange={handleChange}
           required
@@ -94,7 +122,7 @@ export default function ContactForm() {
         <input
           type="email"
           name="email"
-          placeholder="john@example.com"
+          placeholder=""
           value={form.email}
           onChange={handleChange}
           required
@@ -108,9 +136,9 @@ export default function ContactForm() {
         <input
           type="tel"
           name="phone"
-          placeholder="09XX-XXX-XXXX"
+          placeholder=""
           value={form.phone}
-          onChange={handleChange}
+          onChange={handlePhoneChange}
           required
           className="contact-input-light"
         />

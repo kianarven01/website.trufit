@@ -52,6 +52,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   })
 
   const [otherService, setOtherService] = useState("")
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     const handleClaim = (e: any) => {
@@ -67,13 +68,39 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       setOtherService("");
     };
 
+    const handlePrefill = (e: any) => {
+      const { service, message } = e.detail;
+      setForm(prev => ({
+        ...prev,
+        service: service || prev.service,
+        message: message || prev.message
+      }));
+      if (service !== "other") setOtherService("");
+    };
+
     window.addEventListener("claimOffer", handleClaim);
-    return () => window.removeEventListener("claimOffer", handleClaim);
+    window.addEventListener("prefillAppointment", handlePrefill);
+    return () => {
+      window.removeEventListener("claimOffer", handleClaim);
+      window.removeEventListener("prefillAppointment", handlePrefill);
+    };
   }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value })
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 11) val = val.substring(0, 11);
+    let formatted = val;
+    if (val.length > 7) {
+      formatted = `${val.substring(0, 4)}-${val.substring(4, 7)}-${val.substring(7)}`;
+    } else if (val.length > 4) {
+      formatted = `${val.substring(0, 4)}-${val.substring(4)}`;
+    }
+    setForm({ ...form, phone: formatted });
+  }
 
   const handleDateChange = (date: Date | null) => {
     if (date) setForm({ ...form, date: date.toISOString() })
@@ -93,14 +120,23 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSending(true)
     const finalService = form.service === "other" ? otherService : form.service
-    const res = await fetch("/api/appointment", {
-      method: "POST",
-      body: JSON.stringify({ ...form, service: finalService }),
-    })
+    
+    try {
+      const res = await fetch("/api/appointment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...form, service: finalService }),
+      })
 
-    if (res.ok) {
-      alert("appointment sent ♡")
+      if (!res.ok) {
+        throw new Error("Failed to send appointment request")
+      }
+
+      alert("Appointment request sent successfully! We'll contact you soon.")
 
       window.dispatchEvent(new Event("appointmentSuccess")) // ✨ close modal
       setForm({
@@ -113,6 +149,11 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         message: ""
       })
       setOtherService("")
+    } catch (error) {
+      console.error(error)
+      alert("Failed to send request. Please try again or call us directly.")
+    } finally {
+      setSending(false)
     }
   }
 
@@ -121,30 +162,30 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
       {/* FIRST NAME */}
       <div className="relative">
-        <input type="text" name="firstName" placeholder="John" value={form.firstName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="firstName" placeholder="" value={form.firstName} onChange={handleChange} required className={inputClass} />
         <label className={labelClass}>First Name</label>
       </div>
 
       {/* LAST NAME */}
       <div className="relative">
-        <input type="text" name="lastName" placeholder="Doe" value={form.lastName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="lastName" placeholder="" value={form.lastName} onChange={handleChange} required className={inputClass} />
         <label className={labelClass}>Last Name</label>
       </div>
 
       {/* EMAIL */}
       <div className="relative">
-        <input type="email" name="email" placeholder="john@example.com" value={form.email} onChange={handleChange} required className={inputClass} />
+        <input type="email" name="email" placeholder="" value={form.email} onChange={handleChange} required className={inputClass} />
         <label className={labelClass}>Email</label>
       </div>
 
       {/* PHONE */}
       <div className="relative">
-        <input type="tel" name="phone" placeholder="09XX-XXX-XXXX" value={form.phone} onChange={handleChange} required className={inputClass} />
+        <input type="tel" name="phone" placeholder="" value={form.phone} onChange={handlePhoneChange} required className={inputClass} />
         <label className={labelClass}>Phone</label>
       </div>
 
       {/* DATE */}
-      <div>
+      <div className="w-full relative">
         <DatePicker
           selected={form.date ? new Date(form.date) : null}
           onChange={handleDateChange}
@@ -152,6 +193,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           dateFormat="MMMM d, yyyy h:mm aa"
           placeholderText="Select date & time"
           customInput={<CustomDateInput />}
+          wrapperClassName="w-full"
         />
       </div>
 
@@ -216,9 +258,21 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       <div className="md:col-span-2">
         <button
           type="submit"
-          className="w-full bg-brand-red text-white py-4 rounded-sm font-semibold hover:bg-red-700 transition shadow-lg hover:shadow-red-900/20"
+          disabled={sending}
+          className={`w-full text-white py-4 rounded-sm font-semibold transition flex justify-center items-center gap-2 shadow-lg ${
+            sending 
+              ? "bg-brand-red/50 cursor-wait" 
+              : "bg-brand-red hover:bg-red-700 hover:shadow-red-900/20"
+          }`}
         >
-          Book Appointment
+          {sending ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Sending...
+            </>
+          ) : (
+            "Book Appointment"
+          )}
         </button>
       </div>
 

@@ -126,36 +126,6 @@ export default function FAQSection() {
               If there are questions you want to ask, we will answer all your questions.
               Can&apos;t find your question below? Send us a message!
             </p>
-
-            {/* Quick email input */}
-            <div className="faq-left-reveal pt-2">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Mail
-                    size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={quickEmail}
-                    onChange={(e) => setQuickEmail(e.target.value)}
-                    className="quick-contact-input pl-10"
-                  />
-                </div>
-                <button
-                  onClick={() => {
-                    if (quickEmail) {
-                      setQuickEmail("");
-                    }
-                  }}
-                  className="shrink-0 bg-brand-red text-white px-5 py-[0.875rem] rounded-sm text-sm font-semibold hover:bg-red-700 transition-all flex items-center gap-2 font-barlow"
-                >
-                  <Send size={14} />
-                  <span className="hidden sm:inline">Submit</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* RIGHT: FAQ Accordion */}

@@ -143,6 +143,7 @@ export default function GalleryGrid() {
                     alt={item.title}
                     fill
                     className="object-cover transition-transform duration-700 group-hover:scale-110 z-[1]"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   />
                 </div>
 
@@ -277,6 +278,7 @@ export default function GalleryGrid() {
                   fill
                   className="object-contain"
                   priority
+                  sizes="100vw"
                 />
                 <div className="absolute -bottom-16 md:-bottom-10 left-0 right-0 text-center text-white pointer-events-none">
                   <p className="text-lg md:text-xl font-bold uppercase tracking-widest">{filteredItems[selectedItemIndex].title}</p>

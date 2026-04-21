@@ -14,25 +14,25 @@ const triathlonImages = [
     label: "Race Day", 
     sublabel: "Triathlon event photo", 
     className: "grid-item-1",
-    src: "/images/about/triathlon/race_day.jpg" 
+    src: "/images/about/triathlon/race_day.webp" 
   },
   { 
     label: "Team Prep", 
     sublabel: "Pre-race preparation", 
     className: "grid-item-2",
-    src: "/images/about/triathlon/team_prep.jpg" 
+    src: "/images/about/triathlon/team_prep.webp" 
   },
   { 
     label: "On Course", 
     sublabel: "In-action shot", 
     className: "grid-item-3",
-    src: "/images/about/triathlon/on_course.jpg" 
+    src: "/images/about/triathlon/on_course.webp" 
   },
   { 
     label: "Finish Line", 
     sublabel: "Victory moment", 
     className: "grid-item-4",
-    src: "/images/about/triathlon/finish_line.jpg" 
+    src: "/images/about/triathlon/finish_line.webp" 
   },
 ];
 
@@ -105,9 +105,9 @@ export default function ChapterThree() {
         {/* Header */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-end mb-12 md:mb-16">
           <div>
-            <div className="ch3-reveal chapter-label">
-              <div className="chapter-label-line" />
-              <span className="chapter-label-text">Sports & Fitness</span>
+            <div className="ch3-reveal section-label">
+              <div className="section-label-line" />
+              <span className="section-label-text">Sports & Fitness</span>
             </div>
 
             <h2 className="ch3-reveal text-3xl md:text-5xl lg:text-6xl font-semibold leading-tight uppercase tracking-tight mb-6 text-brand-dark">
@@ -167,8 +167,9 @@ export default function ChapterThree() {
                 alt={img.label}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
-              
+
               {/* Caption Overlay */}
               <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-brand-dark/80 to-transparent z-20">
                 <p className="text-white font-semibold text-[10px] uppercase tracking-widest mb-1">{img.label}</p>

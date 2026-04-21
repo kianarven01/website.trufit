@@ -32,7 +32,7 @@ export default function ServiceVideo() {
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6 video-reveal">
             <div className="h-[2px] w-12 bg-brand-red" />
-            <span className="text-sm font-semibold tracking-[0.3em] uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
               Service Excellence
             </span>
             <div className="h-[2px] w-12 bg-brand-red" />

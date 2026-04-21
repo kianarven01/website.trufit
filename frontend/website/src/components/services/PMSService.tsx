@@ -15,6 +15,7 @@ import {
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useModalStore } from "@/store/useModalStore";
 import "./services.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -35,53 +36,73 @@ export default function PMSService() {
   const extraImageRef = useRef<HTMLDivElement>(null);
   const bgTextRef = useRef<HTMLDivElement>(null);
 
+  const openAppointment = useModalStore((s) => s.openAppointment);
+
+  const handleBookPMS = () => {
+    openAppointment();
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("prefillAppointment", {
+          detail: { service: "pms" },
+        })
+      );
+    }, 100);
+  };
+
   useGSAP(
     () => {
       // Content Reveal
-      gsap.fromTo(
-        ".pms-reveal",
-        { y: 30, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
-          scrollTrigger: {
-            trigger: container.current,
-            start: "top 80%",
-            toggleActions: "play reverse play reverse",
-          },
-        }
-      );
+      const reveals = gsap.utils.toArray(".pms-reveal");
+      if (reveals.length > 0 && container.current) {
+        gsap.fromTo(
+          reveals,
+          { y: 30, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            stagger: 0.1,
+            scrollTrigger: {
+              trigger: container.current,
+              start: "top 80%",
+              toggleActions: "play reverse play reverse",
+            },
+          }
+        );
+      }
 
       // Image Reveal with Parallax
-      gsap.fromTo(
-        rightImage.current,
-        { scale: 0.95, opacity: 0, x: 50 },
-        {
-          scale: 1,
-          opacity: 1,
-          x: 0,
-          duration: 1.2,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: container.current,
-            start: "top 70%",
-          },
-        }
-      );
+      if (rightImage.current && container.current) {
+        gsap.fromTo(
+          rightImage.current,
+          { scale: 0.95, opacity: 0, x: 50 },
+          {
+            scale: 1,
+            opacity: 1,
+            x: 0,
+            duration: 1.2,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: container.current,
+              start: "top 70%",
+            },
+          }
+        );
+      }
 
       // Parallax for background text
-      gsap.to(bgTextRef.current, {
-        y: -80,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (bgTextRef.current && container.current) {
+        gsap.to(bgTextRef.current, {
+          y: -80,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
     },
     { scope: container }
   );
@@ -101,14 +122,14 @@ export default function PMSService() {
           
           {/* Content Wrapper - handles Title, Detail, List, Button order */}
           <div className="flex flex-col">
-            <div className="pms-reveal services-chapter-label mb-6 order-1">
-              <div className="services-chapter-label-line" />
-              <span className="services-chapter-label-text">
+            <div className="pms-reveal section-label mb-6 order-1">
+              <div className="section-label-line" />
+              <span className="section-label-text">
                 Essential Care
               </span>
             </div>
             
-            <h2 className="pms-reveal text-4xl md:text-6xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-8 order-2">
+            <h2 className="pms-reveal text-3xl md:text-5xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-8 order-2">
               Preventive <br />
               <span className="text-brand-red font-semibold">Maintenance Service</span>
             </h2>
@@ -118,10 +139,11 @@ export default function PMSService() {
               <div className="services-image-wrap services-corner-accents">
                 <div className="relative aspect-[4/5] rounded-sm overflow-hidden shadow-2xl border-[8px] md:border-[12px] border-white z-10">
                   <Image
-                    src="/images/services/PMS.jpg"
+                    src="/images/services/PMS.webp"
                     alt="Preventive Maintenance Service"
                     fill
                     className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/40 to-transparent" />
                 </div>
@@ -158,7 +180,10 @@ export default function PMSService() {
             </div>
 
             <div className="pms-reveal flex items-center gap-6 order-6">
-              <button className="bg-brand-dark text-white px-8 py-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-brand-red transition-all duration-300 flex items-center gap-3">
+              <button 
+                onClick={handleBookPMS}
+                className="bg-brand-dark text-white px-8 py-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-brand-red transition-all duration-300 flex items-center gap-3 outline-none"
+              >
                 Book PMS Now
                 <ArrowRight size={16} />
               </button>
@@ -180,10 +205,11 @@ export default function PMSService() {
                 {/* Main Image */}
                 <div className="relative aspect-[4/5] rounded-sm overflow-hidden shadow-2xl border-[12px] border-white z-10">
                   <Image
-                    src="/images/services/PMS.jpg"
+                    src="/images/services/PMS.webp"
                     alt="Preventive Maintenance Service"
                     fill
                     className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/40 to-transparent" />
                 </div>

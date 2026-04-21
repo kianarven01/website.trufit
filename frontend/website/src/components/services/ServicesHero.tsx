@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -19,42 +20,64 @@ export default function ServicesHero() {
   useGSAP(
     () => {
       // Parallax effect for background image
-      gsap.to(bgImageRef.current, {
-        yPercent: 25,
-        ease: "none",
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
+      if (bgImageRef.current && container.current) {
+        gsap.to(bgImageRef.current, {
+          yPercent: 25,
+          ease: "none",
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: true,
+          },
+        });
+      }
 
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: container.current,
-          start: "top bottom",
-          toggleActions: "play reverse play reverse",
-        },
-      });
+      if (container.current) {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: container.current,
+            start: "top bottom",
+            toggleActions: "play reverse play reverse",
+          },
+        });
 
-      tl.fromTo(
-        subtitleRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
-      )
-      .fromTo(
-        titleRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
-        "-=0.4"
-      )
-      .fromTo(
-        textRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
-        "-=0.5"
-      );
+        if (subtitleRef.current) {
+          tl.fromTo(
+            subtitleRef.current,
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
+          );
+        }
+
+        if (titleRef.current) {
+          tl.fromTo(
+            titleRef.current,
+            { y: 30, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
+            "-=0.4"
+          );
+        }
+
+        if (textRef.current) {
+          tl.fromTo(
+            textRef.current,
+            { y: 20, opacity: 0 },
+            { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
+            "-=0.5"
+          );
+        }
+
+        const scrollIndicator = gsap.utils.toArray(".hero-scroll-indicator");
+        if (scrollIndicator.length > 0) {
+          tl.fromTo(
+            scrollIndicator,
+            { opacity: 0 },
+            { opacity: 1, duration: 0.6, ease: "power2.out" },
+            "-=0.2"
+          );
+        }
+      }
     },
     { scope: container }
   );
@@ -68,11 +91,12 @@ export default function ServicesHero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
           <Image
-            src="/images/services/entrance.jpg"
+            src="/images/services/entrance1.webp"
             alt="Trufit Auto Center Entrance"
             fill
             className="object-cover object-center"
             priority
+            sizes="100vw"
           />
         </div>
         {/* Dark overlay matching ContactHero */}
@@ -80,21 +104,22 @@ export default function ServicesHero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto pt-[112px] md:pt-[120px]">
+      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto" style={{ paddingTop: '60px' }}>
         <div 
           ref={subtitleRef}
-          className="services-chapter-label justify-center opacity-0 mb-6"
+          className="section-label justify-center opacity-0 mb-6"
         >
-          <div className="services-chapter-label-line" />
-          <span className="services-chapter-label-text !text-white/60">
+          <div className="section-label-line" />
+          <span className="section-label-text !text-white/60">
             Official Partner
           </span>
-          <div className="services-chapter-label-line" />
+          <div className="section-label-line" />
         </div>
         
         <h1 
           ref={titleRef}
-          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
+          className="font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
+          style={{ fontSize: 'clamp(2.25rem, 5vw, 5rem)' }}
         >
           Suzuki Authorized <br className="hidden md:block" />
           <span className="text-gradient-red font-semibold">Service Center</span>
@@ -102,7 +127,8 @@ export default function ServicesHero() {
         
         <p 
           ref={textRef}
-          className="text-white/60 text-lg md:text-2xl font-medium max-w-3xl mx-auto leading-relaxed opacity-0"
+          className="text-white/60 font-medium max-w-3xl mx-auto leading-relaxed opacity-0"
+          style={{ fontSize: 'clamp(1rem, 1.3vw, 1.5rem)' }}
         >
           We set the gold standard in automotive care. As an authorized Suzuki 
           Service Center, we provide specialized maintenance that guarantees 
@@ -110,6 +136,14 @@ export default function ServicesHero() {
         </p>
 
         {/* Floating Accent badges could go here if needed, but keeping it clean for Hero */}
+      </div>
+
+      {/* Scroll Indicator */}
+      <div className="hero-scroll-indicator absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-0 z-10">
+        <span className="text-white/30 text-[10px] font-bold tracking-[0.3em] uppercase">
+          Scroll
+        </span>
+        <ChevronDown className="text-white/40 animate-bounce" size={20} />
       </div>
 
       {/* Bottom transition */}

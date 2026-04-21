@@ -16,7 +16,7 @@ class CreateVehicleUseCase
         return $this->repository->create([
             'manufacturer_id' => $data->manufacturer_id,
             'model' => $data->model,
-            'image_path' => $data->image_url,
+            'image_path' => $data->image_path,
         ]);
     }
 }

@@ -7,6 +7,6 @@ class VehicleData
     public function __construct(
         public string $manufacturer_id,
         public string $model,
-        public ?string $image_url,
+        public ?string $image_path,
     ) {}
 }

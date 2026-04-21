@@ -58,6 +58,7 @@ export default function ServiceVideo() {
               controlsList="nodownload"
               playsInline
               preload="metadata"
+              onContextMenu={(e) => e.preventDefault()}
             />
           </div>
 

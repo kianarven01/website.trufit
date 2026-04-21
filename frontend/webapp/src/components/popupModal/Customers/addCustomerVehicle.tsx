@@ -215,10 +215,23 @@ const AddCustomerVehicle: React.FC<Props> = ({
     });
 
     /* SAVE MODELS ONLY */
-    localStorage.setItem(
-      VEHICLE_MODEL_STORAGE_KEY,
-      JSON.stringify(updatedModels)
-    );
+    const existingModels = JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
+
+    // merge without duplicates
+    const merged = [...existingModels];
+
+    updatedModels.forEach(newModel => {
+      const exists = merged.some(m =>
+        m.year === newModel.year &&
+        normalize(m.make) === normalize(newModel.make) &&
+        normalize(m.model) === normalize(newModel.model) &&
+        normalize(m.variant) === normalize(newModel.variant)
+      );
+
+      if (!exists) merged.push(newModel);
+    });
+
+    localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(merged));
 
     /* PASS TO PARENT */
     onSaved?.(normalizedVehicles);

@@ -112,9 +112,11 @@ const emptyVehicle = (): VehicleForm => ({
 
   /* ================= LOAD MODELS ================= */
   useEffect(() => {
+    if (!open) return;
+
     const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
     if (stored) setVehicleModels(JSON.parse(stored));
-  }, []);
+  }, [open]);
 
   /* ================= RESET ================= */
   const resetForm = useCallback(() => {
@@ -171,11 +173,6 @@ const emptyVehicle = (): VehicleForm => ({
   }, [open, customer, vehicleModels, resetForm]);
 
   /* ================= DERIVED ================= */
-  const visibleVehicles = useMemo(
-    () => vehicles.filter(v => !v._deleted),
-    [vehicles]
-  );
-
   const years = useMemo(
     () => [...new Set(vehicleModels.map(v => String(v.year)))],
     [vehicleModels]

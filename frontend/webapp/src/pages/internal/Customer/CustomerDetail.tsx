@@ -78,6 +78,7 @@ const CustomerDetail: React.FC = () => {
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [interviews, setInterviews] = useState<InterviewSheet[]>([]);
 
+  const [lastAddedVehicle, setLastAddedVehicle] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<EnrichedVehicle | null>(null);
   const [hoveredVehicleId, setHoveredVehicleId] = useState<string | null>(null);
 
@@ -112,6 +113,18 @@ const CustomerDetail: React.FC = () => {
     setInterviews(all);
   }, []);
 
+  const reloadVehiclesAndModels = () => {
+    const freshVehicles = JSON.parse(
+      localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]"
+    ) as Vehicle[];
+
+    const freshModels = JSON.parse(
+      localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"
+    ) as VehicleModel[];
+
+    setVehicles(freshVehicles.filter(v => v.customerId === id));
+    setVehicleModels(freshModels);
+  };
 
   /* ================= MAP ================= */
   const vehicleModelMap = useMemo(() => {
@@ -141,10 +154,31 @@ const CustomerDetail: React.FC = () => {
   const paginatedInterviews = paginate(vehicleInterviews);
 
   /* ================= INIT SELECTION ================= */
-  useEffect(() => {
-    if (!enrichedVehicles.length) return;
-    if (enrichedVehicles.length === 1) setSelectedVehicle(enrichedVehicles[0]);
-  }, [enrichedVehicles]);
+useEffect(() => {
+  if (!vehicles.length) {
+    setSelectedVehicle(null);
+    return;
+  }
+
+  // CASE A: only 1 vehicle → auto show it
+  if (vehicles.length === 1) {
+    const v = vehicles[0];
+    const m = vehicleModels.find(x => x.id === v.vehicleModelId);
+
+    setSelectedVehicle({
+      ...v,
+      year: m?.year,
+      make: m?.make,
+      model: m?.model,
+      variant: m?.variant,
+    });
+
+    return;
+  }
+
+  // CASE B: multiple vehicles → list view
+  setSelectedVehicle(null);
+}, [vehicles, vehicleModels]);
 
   /* ================= SAVE ================= */
   const saveCustomer = (updated: Customer) => {
@@ -552,11 +586,23 @@ const CustomerDetail: React.FC = () => {
       {/* MODALS */}
       <CustomerFormModal
         open={openEdit}
-        onOpenChange={setOpenEdit}
+        onOpenChange={(val) => {
+          setOpenEdit(val);
+
+          // 🔥 when modal closes → refresh everything
+          if (!val) {
+            reloadVehiclesAndModels();
+          }
+        }}
         customer={customerData}
-        onSaved={(c) => {
-          setCustomerData(c);
-          saveCustomer(c);
+        onSaved={() => {
+          if (!customerData) return;
+
+          reloadVehiclesAndModels();
+
+          setVehicleToEdit(null);
+
+          setSelectedVehicle(null);
         }}
       />
 
@@ -576,14 +622,12 @@ const CustomerDetail: React.FC = () => {
           let updated: Vehicle[];
 
           if (vehicleToEdit) {
-            // EDIT MODE
             updated = stored.map(v =>
               v.id === vehicleToEdit.id
                 ? { ...newVehicles[0], id: v.id, customerId: customerData.id }
                 : v
             );
           } else {
-            // ADD MODE
             const vehiclesWithCustomer = newVehicles.map(v => ({
               ...v,
               customerId: customerData.id,
@@ -598,6 +642,17 @@ const CustomerDetail: React.FC = () => {
 
           localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(updated));
 
+          // 🔥 force reload from storage (fixes stale UI)
+          const freshVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
+          setVehicles(freshVehicles.filter(
+            (v: Vehicle) => v.customerId === customerData.id)
+          );
+
+          const freshModels = JSON.parse(
+            localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"
+          );
+            setVehicleModels(freshModels);          
+
           const customerVehicles = updated.filter(
             v => v.customerId === customerData.id
           );
@@ -607,12 +662,27 @@ const CustomerDetail: React.FC = () => {
           const models = JSON.parse(
             localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"
           );
+
           setVehicleModels(models);
 
-          requestAnimationFrame(() => {
-            const latest = customerVehicles[customerVehicles.length - 1];
-            setSelectedVehicle(latest);
-          });
+          const latest = newVehicles[newVehicles.length - 1];
+          setLastAddedVehicle(latest.id);
+
+          // ALWAYS refresh selection cleanly
+          if (customerVehicles.length === 1) {
+            const m = models.find((x: VehicleModel) => x.id === latest.vehicleModelId);
+
+            setSelectedVehicle({
+              ...latest,
+              customerId: customerData.id,
+              year: m?.year,
+              make: m?.make,
+              model: m?.model,
+              variant: m?.variant,
+            });
+          } else {
+            setSelectedVehicle(null);
+          }
         }}
       />
 

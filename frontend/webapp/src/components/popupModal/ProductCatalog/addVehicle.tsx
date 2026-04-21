@@ -15,6 +15,7 @@ export interface VehicleModalVehicle {
   makeId: string;
   model: string;
   image?: string;
+  imageFile?: File | null;
 }
 
 export interface VehicleMakerOption {
@@ -39,7 +40,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
 }) => {
   const [makeName, setMakeName] = useState("");
   const [model, setModel] = useState("");
-  const [image, setImage] = useState("");
+
+  // We use a separate state for the image preview URL to avoid issues with object URLs when editing existing vehicles
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -49,25 +54,28 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     () => makerList.find((maker) => maker.id === vehicle?.makeId) || null,
     [makerList, vehicle]
   );
-
+// When the modal opens, we initialize the form fields based on the provided vehicle data
   useEffect(() => {
     if (open) {
       setMakeName(selectedMaker?.name || "");
       setModel(vehicle?.model || "");
-      setImage(vehicle?.image || "");
+      setImagePreview(vehicle?.image || "");
+      setImageFile(null);
     } else {
       setMakeName("");
       setModel("");
-      setImage("");
+      setImagePreview("");
+      setImageFile(null);
       setIsDragging(false);
     }
   }, [open, vehicle, selectedMaker]);
 
+  // We use a separate state for the image URL to handle both existing images and new uploads
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
 
-    const previewUrl = URL.createObjectURL(file);
-    setImage(previewUrl);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const handleSave = async () => {
@@ -79,10 +87,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setSaving(true);
 
       await onSaved({
-        id: vehicle?.id,
+        id: vehicle?.id,  
         makeId: chosenMaker.id,
         model: model.trim(),
-        image: image.trim(),
+        image: imagePreview.trim(),
+        imageFile,
       });
 
       onOpenChange(false);
@@ -145,10 +154,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   : "border-gray-300 hover:border-gray-400"
               }`}
             >
-              {image ? (
+              {imagePreview ? (
                 <div className="w-full space-y-3">
                   <img
-                    src={image}
+                    src={imagePreview}
                     alt="Vehicle Preview"
                     className="mx-auto max-h-40 rounded-lg object-contain"
                   />
@@ -157,6 +166,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   </p>
                 </div>
               ) : (
+
                 <div className="space-y-2">
                   <p className="text-sm font-medium">
                     Drag and drop an image here

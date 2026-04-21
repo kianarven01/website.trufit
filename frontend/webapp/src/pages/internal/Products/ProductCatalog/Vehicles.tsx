@@ -140,17 +140,30 @@ const VehiclesPage: React.FC = () => {
     makeId: string;
     model: string;
     image?: string;
+    imageFile?: File | null;
   }) => {
-    const payload = {
-      manufacturer: vehicleData.makeId,
-      model: vehicleData.model,
-      image_URL: vehicleData.image || null,
-    };
+    const formData = new FormData();
+    formData.append("manufacturer_id", vehicleData.makeId);
+    formData.append("model", vehicleData.model);
+
+    if (vehicleData.imageFile) {
+      formData.append("image", vehicleData.imageFile);
+    }
 
     if (vehicleData.id) {
-      await api.put(`/vehicles/${vehicleData.id}`, payload);
+      formData.append("_method", "PUT");
+
+      await api.post(`/vehicles/${vehicleData.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     } else {
-      await api.post("/vehicles", payload);
+      await api.post("/vehicles", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
     }
 
     await loadVehicles();

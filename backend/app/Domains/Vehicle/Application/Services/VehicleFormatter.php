@@ -6,14 +6,24 @@ use App\Domains\Vehicle\Domain\Models\VehicleModel;
 
 class VehicleFormatter
 {
-    public function format(VehicleModel $v): array
+    public function format(VehicleModel $vehicle): array
     {
+        $baseUrl = rtrim(env('SUPABASE_URL'), '/');
+        $bucket = env('SUPABASE_STORAGE_BUCKET', 'vehicle_images');
+
+        $imageUrl = null;
+
+        if (!empty($vehicle->image_path)) {
+            $imageUrl = "{$baseUrl}/storage/v1/object/public/{$bucket}/{$vehicle->image_path}";
+        }
+
         return [
-            'id' => $v->id,
-            'make' => $v->manufacturer?->name ?? '',
-            'manufacturer_id' => $v->manufacturer_id,
-            'model' => $v->model,
-            'image_url' => $v->image_path,
+            'id' => (string) $vehicle->id,
+            'makeId' => (string) $vehicle->manufacturer_id,
+            'make' => $vehicle->manufacturer->name ?? 'Unknown',
+            'model' => $vehicle->model,
+            'image' => $imageUrl,
+            'image_path' => $vehicle->image_path,
         ];
     }
 }

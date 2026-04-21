@@ -14,7 +14,7 @@ class StoreVehicleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'manufacturer_id' => ['required', 'uuid'],
+            'manufacturer_id' => ['required', 'integer'],
             'model' => ['required', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
         ];

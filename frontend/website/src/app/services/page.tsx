@@ -8,6 +8,9 @@ import ServicesCTABlock from "@/components/services/ServicesCTABlock";
 export const metadata: Metadata = {
   title: "Services | Trufit Auto Center",
   description: "Explore our wide range of automotive services including Suzuki authorized care, PMS, engine diagnostics, and specialized repairs for all major brands.",
+  alternates: {
+    canonical: "/services",
+  },
 };
 
 export default function ServicesPage() {

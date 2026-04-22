@@ -15,8 +15,12 @@ const barlow = Barlow({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://trufitautocenter.com"),
   title: "Trufit Auto Center",
   description: "Professional vehicle diagnostics and repair services.",
+  alternates: {
+    canonical: "/",
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

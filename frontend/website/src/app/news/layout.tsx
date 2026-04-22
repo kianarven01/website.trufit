@@ -1,10 +1,10 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "News & Articles | Trufit Auto Center",
+  title: "News and Articles",
   description: "Stay updated with the latest news, automotive tips, and articles from Trufit Auto Center.",
   alternates: {
-    canonical: "/news",
+    canonical: "https://trufitautocenter.com/news",
   },
 };
 

@@ -7,8 +7,9 @@ import WhyChooseUsSection from "@/components/home/why-choose-us/WhyChooseUsSecti
 import HomeCTABlock from "@/components/home/HomeCTABlock"
 
 export const metadata: Metadata = {
+  title: "Trufit Auto Center | Quality Automotive Service & Maintenance",
   alternates: {
-    canonical: "/",
+    canonical: "https://trufitautocenter.com",
   },
 }
 

@@ -2,21 +2,9 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import AddCustomer from "@/components/popupModal/Customers/addCustomer";
@@ -24,7 +12,8 @@ import { ImageIcon } from "lucide-react";
 
 interface Customer {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   address: string;
   mobileNumber: string;
   landline?: string;
@@ -53,20 +42,42 @@ interface Vehicle {
   hasWarranty?: boolean;
 }
 
+/* ================= STORAGE ================= */
 const STORAGE_KEY = "customers";
+const VEHICLE_STORAGE_KEY = "vehicles";
+const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+
 
 /* ✅ DUMMY DATA */
+const firstNames = [
+  "John", "Jane", "Michael", "Sarah", "David",
+  "Anna", "James", "Emily", "Daniel", "Sophia"
+];
+
+const lastNames = [
+  "Smith", "Johnson", "Brown", "Williams", "Jones",
+  "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"
+];
+
 const generateDummyCustomers = (): Customer[] => {
-  return Array.from({ length: 30 }, (_, i) => ({
-    id: `cust-${i + 1}`,
-    name: `Customer ${i + 1}`,
-    address: `Street ${i + 1}, City`,
-    mobileNumber: `0917${String(1000000 + i)}`,
-    landline: i % 2 === 0 ? `02-${String(8000000 + i)}` : "",
-    email: `customer${i + 1}@mail.com`,
-    businessPhone: `02-${String(7000000 + i)}`,
-  }));
+  return Array.from({ length: 30 }, (_, i) => {
+    const firstName = firstNames[i % firstNames.length];
+    const lastName = lastNames[i % lastNames.length];
+
+    return {
+      id: `cust-${i + 1}`,
+      firstName,
+      lastName,
+      address: `Street ${i + 1}, City`,
+      mobileNumber: `0917${String(1000000 + i)}`,
+      landline: i % 2 === 0 ? `02-${String(8000000 + i)}` : "",
+      email: `customer${i + 1}@mail.com`,
+      businessPhone: `02-${String(7000000 + i)}`,
+    };
+  });
 };
+
+
 
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -74,10 +85,22 @@ const CustomersList: React.FC = () => {
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const navigate = useNavigate();
 
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
+
   const { page, setPage, pageSize, setPageSize, paginate } =
     usePagination(25);
 
-  /* ✅ LOAD WITH AUTO-SEED */
+  const getFullName = (c: Customer) =>
+    `${c.firstName} ${c.lastName}`.trim();
+
+  const [filters, setFilters] = useState({
+    warranty: "all",
+    make: "all",
+    model: "all",
+  });
+
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -106,19 +129,165 @@ const CustomersList: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(VEHICLE_STORAGE_KEY);
+      const m = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
+
+      if (v) setVehicles(JSON.parse(v));
+      if (m) setVehicleModels(JSON.parse(m));
+    } catch (err) {
+      console.error("Failed to load vehicles/models", err);
+    }
+  }, []);
+
+
+  const vehicleModelsMap = useMemo(() => {
+    const map = new Map<string, VehicleModel>();
+    vehicleModels.forEach((m) => map.set(m.id, m));
+    return map;
+  }, [vehicleModels]);
+
+  const vehiclesByCustomer = useMemo(() => {
+    const map = new Map<string, Vehicle[]>();
+    vehicles.forEach((v) => {
+      if (!map.has(v.customerId)) map.set(v.customerId, []);
+      map.get(v.customerId)!.push(v);
+    });
+    return map;
+  }, [vehicles]);  
+
+
   /* SAVE */
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
   }, [customers]);
 
-  /* FILTER */
-  const filtered = useMemo(() => {
-    return customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.mobileNumber.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [customers, search]);
+  /* SEARCH & FILTER */
+const normalize = (val: string) =>
+  (val || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const filtered = useMemo(() => {
+  const q = normalize(search);
+  
+
+  return customers.filter((c) => {
+    const fullName = normalize(`${c.firstName} ${c.lastName}`);
+    const address = normalize(c.address);
+
+    const customerVehicles = vehiclesByCustomer.get(c.id) || [];
+
+    // APPLY VEHICLE FILTERS
+    const matchesVehicleFilter =
+      customerVehicles.length === 0
+        ? filters.warranty === "all" &&
+          filters.make === "all" &&
+          filters.model === "all"
+        : customerVehicles.some((v) => {
+            const m = vehicleModelsMap.get(v.vehicleModelId);
+            if (!m) return false;
+
+            if (filters.warranty === "yes" && !v.hasWarranty) return false;
+            if (filters.warranty === "no" && v.hasWarranty) return false;
+            if (filters.make !== "all" && m.make !== filters.make) return false;
+            if (filters.model !== "all" && m.model !== filters.model) return false;
+
+            return true;
+          });
+
+    const vehicleText = customerVehicles
+      .map((v) => {
+        const m = vehicleModelsMap.get(v.vehicleModelId);
+        return normalize(
+          `${v.plateNo} ${m?.make || ""} ${m?.model || ""}`
+        );
+      })
+      .join(" ");
+
+    const tokens = q.split(" ").filter(Boolean);
+
+    const matchesSearch =
+      tokens.length === 0 ||
+      tokens.every((t) =>
+        fullName.includes(t) ||
+        address.includes(t) ||
+        vehicleText.includes(t)
+      );
+
+    return matchesSearch && matchesVehicleFilter;
+  });
+}, [customers, vehiclesByCustomer, vehicleModelsMap, search, filters]);
+
+const makeOptions = useMemo(() => {
+  const makes = new Set<string>();
+
+  vehicles.forEach((v) => {
+    const m = vehicleModelsMap.get(v.vehicleModelId);
+    if (m?.make) makes.add(m.make);
+  });
+
+  return Array.from(makes).sort().map((make) => ({
+    label: make,
+    value: make,
+  }));
+}, [vehicles, vehicleModelsMap]);
+
+const modelOptions = useMemo(() => {
+  const models = new Set<string>();
+
+  vehicles.forEach((v) => {
+    const m = vehicleModelsMap.get(v.vehicleModelId);
+
+    if (!m) return;
+
+    if (filters.make === "all" || m.make === filters.make) {
+      models.add(m.model);
+    }
+  });
+
+  return Array.from(models).sort().map((model) => ({
+    label: model,
+    value: model,
+  }));
+}, [vehicles, vehicleModelsMap, filters.make]);
+
+const handleFilterChange = (key: string, value: string) => {
+  setFilters((prev) => {
+    const next = { ...prev, [key]: value };
+
+    if (key === "make") {
+      next.model = "all";
+    }
+
+    return next;
+  });
+};
+
+const warrantyOptions = [
+  { label: "With Warranty", value: "yes" },
+  { label: "No Warranty", value: "no" },
+];
+
+const toolbarFilters = [
+  {
+    key: "warranty",
+    label: "Warranty",
+    options: warrantyOptions,
+  },
+  {
+    key: "make",
+    label: "Manufacturer",
+    options: makeOptions,
+  },
+  {
+    key: "model",
+    label: "Model",
+    options: modelOptions,
+  },
+];
 
   const paginated = paginate(filtered);
 
@@ -137,10 +306,14 @@ const CustomersList: React.FC = () => {
       </Breadcrumb>
 
       <DataToolbar
-        searchPlaceholder="Search customers..."
+        searchPlaceholder="Search customers or vehicles..."
         onSearch={setSearch}
         onAdd={() => setCustomerModalOpen(true)}
         addLabel="Add Customer"
+        
+        filters={toolbarFilters}
+        onFilterChange={handleFilterChange}
+        activeFilters={filters}
       />
 
       {customers.length > 0 ? (
@@ -170,9 +343,9 @@ const CustomersList: React.FC = () => {
                     >
                       <TableCell className="py-0.5">
                         <div className="flex flex-col">
-                          <p className="font-medium">{c.name}</p>
+                          <p className="font-medium">{getFullName(c)}</p>
                           <p className="text-xs text-muted-foreground">
-                            {c.email}
+                            {c.email || "—" }
                           </p>
                         </div>
                       </TableCell>

@@ -19,7 +19,8 @@ const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
 /* ================= TYPES ================= */
 interface Customer {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   address: string;
   mobileNumber: string;
   landline?: string;
@@ -103,7 +104,8 @@ const emptyVehicle = (): VehicleForm => ({
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [vehicles, setVehicles] = useState<VehicleForm[]>([emptyVehicle()]);
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
   const [landline, setLandline] = useState("");
@@ -120,7 +122,8 @@ const emptyVehicle = (): VehicleForm => ({
 
   /* ================= RESET ================= */
   const resetForm = useCallback(() => {
-    setName("");
+    setFirstName("");
+    setLastName("");
     setAddress("");
     setMobileNumber("");
     setLandline("");
@@ -138,7 +141,8 @@ const emptyVehicle = (): VehicleForm => ({
       return;
     }
 
-    setName(customer.name || "");
+    setFirstName(customer.firstName || "");
+    setLastName(customer.lastName || "");
     setAddress(customer.address || "");
     setMobileNumber(customer.mobileNumber || "");
     setLandline(customer.landline || "");
@@ -235,8 +239,8 @@ const emptyVehicle = (): VehicleForm => ({
 
   /* ================= SAVE (INCREMENTAL DIFF UPDATE) ================= */
   const handleSave = () => {
-    if (!name || !mobileNumber) {
-      toast.error("Name and mobile are required");
+    if (!firstName || !lastName || !mobileNumber || !address) {
+      toast.error("Please fill in required fields.");
       return;
     }
 
@@ -249,7 +253,8 @@ const emptyVehicle = (): VehicleForm => ({
 
     const customerPayload: Customer = {
       id: customerId,
-      name,
+      firstName,
+      lastName,
       address,
       mobileNumber,
       landline,
@@ -357,12 +362,19 @@ const emptyVehicle = (): VehicleForm => ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <Label className="text-xs">Name *</Label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Full name"
-                  />
+                  <Label className="text-xs">Full Name *</Label>
+                  <div className="flex gap-3">
+                    <Input
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="First Name"
+                    />
+                    <Input
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Last Name"
+                    />
+                  </div>
                 </div>
 
                 <div className="col-span-2">

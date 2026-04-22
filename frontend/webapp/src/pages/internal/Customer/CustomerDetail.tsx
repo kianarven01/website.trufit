@@ -54,11 +54,12 @@ type EnrichedVehicle = Vehicle & {
 
 interface Customer {
   id: string;
-  name: string;
-  email?: string;
+  firstName: string;
+  lastName: string;
   address: string;
   mobileNumber: string;
   landline?: string;
+  email?: string;
   businessPhone?: string;
 }
 
@@ -108,6 +109,11 @@ const CustomerDetail: React.FC = () => {
     const customers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     setCustomerData(customers.find((c: Customer) => c.id === id));
   }, [id]);
+
+  const fullName = useMemo(() => {
+    if (!customerData) return "";
+    return `${customerData.firstName} ${customerData.lastName}`.trim();
+  }, [customerData]);
 
   useEffect(() => {
     const allVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
@@ -190,13 +196,6 @@ useEffect(() => {
   setSelectedVehicle(null);
 }, [vehicles, vehicleModels]);
 
-  /* ================= SAVE ================= */
-  const saveCustomer = (updated: Customer) => {
-    const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const next = list.map((c: Customer) => (c.id === updated.id ? updated : c));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  };
-
 
   /* ================= VEHICLE EDIT/REMOVE ================= */
   const handleEditVehicle = (vehicle: any) => {
@@ -248,77 +247,77 @@ useEffect(() => {
   };
 
 
-const handleSaveVehicleRecord = (record: {
-  recordType: "Interview" | "Checklist";
-  fileUrl: string;
-  fileName: string;
-}) => {
-  if (!selectedVehicle) return;
+  const handleSaveVehicleRecord = (record: {
+    recordType: "Interview" | "Checklist";
+    fileUrl: string;
+    fileName: string;
+  }) => {
+    if (!selectedVehicle) return;
 
-  const existing: VehicleHistory[] = JSON.parse(
-    localStorage.getItem(VEHICLE_HISTORY_STORAGE_KEY) || "[]"
-  );
-
-  let updated: VehicleHistory[];
-
-  // EDIT MODE
-  if (historyToEdit) {
-    const vehicleName = `${selectedVehicle.make}-${selectedVehicle.model}-${selectedVehicle.plateNo}`;
-    const ext = record.fileName?.split(".").pop() || "";
-
-    const sameTypeCount = existing.filter(
-      h =>
-        h.vehicleId === selectedVehicle.id &&
-        h.recordType === record.recordType
-    ).length;
-
-    const formattedFileName = `${vehicleName} - ${record.recordType} ${sameTypeCount}.${ext}`;
-
-    updated = existing.map(h =>
-      h.id === historyToEdit.id
-        ? {
-            ...h,
-            recordType: record.recordType,
-            fileUrl: record.fileUrl,
-            fileName: formattedFileName, // ✅ always regenerated
-          }
-        : h
+    const existing: VehicleHistory[] = JSON.parse(
+      localStorage.getItem(VEHICLE_HISTORY_STORAGE_KEY) || "[]"
     );
-  } else {
-    // ➕ CREATE MODE
-    const sameTypeCount =
-      existing.filter(
+
+    let updated: VehicleHistory[];
+
+    // EDIT MODE
+    if (historyToEdit) {
+      const vehicleName = `${selectedVehicle.make}-${selectedVehicle.model}-${selectedVehicle.plateNo}`;
+      const ext = record.fileName?.split(".").pop() || "";
+
+      const sameTypeCount = existing.filter(
         h =>
           h.vehicleId === selectedVehicle.id &&
           h.recordType === record.recordType
-      ).length + 1;
+      ).length;
 
-    const vehicleName = `${selectedVehicle.make}-${selectedVehicle.model}-${selectedVehicle.plateNo}`;
-    const ext = record.fileName.split(".").pop();
+      const formattedFileName = `${vehicleName} - ${record.recordType} ${sameTypeCount}.${ext}`;
 
-    const formattedFileName = `${vehicleName} - ${record.recordType} ${sameTypeCount}.${ext}`;
+      updated = existing.map(h =>
+        h.id === historyToEdit.id
+          ? {
+              ...h,
+              recordType: record.recordType,
+              fileUrl: record.fileUrl,
+              fileName: formattedFileName,
+            }
+          : h
+      );
+    } else {
+      // ➕ CREATE MODE
+      const sameTypeCount =
+        existing.filter(
+          h =>
+            h.vehicleId === selectedVehicle.id &&
+            h.recordType === record.recordType
+        ).length + 1;
 
-    const newRecord: VehicleHistory = {
-      id: crypto.randomUUID(),
-      vehicleId: selectedVehicle.id,
-      dateTime: new Date().toISOString(),
-      recordType: record.recordType,
-      fileUrl: record.fileUrl,
-      fileName: formattedFileName,
-      status: "Completed",
-    };
+      const vehicleName = `${selectedVehicle.make}-${selectedVehicle.model}-${selectedVehicle.plateNo}`;
+      const ext = record.fileName.split(".").pop();
 
-    updated = [newRecord, ...existing];
-  }
+      const formattedFileName = `${vehicleName} - ${record.recordType} ${sameTypeCount}.${ext}`;
 
-  localStorage.setItem(
-    VEHICLE_HISTORY_STORAGE_KEY,
-    JSON.stringify(updated)
-  );
+      const newRecord: VehicleHistory = {
+        id: crypto.randomUUID(),
+        vehicleId: selectedVehicle.id,
+        dateTime: new Date().toISOString(),
+        recordType: record.recordType,
+        fileUrl: record.fileUrl,
+        fileName: formattedFileName,
+        status: "Completed",
+      };
 
-  setHistory(updated);
-  setHistoryToEdit(null); // 🔥 reset edit state
-};
+      updated = [newRecord, ...existing];
+    }
+
+    localStorage.setItem(
+      VEHICLE_HISTORY_STORAGE_KEY,
+      JSON.stringify(updated)
+    );
+
+    setHistory(updated);
+    setHistoryToEdit(null); 
+  };
 
 
   const handleRemoveHistory = () => {
@@ -402,14 +401,14 @@ const handleSaveVehicleRecord = (record: {
             <CardContent className="space-y-5">
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Full Name</p>
-                <p className="text-sm">{customerData.name}</p>
+                <p className="text-sm">{fullName}</p>
               </div>
 
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Email</p>
                 <div className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5" />
-                  <p className="text-sm">{customerData.email}</p>
+                  <p className="text-sm">{customerData.email || "—"}</p>
                 </div>
               </div>
 
@@ -430,7 +429,7 @@ const handleSaveVehicleRecord = (record: {
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Address</p>
                 <div className="flex items-start gap-2">
                   <MapPin className="w-3.5 h-3.5 mt-1" />
-                  <p className="text-sm break-words">{customerData.address}</p>
+                  <p className="text-sm break-words">{customerData.address || "—"}</p>
                 </div>
               </div>
             </CardContent>
@@ -597,13 +596,13 @@ const handleSaveVehicleRecord = (record: {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {[
-                    ["Variant", selectedVehicle.variant],
-                    ["Color", selectedVehicle.color],
-                    ["Plate Number", selectedVehicle.plateNo],
-                    ["Engine Number", selectedVehicle.engineNo],
-                    ["VIN", selectedVehicle.vin],
-                    ["Registration No.", selectedVehicle.registrationNo],
-                    ["Selling Dealer", selectedVehicle.sellingDealer],
+                    ["Variant", selectedVehicle.variant || "—"],
+                    ["Color", selectedVehicle.color || "—"],
+                    ["Plate Number", selectedVehicle.plateNo || "—"],
+                    ["Engine Number", selectedVehicle.engineNo || "—"],
+                    ["VIN", selectedVehicle.vin || "—"],
+                    ["Registration No.", selectedVehicle.registrationNo || "—"],
+                    ["Selling Dealer", selectedVehicle.sellingDealer || "—"],
                   ].map(([label, value]) => (
                     <div key={label} className="space-y-2">
                       <p className="text-xs uppercase text-muted-foreground tracking-wider">{label}</p>
@@ -932,7 +931,7 @@ const handleSaveVehicleRecord = (record: {
         description={
           <>
             Are you sure you want to remove{" "}
-            <strong>{customerData.name}'s</strong> customer record?
+            <strong>{fullName}'s</strong> customer record?
             <br /> <br />
             This action cannot be undone and will permanently delete the customer
             and associated records including all their registered vehicles and vehicle history.

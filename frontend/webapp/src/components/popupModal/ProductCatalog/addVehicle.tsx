@@ -29,7 +29,12 @@ interface VehicleModalProps {
   vehicle?: VehicleModalVehicle | null;
   makerList: VehicleMakerOption[];
   onSaved: (vehicle: VehicleModalVehicle) => Promise<void> | void;
+
+  // add this prop from parent
+  onCreateManufacturer: (name: string) => Promise<VehicleMakerOption | null>;
 }
+
+const ADD_MANUFACTURER_OPTION = "+ Add manufacturer";
 
 export const VehicleModal: React.FC<VehicleModalProps> = ({
   open,
@@ -37,16 +42,20 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   vehicle,
   makerList,
   onSaved,
+  onCreateManufacturer,
 }) => {
   const [makeName, setMakeName] = useState("");
   const [model, setModel] = useState("");
 
-  // We use a separate state for the image preview URL to avoid issues with object URLs when editing existing vehicles
   const [imagePreview, setImagePreview] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
+  const [newManufacturerName, setNewManufacturerName] = useState("");
+  const [creatingManufacturer, setCreatingManufacturer] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -54,28 +63,79 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     () => makerList.find((maker) => maker.id === vehicle?.makeId) || null,
     [makerList, vehicle]
   );
-// When the modal opens, we initialize the form fields based on the provided vehicle data
+
   useEffect(() => {
     if (open) {
       setMakeName(selectedMaker?.name || "");
       setModel(vehicle?.model || "");
       setImagePreview(vehicle?.image || "");
       setImageFile(null);
+
+      setShowAddManufacturer(false);
+      setNewManufacturerName("");
+      setCreatingManufacturer(false);
     } else {
       setMakeName("");
       setModel("");
       setImagePreview("");
       setImageFile(null);
       setIsDragging(false);
+
+      setShowAddManufacturer(false);
+      setNewManufacturerName("");
+      setCreatingManufacturer(false);
     }
   }, [open, vehicle, selectedMaker]);
 
-  // We use a separate state for the image URL to handle both existing images and new uploads
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
 
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleMakeChange = (value: string) => {
+    if (value === ADD_MANUFACTURER_OPTION) {
+      setShowAddManufacturer(true);
+      setMakeName("");
+      return;
+    }
+
+    setShowAddManufacturer(false);
+    setNewManufacturerName("");
+    setMakeName(value);
+  };
+
+  const handleCreateManufacturer = async () => {
+    const trimmedName = newManufacturerName.trim();
+    if (!trimmedName) return;
+
+    const existing = makerList.find(
+      (maker) => maker.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existing) {
+      setMakeName(existing.name);
+      setShowAddManufacturer(false);
+      setNewManufacturerName("");
+      return;
+    }
+
+    try {
+      setCreatingManufacturer(true);
+
+      const createdManufacturer = await onCreateManufacturer(trimmedName);
+
+      if (createdManufacturer) {
+        setMakeName(createdManufacturer.name);
+        setShowAddManufacturer(false);
+        setNewManufacturerName("");
+      }
+    } catch (error) {
+      console.error("Failed to create manufacturer:", error);
+    } finally {
+      setCreatingManufacturer(false);
+    }
   };
 
   const handleSave = async () => {
@@ -87,7 +147,7 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setSaving(true);
 
       await onSaved({
-        id: vehicle?.id,  
+        id: vehicle?.id,
         makeId: chosenMaker.id,
         model: model.trim(),
         image: imagePreview.trim(),
@@ -102,6 +162,11 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     }
   };
 
+  const makeOptions = [
+    ...makerList.map((maker) => maker.name),
+    ADD_MANUFACTURER_OPTION,
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px] rounded-2xl">
@@ -115,11 +180,28 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium">Make</label>
             <Combobox
-              items={makerList.map((maker) => maker.name)}
+              items={makeOptions}
               value={makeName}
-              onChange={setMakeName}
+              onChange={handleMakeChange}
               placeholder="Select vehicle make"
             />
+
+            {showAddManufacturer && (
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={newManufacturerName}
+                  onChange={(e) => setNewManufacturerName(e.target.value)}
+                  placeholder="Enter manufacturer name"
+                />
+                <Button
+                  type="button"
+                  onClick={handleCreateManufacturer}
+                  disabled={creatingManufacturer || !newManufacturerName.trim()}
+                >
+                  {creatingManufacturer ? "Adding..." : "Add"}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -166,7 +248,6 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
                   </p>
                 </div>
               ) : (
-
                 <div className="space-y-2">
                   <p className="text-sm font-medium">
                     Drag and drop an image here
@@ -195,13 +276,19 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={saving}
+            disabled={saving || creatingManufacturer}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
-            disabled={saving || !makeName || !model.trim()}
+            disabled={
+              saving ||
+              creatingManufacturer ||
+              !makeName ||
+              !model.trim() ||
+              showAddManufacturer
+            }
           >
             {saving ? "Saving..." : vehicle ? "Save Changes" : "Add Vehicle"}
           </Button>

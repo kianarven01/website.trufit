@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
-import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
+import {
+  VehicleModal,
+  VehicleMakerOption,
+} from "@/components/popupModal/ProductCatalog/addVehicle";
 import { Edit, Trash2, ChevronRight, Car } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -134,6 +137,36 @@ const VehiclesPage: React.FC = () => {
   useEffect(() => {
     void loadPageData();
   }, []);
+
+  const handleCreateManufacturer = async (
+    name: string
+  ): Promise<VehicleMakerOption | null> => {
+    try {
+      const response = await api.post("/manufacturers", {
+        name: name.trim(),
+      });
+
+      const payload = response.data?.data ?? response.data;
+
+      const created: VehicleMakerOption = {
+        id: String(payload.id),
+        name: String(payload.name),
+      };
+
+      setMakers((prev) => {
+        const exists = prev.some(
+          (maker) => maker.id === created.id || maker.name === created.name
+        );
+        if (exists) return prev;
+        return [...prev, created].sort((a, b) => a.name.localeCompare(b.name));
+      });
+
+      return created;
+    } catch (error) {
+      console.error("Failed to create manufacturer:", error);
+      return null;
+    }
+  };
 
   const handleSaveVehicle = async (vehicleData: {
     id?: string;
@@ -348,7 +381,7 @@ const VehiclesPage: React.FC = () => {
         }
         makerList={makers}
         onSaved={handleSaveVehicle}
-        
+        onCreateManufacturer={handleCreateManufacturer}
       />
     </div>
   );

@@ -7,19 +7,22 @@ import { Table, TableHeader, TableHead, TableBody, TableRow, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import DataToolbar from "@/components/DataToolbar";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+
+import { ScrollArea, ScrollBar } from "@/components/ui/scrollArea";
+
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import AddCustomerVehicle from "@/components/popupModal/Customers/addCustomerVehicle";
-import { ScrollArea, ScrollBar } from "@/components/ui/scrollArea";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
+import AddVehicleRecord
+ from "@/components/popupModal/Customers/addVehicleRecord";
 
-import { ArrowLeft, Edit, XCircle, Trash2, Plus, Mail, Phone, MapPin, Car, ClipboardClock } from "lucide-react";
+import { ArrowLeft, Edit, XCircle, Trash2, Plus, Mail, Phone, MapPin, Car, ClipboardClock, MoreHorizontal } from "lucide-react";
 
 /* ================= STORAGE ================= */
 const STORAGE_KEY = "customers";
 const VEHICLE_STORAGE_KEY = "vehicles";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
-const INTERVIEW_STORAGE_KEY = "interviews";
-
+const VEHICLE_HISTORY_STORAGE_KEY = "vehicleHistory";
 /* ================= TYPES ================= */
 interface VehicleModel {
   id: string;
@@ -59,12 +62,14 @@ interface Customer {
   businessPhone?: string;
 }
 
-interface InterviewSheet {
+interface VehicleHistory {
   id: string;
   vehicleId: string;
-  date: string;
-  time: string;
-  transactionRecord: string;
+  dateTime: string; 
+  recordType: "JO" | "SO" | "Estimate" | "Interview" | "Checklist";
+  recordRef?: string; // JO/SO/Estimate ID
+  fileUrl?: string;   // uploaded file
+  fileName?: string;
   status: "Completed" | "Pending" | "Cancelled";
 }
 
@@ -76,8 +81,7 @@ const CustomerDetail: React.FC = () => {
   const [customerData, setCustomerData] = useState<Customer | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
-  const [interviews, setInterviews] = useState<InterviewSheet[]>([]);
-
+  const [history, setHistory] = useState<VehicleHistory[]>([]);
   const [lastAddedVehicle, setLastAddedVehicle] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<EnrichedVehicle | null>(null);
   const [hoveredVehicleId, setHoveredVehicleId] = useState<string | null>(null);
@@ -86,8 +90,14 @@ const CustomerDetail: React.FC = () => {
   const [openEdit, setOpenEdit] = useState(false);
   const [vehicleToEdit, setVehicleToEdit] = useState<EnrichedVehicle | null>(null);
   const [vehicleToRemove, setVehicleToRemove] = useState<any>(null);
-  const [openRemoveVehicleDialog, setOpenRemoveVehicleDialog] = useState(false);
+  const [openAddRecord, setOpenAddRecord] = useState(false);
 
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
+  const [historyToEdit, setHistoryToEdit] = useState<VehicleHistory | null>(null);
+  const [historyToRemove, setHistoryToRemove] = useState<VehicleHistory | null>(null);
+  const [openRemoveHistoryDialog, setOpenRemoveHistoryDialog] = useState(false);
+
+  const [openRemoveVehicleDialog, setOpenRemoveVehicleDialog] = useState(false);
   const [openRemoveDialog, setOpenRemoveDialog] = useState(false);
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
@@ -109,8 +119,8 @@ const CustomerDetail: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const all = JSON.parse(localStorage.getItem(INTERVIEW_STORAGE_KEY) || "[]");
-    setInterviews(all);
+    const all = JSON.parse(localStorage.getItem(VEHICLE_HISTORY_STORAGE_KEY) || "[]");
+    setHistory(all);
   }, []);
 
   const reloadVehiclesAndModels = () => {
@@ -146,12 +156,12 @@ const CustomerDetail: React.FC = () => {
     });
   }, [vehicles, vehicleModelMap]);
 
-  const vehicleInterviews = useMemo(() => {
+  const vehicleHistory = useMemo(() => {
     if (!selectedVehicle) return [];
-    return interviews.filter(i => i.vehicleId === selectedVehicle.id);
-  }, [interviews, selectedVehicle]);
+    return history.filter(h => h.vehicleId === selectedVehicle.id);
+  }, [history, selectedVehicle]);
 
-  const paginatedInterviews = paginate(vehicleInterviews);
+  const paginatedHistory = paginate(vehicleHistory);
 
   /* ================= INIT SELECTION ================= */
 useEffect(() => {
@@ -238,6 +248,98 @@ useEffect(() => {
   };
 
 
+const handleSaveVehicleRecord = (record: {
+  recordType: "Interview" | "Checklist";
+  fileUrl: string;
+  fileName: string;
+}) => {
+  if (!selectedVehicle) return;
+
+  const existing: VehicleHistory[] = JSON.parse(
+    localStorage.getItem(VEHICLE_HISTORY_STORAGE_KEY) || "[]"
+  );
+
+  let updated: VehicleHistory[];
+
+  // EDIT MODE
+  if (historyToEdit) {
+    const vehicleName = `${selectedVehicle.make}-${selectedVehicle.model}-${selectedVehicle.plateNo}`;
+    const ext = record.fileName?.split(".").pop() || "";
+
+    const sameTypeCount = existing.filter(
+      h =>
+        h.vehicleId === selectedVehicle.id &&
+        h.recordType === record.recordType
+    ).length;
+
+    const formattedFileName = `${vehicleName} - ${record.recordType} ${sameTypeCount}.${ext}`;
+
+    updated = existing.map(h =>
+      h.id === historyToEdit.id
+        ? {
+            ...h,
+            recordType: record.recordType,
+            fileUrl: record.fileUrl,
+            fileName: formattedFileName, // ✅ always regenerated
+          }
+        : h
+    );
+  } else {
+    // ➕ CREATE MODE
+    const sameTypeCount =
+      existing.filter(
+        h =>
+          h.vehicleId === selectedVehicle.id &&
+          h.recordType === record.recordType
+      ).length + 1;
+
+    const vehicleName = `${selectedVehicle.make}-${selectedVehicle.model}-${selectedVehicle.plateNo}`;
+    const ext = record.fileName.split(".").pop();
+
+    const formattedFileName = `${vehicleName} - ${record.recordType} ${sameTypeCount}.${ext}`;
+
+    const newRecord: VehicleHistory = {
+      id: crypto.randomUUID(),
+      vehicleId: selectedVehicle.id,
+      dateTime: new Date().toISOString(),
+      recordType: record.recordType,
+      fileUrl: record.fileUrl,
+      fileName: formattedFileName,
+      status: "Completed",
+    };
+
+    updated = [newRecord, ...existing];
+  }
+
+  localStorage.setItem(
+    VEHICLE_HISTORY_STORAGE_KEY,
+    JSON.stringify(updated)
+  );
+
+  setHistory(updated);
+  setHistoryToEdit(null); // 🔥 reset edit state
+};
+
+
+  const handleRemoveHistory = () => {
+    if (!historyToRemove) return;
+
+    const existing: VehicleHistory[] = JSON.parse(
+      localStorage.getItem(VEHICLE_HISTORY_STORAGE_KEY) || "[]"
+    );
+
+    const updated = existing.filter(h => h.id !== historyToRemove.id);
+
+    localStorage.setItem(
+      VEHICLE_HISTORY_STORAGE_KEY,
+      JSON.stringify(updated)
+    );
+
+    setHistory(updated);
+    setHistoryToRemove(null);
+    setOpenRemoveHistoryDialog(false);
+  };
+
 
   /* ================= UI ================= */
   if (!customerData) {
@@ -253,6 +355,7 @@ useEffect(() => {
 
   const hasMultipleVehicles = vehicles.length > 1;
   const showAddVehicleButton = vehicles.length <= 1;
+  
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto select-none">
@@ -513,74 +616,203 @@ useEffect(() => {
           </Card>
         </div>
 
-        {interviews.length > 0 ? (
-          /* Customer History */
-          <Card className="flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-lg">Customer History</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col flex-1 overflow-hidden p-0">
-              <ScrollArea className="flex-1">
-                <div className="border rounded-lg m-4 overflow-hidden">
-                  <Table className="table-fixed w-full">
-                    <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                      <TableRow>
-                        <TableHead className="w-[5%]">No.</TableHead>
-                        <TableHead>Interview ID</TableHead>
-                        <TableHead>Date & Time</TableHead>
-                        <TableHead>Transaction</TableHead>
-                        <TableHead className="w-[15%]">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedInterviews.map((item, index) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{(page - 1) * pageSize + index + 1}</TableCell>
-                          <TableCell className="font-semibold text-primary">{item.id}</TableCell>
-                          <TableCell>{item.date} @ {item.time}</TableCell>
-                          <TableCell>{item.transactionRecord}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                item.status === "Completed" ? "default" :
-                                item.status === "Pending" ? "secondary" : "destructive"
-                              }
-                            >
-                              {item.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </ScrollArea>
-              {interviews.length > 25 && (
-                <div className="border-t px-4 py-2 bg-background">
-                  <Pagination
-                    totalItems={interviews.length}
-                    page={page}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={setPageSize}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="flex flex-col">
-            <CardHeader>
+        <Card className="flex flex-col">
+          <CardHeader>
+            <div className="flex items-center justify-between">
               <CardTitle className="text-lg">Vehicle History</CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 flex flex-col items-center justify-center text-center pb-8">
-              <ClipboardClock className="h-10 w-10 stroke-1 mb-2 text-muted-foreground" />
-              <p className="text-sm font-light tracking-wide text-muted-foreground">
-                There is no vehicle history available.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={!selectedVehicle}
+                onClick={() => setOpenAddRecord(true)}
+              >
+                <Plus className="w-4 h-4" />
+                Add Record
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="flex flex-col flex-1 overflow-hidden p-0">
+            {vehicleHistory.length > 0 ? (
+              <>
+                <ScrollArea className="flex-1">
+                  <div className="border rounded-lg m-4 overflow-hidden">
+                    <Table className="table-fixed w-full">
+                      <TableHeader className="bg-muted/50 sticky top-0 z-10">
+                        <TableRow>
+                          <TableHead className="w-[10%]">No.</TableHead>
+                          <TableHead className="w-[20%]">Date & Time</TableHead>
+                          <TableHead className="w-[20%]">Type</TableHead>
+                          <TableHead>Linked Transaction / File</TableHead>
+                          <TableHead className="w-[15%]">Status</TableHead>
+                          <TableHead className="w-[8%]"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+
+                      <TableBody>
+                        {paginatedHistory.map((item, index) => {
+                          const isLastRow = index === paginatedHistory.length - 1;
+                          const isSingleRow = paginatedHistory.length === 1;
+                          const shouldOpenUp = isLastRow || isSingleRow;
+
+                          return (
+                            <TableRow
+                              key={item.id}
+                              className="hover:bg-muted/40 data-[no-hover=true]:hover:bg-transparent"
+                            >
+                              <TableCell>
+                                {(page - 1) * pageSize + index + 1}
+                              </TableCell>
+
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span>
+                                    {new Date(item.dateTime).toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    })}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {new Date(item.dateTime).toLocaleTimeString("en-US", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      hour12: true,
+                                    })}
+                                  </span>
+                                </div>
+                              </TableCell>
+
+                              <TableCell>{item.recordType}</TableCell>
+
+                              <TableCell>
+                                {item.fileUrl ? (
+                                  <a
+                                    href={item.fileUrl}
+                                    target="_blank"
+                                    className="text-blue-600 underline"
+                                  >
+                                    {item.fileName || "View File"}
+                                  </a>
+                                ) : (
+                                  item.recordRef || "—"
+                                )}
+                              </TableCell>
+
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    item.status === "Completed"
+                                      ? "default"
+                                      : item.status === "Pending"
+                                      ? "secondary"
+                                      : "destructive"
+                                  }
+                                >
+                                  {item.status}
+                                </Badge>
+                              </TableCell>
+
+                              {/* ACTION MENU */}
+                              <TableCell
+                                className="relative overflow-visible"
+                                data-no-hover={
+                                  activeHistoryId === item.id ? "true" : undefined
+                                }
+                              >
+                                <div className="flex justify-center">
+                                  
+                                  {/* GROUP */}
+                                  <div className="relative inline-flex group">
+
+                                    {/* BUTTON */}
+                                    <button
+                                      className="
+                                        p-1 rounded border border-muted-foreground/40
+                                        transition-all duration-150
+                                        group-hover:bg-muted
+                                      "
+                                      onClick={() =>
+                                        setActiveHistoryId(prev =>
+                                          prev === item.id ? null : item.id
+                                        )
+                                      }
+                                    >
+                                      <MoreHorizontal
+                                        className="
+                                          w-5 h-5 text-muted-foreground
+                                          transition-colors duration-150
+                                          group-hover:text-foreground
+                                        "
+                                      />
+                                    </button>
+
+                                    {/* DROPDOWN */}
+                                    {activeHistoryId === item.id && (
+                                      <div
+                                        className={`absolute z-50 w-32 bg-white border rounded-md shadow-md
+                                          right-full mr-2
+                                          ${shouldOpenUp ? "bottom-0" : "top-0"}
+                                        `}
+                                      >
+                                        <button
+                                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted"
+                                          onClick={() => {
+                                            setActiveHistoryId(null);
+                                            setOpenAddRecord(true);
+                                            setHistoryToEdit(item);
+                                          }}
+                                        >
+                                          Edit
+                                        </button>
+
+                                        <button
+                                          className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-muted"
+                                          onClick={() => {
+                                            setHistoryToRemove(item);
+                                            setOpenRemoveHistoryDialog(true);
+                                            setActiveHistoryId(null);
+                                          }}
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    )}
+
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
+
+                {vehicleHistory.length > pageSize && (
+                  <div className="border-t px-4 py-2">
+                    <Pagination
+                      totalItems={vehicleHistory.length}
+                      page={page}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center pb-8">
+                <ClipboardClock className="h-10 w-10 stroke-1 mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  No vehicle history available.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* MODALS */}
@@ -588,8 +820,6 @@ useEffect(() => {
         open={openEdit}
         onOpenChange={(val) => {
           setOpenEdit(val);
-
-          // 🔥 when modal closes → refresh everything
           if (!val) {
             reloadVehiclesAndModels();
           }
@@ -641,8 +871,6 @@ useEffect(() => {
           }
 
           localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(updated));
-
-          // 🔥 force reload from storage (fixes stale UI)
           const freshVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
           setVehicles(freshVehicles.filter(
             (v: Vehicle) => v.customerId === customerData.id)
@@ -686,6 +914,17 @@ useEffect(() => {
         }}
       />
 
+      <AddVehicleRecord 
+        open={openAddRecord} 
+        onOpenChange={(val) => {
+          setOpenAddRecord(val);
+          if (!val) setHistoryToEdit(null);
+        }}
+        vehicleId={selectedVehicle?.id} 
+        onSave={handleSaveVehicleRecord}
+        editData={historyToEdit} 
+      />
+
       <ConfirmDialog
         open={openRemoveDialog}
         onOpenChange={setOpenRemoveDialog}
@@ -722,8 +961,19 @@ useEffect(() => {
         onConfirm={handleRemoveVehicle}
       />
 
-    </div>
-  );
-};
+      <ConfirmDialog
+        open={openRemoveHistoryDialog}
+        onOpenChange={setOpenRemoveHistoryDialog}
+        title="Remove Record"
+        description="Are you sure you want to delete this vehicle history record? This cannot be undone."
+        confirmLabel="Yes, Remove"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={handleRemoveHistory}
+      />      
+
+          </div>
+        );
+      };
 
 export default CustomerDetail;

@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
+
 import DashboardContainer from "./components/DashboardContainer";
 
 import CustomersList from "./pages/internal/Customer/Customers";
@@ -21,7 +22,10 @@ import JobOrder from "./pages/internal/Services/JobOrder";
 import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
+import SalesOrderDetails from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";
+
 import Estimates from "./pages/internal/Sales/Estimates/Estimates";
+import AddEstimate from "./pages/internal/Sales/Estimates/AddEstimate";
 
 import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
 import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";
@@ -61,34 +65,38 @@ const App: React.FC = () => {
 
             <Route path="/webapp/dashboard" element={<Dashboard />} />
 
-            <Route path="/webapp" element={<DashboardContainer />}> 
-
-              {/* <Route path: Customers */}
+            <Route path="/webapp" element={<DashboardContainer />}>
+              
+              {/* Customers */}
               <Route path="customers">
                 <Route index element={<CustomersList />} />
                 <Route path=":id" element={<CustomerDetail />} />
               </Route>
 
-              {/* <Route path: Sales */}
-              <Route path="sales/sales-orders">
-                <Route index element={<SalesOrder />} />
+              {/* Sales */}
+              <Route path="sales">
+                <Route path="sales-orders">
+                  <Route index element={<SalesOrder />} />
+                  <Route path=":id" element={<SalesOrderDetails />} />
+                </Route>
+
+                <Route path="estimates">
+                  <Route index element={<Estimates />} />
+                  <Route path="new-estimate" element={<AddEstimate />} />
+                </Route>
               </Route>
 
-              {/* <Route path: Estimates */}
-              <Route path="sales/estimates">
-                <Route index element={<Estimates />} />
-              </Route>
+              {/* Purchasing */}
+              <Route path="purchasing">
+                <Route path="purchase-orders">
+                  <Route index element={<PurchaseOrderList />} />
+                  <Route path=":id" element={<PurchaseOrderDetails />} />
+                </Route>
 
-              {/* <Route path: Purchase Orders */}
-              <Route path="purchasing/purchase-orders">
-                <Route index element={<PurchaseOrderList />} />
-                <Route path=":id" element={<PurchaseOrderDetails />} />
-              </Route>
-
-              {/* <Route path: Suppliers */}
-              <Route path="purchasing/suppliers">
-                <Route index element={<SupplierList />} />
-                <Route path=":supplierId" element={<SupplierDetails />} />
+                <Route path="suppliers">
+                  <Route index element={<SupplierList />} />
+                  <Route path=":supplierId" element={<SupplierDetails />} />
+                </Route>
               </Route>
 
             </Route>

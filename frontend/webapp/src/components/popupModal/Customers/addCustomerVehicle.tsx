@@ -165,7 +165,8 @@ const AddCustomerVehicle: React.FC<Props> = ({
     vehicleModels
       .filter(v =>
         normalize(v.make) === normalize(make) &&
-        normalize(v.model) === normalize(model)
+        normalize(v.model) === normalize(model) &&
+        v.variant && v.variant.trim() !== ""
       )
       .map(v => v.variant);
 
@@ -197,13 +198,13 @@ const AddCustomerVehicle: React.FC<Props> = ({
     const normalizedVehicles = validVehicles.map(v => {
       const formattedMake = toTitleCase(v.make);
       const formattedModel = toTitleCase(v.model);
-      const formattedVariant = toTitleCase(v.variant);
+      const formattedVariant = toTitleCase(v.variant).trim() || undefined;
 
       let model = updatedModels.find(m =>
         m.year === Number(v.year) &&
         normalize(m.make) === normalize(formattedMake) &&
         normalize(m.model) === normalize(formattedModel) &&
-        normalize(m.variant) === normalize(formattedVariant)
+        normalize(m.variant || "") === normalize(formattedVariant || "")
       );
 
       if (!model) {
@@ -212,7 +213,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
           year: Number(v.year),
           make: formattedMake,
           model: formattedModel,
-          variant: formattedVariant,
+          variant: formattedVariant || "",
         };
         updatedModels.push(model);
       }
@@ -336,7 +337,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
                       const formatted = toTitleCase(val);
                       const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
 
-                      updateVehicle(idx, "variant", canonical);
+                      updateVehicle(idx, "variant", canonical || "");
                     }}
                     items={variants(v.make, v.model)}
                     placeholder="Variant"

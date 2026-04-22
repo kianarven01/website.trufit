@@ -216,7 +216,8 @@ const emptyVehicle = (): VehicleForm => ({
         .filter(
           v =>
             normalize(v.make) === normalize(make) &&
-            normalize(v.model) === normalize(model)
+            normalize(v.model) === normalize(model) &&
+            v.variant && v.variant.trim() !== ""
         )
         .map(v => v.variant),
     [vehicleModels]
@@ -303,14 +304,14 @@ const emptyVehicle = (): VehicleForm => ({
     const finalVehicles: Vehicle[] = validVehicles.map(v => {
       const formattedMake = toTitleCase(v.make);
       const formattedModel = toTitleCase(v.model);
-      const formattedVariant = toTitleCase(v.variant);
+      const formattedVariant = toTitleCase(v.variant).trim() || undefined;
   
       let match = updatedModels.find(
         m =>
           m.year === Number(v.year) &&
           normalize(m.make) === normalize(formattedMake) &&
           normalize(m.model) === normalize(formattedModel) &&
-          normalize(m.variant) === normalize(formattedVariant)
+          normalize(m.variant || "") === normalize(formattedVariant || "")
       );
 
       if (!match) {
@@ -319,7 +320,7 @@ const emptyVehicle = (): VehicleForm => ({
           year: Number(v.year),
           make: formattedMake,
           model: formattedModel,
-          variant: formattedVariant,
+          variant: formattedVariant || "",
         };
         updatedModels.push(match);
       }
@@ -535,7 +536,7 @@ const emptyVehicle = (): VehicleForm => ({
                             const formatted = toTitleCase(val);
                             const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
 
-                            updateVehicle(v.id, "variant", canonical);
+                            updateVehicle(v.id, "variant", canonical || "");
                           }}
                           items={variants(v.make, v.model)}
                           placeholder="Variant"

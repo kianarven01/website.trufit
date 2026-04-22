@@ -83,6 +83,19 @@ const emptyVehicle = (): VehicleForm => ({
   sellingDealer: "",
 });
 
+const toTitleCase = (str: string) =>
+  (str || "")
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map(word =>
+      word
+        .split("-")
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join("-")
+    )
+    .join(" ");
+
 /* ================= COMPONENT ================= */
 const AddCustomerVehicle: React.FC<Props> = ({
   open,
@@ -182,20 +195,24 @@ const AddCustomerVehicle: React.FC<Props> = ({
     let updatedModels = [...storedModels];
 
     const normalizedVehicles = validVehicles.map(v => {
+      const formattedMake = toTitleCase(v.make);
+      const formattedModel = toTitleCase(v.model);
+      const formattedVariant = toTitleCase(v.variant);
+
       let model = updatedModels.find(m =>
         m.year === Number(v.year) &&
-        normalize(m.make) === normalize(v.make) &&
-        normalize(m.model) === normalize(v.model) &&
-        normalize(m.variant) === normalize(v.variant)
+        normalize(m.make) === normalize(formattedMake) &&
+        normalize(m.model) === normalize(formattedModel) &&
+        normalize(m.variant) === normalize(formattedVariant)
       );
 
       if (!model) {
         model = {
           id: genId(),
           year: Number(v.year),
-          make: v.make.trim(),
-          model: v.model.trim(),
-          variant: v.variant.trim(),
+          make: formattedMake,
+          model: formattedModel,
+          variant: formattedVariant,
         };
         updatedModels.push(model);
       }
@@ -290,9 +307,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   <Combobox
                     value={v.make}
                     onChange={(val) => {
-                      const canonical = findCanonical(makes(), val) || val;
-
-                      updateVehicle(idx, "make", canonical);
+                      updateVehicle(idx, "make", toTitleCase(val));
                       updateVehicle(idx, "model", "");
                       updateVehicle(idx, "variant", "");
                     }}
@@ -303,7 +318,8 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   <Combobox
                     value={v.model}
                     onChange={(val) => {
-                      const canonical = findCanonical(models(v.make), val) || val;
+                      const formatted = toTitleCase(val);
+                      const canonical = findCanonical(models(v.make), formatted) || formatted;
 
                       updateVehicle(idx, "model", canonical);
                       updateVehicle(idx, "variant", "");
@@ -317,7 +333,8 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   <Combobox
                     value={v.variant}
                     onChange={(val) => {
-                      const canonical = findCanonical(variants(v.make, v.model), val) || val;
+                      const formatted = toTitleCase(val);
+                      const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
 
                       updateVehicle(idx, "variant", canonical);
                     }}

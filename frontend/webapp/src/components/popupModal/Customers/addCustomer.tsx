@@ -71,6 +71,19 @@ const genId = () =>
 
 const normalize = (val: string) => val?.trim().toLowerCase();
 
+const toTitleCase = (str: string) =>
+  (str || "")
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map(word =>
+      word
+        .split("-")
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join("-")
+    )
+    .join(" ");
+
 const emptyVehicle = (): VehicleForm => ({
   id: genId(),
   year: "",
@@ -288,21 +301,25 @@ const emptyVehicle = (): VehicleForm => ({
     const updatedModels: VehicleModel[] = [...vehicleModels];
 
     const finalVehicles: Vehicle[] = validVehicles.map(v => {
+      const formattedMake = toTitleCase(v.make);
+      const formattedModel = toTitleCase(v.model);
+      const formattedVariant = toTitleCase(v.variant);
+  
       let match = updatedModels.find(
         m =>
           m.year === Number(v.year) &&
-          normalize(m.make) === normalize(v.make) &&
-          normalize(m.model) === normalize(v.model) &&
-          normalize(m.variant) === normalize(v.variant)
+          normalize(m.make) === normalize(formattedMake) &&
+          normalize(m.model) === normalize(formattedModel) &&
+          normalize(m.variant) === normalize(formattedVariant)
       );
 
       if (!match) {
         match = {
           id: genId(),
           year: Number(v.year),
-          make: v.make.trim(),
-          model: v.model.trim(),
-          variant: v.variant.trim(),
+          make: formattedMake,
+          model: formattedModel,
+          variant: formattedVariant,
         };
         updatedModels.push(match);
       }
@@ -484,7 +501,7 @@ const emptyVehicle = (): VehicleForm => ({
                         <Combobox
                           value={v.make}
                           onChange={(val) => {
-                            updateVehicle(v.id, "make", val);
+                            updateVehicle(v.id, "make", toTitleCase(val));
                             updateVehicle(v.id, "model", "");
                             updateVehicle(v.id, "variant", "");
                           }}
@@ -497,7 +514,8 @@ const emptyVehicle = (): VehicleForm => ({
                         <Combobox
                           value={v.model}
                           onChange={(val) => {
-                            const canonical = findCanonical(models(v.make), val) || val;
+                            const formatted = toTitleCase(val);
+                            const canonical = findCanonical(models(v.make), formatted) || formatted;
 
                             updateVehicle(v.id, "model", canonical);
                             updateVehicle(v.id, "variant", "");
@@ -514,7 +532,8 @@ const emptyVehicle = (): VehicleForm => ({
                         <Combobox
                           value={v.variant}
                           onChange={(val) => {
-                            const canonical = findCanonical(variants(v.make, v.model), val) || val;
+                            const formatted = toTitleCase(val);
+                            const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
 
                             updateVehicle(v.id, "variant", canonical);
                           }}

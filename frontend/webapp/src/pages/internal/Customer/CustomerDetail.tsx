@@ -142,6 +142,11 @@ const CustomerDetail: React.FC = () => {
     setVehicleModels(freshModels);
   };
 
+  const reloadCustomer = () => {
+    const customers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    setCustomerData(customers.find((c: Customer) => c.id === id));
+  };  
+
   /* ================= MAP ================= */
   const vehicleModelMap = useMemo(() => {
     const map: Record<string, VehicleModel> = {};
@@ -821,6 +826,7 @@ useEffect(() => {
           setOpenEdit(val);
           if (!val) {
             reloadVehiclesAndModels();
+            reloadCustomer();
           }
         }}
         customer={customerData}
@@ -828,9 +834,8 @@ useEffect(() => {
           if (!customerData) return;
 
           reloadVehiclesAndModels();
-
+          reloadCustomer();
           setVehicleToEdit(null);
-
           setSelectedVehicle(null);
         }}
       />

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
-import AddCustomer from "@/components/popupModal/Customers/addCustomer";
+import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { ImageIcon } from "lucide-react";
 
 interface Customer {
@@ -59,25 +59,6 @@ const lastNames = [
   "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"
 ];
 
-const generateDummyCustomers = (): Customer[] => {
-  return Array.from({ length: 30 }, (_, i) => {
-    const firstName = firstNames[i % firstNames.length];
-    const lastName = lastNames[i % lastNames.length];
-
-    return {
-      id: `cust-${i + 1}`,
-      firstName,
-      lastName,
-      address: `Street ${i + 1}, City`,
-      mobileNumber: `0917${String(1000000 + i)}`,
-      landline: i % 2 === 0 ? `02-${String(8000000 + i)}` : "",
-      email: `customer${i + 1}@mail.com`,
-      businessPhone: `02-${String(7000000 + i)}`,
-    };
-  });
-};
-
-
 
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -107,25 +88,13 @@ const CustomersList: React.FC = () => {
 
       if (stored) {
         const parsed: Customer[] = JSON.parse(stored);
-
-        if (!parsed.length) {
-          const dummy = generateDummyCustomers();
-          setCustomers(dummy);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
-        } else {
-          setCustomers(parsed);
-        }
+        setCustomers(parsed || []);
       } else {
-        const dummy = generateDummyCustomers();
-        setCustomers(dummy);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+        setCustomers([]);
       }
     } catch (err) {
       console.error("Failed to load customers", err);
-
-      const dummy = generateDummyCustomers();
-      setCustomers(dummy);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      setCustomers([]);
     }
   }, []);
 
@@ -164,14 +133,14 @@ const CustomersList: React.FC = () => {
   }, [customers]);
 
   /* SEARCH & FILTER */
-const normalize = (val: string) =>
-  (val || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  const normalize = (val: string) =>
+    (val || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
 
-const filtered = useMemo(() => {
-  const q = normalize(search);
+  const filtered = useMemo(() => {
+    const q = normalize(search);
   
 
   return customers.filter((c) => {
@@ -397,7 +366,7 @@ const toolbarFilters = [
         </Card>
       )}
 
-      <AddCustomer
+      <CustomerFormModal
         open={customerModalOpen}
         onOpenChange={setCustomerModalOpen}
         onSaved={(newCustomer: Customer) => {

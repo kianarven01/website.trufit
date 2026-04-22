@@ -20,14 +20,14 @@ export const metadata: Metadata = {
     default: "Trufit Auto Center | Quality Automotive Service & Maintenance",
     template: "%s | Trufit Auto Center",
   },
-  description:
-    "Professional vehicle diagnostics, authorized Suzuki Service Station, and expert automotive maintenance in Camarines Norte.",
+  description: "Authorized Suzuki Service & Professional Car Care in Daet. Specialized in Oil Change, Wheel Alignment, Battery Replacement, Tune-ups, and repairs for Ford, Toyota, Mitsubishi, and all major brands.",
+  keywords: ["car service center", "auto shop near me", "wheel alignment", "battery replacement", "oil change", "engine diagnostics", "PMS", "Ford repair", "Toyota service", "Suzuki authorized center", "Daet Camarines Norte", "transmission repair", "exhaust repair"],
   alternates: {
     canonical: "https://trufitautocenter.com",
   },
   openGraph: {
     title: "Trufit Auto Center | Quality Automotive Service",
-    description: "Professional vehicle diagnostics and repair services.",
+    description: "Expert car care, wheel alignment, and authorized Suzuki service in Daet.",
     url: "https://trufitautocenter.com",
     siteName: "Trufit Auto Center",
     locale: "en_PH",
@@ -75,16 +75,29 @@ export default function RootLayout({
               openingHoursSpecification: {
                 "@type": "OpeningHoursSpecification",
                 dayOfWeek: [
-                  "Monday",
-                  "Tuesday",
-                  "Wednesday",
-                  "Thursday",
-                  "Friday",
-                  "Saturday",
+                  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
                 ],
                 opens: "08:00",
-                closes: "17:00",
+                closes: "17:00"
               },
+              makesOffer: [
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Oil Change" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Wheel Alignment" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Battery Replacement" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Engine Diagnostics" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Brake Repair" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Preventive Maintenance Service (PMS)" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Transmission Repair" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Ford Repair & Service" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Toyota Repair & Service" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Mitsubishi Repair & Service" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Honda Repair & Service" } },
+                { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Isuzu Repair & Service" } }
+              ],
+              areaServed: {
+                "@type": "AdministrativeArea",
+                "name": "Camarines Norte"
+              }
             }),
           }}
         />

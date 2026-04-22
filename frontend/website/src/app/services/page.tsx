@@ -7,8 +7,7 @@ import ServicesCTABlock from "@/components/services/ServicesCTABlock";
 
 export const metadata: Metadata = {
   title: "Authorized Suzuki Service & Professional PMS",
-  description:
-    "Explore our wide range of automotive services including Suzuki quality service, PMS, engine diagnostics, and specialized repairs for all major brands.",
+  description: "Specialized automotive services in Daet. Wheel alignment, battery replacement, oil change (PMS), and expert repairs for Ford, Toyota, Mitsubishi, and all major brands.",
   alternates: {
     canonical: "https://trufitautocenter.com/services",
   },

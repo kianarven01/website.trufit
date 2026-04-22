@@ -38,7 +38,7 @@ export default function NewsCard({ item, index }: Props) {
           <span>{item.date}</span>
         </div>
 
-        <h3 className="font-brawler text-xl md:text-2xl font-bold text-white mb-4 line-clamp-2 leading-tight group-hover:text-brand-red transition-colors">
+        <h3 className="font-bold text-xl md:text-2xl text-white mb-4 line-clamp-2 leading-tight group-hover:text-brand-red transition-colors tracking-tight">
           {item.title}
         </h3>
 

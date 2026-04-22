@@ -41,11 +41,11 @@ export default function NewsFeatured({ item }: Props) {
           </div>
         </div>
 
-        <h2 className="font-brawler text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-6 uppercase leading-[1.1] group-hover:text-brand-red transition-colors duration-300">
+        <h2 className="font-semibold text-3xl md:text-5xl lg:text-6xl text-white mb-6 uppercase leading-[1.1] group-hover:text-brand-red transition-colors duration-300 tracking-tight">
           {item.title}
         </h2>
 
-        <p className="text-gray-400 text-base md:text-xl leading-relaxed mb-8 max-w-xl font-light">
+        <p className="text-gray-400 text-base md:text-xl leading-relaxed mb-8 max-w-xl font-medium">
           {item.excerpt}
         </p>
 

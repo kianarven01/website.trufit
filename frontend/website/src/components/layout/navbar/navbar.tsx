@@ -102,9 +102,17 @@ export default function Navbar() {
 
   // disable background scroll when mobile menu is open
   useEffect(() => {
-    if (isOpen || isAppointmentOpen) document.body.classList.add("overflow-hidden")
-    else document.body.classList.remove("overflow-hidden")
-    return () => document.body.classList.remove("overflow-hidden")
+    if (isOpen || isAppointmentOpen) {
+      document.body.classList.add("overflow-hidden")
+      document.documentElement.classList.add("overflow-hidden")
+    } else {
+      document.body.classList.remove("overflow-hidden")
+      document.documentElement.classList.remove("overflow-hidden")
+    }
+    return () => {
+      document.body.classList.remove("overflow-hidden")
+      document.documentElement.classList.remove("overflow-hidden")
+    }
   }, [isOpen, isAppointmentOpen])
 
   const linkStyle = `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${

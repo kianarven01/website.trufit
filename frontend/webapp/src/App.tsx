@@ -19,7 +19,7 @@ import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 import Appointments from "./pages/internal/Appointments";
 
 import JobOrder from "./pages/internal/Services/JobOrder";
-import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
+import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
 import SalesOrderDetails from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";

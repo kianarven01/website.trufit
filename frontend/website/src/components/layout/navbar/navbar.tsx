@@ -222,7 +222,7 @@ export default function Navbar() {
                   <Link
                     key={link.name}
                     href={link.href}
-                    className="text-white text-3xl font-brawler hover:text-brand-red transition-colors"
+                    className="text-white text-3xl hover:text-brand-red transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.name}

@@ -73,6 +73,14 @@ const App: React.FC = () => {
                 <Route path=":id" element={<CustomerDetail />} />
               </Route>
 
+              {/* Services */}
+              <Route path="services">
+                <Route path="service-catalog">
+                  <Route index element={<ServiceCatalog />} />
+                </Route>
+
+              </Route>
+
               {/* Sales */}
               <Route path="sales">
                 <Route path="sales-orders">
@@ -104,8 +112,6 @@ const App: React.FC = () => {
             <Route path="/webapp/appointments" element={<Appointments />} />
 
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
-            <Route path="/webapp/services/service-catalog" element={<ServiceCatalog />} />
-
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
               <Route index element={<VehiclesPage />} />

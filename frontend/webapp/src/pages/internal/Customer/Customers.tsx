@@ -48,18 +48,6 @@ const VEHICLE_STORAGE_KEY = "vehicles";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
 
 
-/* ✅ DUMMY DATA */
-const firstNames = [
-  "John", "Jane", "Michael", "Sarah", "David",
-  "Anna", "James", "Emily", "Daniel", "Sophia"
-];
-
-const lastNames = [
-  "Smith", "Johnson", "Brown", "Williams", "Jones",
-  "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"
-];
-
-
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");

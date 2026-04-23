@@ -6,11 +6,17 @@ use App\Domains\Product\Domain\Models\Manufacturers;
 
 class ManufacturerService
 {
-    public function findOrCreateByName(string $name): Manufacturers
+    public function getAll()
     {
-        return Manufacturers::firstOrCreate(
-            ['name' => ucfirst(strtolower(trim($name)))],
-            ['type' => 'vehicle']
-        );
+        return Manufacturers::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    public function create(array $data)
+    {
+        return Manufacturers::create([
+            'name' => $data['name'],
+        ]);
     }
 }

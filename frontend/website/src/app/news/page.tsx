@@ -49,8 +49,8 @@ export default function NewsPage() {
             />
           </div>
 
-          {/* If "All" or "News", show featured item first */}
-          {(activeCategory === "All" || activeCategory === "News") && featuredItem && (
+          {/* Show featured item if it matches the active category or if we're viewing "All" */}
+          {featuredItem && (activeCategory === "All" || featuredItem.category === activeCategory) && (
             <NewsFeatured item={featuredItem} />
           )}
 

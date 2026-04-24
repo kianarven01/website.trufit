@@ -5,6 +5,9 @@ import { useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import { ChevronDown } from "lucide-react";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function NewsHero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +29,18 @@ export default function NewsHero() {
         { opacity: 1, duration: 0.6, ease: "power2.out" },
         "-=0.2"
       );
+
+      // Parallax Effect
+      gsap.to(".hero-bg-parallax", {
+        yPercent: 20,
+        ease: "none",
+        scrollTrigger: {
+          trigger: containerRef.current,
+          start: "top top",
+          end: "bottom top",
+          scrub: true
+        }
+      });
     }, containerRef);
 
     return () => ctx.revert();
@@ -38,9 +53,9 @@ export default function NewsHero() {
     >
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 hero-bg-parallax scale-110">
           <Image 
-              src="/news_hero_background_1776877649227.png"
+              src="/images/news/news_hero.webp"
               alt="Trufit News and Articles"
               fill
               priority

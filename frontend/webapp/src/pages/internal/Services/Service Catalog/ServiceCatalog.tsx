@@ -1,23 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
+import ServiceCatalogForm from "./ServiceCatalogForm";
+
 import { ImageIcon } from "lucide-react";
 
 /* ================= STORAGE ================= */
@@ -86,6 +77,7 @@ const seedData = () => {
 
 /* ================= COMPONENT ================= */
 const ServiceCatalogList: React.FC = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [search, setSearch] = useState("");
@@ -204,7 +196,7 @@ const ServiceCatalogList: React.FC = () => {
       <DataToolbar
         searchPlaceholder="Search services..."
         onSearch={setSearch}
-        onAdd={() => {}}
+        onAdd={() => navigate("/webapp/services/service-catalog/new-service")}
         addLabel="Add Service"
         filters={toolbarFilters}
         onFilterChange={handleFilterChange}

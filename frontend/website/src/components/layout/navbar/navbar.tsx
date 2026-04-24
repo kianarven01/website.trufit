@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Phone, Mail, Clock, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import BibleVerseMarquee from "./BibleVerseMarquee"
 import { useModalStore } from "@/store/useModalStore"
 
 export default function Navbar() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
@@ -115,9 +117,11 @@ export default function Navbar() {
     }
   }, [isOpen, isAppointmentOpen])
 
-  const linkStyle = `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${
-    isScrolled ? "text-brand-dark" : "text-white"
-  }`
+  const getLinkStyle = (isActive: boolean) => {
+    const baseColor = isActive ? "!text-brand-red font-semibold" : isScrolled ? "text-brand-dark" : "text-white";
+    const underline = isActive ? "after:w-full" : "after:w-0";
+    return `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] ${underline} after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${baseColor}`;
+  }
 
   return (
     <header
@@ -178,11 +182,14 @@ export default function Navbar() {
 
             {/* desktop nav - hidden below lg */}
             <div className="hidden lg:flex flex-1 justify-center gap-12 ml-4">
-              {navLinks.map((link) => (
-                <Link key={link.name} href={link.href} className={linkStyle}>
-                  {link.name}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+                return (
+                  <Link key={link.name} href={link.href} className={getLinkStyle(isActive ?? false)}>
+                    {link.name}
+                  </Link>
+                );
+              })}
             </div>
 
             {/* desktop book button - hidden below lg */}
@@ -226,16 +233,19 @@ export default function Navbar() {
                 <X size={32} />
               </button>
               <div className="flex flex-col items-center gap-6 py-20 min-h-full">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="text-white text-3xl hover:text-brand-red transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className={`text-3xl transition-colors ${isActive ? 'text-brand-red font-bold' : 'text-white hover:text-brand-red'}`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  );
+                })}
 
                 <button
                   onClick={() => {

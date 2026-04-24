@@ -199,28 +199,28 @@ export default function HeroSlide({ slide, isActive }: Props) {
             {/* Accreditations Part */}
             <div 
               ref={accreditationsRef}
-              className="flex flex-wrap items-center gap-4 md:gap-10"
+              className="flex flex-wrap items-center gap-6 md:gap-14"
               style={{ 
                 opacity: isActive ? 0 : 1,
                 ...consistentTextStyle 
               }}
             >
-              <div className="flex items-center gap-2 md:gap-3">
-                <Image src="/images/accreditations/suzuki.webp" alt="Suzuki Authorized" width={100} height={100} className="w-auto h-4 md:h-6 object-contain" />
-                <div className="text-[8px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
-                  Authorized<br/><span className="text-gray-400 font-normal">Service Station</span>
+              <div className="flex items-center gap-3 md:gap-4">
+                <Image src="/images/accreditations/suzuki.webp" alt="Suzuki Authorized" width={140} height={140} className="w-auto h-8 md:h-12 object-contain" />
+                <div className="text-[10px] md:text-sm uppercase font-bold tracking-tight leading-tight">
+                  Authorized<br/><span className="text-gray-400 font-medium">Service Station</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:gap-3">
-                <Image src="/images/accreditations/dti.webp" alt="DTI 5 Star" width={40} height={40} className="w-6 h-6 md:w-10 md:h-10 object-contain" />
-                <div className="text-[8px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
-                  5 Star Classification<br/><span className="text-gray-400 font-normal">Motor Vehicle and Heavy Equipment</span>
+              <div className="flex items-center gap-3 md:gap-4">
+                <Image src="/images/accreditations/dti.webp" alt="DTI 5 Star" width={60} height={60} className="w-10 h-10 md:w-16 md:h-16 object-contain" />
+                <div className="text-[10px] md:text-sm uppercase font-bold tracking-tight leading-tight">
+                  5 Star Classification<br/><span className="text-gray-400 font-medium">Motor Vehicle and Heavy Equipment</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:gap-3">
-                <Image src="/images/accreditations/bagwis.webp" alt="Bronze Bagwis" width={40} height={40} className="w-6 h-6 md:w-10 md:h-10 object-contain" />
-                <div className="text-[8px] md:text-xs uppercase font-semibold tracking-tighter leading-tight">
-                  Bronze Bagwis<br/><span className="text-gray-400 font-normal">Seal of Excellence</span>
+              <div className="flex items-center gap-3 md:gap-4">
+                <Image src="/images/accreditations/bagwis.webp" alt="Bronze Bagwis" width={60} height={60} className="w-10 h-10 md:w-16 md:h-16 object-contain" />
+                <div className="text-[10px] md:text-sm uppercase font-bold tracking-tight leading-tight">
+                  Bronze Bagwis<br/><span className="text-gray-400 font-medium">Seal of Excellence</span>
                 </div>
               </div>
             </div>

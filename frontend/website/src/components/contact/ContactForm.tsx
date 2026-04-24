@@ -12,6 +12,7 @@ export default function ContactForm() {
     phone: "",
     service: "",
     message: "",
+    website_url: "",
   });
 
   const [submitted, setSubmitted] = useState(false);
@@ -69,6 +70,7 @@ export default function ContactForm() {
         phone: "",
         service: "",
         message: "",
+        website_url: "",
       });
     }, 4000);
   };
@@ -89,6 +91,18 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2" id="contact-form">
+      {/* HONEYPOT - Hidden from real users to catch bots */}
+      <div style={{ position: "absolute", width: "0", height: "0", overflow: "hidden", opacity: 0 }}>
+        <input
+          type="text"
+          name="website_url"
+          tabIndex={-1}
+          autoComplete="off"
+          value={(form as any).website_url || ""}
+          onChange={handleChange}
+        />
+      </div>
+
       {/* FIRST NAME */}
       <div className="relative">
         <input
@@ -212,13 +226,13 @@ export default function ContactForm() {
       <div className="md:col-span-2">
         <p className="text-white/30 text-[11px] text-center leading-relaxed font-barlow">
           By submitting this form, you agree to our{" "}
-          <span className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
+          <a href="/terms" className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
             Terms of Service
-          </span>{" "}
+          </a>{" "}
           and{" "}
-          <span className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
+          <a href="/privacy" className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
             Privacy Policy
-          </span>
+          </a>
           .
         </p>
       </div>

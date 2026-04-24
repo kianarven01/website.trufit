@@ -19,4 +19,6 @@ Route::prefix('vehicles')->group(function () {
 
     Route::put('/variants/{variantId}', [VehicleController::class, 'updateVariant']);
     Route::delete('/variants/{variantId}', [VehicleController::class, 'destroyVariant']);
+
+    
 });

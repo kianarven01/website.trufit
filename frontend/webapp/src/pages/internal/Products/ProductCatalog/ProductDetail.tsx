@@ -214,7 +214,10 @@ const ProductDetail: React.FC = () => {
             return;
           }
         } catch (error) {
-          console.warn("GET /products/:id failed, falling back to list fetch", error);
+          console.warn(
+            `GET /products/${selectedProductId} failed, falling back to list fetch`,
+            error
+          );
         }
       }
 

@@ -14,4 +14,7 @@ Route::prefix('products')->group(function () {
     Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
 
     Route::get('/suppliers', [SupplierController::class, 'index']);
+
+
+    Route::get('/{id}', [ProductController::class, 'show']);
 });

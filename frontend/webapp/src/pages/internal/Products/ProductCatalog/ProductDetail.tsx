@@ -88,6 +88,7 @@ const normalizeProduct = (row: any): Product => ({
   category:
     row.category?.name || row.Category?.name || row.category_name || "-",
   manufacturer:
+    row.manufacturer_name ||
     row.manufacturer ||
     row.brand?.name ||
     row.Brand?.name ||
@@ -124,12 +125,12 @@ const ProductDetail: React.FC = () => {
     vehicleSlug,
     variantSlug,
     categorySlug,
-    productNameSlug,
+    productId,
   } = useParams<{
     vehicleSlug: string;
     variantSlug: string;
     categorySlug: string;
-    productNameSlug: string;
+    productId: string;
   }>();
 
   const routeState = location.state as
@@ -144,6 +145,7 @@ const ProductDetail: React.FC = () => {
 
   const [product, setProduct] = useState<Product | null>(routeState?.product || null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [loading, setLoading] = useState(!routeState?.product);
 
@@ -160,9 +162,27 @@ const ProductDetail: React.FC = () => {
     );
   };
 
+  const loadManufacturers = async () => {
+    try {
+      const res = await api.get("/products/manufacturers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setManufacturers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.name || ""),
+          supplier_code: "",
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load manufacturers:", error);
+      setManufacturers([]);
+    }
+  };
+
   const loadSuppliers = async () => {
     try {
-      const res = await api.get("/suppliers");
+      const res = await api.get("/products/suppliers");
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
       setSuppliers(
@@ -182,9 +202,11 @@ const ProductDetail: React.FC = () => {
     setLoading(true);
 
     try {
-      if (routeState?.productId) {
+      const selectedProductId = routeState?.productId || productId;
+
+      if (selectedProductId) {
         try {
-          const byIdRes = await api.get(`/products/${routeState.productId}`);
+          const byIdRes = await api.get(`/products/${selectedProductId}`);
           const row = byIdRes.data?.data ?? byIdRes.data;
 
           if (row) {
@@ -208,8 +230,7 @@ const ProductDetail: React.FC = () => {
       const normalized = (Array.isArray(rows) ? rows : []).map(normalizeProduct);
 
       const found =
-        normalized.find((item) => item.id === routeState?.productId) ||
-        normalized.find((item) => slugify(item.name) === productNameSlug) ||
+        normalized.find((item) => item.id === selectedProductId) ||
         null;
 
       setProduct(found);
@@ -222,9 +243,9 @@ const ProductDetail: React.FC = () => {
   };
 
   useEffect(() => {
-    void Promise.all([loadCategories(), loadSuppliers()]);
+    void Promise.all([loadCategories(), loadManufacturers(), loadSuppliers()]);
     void loadProduct();
-  }, [routeState?.productId, productNameSlug]);
+  }, [routeState?.productId, productId]);
 
   const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
   const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
@@ -530,24 +551,11 @@ const ProductDetail: React.FC = () => {
       <ProductModal
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
-        product={{
-          id: product.id,
-          image: product.image || "",
-          name: product.name,
-          sku: product.sku,
-          category: product.category,
-          description: product.description,
-          cost: product.costPrice,
-          price: product.price,
-          partNumber: product.partNumber,
-          barcode: product.barcode || "",
-          supplierName: product.supplier || "",
-          unit: product.unit,
-          categoryId: product.categoryId ?? null,
-          supplierCode: product.supplierCode || "",
-        }}
         categories={categories}
+        manufacturers={manufacturers}
         suppliers={suppliers}
+        variantId={routeState?.variantId || null}
+        categoryId={routeState?.categoryId || (product.categoryId ? String(product.categoryId) : null)}
         onSaved={async () => {
           await loadProduct();
         }}

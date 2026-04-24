@@ -473,9 +473,7 @@ const ProductsList: React.FC = () => {
                       key={product.id}
                       onClick={() =>
                         navigate(
-                          `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${slugify(
-                            product.name
-                          )}`,
+                          `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`,
                           {
                             state: {
                               productId: product.id,

@@ -3,7 +3,8 @@
 namespace App\Domains\Product\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Validator;
 
 class StoreProductRequest extends FormRequest
 {
@@ -16,7 +17,7 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'SKU' => ['required', 'string', 'max:255', Rule::unique('Main.Products', 'SKU')],
+            'SKU' => ['required', 'string', 'max:255'],
             'cost' => ['required', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
 
@@ -27,7 +28,7 @@ class StoreProductRequest extends FormRequest
             'unit' => ['nullable', 'integer'],
             'manufacturer_id' => ['nullable', 'integer'],
 
-            'barcode' => ['nullable', 'string', 'max:255', Rule::unique('Main.Products', 'barcode')],
+            'barcode' => ['nullable', 'string', 'max:255'],
             'part_number' => ['required', 'string', 'max:255'],
             'part_id' => ['nullable', 'integer'],
 
@@ -37,5 +38,21 @@ class StoreProductRequest extends FormRequest
             'car_variant_id' => ['nullable', 'integer'],
             'compatibility_notes' => ['nullable', 'string'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $sku = $this->input('SKU');
+            $barcode = $this->input('barcode');
+
+            if ($sku && DB::table('Main.Products')->where('SKU', $sku)->exists()) {
+                $validator->errors()->add('SKU', 'The SKU has already been taken.');
+            }
+
+            if ($barcode && DB::table('Main.Products')->where('barcode', $barcode)->exists()) {
+                $validator->errors()->add('barcode', 'The barcode has already been taken.');
+            }
+        });
     }
 }

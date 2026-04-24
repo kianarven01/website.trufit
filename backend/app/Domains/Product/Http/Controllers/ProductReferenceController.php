@@ -11,30 +11,20 @@ class ProductReferenceController extends Controller
 {
     public function categories(GetCategories $getCategories)
     {
-        $categories = $getCategories->execute();
-
-        return response()->json($categories);
+        return response()->json($getCategories->execute());
     }
 
     public function units()
     {
-        $units = Unit::select('id', 'name')
-            ->orderBy('name')
-            ->get();
-
         return response()->json([
-            'data' => $units,
+            'data' => Unit::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
     public function manufacturers()
     {
-        $manufacturers = Manufacturers::select('id', 'name')
-            ->orderBy('name')
-            ->get();
-
         return response()->json([
-            'data' => $manufacturers,
+            'data' => Manufacturers::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 }

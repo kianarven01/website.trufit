@@ -138,6 +138,7 @@ const ProductsList: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [variants, setVariants] = useState<VariantInfo[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -261,6 +262,23 @@ const ProductsList: React.FC = () => {
     }
   };
 
+  const loadSuppliers = async () => {
+    try {
+      const res = await api.get("/products/suppliers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setSuppliers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.name || row.CompanyName || ""),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load suppliers:", error);
+      setSuppliers([]);
+    }
+  };
+
   const loadProducts = async (
     vehicleId?: string | null,
     variantId?: string | null,
@@ -280,7 +298,12 @@ const ProductsList: React.FC = () => {
   const loadPageData = async () => {
     setLoading(true);
     try {
-      await Promise.all([loadCategories(), loadManufacturers(), loadVehiclesAndResolveIds()]);
+      await Promise.all([
+        loadCategories(),
+        loadManufacturers(),
+        loadSuppliers(),
+        loadVehiclesAndResolveIds(),
+      ]);
     } catch (error) {
       console.error("Failed initial load on products page:", error);
     } finally {
@@ -553,6 +576,7 @@ const ProductsList: React.FC = () => {
         onOpenChange={setOpenModal}
         categories={categories}
         manufacturers={manufacturers}
+        suppliers={suppliers}
         variantId={resolvedVariantId}
         categoryId={resolvedCategoryId}
         onSaved={refreshProducts}

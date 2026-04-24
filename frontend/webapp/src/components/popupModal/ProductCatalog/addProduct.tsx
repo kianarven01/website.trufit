@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { UploadCloud, X } from "lucide-react";
 import api from "@/api/axios";
+
 import {
   Dialog,
   DialogContent,
@@ -7,6 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -20,6 +23,7 @@ interface ProductModalProps {
   onOpenChange: (open: boolean) => void;
   categories: Option[];
   manufacturers: Option[];
+  suppliers: Option[];
   variantId?: string | null;
   categoryId?: string | null;
   onSaved: () => Promise<void> | void;
@@ -30,13 +34,18 @@ export default function ProductModal({
   onOpenChange,
   categories,
   manufacturers,
+  suppliers,
   variantId,
   categoryId,
   onSaved,
 }: ProductModalProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [units, setUnits] = useState<Option[]>([]);
   const [saving, setSaving] = useState(false);
-  const [image, setImage] = useState<File | null>(null);
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -46,6 +55,7 @@ export default function ProductModal({
     category_id: categoryId || "",
     unit: "",
     manufacturer_id: "",
+    supplier_id: "",
     barcode: "",
     part_number: "",
     is_oem: false,
@@ -70,6 +80,13 @@ export default function ProductModal({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
   const resetForm = () => {
     setForm({
       name: "",
@@ -79,12 +96,15 @@ export default function ProductModal({
       category_id: categoryId || "",
       unit: "",
       manufacturer_id: "",
+      supplier_id: "",
       barcode: "",
       part_number: "",
       is_oem: false,
       oem_reference_number: "",
     });
-    setImage(null);
+
+    setImageFile(null);
+    setImagePreview("");
   };
 
   const handleSave = async () => {
@@ -109,7 +129,7 @@ export default function ProductModal({
       }
 
       if (variantId) payload.append("car_variant_id", variantId);
-      if (image) payload.append("image", image);
+      if (imageFile) payload.append("image", imageFile);
 
       await api.post("/products", payload, {
         headers: {
@@ -128,14 +148,70 @@ export default function ProductModal({
     }
   };
 
+  const canSave =
+    form.name.trim() &&
+    form.SKU.trim() &&
+    form.cost.trim() &&
+    form.part_number.trim();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Add Product</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
+          <div
+            className="col-span-2 border border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/30 transition"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleFile(file);
+            }}
+          >
+            {imagePreview ? (
+              <div className="relative w-full">
+                <img
+                  src={imagePreview}
+                  alt="Product preview"
+                  className="w-full h-48 object-cover rounded-lg border"
+                />
+
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 bg-background border rounded-full p-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setImageFile(null);
+                    setImagePreview("");
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">Drop product image here</p>
+                <p className="text-xs text-muted-foreground">or click to browse</p>
+              </>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
+            />
+          </div>
+
           <Input
             placeholder="Product name"
             value={form.name}
@@ -189,6 +265,19 @@ export default function ProductModal({
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
+            value={form.supplier_id}
+            onChange={(e) => updateField("supplier_id", e.target.value)}
+          >
+            <option value="">Select supplier optional</option>
+            {suppliers.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
             value={form.unit}
             onChange={(e) => updateField("unit", e.target.value)}
           >
@@ -211,13 +300,6 @@ export default function ProductModal({
             placeholder="Description"
             value={form.description}
             onChange={(e) => updateField("description", e.target.value)}
-          />
-
-          <Input
-            className="col-span-2"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setImage(e.target.files?.[0] || null)}
           />
 
           <label className="col-span-2 flex items-center gap-2 text-sm">
@@ -243,7 +325,8 @@ export default function ProductModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+
+          <Button onClick={handleSave} disabled={saving || !canSave}>
             {saving ? "Saving..." : "Save Product"}
           </Button>
         </DialogFooter>

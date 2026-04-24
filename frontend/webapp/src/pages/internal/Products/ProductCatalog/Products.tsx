@@ -81,6 +81,7 @@ const normalizeProduct = (row: any): Product => ({
     row.manufacturer ||
     "",
   manufacturer:
+    row.manufacturer_name ||
     row.manufacturer ||
     row.brand?.name ||
     row.Brand?.name ||
@@ -136,7 +137,7 @@ const ProductsList: React.FC = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
   const [variants, setVariants] = useState<VariantInfo[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -243,21 +244,20 @@ const ProductsList: React.FC = () => {
     setResolvedCategoryId(matchedCategory?.id ? String(matchedCategory.id) : null);
   };
 
-  const loadSuppliers = async () => {
+  const loadManufacturers = async () => {
     try {
-      const res = await api.get("/suppliers");
+      const res = await api.get("/products/manufacturers");
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
-      setSuppliers(
+      setManufacturers(
         (Array.isArray(rows) ? rows : []).map((row: any) => ({
           id: String(row.id),
-          name: String(row.CompanyName || row.name || ""),
-          supplier_code: row.supplier_code || "",
+          name: String(row.name || ""),
         }))
       );
     } catch (error) {
-      console.error("Failed to load suppliers:", error);
-      setSuppliers([]);
+      console.error("Failed to load manufacturers:", error);
+      setManufacturers([]);
     }
   };
 
@@ -280,7 +280,7 @@ const ProductsList: React.FC = () => {
   const loadPageData = async () => {
     setLoading(true);
     try {
-      await Promise.all([loadCategories(), loadSuppliers(), loadVehiclesAndResolveIds()]);
+      await Promise.all([loadCategories(), loadManufacturers(), loadVehiclesAndResolveIds()]);
     } catch (error) {
       console.error("Failed initial load on products page:", error);
     } finally {
@@ -552,7 +552,9 @@ const ProductsList: React.FC = () => {
         open={openModal}
         onOpenChange={setOpenModal}
         categories={categories}
-        suppliers={suppliers}
+        manufacturers={manufacturers}
+        variantId={resolvedVariantId}
+        categoryId={resolvedCategoryId}
         onSaved={refreshProducts}
       />
     </div>

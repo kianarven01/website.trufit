@@ -2,7 +2,6 @@
 
 namespace App\Domains\Product\Domain\Models;
 
-use App\Domains\Supplier\Domain\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
@@ -10,8 +9,13 @@ class Product extends Model
     public $timestamps = false;
 
     protected $table = 'Main.Products';
+    protected $primaryKey = 'id';
+
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'name',
         'SKU',
         'cost',
@@ -37,9 +41,9 @@ class Product extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
-    public function supplier()
+    public function manufacturer()
     {
-        return $this->belongsTo(Supplier::class, 'manufacturer_id');
+        return $this->belongsTo(Manufacturers::class, 'manufacturer_id');
     }
 
     public function unitRelation()

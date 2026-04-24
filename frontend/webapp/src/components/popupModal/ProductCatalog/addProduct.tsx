@@ -1,191 +1,128 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import api from "@/api/axios";
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Combobox from "@/components/ui/combobox";
-import api from "@/api/axios";
 
-export interface ProductModalCategory {
+interface Option {
   id: string;
   name: string;
-  code?: string;
-}
-
-export interface ProductModalSupplier {
-  id: string;
-  name: string;
-  supplier_code?: string;
-}
-
-export interface ProductModalProduct {
-  id?: string;
-  image?: string;
-  name: string;
-  sku: string;
-  category?: string;
-  description?: string;
-  cost?: number;
-  price?: number;
-  partNumber: string;
-  barcode?: string;
-  supplierName?: string;
-  unit?: string;
-  categoryId?: string | number | null;
-  supplierCode?: string;
 }
 
 interface ProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product?: ProductModalProduct | null;
-  categories: ProductModalCategory[];
-  suppliers: ProductModalSupplier[];
+  categories: Option[];
+  manufacturers: Option[];
+  variantId?: string | null;
+  categoryId?: string | null;
   onSaved: () => Promise<void> | void;
 }
 
-const ProductModal: React.FC<ProductModalProps> = ({
+export default function ProductModal({
   open,
   onOpenChange,
-  product,
   categories,
-  suppliers,
+  manufacturers,
+  variantId,
+  categoryId,
   onSaved,
-}) => {
-  const [image, setImage] = useState("");
-  const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [partNumber, setPartNumber] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [categoryName, setCategoryName] = useState("");
-  const [supplierName, setSupplierName] = useState("");
-  const [unit, setUnit] = useState("");
-  const [cost, setCost] = useState("");
-  const [price, setPrice] = useState("");
-  const [description, setDescription] = useState("");
+}: ProductModalProps) {
+  const [units, setUnits] = useState<Option[]>([]);
   const [saving, setSaving] = useState(false);
+  const [image, setImage] = useState<File | null>(null);
 
-  const selectedCategory = useMemo(() => {
-    if (!categories.length) return null;
+  const [form, setForm] = useState({
+    name: "",
+    SKU: "",
+    cost: "",
+    description: "",
+    category_id: categoryId || "",
+    unit: "",
+    manufacturer_id: "",
+    barcode: "",
+    part_number: "",
+    is_oem: false,
+    oem_reference_number: "",
+  });
 
-    if (product?.categoryId != null) {
-      const byId = categories.find(
-        (category) => String(category.id) === String(product.categoryId)
-      );
-      if (byId) return byId;
-    }
-
-    if (product?.category) {
-      const byName = categories.find((category) => category.name === product.category);
-      if (byName) return byName;
-    }
-
-    return null;
-  }, [categories, product]);
-
-  const selectedSupplier = useMemo(() => {
-    if (!suppliers.length) return null;
-
-    if (product?.supplierCode) {
-      const byCode = suppliers.find(
-        (supplier) => supplier.supplier_code === product.supplierCode
-      );
-      if (byCode) return byCode;
-    }
-
-    if (product?.supplierName) {
-      const byName = suppliers.find((supplier) => supplier.name === product.supplierName);
-      if (byName) return byName;
-    }
-
-    return null;
-  }, [suppliers, product]);
-
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isOEM, setIsOEM] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-
-  // Form states
-  const [form, setForm] = useState<any>({});
-
-  // Pricing states
-  const [costPrice, setCostPrice] = useState<number>(0);
-  const [markup, setMarkup] = useState<number>(0);
-  const [sellingPrice, setSellingPrice] = useState<number>(0);
-
-  const [costInput, setCostInput] = useState<string>("");
-  const [markupInput, setMarkupInput] = useState<string>("");
-
-  // Auto compute selling price
   useEffect(() => {
-    if (open) {
-      setImage(product?.image || "");
-      setName(product?.name || "");
-      setSku(product?.sku || "");
-      setPartNumber(product?.partNumber || "");
-      setBarcode(product?.barcode || "");
-      setCategoryName(selectedCategory?.name || "");
-      setSupplierName(selectedSupplier?.name || "");
-      setUnit(product?.unit || "");
-      setCost(product?.cost !== undefined ? String(product.cost) : "");
-      setPrice(product?.price !== undefined ? String(product.price) : "");
-      setDescription(product?.description || "");
-    } else {
-      setImage("");
-      setName("");
-      setSku("");
-      setPartNumber("");
-      setBarcode("");
-      setCategoryName("");
-      setSupplierName("");
-      setUnit("");
-      setCost("");
-      setPrice("");
-      setDescription("");
-    }
-  }, [open, product, selectedCategory, selectedSupplier]);
+    if (!open) return;
+
+    api.get("/products/units").then((res) => {
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      setUnits(rows || []);
+    });
+
+    setForm((prev) => ({
+      ...prev,
+      category_id: categoryId || prev.category_id,
+    }));
+  }, [open, categoryId]);
+
+  const updateField = (key: string, value: string | boolean) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const resetForm = () => {
+    setForm({
+      name: "",
+      SKU: "",
+      cost: "",
+      description: "",
+      category_id: categoryId || "",
+      unit: "",
+      manufacturer_id: "",
+      barcode: "",
+      part_number: "",
+      is_oem: false,
+      oem_reference_number: "",
+    });
+    setImage(null);
+  };
 
   const handleSave = async () => {
-    if (!name.trim() || !partNumber.trim()) return;
-
-    const chosenCategory =
-      categories.find((category) => category.name === categoryName) || null;
-
-    const chosenSupplier =
-      suppliers.find((supplier) => supplier.name === supplierName) || null;
-
-    const payload = {
-      name: name.trim(),
-      SKU: sku.trim() || null,
-      part_number: partNumber.trim(),
-      barcode: barcode.trim() || null,
-      description: description.trim() || null,
-      cost: cost.trim() ? Number(cost) : 0,
-      selling_price: price.trim() ? Number(price) : 0,
-      image_URL: image.trim() || null,
-      category_id: chosenCategory ? chosenCategory.id : null,
-      supplier_id: chosenSupplier ? chosenSupplier.id : null,
-      unit: unit.trim() || null,
-    };
+    setSaving(true);
 
     try {
-      setSaving(true);
+      const payload = new FormData();
 
-      if (product?.id) {
-        await api.put(`/products/${product.id}`, payload);
-      } else {
-        await api.post("/products", payload);
+      payload.append("name", form.name);
+      payload.append("SKU", form.SKU);
+      payload.append("cost", form.cost);
+      payload.append("part_number", form.part_number);
+      payload.append("is_oem", form.is_oem ? "1" : "0");
+
+      if (form.description) payload.append("description", form.description);
+      if (form.category_id) payload.append("category_id", form.category_id);
+      if (form.unit) payload.append("unit", form.unit);
+      if (form.manufacturer_id) payload.append("manufacturer_id", form.manufacturer_id);
+      if (form.barcode) payload.append("barcode", form.barcode);
+      if (form.oem_reference_number) {
+        payload.append("oem_reference_number", form.oem_reference_number);
       }
 
+      if (variantId) payload.append("car_variant_id", variantId);
+      if (image) payload.append("image", image);
+
+      await api.post("/products", payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       await onSaved();
+      resetForm();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to save product:", error);
+      alert(error?.response?.data?.message || "Failed to save product.");
     } finally {
       setSaving(false);
     }
@@ -193,133 +130,124 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px] rounded-2xl">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            {product ? "Edit Product" : "Add Product"}
-          </DialogTitle>
+          <DialogTitle>Add Product</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Product Name</label>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            placeholder="Product name"
+            value={form.name}
+            onChange={(e) => updateField("name", e.target.value)}
+          />
+
+          <Input
+            placeholder="SKU"
+            value={form.SKU}
+            onChange={(e) => updateField("SKU", e.target.value)}
+          />
+
+          <Input
+            placeholder="Cost"
+            type="number"
+            value={form.cost}
+            onChange={(e) => updateField("cost", e.target.value)}
+          />
+
+          <Input
+            placeholder="Part number"
+            value={form.part_number}
+            onChange={(e) => updateField("part_number", e.target.value)}
+          />
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.category_id}
+            onChange={(e) => updateField("category_id", e.target.value)}
+          >
+            <option value="">Select category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.manufacturer_id}
+            onChange={(e) => updateField("manufacturer_id", e.target.value)}
+          >
+            <option value="">Select manufacturer</option>
+            {manufacturers.map((manufacturer) => (
+              <option key={manufacturer.id} value={manufacturer.id}>
+                {manufacturer.name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.unit}
+            onChange={(e) => updateField("unit", e.target.value)}
+          >
+            <option value="">Select unit</option>
+            {units.map((unit) => (
+              <option key={unit.id} value={unit.id}>
+                {unit.name}
+              </option>
+            ))}
+          </select>
+
+          <Input
+            placeholder="Barcode"
+            value={form.barcode}
+            onChange={(e) => updateField("barcode", e.target.value)}
+          />
+
+          <Input
+            className="col-span-2"
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => updateField("description", e.target.value)}
+          />
+
+          <Input
+            className="col-span-2"
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+          />
+
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.is_oem}
+              onChange={(e) => updateField("is_oem", e.target.checked)}
+            />
+            OEM Product
+          </label>
+
+          {form.is_oem && (
             <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter product name"
+              className="col-span-2"
+              placeholder="OEM reference number"
+              value={form.oem_reference_number}
+              onChange={(e) => updateField("oem_reference_number", e.target.value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">SKU</label>
-            <Input
-              value={sku}
-              onChange={(e) => setSku(e.target.value)}
-              placeholder="Enter SKU"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Part Number</label>
-            <Input
-              value={partNumber}
-              onChange={(e) => setPartNumber(e.target.value)}
-              placeholder="Enter part number"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Barcode</label>
-            <Input
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
-              placeholder="Enter barcode"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Unit</label>
-            <Input
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="e.g. pc, set, box"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Category</label>
-            <Combobox
-              items={categories.map((category) => category.name)}
-              value={categoryName}
-              onChange={setCategoryName}
-              placeholder="Select category"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Supplier</label>
-            <Combobox
-              items={suppliers.map((supplier) => supplier.name)}
-              value={supplierName}
-              onChange={setSupplierName}
-              placeholder="Select supplier"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Cost</label>
-            <Input
-              type="number"
-              step="0.01"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Selling Price</label>
-            <Input
-              type="number"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0.00"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Image URL</label>
-            <Input
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="Paste image URL"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Description</label>
-            <textarea
-              className="w-full min-h-[120px] rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter product description"
-            />
-          </div>
+          )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim() || !partNumber.trim()}>
-            {saving ? "Saving..." : product ? "Save Changes" : "Add Product"}
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Product"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-};
-
-
-export default ProductModal;
+}

@@ -8,21 +8,24 @@ import { Label } from "@/components/ui/label";
 import Combobox from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import DataToolbar from "@/components/DataToolbar";
+import AssignTaskModal from "@/components/popupModal/ServiceCatalog/AssignTasksModal";
 
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { ArrowLeft, Plus, Save, MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, Plus, Save, MoreHorizontal, Clock, Tag, Pencil, Trash2, Check, X } from "lucide-react";
 
 /* ================= STORAGE ================= */
 const CATEGORY_KEY = "serviceCategories";
 const SERVICE_KEY = "services";
 const VEHICLE_SIZE_KEY = "vehicleSizes";
 const PRICING_KEY = "servicePricing";
-const TASK_KEY = "serviceTasks";
+const SERVICE_TASK_KEY = "serviceTasks";
+const TASK_LIBRARY_KEY = "taskLibrary";
+
 
 /* ================= TYPES ================= */
 type PricingType = "fixed" | "hourly rate";
@@ -60,7 +63,11 @@ interface ServicePricing {
 interface ServiceTask {
   id: string;
   serviceId: string;
-  task: string;
+  taskId: string;}
+
+interface TaskLibraryItem {
+  id: string;
+  name: string;
   description?: string;
 }
 
@@ -80,6 +87,8 @@ const [pricing, setPricing] = useState<ServicePricing[]>([]);
 const [tasks, setTasks] = useState<ServiceTask[]>([]);
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+const [assignOpen, setAssignOpen] = useState(false);
+const scrollRef = useRef<HTMLDivElement | null>(null);
 
 /* ================= FORM ================= */
 const [name, setName] = useState("");
@@ -90,6 +99,7 @@ const [pricingType, setPricingType] = useState<PricingType>("fixed");
 
 const [sizePricing, setSizePricing] = useState<Record<string, number>>({});
 const [serviceTasks, setServiceTasks] = useState<ServiceTask[]>([]);
+const [taskLibrary, setTaskLibrary] = useState<TaskLibraryItem[]>([]);
 
 
 /* ================= ADD/EDIT SIZE (INLINE ROW) ================= */
@@ -114,8 +124,10 @@ useEffect(() => {
   setCategories(JSON.parse(localStorage.getItem(CATEGORY_KEY) || "[]"));
   setServices(JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]"));
   setPricing(JSON.parse(localStorage.getItem(PRICING_KEY) || "[]"));
-  setTasks(JSON.parse(localStorage.getItem(TASK_KEY) || "[]"));
   setVehicleSizes(JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]"));
+
+  setTaskLibrary(JSON.parse(localStorage.getItem(TASK_LIBRARY_KEY) || "[]"));
+  setTasks(JSON.parse(localStorage.getItem(SERVICE_TASK_KEY) || "[]"));
 }, []);
 
 
@@ -135,6 +147,21 @@ useEffect(() => {
   };
 }, []);
 
+useEffect(() => {
+  if (isAddingSize && scrollRef.current) {
+    setTimeout(() => {
+      const viewport = scrollRef.current?.querySelector("[data-radix-scroll-area-viewport]");
+      if (viewport) {
+        viewport.scrollTo({
+          top: viewport.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    }, 50);
+  }
+}, [isAddingSize]);
+
+
 /* ================= EDIT LOAD ================= */
 useEffect(() => {
   if (mode === "edit" && id) {
@@ -146,17 +173,11 @@ useEffect(() => {
     setDescription(s.description || "");
     setPricingType(s.pricingType);
 
-    /* load pricing */
     const p = pricing.filter((x) => x.serviceId === id);
     const map: Record<string, number> = {};
-
-    p.forEach((x) => {
-      map[x.vehicleSizeId] = x.price;
-    });
-
+    p.forEach((x) => (map[x.vehicleSizeId] = x.price));
     setSizePricing(map);
 
-    /* load tasks */
     setServiceTasks(tasks.filter((x) => x.serviceId === id));
   }
 }, [mode, id, services, pricing, tasks]);
@@ -190,29 +211,25 @@ const categoryOptions = useMemo(() => {
 }, [categories]);
 
 /* ================= TASKS ================= */
-const addTask = () => {
-  setServiceTasks((prev) => [
-    ...prev,
-    { id: genId(), serviceId: id || "", task: "", description: "" },
-  ]);
+
+const removeTask = (taskId: string) => {
+  setServiceTasks((prev) =>
+    prev.filter((t) => t.taskId !== taskId)
+  );
 };
 
-const updateTask = (
-  index: number,
-  field: "task" | "description",
-  value: string
-) => {
+
+const handleAssignTasks = (newTasks: ServiceTask[]) => {
   setServiceTasks((prev) => {
-    const copy = [...prev];
-    copy[index][field] = value;
-    return copy;
+    const map = new Map<string, ServiceTask>();
+
+    [...prev, ...newTasks].forEach((t) => {
+      map.set(t.taskId, t);
+    });
+
+    return Array.from(map.values());
   });
 };
-
-const removeTask = (index: number) => {
-  setServiceTasks((prev) => prev.filter((_, i) => i !== index));
-};
-
 
 /* ================= VEHICLE SIZE ================= */
 
@@ -371,13 +388,14 @@ const handleSubmit = () => {
   }));
 
   /* -------- TASKS (SAFE MERGE) -------- */
-  const filteredTasks = tasks.filter((t) => t.serviceId !== serviceId);
+  const filteredTasks = tasks.filter(
+    (t) => t.serviceId !== serviceId
+  );
 
   const newTasks: ServiceTask[] = serviceTasks.map((t) => ({
     id: t.id || genId(),
     serviceId,
-    task: t.task,
-    description: t.description,
+    taskId: t.taskId,
   }));
 
   /* -------- SAVE -------- */
@@ -388,13 +406,17 @@ const handleSubmit = () => {
     JSON.stringify([...filteredPricing, ...newPricing])
   );
   localStorage.setItem(
-    TASK_KEY,
+    SERVICE_TASK_KEY,
     JSON.stringify([...filteredTasks, ...newTasks])
   );
+
+  
+  toast.success("Service saved");
 
   navigate(-1);
 };
 
+  /* ================= SCROLLING ================= */
 const MAX_VISIBLE_ROWS = 3;
 
 const rowCount =
@@ -403,6 +425,8 @@ const rowCount =
   (!isAddingSize ? 1 : 0); // + add button row
 
 const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
+
+
 
   /* ================= UI ================= */
   return (
@@ -455,7 +479,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
         }
       />
 
-      <div className="space-y-4">
+      <div className="space-y-6 mb-2">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card>
             <CardHeader>
@@ -498,36 +522,46 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
 
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Pricing</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Choose pricing type and set price per vehicle size.
-              </p>
+              <div className="flex justify-between">
+                <div>
+                  <CardTitle className="text-base">Pricing</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Choose pricing type and set price per vehicle size.
+                  </p>  
+                </div>      
+                  <div className="inline-flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 backdrop-blur-sm">
+                    {[
+                      { id: "fixed", label: "Fixed Price", icon: <Tag className="w-3 h-3" /> },
+                      { id: "hourly rate", label: "Hourly Rate", icon: <Clock className="w-3 h-3" /> },
+                    ].map((type) => {
+                      const isActive = pricingType === type.id;
+                      return (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setPricingType(type.id as PricingType)}
+                          className={cn(
+                            "relative flex items-center gap-2 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ease-out rounded-lg",
+                            isActive 
+                              ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-slate-200" 
+                              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+                          )}
+                        >
+                          <span className={cn("transition-transform duration-200", isActive && "scale-110")}>
+                            {type.icon}
+                          </span>
+                          {type.label}
+                        </button>
+                      );
+                    })}
+                  </div>                     
+              </div>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* TOP ROW */}
-              <div>
-                <div className="space-y-1.5">
-                  <Label>Pricing Type</Label>
-                  <Select
-                    value={pricingType}
-                    onValueChange={(v: PricingType) => setPricingType(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fixed">Fixed</SelectItem>
-                      <SelectItem value="hourly rate">Hourly Rate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
               {/* TABLE */}
               <div>
-                <Label className="mb-2 block">By Vehicle Size</Label>
-
                 <div
                   className={cn(
                     "border rounded-md",
@@ -535,17 +569,18 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   )}
                 >
                   <ScrollArea
+                    ref={scrollRef}
                     className={cn(
-                      shouldScroll ? "h-[250px]" : "h-auto",
-                      "px-3"
+                      shouldScroll ? "h-[270px]" : "h-auto",
+                      "px-2"
                     )}
                   >
                     <Table className="table-fixed w-full border-separate border-spacing-y-2">
                       <TableHeader>
                         <TableRow className="bg-secondary/50">
-                          <TableHead className="text-xs uppercase rounded-l-lg w-[15%]">Size</TableHead>
-                          <TableHead className="text-xs uppercase">Description</TableHead>
-                          <TableHead className="text-xs uppercase text-right">
+                          <TableHead className="text-xs tracking-wide uppercase rounded-l-lg w-[15%]">Size</TableHead>
+                          <TableHead className="text-xs tracking-wide uppercase">Description</TableHead>
+                          <TableHead className="text-xs tracking-wide uppercase text-right">
                             {pricingType === "hourly rate" ? "Rate / hr" : "Price"}
                           </TableHead>
                           <TableHead className="text-xs uppercase text-right rounded-r-lg w-[15%]"></TableHead>
@@ -631,7 +666,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
 
                                     <Button
                                       size="icon_xs"
-                                      variant="ghost"
+                                      variant="destructive"
                                       onClick={handleCancelEditSize}
                                     >
                                       <X className="w-4 h-4" />
@@ -751,6 +786,78 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
           </Card>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Tasks Involved ({serviceTasks.length})</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Necessary tasks to involved to complete this service.
+              </p>              
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setAssignOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Assign Task
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add New Task
+              </Button>
+            </div>
+          </div>
+        </CardHeader> 
+        <CardContent>
+          <Table className="table-fixed w-full border-separate border-spacing-y-2">
+            <TableHeader>
+              <TableRow className="bg-secondary/50">
+                <TableHead className="text-xs tracking-wide uppercase w-[8%]">#</TableHead>
+                <TableHead className="text-xs tracking-wide uppercase w-1/3">Task</TableHead>
+                <TableHead className="text-xs tracking-wide uppercase">Description</TableHead>
+                <TableHead className="w-[8%] rounded-r-lg"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {serviceTasks.map((st, index) => {
+                const task = taskLibrary.find((t) => t.id === st.taskId);
+                return (
+                <TableRow key={st.id}>
+                  <TableCell className="text-xs">{index + 1}</TableCell>
+                  <TableCell className="text-xs">{task?.name}</TableCell>
+                  <TableCell className="text-xs">{task?.description || "—"}</TableCell>
+                  <TableCell className="flex justify-center">
+                    <Button
+                      size="icon_xs"
+                      variant="ghost"
+                      onClick={() => removeTask(st.taskId)} 
+                      className="bg-red-50 hover:bg-red-200"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600"/>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )})}
+            </TableBody>
+          </Table>
+        </CardContent>       
+      </Card>
+
+      <AssignTaskModal
+        open={assignOpen}
+        onOpenChange={setAssignOpen}
+        serviceId={id || ""}
+        existingTasks={serviceTasks}
+        onAssign={handleAssignTasks}
+      />
+
     </div>
   );
 };

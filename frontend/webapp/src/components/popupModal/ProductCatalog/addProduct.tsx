@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { UploadCloud, X } from "lucide-react";
+import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import api from "@/api/axios";
 
 import {
@@ -16,6 +16,11 @@ import { Input } from "@/components/ui/input";
 interface Option {
   id: string;
   name: string;
+}
+
+interface ProductSupplierInput {
+  supplier_id: string;
+  supplier_cost: string;
 }
 
 interface ProductModalProps {
@@ -55,12 +60,13 @@ export default function ProductModal({
     category_id: categoryId || "",
     unit: "",
     manufacturer_id: "",
-    supplier_id: "",
     barcode: "",
     part_number: "",
     is_oem: false,
     oem_reference_number: "",
   });
+
+  const [productSuppliers, setProductSuppliers] = useState<ProductSupplierInput[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -80,6 +86,37 @@ export default function ProductModal({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const addSupplierRow = () => {
+    setProductSuppliers((prev) => [
+      ...prev,
+      {
+        supplier_id: "",
+        supplier_cost: "",
+      },
+    ]);
+  };
+
+  const removeSupplierRow = (index: number) => {
+    setProductSuppliers((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSupplierRow = (
+    index: number,
+    key: keyof ProductSupplierInput,
+    value: string
+  ) => {
+    setProductSuppliers((prev) =>
+      prev.map((supplier, i) =>
+        i === index
+          ? {
+              ...supplier,
+              [key]: value,
+            }
+          : supplier
+      )
+    );
+  };
+
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
 
@@ -96,13 +133,13 @@ export default function ProductModal({
       category_id: categoryId || "",
       unit: "",
       manufacturer_id: "",
-      supplier_id: "",
       barcode: "",
       part_number: "",
       is_oem: false,
       oem_reference_number: "",
     });
 
+    setProductSuppliers([]);
     setImageFile(null);
     setImagePreview("");
   };
@@ -122,11 +159,28 @@ export default function ProductModal({
       if (form.description) payload.append("description", form.description);
       if (form.category_id) payload.append("category_id", form.category_id);
       if (form.unit) payload.append("unit", form.unit);
-      if (form.manufacturer_id) payload.append("manufacturer_id", form.manufacturer_id);
+      if (form.manufacturer_id) {
+        payload.append("manufacturer_id", form.manufacturer_id);
+      }
       if (form.barcode) payload.append("barcode", form.barcode);
       if (form.oem_reference_number) {
         payload.append("oem_reference_number", form.oem_reference_number);
       }
+
+      const validSuppliers = productSuppliers.filter(
+        (supplier) => supplier.supplier_id.trim() !== ""
+      );
+
+      validSuppliers.forEach((supplier, index) => {
+        payload.append(`suppliers[${index}][supplier_id]`, supplier.supplier_id);
+
+        if (supplier.supplier_cost.trim() !== "") {
+          payload.append(
+            `suppliers[${index}][supplier_cost]`,
+            supplier.supplier_cost
+          );
+        }
+      });
 
       if (variantId) payload.append("car_variant_id", variantId);
       if (imageFile) payload.append("image", imageFile);
@@ -156,7 +210,7 @@ export default function ProductModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Product</DialogTitle>
         </DialogHeader>
@@ -196,7 +250,9 @@ export default function ProductModal({
               <>
                 <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
                 <p className="text-sm font-medium">Drop product image here</p>
-                <p className="text-xs text-muted-foreground">or click to browse</p>
+                <p className="text-xs text-muted-foreground">
+                  or click to browse
+                </p>
               </>
             )}
 
@@ -227,6 +283,8 @@ export default function ProductModal({
           <Input
             placeholder="Cost"
             type="number"
+            min="0"
+            step="0.01"
             value={form.cost}
             onChange={(e) => updateField("cost", e.target.value)}
           />
@@ -265,19 +323,6 @@ export default function ProductModal({
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
-            value={form.supplier_id}
-            onChange={(e) => updateField("supplier_id", e.target.value)}
-          >
-            <option value="">Select supplier optional</option>
-            {suppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="border rounded-md px-3 py-2 bg-background"
             value={form.unit}
             onChange={(e) => updateField("unit", e.target.value)}
           >
@@ -302,6 +347,78 @@ export default function ProductModal({
             onChange={(e) => updateField("description", e.target.value)}
           />
 
+          <div className="col-span-2 border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Suppliers</p>
+                <p className="text-xs text-muted-foreground">
+                  Add one or more suppliers for this product.
+                </p>
+              </div>
+
+              <Button type="button" variant="outline" onClick={addSupplierRow}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Supplier
+              </Button>
+            </div>
+
+            {productSuppliers.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No suppliers added yet. Click Add Supplier to link suppliers to
+                this product.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {productSuppliers.map((supplierRow, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-3 items-center"
+                  >
+                    <select
+                      className="col-span-6 border rounded-md px-3 py-2 bg-background"
+                      value={supplierRow.supplier_id}
+                      onChange={(e) =>
+                        updateSupplierRow(index, "supplier_id", e.target.value)
+                      }
+                    >
+                      <option value="">Select supplier</option>
+                      {suppliers.map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <Input
+                      className="col-span-5"
+                      placeholder="Supplier cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={supplierRow.supplier_cost}
+                      onChange={(e) =>
+                        updateSupplierRow(
+                          index,
+                          "supplier_cost",
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="col-span-1 px-2"
+                      onClick={() => removeSupplierRow(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <label className="col-span-2 flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -316,7 +433,9 @@ export default function ProductModal({
               className="col-span-2"
               placeholder="OEM reference number"
               value={form.oem_reference_number}
-              onChange={(e) => updateField("oem_reference_number", e.target.value)}
+              onChange={(e) =>
+                updateField("oem_reference_number", e.target.value)
+              }
             />
           )}
         </div>

@@ -37,6 +37,10 @@ class StoreProductRequest extends FormRequest
 
             'car_variant_id' => ['nullable', 'integer'],
             'compatibility_notes' => ['nullable', 'string'],
+
+            'suppliers' => ['nullable', 'array'],
+            'suppliers.*.supplier_id' => ['required_with:suppliers', 'uuid', 'distinct'],
+            'suppliers.*.supplier_cost' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

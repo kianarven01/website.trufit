@@ -3,6 +3,7 @@
 namespace App\Domains\Product\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\Product\Domain\Models\ProductSupplier;
 
 class Product extends Model
 {
@@ -54,5 +55,10 @@ class Product extends Model
     public function vehicleCompatibilities()
     {
         return $this->hasMany(ProductVehicleCompatibility::class, 'product_id');
+    }
+
+    public function suppliers()
+    {
+        return $this->hasMany(ProductSupplier::class, 'product_id', 'id');
     }
 }

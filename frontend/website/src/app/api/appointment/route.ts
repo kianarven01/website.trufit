@@ -46,16 +46,25 @@ export async function POST(req: Request) {
     // --- SPAM PREVENTION ---
     // 1. Honeypot check
     if (website_url) {
-      console.warn("Honeypot triggered in appointment form");
+      console.warn("Spam triggered in appointment form");
       // Return success so bots don't know they were caught
-      return NextResponse.json({ success: true, message: "Appointment requested successfully!" }, { status: 200 });
+      return NextResponse.json(
+        { success: true, message: "Appointment requested successfully!" },
+        { status: 200 },
+      );
     }
 
     // 2. Rate limiting check
-    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
-    if (ip !== 'unknown' && !checkRateLimit(ip)) {
+    const ip =
+      req.headers.get("x-forwarded-for") ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+    if (ip !== "unknown" && !checkRateLimit(ip)) {
       console.warn(`Rate limit exceeded for IP: ${ip}`);
-      return NextResponse.json({ success: false, error: "Too many requests. Please try again later." }, { status: 429 });
+      return NextResponse.json(
+        { success: false, error: "Too many requests. Please try again later." },
+        { status: 429 },
+      );
     }
     // -----------------------
 

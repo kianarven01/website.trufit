@@ -8,26 +8,32 @@ import "./services.css";
 export default function ServiceVideo() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useGSAP(() => {
-    gsap.fromTo(
-      ".video-reveal",
-      { opacity: 0, y: 40 },
-      { 
-        opacity: 1, 
-        y: 0, 
-        duration: 1, 
-        stagger: 0.2, 
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "top 80%",
-        }
-      }
-    );
-  }, { scope: containerRef });
+  useGSAP(
+    () => {
+      gsap.fromTo(
+        ".video-reveal",
+        { opacity: 0, y: 40 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 1,
+          stagger: 0.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top 80%",
+          },
+        },
+      );
+    },
+    { scope: containerRef },
+  );
 
   return (
-    <section ref={containerRef} className="bg-gray-50 py-24 md:py-32 overflow-hidden border-y border-gray-100">
+    <section
+      ref={containerRef}
+      className="bg-gray-50 py-24 md:py-32 overflow-hidden border-y border-gray-100"
+    >
       <div className="max-w-[1700px] mx-auto px-6 sm:px-10 lg:px-24">
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-3 mb-6 video-reveal">
@@ -39,12 +45,13 @@ export default function ServiceVideo() {
           </div>
 
           <h2 className="text-3xl md:text-5xl font-semibold text-brand-dark mb-6 uppercase tracking-tight video-reveal">
-            Suzuki <span className="text-brand-red">Precision</span>
+            Suzuki <span className="text-brand-red">Expertise</span>
           </h2>
 
           <p className="text-gray-500 text-lg max-w-2xl mx-auto video-reveal font-medium">
-            Discover the uncompromising quality and specialized care that goes 
-            into every Suzuki service, ensuring peak performance and reliability.
+            Discover the uncompromising quality and specialized care that goes
+            into every Suzuki service, ensuring peak performance and
+            reliability.
           </p>
         </div>
 
@@ -64,7 +71,8 @@ export default function ServiceVideo() {
 
           <div className="mt-8 text-center px-4 w-full border-t border-gray-200 pt-6 flex flex-col gap-1">
             <p className="text-sm text-gray-400 font-semibold uppercase tracking-[0.2em]">
-              Credits to <span className="text-brand-dark">Suzuki Philippines</span>
+              Credits to{" "}
+              <span className="text-brand-dark">Suzuki Philippines</span>
             </p>
           </div>
         </div>

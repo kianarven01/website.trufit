@@ -2,15 +2,15 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { 
-  ClipboardCheck, 
-  Droplets, 
-  Disc, 
-  Octagon, 
-  BatteryCharging, 
-  Activity, 
+import {
+  ClipboardCheck,
+  Droplets,
+  Disc,
+  Octagon,
+  BatteryCharging,
+  Activity,
   Thermometer,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -21,12 +21,36 @@ import "./services.css";
 gsap.registerPlugin(ScrollTrigger);
 
 const pmsChecklist = [
-  { title: "21-Point Digital Inspection", icon: ClipboardCheck, desc: "Comprehensive health check for your vehicle." },
-  { title: "Oil & Filter Precision Change", icon: Droplets, desc: "Premium synthetic oil and OEM filter replacement." },
-  { title: "Tire & Suspension Analysis", icon: Disc, desc: "Checking pressure, tread depth, and alignment." },
-  { title: "Brake Performance Testing", icon: Octagon, desc: "Ensuring maximum stopping power and safety." },
-  { title: "Electrical System Diagnostic", icon: BatteryCharging, desc: "Battery, alternator, and starter motor testing." },
-  { title: "Vital Fluid Replenishment", icon: Thermometer, desc: "Coolant, brake, and transmission fluid levels." },
+  {
+    title: "21-Point Digital Inspection",
+    icon: ClipboardCheck,
+    desc: "Comprehensive health check for your vehicle.",
+  },
+  {
+    title: "Synthetic Oil & OEM Filter Change",
+    icon: Droplets,
+    desc: "Premium 5W40 Synthetic oil and OEM filter replacement.",
+  },
+  {
+    title: "Tire & Suspension Analysis",
+    icon: Disc,
+    desc: "Checking pressure, tread depth, and alignment.",
+  },
+  {
+    title: "Brake Safety Inspection",
+    icon: Octagon,
+    desc: "Checking brake fluid levels and pad wear.",
+  },
+  {
+    title: "Electrical System Diagnostic",
+    icon: BatteryCharging,
+    desc: "Battery, alternator, and starter motor testing.",
+  },
+  {
+    title: "Essential Fluids Top-Offs",
+    icon: Thermometer,
+    desc: "Coolant, brake, and transmission fluid levels.",
+  },
 ];
 
 export default function PMSService() {
@@ -44,7 +68,7 @@ export default function PMSService() {
       window.dispatchEvent(
         new CustomEvent("prefillAppointment", {
           detail: { service: "pms" },
-        })
+        }),
       );
     }, 100);
   };
@@ -67,7 +91,7 @@ export default function PMSService() {
               start: "top 80%",
               toggleActions: "play reverse play reverse",
             },
-          }
+          },
         );
       }
 
@@ -86,7 +110,7 @@ export default function PMSService() {
               trigger: container.current,
               start: "top 70%",
             },
-          }
+          },
         );
       }
 
@@ -104,34 +128,36 @@ export default function PMSService() {
         });
       }
     },
-    { scope: container }
+    { scope: container },
   );
 
   return (
-    <section ref={container} className="py-24 md:py-40 bg-gray-50/50 overflow-hidden relative">
+    <section
+      ref={container}
+      className="py-24 md:py-40 bg-gray-50/50 overflow-hidden relative"
+    >
       {/* Background Decoration Text */}
-      <div 
+      <div
         ref={bgTextRef}
         className="services-bg-text top-[20%] left-[-2%] opacity-[0.02]"
       >
         PRECISION
       </div>
-      
+
       <div className="max-w-[1700px] mx-auto px-6 sm:px-10 lg:px-24">
         <div className="flex flex-col lg:grid lg:grid-cols-2 gap-16 xl:gap-32 items-center">
-          
           {/* Content Wrapper - handles Title, Detail, List, Button order */}
           <div className="flex flex-col">
             <div className="pms-reveal section-label mb-6 order-1">
               <div className="section-label-line" />
-              <span className="section-label-text">
-                Essential Care
-              </span>
+              <span className="section-label-text">Fix Problems Early</span>
             </div>
-            
+
             <h2 className="pms-reveal text-3xl md:text-5xl font-semibold text-brand-dark leading-[1.1] tracking-tight uppercase mb-8 order-2">
               Preventive <br />
-              <span className="text-brand-red font-semibold">Maintenance Service</span>
+              <span className="text-brand-red font-semibold">
+                Maintenance Service
+              </span>
             </h2>
 
             {/* Image shown after title on mobile, but right side on desktop */}
@@ -148,22 +174,29 @@ export default function PMSService() {
                   <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/40 to-transparent" />
                 </div>
                 <div className="services-floating-badge top-8 -left-4">
-                  <span className="text-brand-red font-black text-2xl block mb-1">100%</span>
-                  <span className="text-white text-[7px] uppercase tracking-[0.3em] font-bold text-nowrap">Reliability Guarantee</span>
+                  <span className="text-brand-red font-black text-2xl block mb-1">
+                    100%
+                  </span>
+                  <span className="text-white text-[7px] uppercase tracking-[0.3em] font-bold text-nowrap">
+                    Reliability Guarantee
+                  </span>
                 </div>
               </div>
             </div>
-            
+
             <p className="pms-reveal text-gray-500 text-lg md:text-xl font-medium leading-relaxed mb-12 max-w-xl order-4">
-              Proactive care is the heartbeat of longevity. Our comprehensive PMS program 
-              detects potential issues before they become expensive repairs, 
-              ensuring your vehicle remains in factory condition.
+              Routine maintenance helps you avoid major repairs by catching
+              issues early through detailed inspections, proper diagnostics, and
+              a final quality check before your car is returned.
             </p>
 
             {/* Enhanced Vertical Checklist */}
             <div className="space-y-4 mb-12 order-5">
               {pmsChecklist.map((item, i) => (
-                <div key={i} className="pms-reveal pms-checklist-item group cursor-default">
+                <div
+                  key={i}
+                  className="pms-reveal pms-checklist-item group cursor-default"
+                >
                   <div className="pms-icon-box">
                     <item.icon size={22} />
                   </div>
@@ -180,21 +213,13 @@ export default function PMSService() {
             </div>
 
             <div className="pms-reveal flex items-center gap-6 order-6">
-              <button 
+              <button
                 onClick={handleBookPMS}
                 className="bg-brand-dark text-white px-8 py-4 rounded-sm font-bold text-xs uppercase tracking-widest hover:bg-brand-red transition-all duration-300 flex items-center gap-3 outline-none"
               >
                 Book PMS Now
                 <ArrowRight size={16} />
               </button>
-              <div className="hidden sm:block">
-                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 block mb-1">Total Reliability</span>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <div key={s} className="w-1.5 h-1.5 rounded-full bg-brand-red" />
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
 
@@ -216,8 +241,13 @@ export default function PMSService() {
 
                 {/* Floating Badge */}
                 <div className="services-floating-badge top-12 -left-8 md:-left-12">
-                  <span className="text-brand-red font-black text-4xl block mb-1">100%</span>
-                  <span className="text-white text-[9px] uppercase tracking-[0.3em] font-bold">Reliability <br />Guarantee</span>
+                  <span className="text-brand-red font-black text-4xl block mb-1">
+                    100%
+                  </span>
+                  <span className="text-white text-[9px] uppercase tracking-[0.3em] font-bold">
+                    Reliability <br />
+                    Guarantee
+                  </span>
                 </div>
 
                 {/* Decorative Element */}
@@ -225,7 +255,6 @@ export default function PMSService() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </section>

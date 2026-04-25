@@ -20,6 +20,7 @@ import Appointments from "./pages/internal/Appointments";
 
 import JobOrder from "./pages/internal/Services/JobOrder";
 import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
+import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
 import ServiceCatalogForm from "./pages/internal/Services/Service Catalog/ServiceCatalogForm";
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
@@ -78,6 +79,7 @@ const App: React.FC = () => {
               <Route path="services">
                 <Route path="service-catalog">
                   <Route index element={<ServiceCatalog />} />
+                  <Route path="task-library" element={<TaskLibraryList />} />
                   <Route path="new-service" element={<ServiceCatalogForm mode="add" />} />
                   <Route path=":id" element={<ServiceCatalogForm mode="edit" />} />
                 </Route>

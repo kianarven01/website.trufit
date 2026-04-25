@@ -7,9 +7,9 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
-import ServiceCatalogForm from "./ServiceCatalogForm";
 
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Library } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /* ================= STORAGE ================= */
 const CATEGORY_KEY = "serviceCategories";
@@ -196,6 +196,16 @@ const ServiceCatalogList: React.FC = () => {
       <DataToolbar
         searchPlaceholder="Search services..."
         onSearch={setSearch}
+        beforeAdd={
+          <Button 
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate("/webapp/services/service-catalog/task-library")}
+            >
+            <Library className="mr-1 h-4 w-4"/>
+            View Task Library
+          </Button>
+        }
         onAdd={() => navigate("/webapp/services/service-catalog/new-service")}
         addLabel="Add Service"
         filters={toolbarFilters}

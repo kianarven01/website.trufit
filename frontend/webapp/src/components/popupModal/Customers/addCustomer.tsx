@@ -364,14 +364,14 @@ const emptyVehicle = (): VehicleForm => ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogHeader className="px-6 pt-6">
           <DialogTitle>
             {isEdit ? "Edit Customer" : "New Customer"}
           </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[65vh]">
-          <div className="px-6 pb-4 space-y-5">
+          <div className="px-6 pb-4 space-y-5 bg-card py-4">
             {/* Customer Details */}
             <div>
               <p className="text-sm font-semibold mb-3">
@@ -383,11 +383,13 @@ const emptyVehicle = (): VehicleForm => ({
                   <Label className="text-xs">Full Name *</Label>
                   <div className="flex gap-3">
                     <Input
+                      className="bg-muted/30"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="First Name"
                     />
                     <Input
+                      className="bg-muted/30"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="Last Name"
@@ -398,6 +400,7 @@ const emptyVehicle = (): VehicleForm => ({
                 <div className="col-span-2">
                   <Label className="text-xs">Address</Label>
                   <Input
+                    className="bg-muted/30"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Current Home Address"
@@ -406,7 +409,8 @@ const emptyVehicle = (): VehicleForm => ({
 
                 <div>
                   <Label className="text-xs">Mobile *</Label>
-                  <Input
+                  <Input  
+                    className="bg-muted/30"
                     value={mobileNumber}
                     onChange={(e) => setMobileNumber(e.target.value)}
                     placeholder="09XXXXXXXXX"
@@ -416,6 +420,7 @@ const emptyVehicle = (): VehicleForm => ({
                 <div>
                   <Label className="text-xs">Landline</Label>
                   <Input
+                    className="bg-muted/30"
                     value={landline}
                     onChange={(e) => setLandline(e.target.value)}
                     placeholder="02XXXXXXX"
@@ -425,6 +430,7 @@ const emptyVehicle = (): VehicleForm => ({
                 <div>
                   <Label className="text-xs">Email</Label>
                   <Input
+                    className="bg-muted/30"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="email@example.com"
@@ -434,6 +440,7 @@ const emptyVehicle = (): VehicleForm => ({
                 <div>
                   <Label className="text-xs">Business Number</Label>
                   <Input
+                    className="bg-muted/30"
                     value={businessPhone}
                     onChange={(e) => setBusinessPhone(e.target.value)}
                     placeholder="Optional"
@@ -467,7 +474,7 @@ const emptyVehicle = (): VehicleForm => ({
                 {vehicles
                   .filter(v => !v._deleted)
                   .map((v, idx) => (
-                  <div key={v.id} className="rounded-lg border p-3 space-y-3 bg-muted/30">
+                  <div key={v.id} className="rounded-lg border p-3 space-y-3  bg-card">
 
                     {/* Header */}
                     <div className="flex items-center justify-between">
@@ -489,7 +496,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                     <div className="grid md:grid-cols-3 gap-2">
 
-                      <div>
+                      <div className="bg-muted/30">
                         <Combobox
                           value={v.year}
                           onChange={(val) => updateVehicle(v.id, "year", val)}
@@ -498,7 +505,7 @@ const emptyVehicle = (): VehicleForm => ({
                         />
                       </div>
 
-                      <div>
+                      <div className="bg-muted/30">
                         <Combobox
                           value={v.make}
                           onChange={(val) => {
@@ -511,7 +518,7 @@ const emptyVehicle = (): VehicleForm => ({
                         />                        
                       </div>
 
-                      <div>
+                      <div className="bg-muted/30">
                         <Combobox
                           value={v.model}
                           onChange={(val) => {
@@ -529,7 +536,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                     <div className="grid md:grid-cols-2 gap-2">
 
-                      <div>
+                      <div className="bg-muted/30">
                         <Combobox
                           value={v.variant}
                           onChange={(val) => {
@@ -545,6 +552,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                       <div>
                         <Input
+                          className="bg-muted/30"
                           placeholder="Color"
                           value={v.color}
                           onChange={(e) => updateVehicle(v.id, "color", e.target.value)}
@@ -553,6 +561,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                       <div>
                         <Input
+                          className="bg-muted/30"
                           placeholder="Plate No"
                           value={v.plateNo}
                           onChange={(e) => updateVehicle(v.id, "plateNo", e.target.value)}
@@ -561,6 +570,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                       <div>
                         <Input
+                          className="bg-muted/30"
                           placeholder="Engine No"
                           value={v.engineNo}
                           onChange={(e) => updateVehicle(v.id, "engineNo", e.target.value)}
@@ -569,6 +579,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                       <div>
                         <Input
+                          className="bg-muted/30"
                           placeholder="VIN"
                           value={v.vin}
                           onChange={(e) => updateVehicle(v.id, "vin", e.target.value)}
@@ -577,6 +588,7 @@ const emptyVehicle = (): VehicleForm => ({
 
                       <div>
                         <Input
+                          className="bg-muted/30"
                           placeholder="Registration No"
                           value={v.registrationNo}
                           onChange={(e) => updateVehicle(v.id, "registrationNo", e.target.value)}
@@ -585,6 +597,7 @@ const emptyVehicle = (): VehicleForm => ({
  
                       <div className="col-span-2">
                         <Input
+                          className="bg-muted/30"
                           placeholder="Selling Dealer"
                           value={v.sellingDealer}
                           onChange={(e) => updateVehicle(v.id, "sellingDealer", e.target.value)}
@@ -600,7 +613,7 @@ const emptyVehicle = (): VehicleForm => ({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 pb-6 pt-2">
+        <DialogFooter className="px-6 pb-4 ">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

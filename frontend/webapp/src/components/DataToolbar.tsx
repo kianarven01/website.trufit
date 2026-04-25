@@ -33,6 +33,8 @@ interface DataToolbarProps {
   onFilterChange?: (key: string, value: string) => void;
   activeFilters?: Record<string, string>;
 
+  beforeAdd?: React.ReactNode;
+
   onAdd?: () => void;
   addLabel?: string;
 
@@ -52,6 +54,8 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
   onFilterChange,
   activeFilters = {},
 
+  beforeAdd,
+  
   onAdd,
   addLabel = "Add",
 
@@ -88,7 +92,7 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
                 value={search}
                 placeholder={searchPlaceholder}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="pl-9 bg-white"
+                className="pl-9 bg-card"
               />
             </div>
 
@@ -113,6 +117,8 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
 
           {/* ACTIONS */}
           <div className="flex items-center gap-2">
+            {beforeAdd}
+
             {onAdd && (
               <Button size="sm" onClick={onAdd} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />

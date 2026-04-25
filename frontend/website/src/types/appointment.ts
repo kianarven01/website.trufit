@@ -5,5 +5,9 @@ export type Appointment = {
   phone: string
   date: string
   service: string
+  vehicleMake?: string
+  vehicleModel?: string
+  vehicleYear?: string
   message?: string
+  website_url?: string
 }

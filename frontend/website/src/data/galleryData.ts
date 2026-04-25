@@ -112,7 +112,8 @@ export const galleryItems: GalleryItem[] = [
     id: 15,
     title: "Ultrasonic Nebulizer",
     category: "technologies",
-    image: "/images/gallery/technologies/atom_machine_ultrasonic_nebulizer.webp",
+    image:
+      "/images/gallery/technologies/atom_machine_ultrasonic_nebulizer.webp",
     isVideo: false,
   },
   {

@@ -5,6 +5,8 @@ import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useState } from "react";
+import ImageModal from "../ui/ImageModal";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -44,6 +46,15 @@ const PARTNERS = [
 
 export default function AccreditationsPartners() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+
+  const imagesForModal = ACCREDITATIONS.map((acc) => acc.realImage);
+
+  const openLightbox = (index: number) => {
+    setActiveImageIdx(index);
+    setModalOpen(true);
+  };
 
   useGSAP(() => {
     // Header Reveal
@@ -130,17 +141,19 @@ export default function AccreditationsPartners() {
           {ACCREDITATIONS.map((acc, idx) => (
             <div
               key={idx}
-              className="accred-item group bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-2 transition-[box-shadow,transform] duration-500"
+              className="accred-item group bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-2 transition-[box-shadow,transform] duration-500 cursor-pointer"
+              onClick={() => openLightbox(idx)}
             >
               {/* Photo for REAL evidence */}
               <div className="relative aspect-[4/3] bg-gray-900 overflow-hidden">
-                <Image 
+                <Image
                   src={acc.realImage}
                   alt={`${acc.name} Accreditation`}
                   fill
                   priority
-                  className="object-cover opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+                  className="object-cover object-center opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
                   sizes="(max-width: 768px) 100vw, 33vw"
+                  quality={90}
                 />
                 
                 {/* Overlay with small logo to confirm what it is */}
@@ -203,6 +216,13 @@ export default function AccreditationsPartners() {
           </div>
         </div>
       </div>
+
+      <ImageModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        images={imagesForModal}
+        currentIndex={activeImageIdx}
+      />
     </section>
   );
 }

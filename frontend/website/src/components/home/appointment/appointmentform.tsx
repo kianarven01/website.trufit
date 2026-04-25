@@ -48,11 +48,27 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     phone: "",
     date: "",
     service: "",
-    message: ""
+    vehicleMake: "",
+    vehicleModel: "",
+    vehicleYear: "",
+    message: "",
+    website_url: ""
   })
 
   const [otherService, setOtherService] = useState("")
+  const [otherVehicleMake, setOtherVehicleMake] = useState("")
   const [sending, setSending] = useState(false)
+
+  // Generate years from current year down to 1990
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
+
+  // Common vehicle makes in the Philippines
+  const commonMakes = [
+    "Toyota", "Mitsubishi", "Nissan", "Honda", "Ford", 
+    "Suzuki", "Isuzu", "Hyundai", "Kia", "Mazda", 
+    "Chevrolet", "Subaru", "Geely", "MG", "Changan"
+  ];
 
   useEffect(() => {
     const handleClaim = (e: any) => {
@@ -122,6 +138,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     e.preventDefault()
     setSending(true)
     const finalService = form.service === "other" ? otherService : form.service
+    const finalVehicleMake = form.vehicleMake === "other" ? otherVehicleMake : form.vehicleMake
     
     try {
       const res = await fetch("/api/appointment", {
@@ -129,7 +146,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...form, service: finalService }),
+        body: JSON.stringify({ ...form, service: finalService, vehicleMake: finalVehicleMake }),
       })
 
       if (!res.ok) {
@@ -146,9 +163,14 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         phone: "",
         date: "",
         service: "",
-        message: ""
+        vehicleMake: "",
+        vehicleModel: "",
+        vehicleYear: "",
+        message: "",
+        website_url: ""
       })
       setOtherService("")
+      setOtherVehicleMake("")
     } catch (error) {
       console.error(error)
       alert("Failed to send request. Please try again or call us directly.")
@@ -159,6 +181,18 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+
+      {/* HONEYPOT - Hidden from real users to catch bots */}
+      <div style={{ position: "absolute", width: "0", height: "0", overflow: "hidden", opacity: 0 }}>
+        <input
+          type="text"
+          name="website_url"
+          tabIndex={-1}
+          autoComplete="off"
+          value={(form as any).website_url || ""}
+          onChange={handleChange}
+        />
+      </div>
 
       {/* FIRST NAME */}
       <div className="relative">
@@ -213,6 +247,73 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           <option value="other" className="text-gray-900">Other</option>
         </select>
         <label className={labelClass}>Service Needed</label>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
+      </div>
+
+      {/* VEHICLE MAKE */}
+      <div className="relative">
+        <select
+          name="vehicleMake"
+          value={form.vehicleMake || ""}
+          onChange={handleChange}
+          className={`${inputClass} appearance-none pr-10`}
+        >
+          <option value="" disabled hidden className="text-gray-900">Select Make</option>
+          {commonMakes.map((make) => (
+            <option key={make} value={make} className="text-gray-900">{make}</option>
+          ))}
+          <option value="other" className="text-gray-900">Other</option>
+        </select>
+        <label className={labelClass}>Vehicle Make</label>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
+      </div>
+
+      {/* OTHER VEHICLE MAKE INPUT */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Specify make"
+          value={otherVehicleMake}
+          onChange={(e) => setOtherVehicleMake(e.target.value)}
+          required={form.vehicleMake === "other"}
+          disabled={form.vehicleMake !== "other"}
+          className={`
+            peer w-full
+            ${form.vehicleMake !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
+            border rounded-sm
+            px-4 pt-6 pb-2
+            focus:outline-none focus:ring-1 focus:ring-brand-red
+            transition duration-300
+          `}
+        />
+        <label className={`
+          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
+          ${form.vehicleMake !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
+        `}>
+          Specify Make
+        </label>
+      </div>
+
+      {/* VEHICLE MODEL */}
+      <div className="relative">
+        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} className={inputClass} />
+        <label className={labelClass}>Vehicle Model</label>
+      </div>
+
+      {/* VEHICLE YEAR */}
+      <div className="relative">
+        <select
+          name="vehicleYear"
+          value={form.vehicleYear || ""}
+          onChange={handleChange}
+          className={`${inputClass} appearance-none pr-10`}
+        >
+          <option value="" disabled hidden className="text-gray-900">Select Year</option>
+          {years.map((year) => (
+            <option key={year} value={year} className="text-gray-900">{year}</option>
+          ))}
+        </select>
+        <label className={labelClass}>Vehicle Year</label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
       </div>
 

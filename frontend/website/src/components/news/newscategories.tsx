@@ -18,7 +18,7 @@ export default function NewsCategories({ activeCategory, onCategoryChange }: Pro
           key={category}
           onClick={() => onCategoryChange(category)}
           className={cn(
-            "px-6 py-2 rounded-full text-sm font-bold tracking-widest uppercase transition-all duration-300 border",
+            "px-6 py-2 rounded-sm text-xs font-bold tracking-[0.2em] uppercase transition-all duration-300 border",
             activeCategory === category
               ? "bg-brand-red border-brand-red text-white"
               : "bg-transparent border-white/10 text-gray-400 hover:border-white/30 hover:text-white"

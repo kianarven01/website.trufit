@@ -88,7 +88,7 @@ export default function Footer() {
             <li><Link href="/" className="hover:text-brand-red transition-colors">Home</Link></li>
             <li><Link href="/services" className="hover:text-brand-red transition-colors">Services</Link></li>
             <li><Link href="/gallery" className="hover:text-brand-red transition-colors">Gallery</Link></li>
-            
+            <li><Link href="/news" className="hover:text-brand-red transition-colors">News</Link></li>
             <li><Link href="/about" className="hover:text-brand-red transition-colors">About Us</Link></li>
             <li><Link href="/contact" className="hover:text-brand-red transition-colors">Contact Us</Link></li>
           </ul>
@@ -143,8 +143,8 @@ export default function Footer() {
 
             {/* right: links */}
             <div className="flex gap-8 text-gray-600 text-xs font-medium">
-              <Link href="/" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="/" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
 

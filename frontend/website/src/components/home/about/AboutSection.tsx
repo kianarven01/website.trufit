@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link"
+import Link from "next/link";
 import {
   CheckCircle2,
   Award,
@@ -10,13 +10,13 @@ import {
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  Car
+  Car,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import { useModalStore } from "@/store/useModalStore"
+import { useModalStore } from "@/store/useModalStore";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -57,7 +57,12 @@ const F1CarIcon = ({ className }: { className?: string }) => (
     <path d="M85,15 L98,15 L98,18 L85,18 Z" />
     <path d="M92,15 L92,25" stroke="currentColor" strokeWidth="2" />
     {/* Cockpit / Halo */}
-    <path d="M45,18 C45,12 60,12 60,18" fill="none" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M45,18 C45,12 60,12 60,18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
     <path d="M50,18 L50,14 L58,14 L58,18 Z" />
     {/* Wheels with detail */}
     <rect x="18" y="26" width="14" height="10" rx="2" fill="#111" />
@@ -73,11 +78,11 @@ export default function AboutSection() {
   const bgTextRef = useRef<HTMLDivElement>(null);
   const [currentImage, setCurrentImage] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
-  const openAppointment = useModalStore((s) => s.openAppointment)
-  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen)
-  
+  const openAppointment = useModalStore((s) => s.openAppointment);
+  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen);
+
   // Background shape refs
   const aura1Ref = useRef<HTMLDivElement>(null);
   const aura2Ref = useRef<HTMLDivElement>(null);
@@ -111,130 +116,148 @@ export default function AboutSection() {
     const swipeThreshold = 50;
     if (info.offset.x > swipeThreshold) {
       handleInteraction((currentImage - 1 + images.length) % images.length);
-    } 
-    else if (info.offset.x < -swipeThreshold) {
+    } else if (info.offset.x < -swipeThreshold) {
       handleInteraction((currentImage + 1) % images.length);
     }
   };
 
-  useGSAP(() => {
-    const mm = gsap.matchMedia();
+  useGSAP(
+    () => {
+      const mm = gsap.matchMedia();
 
-    mm.add("(min-width: 768px)", () => {
-      // Parallax for background text
-      if (bgTextRef.current) {
-        gsap.to(bgTextRef.current, {
-          y: -150,
-          ease: "none",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: true
-          }
-        });
-      }
-
-      // Parallax inner content
-      if (innerRef.current) {
-        gsap.fromTo(innerRef.current,
-          { y: 80 },
-          {
-            y: -80,
+      mm.add("(min-width: 768px)", () => {
+        // Parallax for background text
+        if (bgTextRef.current) {
+          gsap.to(bgTextRef.current, {
+            y: -150,
             ease: "none",
             scrollTrigger: {
               trigger: sectionRef.current,
               start: "top bottom",
               end: "bottom top",
-              scrub: true
-            }
-          }
-        );
-      }
-
-      // Dynamic Diagnostic Graphs Animation
-      const graphs = gsap.utils.toArray(".diagnostic-graph");
-      if (graphs.length > 0) {
-        graphs.forEach((graph: any, i) => {
-          gsap.to(graph, {
-            x: i % 2 === 0 ? -100 : 100, // Move horizontally
-            y: i % 2 === 0 ? -120 : -80, // Move vertically
-            scaleX: 1.1,
-            ease: "none",
-            scrollTrigger: {
-              trigger: sectionRef.current,
-              start: "top bottom",
-              end: "bottom top",
-              scrub: 1.5
-            }
+              scrub: true,
+            },
           });
-        });
-      }
+        }
 
-      // Simple Reveal - Fixed to work from both scroll directions
-      const reveals = gsap.utils.toArray(".about-reveal");
-      if (reveals.length > 0) {
-        reveals.forEach((item: any) => {
-          gsap.fromTo(item,
-            { opacity: 0, y: 40 },
+        // Parallax inner content
+        if (innerRef.current) {
+          gsap.fromTo(
+            innerRef.current,
+            { y: 80 },
             {
-              opacity: 1,
-              y: 0,
-              duration: 1,
-              ease: "power2.out",
+              y: -80,
+              ease: "none",
               scrollTrigger: {
-                trigger: item,
-                start: "top 92%",
-                end: "bottom 8%",
-                toggleActions: "play reverse play reverse"
-              }
-            }
+                trigger: sectionRef.current,
+                start: "top bottom",
+                end: "bottom top",
+                scrub: true,
+              },
+            },
           );
-        });
-      }
+        }
 
-      // Synchronized F1 Car & Path Timeline
-      if (carRef.current && activePathRef.current) {
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "top bottom",
-            end: "top top",
-            scrub: 1, // Reduced scrub for tighter sync
-          }
-        });
+        // Dynamic Diagnostic Graphs Animation
+        const graphs = gsap.utils.toArray(".diagnostic-graph");
+        if (graphs.length > 0) {
+          graphs.forEach((graph: any, i) => {
+            gsap.to(graph, {
+              x: i % 2 === 0 ? -100 : 100, // Move horizontally
+              y: i % 2 === 0 ? -120 : -80, // Move vertically
+              scaleX: 1.1,
+              ease: "none",
+              scrollTrigger: {
+                trigger: sectionRef.current,
+                start: "top bottom",
+                end: "bottom top",
+                scrub: 1.5,
+              },
+            });
+          });
+        }
 
-        tl.fromTo(carRef.current,
-          { x: "0vw", opacity: 0 },
-          { x: "100vw", opacity: 1, ease: "none" },
-          0
-        );
+        // Simple Reveal - Fixed to work from both scroll directions
+        const reveals = gsap.utils.toArray(".about-reveal");
+        if (reveals.length > 0) {
+          reveals.forEach((item: any) => {
+            gsap.fromTo(
+              item,
+              { opacity: 0, y: 40 },
+              {
+                opacity: 1,
+                y: 0,
+                duration: 1,
+                ease: "power2.out",
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top 92%",
+                  end: "bottom 8%",
+                  toggleActions: "play reverse play reverse",
+                },
+              },
+            );
+          });
+        }
 
-        tl.fromTo(activePathRef.current,
-          { width: "0%" },
-          { width: "100%", ease: "none" },
-          0
-        );
+        // Synchronized F1 Car & Path Timeline
+        if (carRef.current && activePathRef.current) {
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top bottom",
+              end: "top top",
+              scrub: 1, // Reduced scrub for tighter sync
+            },
+          });
 
-        // High-frequency vibration for an F1 engine feel
-        gsap.to(carRef.current, {
-          y: "+=1.5",
-          repeat: -1,
-          yoyo: true,
-          duration: 0.05,
-          ease: "sine.inOut"
-        });
-      }
-    });
+          tl.fromTo(
+            carRef.current,
+            { x: "0vw", opacity: 0 },
+            { x: "100vw", opacity: 1, ease: "none" },
+            0,
+          );
 
-    return () => mm.revert();
-  }, { scope: sectionRef });
+          tl.fromTo(
+            activePathRef.current,
+            { width: "0%" },
+            { width: "100%", ease: "none" },
+            0,
+          );
+
+          // High-frequency vibration for an F1 engine feel
+          gsap.to(carRef.current, {
+            y: "+=1.5",
+            repeat: -1,
+            yoyo: true,
+            duration: 0.05,
+            ease: "sine.inOut",
+          });
+        }
+      });
+
+      return () => mm.revert();
+    },
+    { scope: sectionRef },
+  );
 
   const features = [
-    { title: "Bronze Bagwis Seal", desc: "DTI certified for fair prices and honest customer service." },
-    { title: "Service Warranty Included", desc: "We stand behind our work, so we give warranty on all our repairs." },
-    { title: "Special Repair Tools", desc: "We use the right tools to find fix your problems fast." },
-    { title: "Genuine Parts", desc: "We use the best parts for your car to keep you safe on the road" },
+    {
+      title: "Bronze Bagwis Seal",
+      desc: "DTI certified for fair prices and honest customer service.",
+    },
+    {
+      title: "Service Warranty Included",
+      desc: "We stand behind our work, so we give warranty on all our repairs.",
+    },
+    {
+      title: "Special Repair Tools",
+      desc: "We use the right tools to find fix your problems fast.",
+    },
+    {
+      title: "Genuine Parts",
+      desc: "We use the best parts for your car to keep you safe on the road",
+    },
   ];
 
   return (
@@ -245,33 +268,32 @@ export default function AboutSection() {
     >
       {/* BACKGROUND ELEMENTS - High End Blueprint Aesthetic */}
       <div className="absolute inset-0 z-0 pointer-events-none select-none">
-        
         {/* Car Passing Animation Divider */}
         <div className="absolute top-0 left-0 w-full h-24 flex items-center overflow-hidden">
           {/* Main Road Line */}
           <div className="absolute w-full h-[1px] bg-gray-100" />
-          
+
           {/* Active Path Filled by Car */}
-          <div 
+          <div
             ref={activePathRef}
             className="absolute h-[2px] bg-gradient-to-r from-transparent via-brand-red to-brand-red shadow-[0_0_10px_rgba(227,27,35,0.3)]"
           />
 
           {/* Styled Car Silhouette */}
-          <div 
+          <div
             ref={carRef}
             className="absolute flex flex-col items-center -ml-[50px] origin-center"
-            style={{ left: '0%' }}
+            style={{ left: "0%" }}
           >
             <div className="relative">
               {/* F1 Car Custom SVG - Flipped to face right */}
               <F1CarIcon className="w-[100px] h-[40px] text-brand-red -scale-x-100" />
-              
+
               {/* Speed Lines / Aero Vortex Trails Behind */}
               <div className="absolute -left-12 top-1/2 -translate-y-1/2 w-12 h-[2px] bg-gradient-to-l from-brand-red/60 to-transparent" />
               <div className="absolute -left-8 top-1/3 -translate-y-1/2 w-8 h-[1px] bg-gradient-to-l from-brand-red/40 to-transparent" />
               <div className="absolute -left-8 bottom-1/3 w-8 h-[1px] bg-gradient-to-l from-brand-red/40 to-transparent" />
-              
+
               {/* Aero "Heat" Distortion Glow */}
               <div className="absolute inset-0 bg-brand-red/10 blur-xl rounded-full scale-150 -z-10" />
             </div>
@@ -279,29 +301,31 @@ export default function AboutSection() {
         </div>
 
         {/* Large Outlined Text Background */}
-        
+
         {/* Large Outlined Text Background */}
-        <div 
+        <div
           ref={bgTextRef}
           className="absolute top-20 left-10 text-[15vw] font-semibold leading-none opacity-[0.03] text-transparent stroke-brand-dark"
-          style={{ WebkitTextStroke: '1px currentColor' }}
+          style={{ WebkitTextStroke: "1px currentColor" }}
         >
-          TRUFIT<br />AUTO
+          TRUFIT
+          <br />
+          AUTO
         </div>
 
         {/* Dynamic Diagnostic Graphs (Stock/Telemetry Style) */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           {/* Blue "Performance" Graph - Smooth and Rising */}
-          <svg 
+          <svg
             className="diagnostic-graph absolute top-1/4 -left-20 w-[120%] h-64 opacity-[0.05] text-brand-blue"
             viewBox="0 0 1000 200"
             preserveAspectRatio="none"
           >
-            <path 
-              d="M0,150 Q100,140 200,160 T400,120 T600,140 T800,80 T1000,100" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
+            <path
+              d="M0,150 Q100,140 200,160 T400,120 T600,140 T800,80 T1000,100"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
               strokeDasharray="5,5"
             />
             <circle cx="200" cy="160" r="3" fill="currentColor" />
@@ -310,38 +334,48 @@ export default function AboutSection() {
           </svg>
 
           {/* Red "Diagnostic" Graph - More Jagged and Technical */}
-          <svg 
+          <svg
             className="diagnostic-graph absolute bottom-1/4 -right-20 w-[120%] h-48 opacity-[0.04] text-brand-red"
             viewBox="0 0 1000 200"
             preserveAspectRatio="none"
           >
-            <path 
-              d="M0,100 L50,80 L100,120 L150,90 L200,110 L250,70 L300,130 L350,100 L400,110 L450,80 L500,120 L550,90 L600,100 L650,60 L700,120 L750,90 L800,110 L850,70 L900,100 L950,120 L1000,80" 
-              fill="none" 
-              stroke="currentColor" 
+            <path
+              d="M0,100 L50,80 L100,120 L150,90 L200,110 L250,70 L300,130 L350,100 L400,110 L450,80 L500,120 L550,90 L600,100 L650,60 L700,120 L750,90 L800,110 L850,70 L900,100 L950,120 L1000,80"
+              fill="none"
+              stroke="currentColor"
               strokeWidth="1.5"
             />
             {/* Adding "Data Points" along the jagged path */}
             {[100, 300, 500, 650, 850].map((x, i) => (
-              <rect key={i} x={x} y="90" width="4" height="4" fill="currentColor" className="opacity-50" />
+              <rect
+                key={i}
+                x={x}
+                y="90"
+                width="4"
+                height="4"
+                fill="currentColor"
+                className="opacity-50"
+              />
             ))}
           </svg>
         </div>
 
         {/* Soft Depth Shapes */}
-        <div 
+        <div
           ref={aura1Ref}
-          className="absolute top-1/4 -left-40 w-[800px] h-[800px] bg-brand-red/[0.03] rounded-full blur-[130px]" 
+          className="absolute top-1/4 -left-40 w-[800px] h-[800px] bg-brand-red/[0.03] rounded-full blur-[130px]"
         />
-        <div 
+        <div
           ref={aura2Ref}
-          className="absolute bottom-1/4 -right-40 w-[600px] h-[600px] bg-brand-red/[0.02] rounded-full blur-[110px]" 
+          className="absolute bottom-1/4 -right-40 w-[600px] h-[600px] bg-brand-red/[0.02] rounded-full blur-[110px]"
         />
       </div>
 
-      <div ref={innerRef} className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">
+      <div
+        ref={innerRef}
+        className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10"
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 xl:gap-24 items-center">
-          
           {/* Content Side */}
           <div className="order-1 lg:order-2">
             <div className="flex items-center gap-3 mb-6 about-reveal">
@@ -352,8 +386,10 @@ export default function AboutSection() {
             </div>
 
             <h2 className="text-3xl md:text-5xl font-semibold mb-8 leading-tight text-brand-dark about-reveal uppercase tracking-tight">
-              Quality Care <br />
-              <span className="text-brand-red font-semibold">For Every Car</span>
+              Quality Service <br />
+              <span className="text-brand-red font-semibold">
+                For Every Car
+              </span>
             </h2>
 
             {/* Mobile Slider */}
@@ -382,7 +418,9 @@ export default function AboutSection() {
                     ) : (
                       <div className="w-full h-full bg-brand-dark/5 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-gray-200">
                         <Car className="w-16 h-16 text-gray-200 mb-4" />
-                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Real Service Image Coming Soon</p>
+                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">
+                          Real Service Image Coming Soon
+                        </p>
                       </div>
                     )}
                   </motion.div>
@@ -391,11 +429,14 @@ export default function AboutSection() {
             </div>
 
             <p className="text-gray-600 text-lg md:text-xl mb-6 leading-relaxed max-w-2xl about-reveal font-medium">
-              We started in 2019 to provide repairs using 25 years of experience in the automotive field. We use special tools to find problems fast and fix them properly.
+              We started in 2019 to provide repairs using 25 years of experience
+              in the automotive field. We use special tools to find problems
+              fast and fix them properly.
             </p>
 
             <p className="text-gray-500 text-base mb-12 leading-relaxed max-w-2xl about-reveal">
-              As a DTI 5-Star shop, we are officially recognized for doing honest work. We only use real parts to keep you and your car safe.
+              As a DTI 5-Star shop, we are officially recognized for doing
+              honest work. We only use real parts to keep you and your car safe.
             </p>
 
             {/* Benefits Grid */}
@@ -427,9 +468,9 @@ export default function AboutSection() {
             <div className="flex flex-col sm:flex-row gap-6 about-reveal">
               <button
                 onClick={() => {
-                    setIsOpen(false)
-                    openAppointment()
-                  }}
+                  setIsOpen(false);
+                  openAppointment();
+                }}
                 className="bg-brand-red text-white px-10 py-5 rounded-sm font-semibold hover:bg-brand-dark transition-all uppercase tracking-[0.2em] text-xs text-center shadow-lg shadow-brand-red/20 inline-block"
               >
                 Book Appointment
@@ -471,9 +512,13 @@ export default function AboutSection() {
                         <Car className="w-24 h-24 text-brand-red/10" />
                         <div className="absolute inset-0 bg-brand-red/5 blur-3xl rounded-full" />
                       </div>
-                      <h3 className="text-white/20 font-semibold text-2xl mb-2 tracking-tighter uppercase italic">Trufit Excellence</h3>
-                      <p className="text-white/10 font-semibold uppercase tracking-[0.3em] text-[10px]">Image Gallery Under Construction</p>
-                      
+                      <h3 className="text-white/20 font-semibold text-2xl mb-2 tracking-tighter uppercase italic">
+                        Trufit Excellence
+                      </h3>
+                      <p className="text-white/10 font-semibold uppercase tracking-[0.3em] text-[10px]">
+                        Image Gallery Under Construction
+                      </p>
+
                       {/* Decorative elements to make it look "designed" even without image */}
                       <div className="absolute top-10 left-10 w-20 h-[1px] bg-white/5" />
                       <div className="absolute top-10 left-10 w-[1px] h-20 bg-white/5" />
@@ -488,13 +533,19 @@ export default function AboutSection() {
               {/* Slider Controls */}
               <div className="absolute bottom-10 right-10 flex gap-3">
                 <button
-                  onClick={() => handleInteraction((currentImage - 1 + images.length) % images.length)}
+                  onClick={() =>
+                    handleInteraction(
+                      (currentImage - 1 + images.length) % images.length,
+                    )
+                  }
                   className="p-4 bg-white/90 hover:bg-brand-red hover:text-white transition-all text-brand-dark rounded-sm shadow-xl"
                 >
                   <ChevronLeft size={24} />
                 </button>
                 <button
-                  onClick={() => handleInteraction((currentImage + 1) % images.length)}
+                  onClick={() =>
+                    handleInteraction((currentImage + 1) % images.length)
+                  }
                   className="p-4 bg-white/90 hover:bg-brand-red hover:text-white transition-all text-brand-dark rounded-sm shadow-xl"
                 >
                   <ChevronRight size={24} />
@@ -517,7 +568,6 @@ export default function AboutSection() {
             <div className="absolute -top-6 -left-6 w-32 h-32 border-t-4 border-l-4 border-brand-red opacity-20 pointer-events-none" />
             <div className="absolute -bottom-6 -right-6 w-32 h-32 border-b-4 border-r-4 border-brand-blue opacity-10 pointer-events-none" />
           </div>
-
         </div>
       </div>
     </section>

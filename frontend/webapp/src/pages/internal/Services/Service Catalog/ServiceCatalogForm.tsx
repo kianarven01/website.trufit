@@ -14,7 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import DataToolbar from "@/components/DataToolbar";
 import AssignTaskModal from "@/components/popupModal/ServiceCatalog/AssignTasksModal";
-
+import TaskLibraryModal from "@/components/popupModal/ServiceCatalog/TaskLibraryModal";
+import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
@@ -90,6 +91,7 @@ const [tasks, setTasks] = useState<ServiceTask[]>([]);
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 const [assignOpen, setAssignOpen] = useState(false);
+const [taskModalOpen, setTaskModalOpen] = useState(false);
 const scrollRef = useRef<HTMLDivElement | null>(null);
 
 /* ================= FORM ================= */
@@ -103,6 +105,9 @@ const [sizePricing, setSizePricing] = useState<Record<string, number>>({});
 const [serviceTasks, setServiceTasks] = useState<ServiceTask[]>([]);
 const [taskLibrary, setTaskLibrary] = useState<TaskLibraryItem[]>([]);
 
+const [confirmOpen, setConfirmOpen] = useState(false);
+const [confirmType, setConfirmType] = useState<"size" | "task" | null>(null);
+const [targetId, setTargetId] = useState<string | null>(null);
 
 /* ================= ADD/EDIT SIZE (INLINE ROW) ================= */
 const [isAddingSize, setIsAddingSize] = useState(false);
@@ -233,6 +238,20 @@ const handleAssignTasks = (newTasks: ServiceTask[]) => {
   });
 };
 
+
+const handleNewTaskSaved = (task: TaskLibraryItem) => {
+  setTaskLibrary((prev) => [...prev, task]);
+
+  setServiceTasks((prev) => [
+    ...prev,
+    {
+      id: genId(),
+      serviceId: id || "",
+      taskId: task.id,
+    },
+  ]);
+};
+
 /* ================= VEHICLE SIZE ================= */
 
 const handleAddRow = () => {
@@ -312,7 +331,6 @@ const handleCancelEditSize = () => {
 };
 
 const handleDeleteSize = (id: string) => {
-  if (!confirm("Delete this vehicle size?")) return;
 
   const updatedSizes = vehicleSizes.filter((vs) => vs.id !== id);
   setVehicleSizes(updatedSizes);
@@ -427,7 +445,41 @@ const rowCount =
   (!isAddingSize ? 1 : 0); // + add button row
 
 const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
+ 
 
+  /* ============ DELETE DIALOG HANDLER ============ */
+
+  const handleConfirmDelete = () => {
+    if (!targetId) return;
+
+    if (confirmType === "size") {
+      const updatedSizes = vehicleSizes.filter((vs) => vs.id !== targetId);
+      setVehicleSizes(updatedSizes);
+      localStorage.setItem(VEHICLE_SIZE_KEY, JSON.stringify(updatedSizes));
+
+      setSizePricing((prev) => {
+        const copy = { ...prev };
+        delete copy[targetId];
+        return copy;
+      });
+
+      toast.success("Vehicle size deleted");
+    }
+
+    if (confirmType === "task") {
+      setServiceTasks((prev) =>
+        prev.filter((t) => t.taskId !== targetId)
+      );
+
+      if (mode === "edit") {
+      toast.success("Task removed from service");      
+      } 
+    }
+
+    setConfirmOpen(false);
+    setTargetId(null);
+    setConfirmType(null);
+  };
 
 
   /* ================= UI ================= */
@@ -697,7 +749,11 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
 
                                       <DropdownMenuItem
                                         className="text-red-500"
-                                        onClick={() => handleDeleteSize(vs.id)}
+                                        onClick={() => {
+                                          setConfirmType("size");
+                                          handleDeleteSize(vs.id);
+                                          setConfirmOpen(true);
+                                        }}
                                       >
                                         <Trash2 className="w-3 h-3 mr-2" />
                                         Delete
@@ -806,6 +862,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
               <Button
                 size="sm"
                 variant="default"
+                onClick={() => setTaskModalOpen(true)}
               >
                 <Plus className="w-4 h-4 mr-1" />
                 Add New Task
@@ -814,37 +871,51 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
           </div>
         </CardHeader> 
         <CardContent>
-          <Table className="table-fixed w-full border-separate border-spacing-y-2">
-            <TableHeader>
-              <TableRow className="bg-secondary/50">
-                <TableHead className="text-xs tracking-wide uppercase w-[8%]">#</TableHead>
-                <TableHead className="text-xs tracking-wide uppercase w-1/3">Task</TableHead>
-                <TableHead className="text-xs tracking-wide uppercase">Description</TableHead>
-                <TableHead className="w-[8%] rounded-r-lg"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {serviceTasks.map((st, index) => {
-                const task = taskLibrary.find((t) => t.id === st.taskId);
-                return (
-                <TableRow key={st.id}>
-                  <TableCell className="text-xs">{index + 1}</TableCell>
-                  <TableCell className="text-xs">{task?.name}</TableCell>
-                  <TableCell className="text-xs">{task?.description || "—"}</TableCell>
-                  <TableCell className="flex justify-center">
-                    <Button
-                      size="icon_xs"
-                      variant="ghost"
-                      onClick={() => removeTask(st.taskId)} 
-                      className="bg-red-50 hover:bg-red-200"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600"/>
-                    </Button>
-                  </TableCell>
+          <div className="border px-2 rounded-lg">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow className="bg-secondary/50">
+                  <TableHead className="text-xs tracking-wide uppercase w-[8%] rounded-l-lg">#</TableHead>
+                  <TableHead className="text-xs tracking-wide uppercase w-1/3">Task</TableHead>
+                  <TableHead className="text-xs tracking-wide uppercase">Description</TableHead>
+                  <TableHead className="w-[8%] rounded-r-lg"></TableHead>
                 </TableRow>
-              )})}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {serviceTasks.map((st, index) => {
+                  const task = taskLibrary.find((t) => t.id === st.taskId);
+                  return (
+                  <TableRow 
+                    key={st.id}
+                    className="rounded-lg border bg-card shadow-sm hover:shadow-md"
+                  >
+                    <TableCell className="text-xs">{index + 1}</TableCell>
+                    <TableCell className="text-xs">{task?.name}</TableCell>
+                    <TableCell className="text-xs">{task?.description || "—"}</TableCell>
+                    <TableCell className="py-0">
+                      <Button
+                        size="icon_xs"
+                        variant="ghost"
+                        onClick={() => {
+                          setConfirmType("task");
+                          setTargetId(st.taskId);
+
+                          if (mode === "edit") {
+                            setConfirmOpen(true);
+                          } else {
+                            setServiceTasks((prev) => prev.filter((t) => t.taskId !== st.taskId));
+                          }
+                        }}
+                        className="bg-red-50 hover:bg-red-200"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600"/>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )})}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>       
       </Card>
 
@@ -855,6 +926,48 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
         existingTasks={serviceTasks}
         onAssign={handleAssignTasks}
       />
+
+      <TaskLibraryModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        onSaved={handleNewTaskSaved}
+      />      
+
+<ConfirmDialog
+  open={confirmOpen}
+  onOpenChange={setConfirmOpen}
+  title={
+    confirmType === "size"
+      ? "Delete Vehicle Size"
+      : "Remove Task"
+  }
+  description={
+    confirmType === "size" ? (
+      <>
+        Are you sure you want to delete this vehicle size?
+        <br />
+        <br />
+        <span className="text-muted-foreground">
+          Note: This will permanently delete the vehicle size
+          (including all services that use it).
+        </span>
+      </>
+    ) : (
+      <>
+        Are you sure you want to remove this task from this service?
+        <br />
+        <br />
+        <span className="text-muted-foreground">
+          Note: This will only remove the task from this service
+          (it will NOT delete it from the task library).
+        </span>
+      </>
+    )
+  }
+  confirmLabel="Delete"
+  destructive
+  onConfirm={handleConfirmDelete}
+/>
 
     </div>
   );

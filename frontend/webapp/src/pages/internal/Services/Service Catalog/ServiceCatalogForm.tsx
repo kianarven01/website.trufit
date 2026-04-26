@@ -177,6 +177,12 @@ useEffect(() => {
 
     setName(s.name);
     setCategoryId(s.serviceCategoryId);
+
+    const category = categories.find(
+      (c) => c.id === s.serviceCategoryId
+    );
+    setCategoryName(category?.name || "");
+
     setDescription(s.description || "");
     setPricingType(s.pricingType);
 

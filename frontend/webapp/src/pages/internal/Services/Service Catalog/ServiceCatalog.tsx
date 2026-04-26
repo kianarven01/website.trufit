@@ -235,6 +235,7 @@ const ServiceCatalogList: React.FC = () => {
                   return (
                     <TableRow
                       key={s.id}
+                      onClick={() => navigate(`/webapp/services/service-catalog/${s.id}`)}
                       className="rounded-lg border bg-card shadow-sm hover:shadow-md"
                     >
                       <TableCell>

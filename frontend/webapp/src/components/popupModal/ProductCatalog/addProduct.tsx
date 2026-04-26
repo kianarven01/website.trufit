@@ -15,7 +15,10 @@ import { Input } from "@/components/ui/input";
 
 interface Option {
   id: string;
-  name: string;
+  name?: string;
+  CompanyName?: string;
+  company_name?: string;
+  label?: string;
 }
 
 interface ProductSupplierInput {
@@ -66,15 +69,23 @@ export default function ProductModal({
     oem_reference_number: "",
   });
 
-  const [productSuppliers, setProductSuppliers] = useState<ProductSupplierInput[]>([]);
+  const [productSuppliers, setProductSuppliers] = useState<
+    ProductSupplierInput[]
+  >([]);
 
   useEffect(() => {
     if (!open) return;
 
-    api.get("/products/units").then((res) => {
-      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
-      setUnits(rows || []);
-    });
+    api
+      .get("/products/units")
+      .then((res) => {
+        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+        setUnits(rows || []);
+      })
+      .catch((error) => {
+        console.error("Failed to load units:", error);
+        setUnits([]);
+      });
 
     setForm((prev) => ({
       ...prev,
@@ -82,7 +93,17 @@ export default function ProductModal({
     }));
   }, [open, categoryId]);
 
-  const updateField = (key: string, value: string | boolean) => {
+  const getOptionLabel = (option: Option) => {
+    return (
+      option.name ||
+      option.CompanyName ||
+      option.company_name ||
+      option.label ||
+      "Unnamed"
+    );
+  };
+
+  const updateField = (key: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -117,6 +138,12 @@ export default function ProductModal({
     );
   };
 
+  const isSupplierAlreadySelected = (supplierId: string, currentIndex: number) => {
+    return productSuppliers.some(
+      (row, index) => index !== currentIndex && row.supplier_id === supplierId
+    );
+  };
+
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
 
@@ -142,6 +169,18 @@ export default function ProductModal({
     setProductSuppliers([]);
     setImageFile(null);
     setImagePreview("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleModalChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm();
+    }
+
+    onOpenChange(nextOpen);
   };
 
   const handleSave = async () => {
@@ -150,21 +189,34 @@ export default function ProductModal({
     try {
       const payload = new FormData();
 
-      payload.append("name", form.name);
-      payload.append("SKU", form.SKU);
+      payload.append("name", form.name.trim());
+      payload.append("SKU", form.SKU.trim());
       payload.append("cost", form.cost);
-      payload.append("part_number", form.part_number);
+      payload.append("part_number", form.part_number.trim());
       payload.append("is_oem", form.is_oem ? "1" : "0");
 
-      if (form.description) payload.append("description", form.description);
-      if (form.category_id) payload.append("category_id", form.category_id);
-      if (form.unit) payload.append("unit", form.unit);
+      if (form.description.trim()) {
+        payload.append("description", form.description.trim());
+      }
+
+      if (form.category_id) {
+        payload.append("category_id", form.category_id);
+      }
+
+      if (form.unit) {
+        payload.append("unit", form.unit);
+      }
+
       if (form.manufacturer_id) {
         payload.append("manufacturer_id", form.manufacturer_id);
       }
-      if (form.barcode) payload.append("barcode", form.barcode);
-      if (form.oem_reference_number) {
-        payload.append("oem_reference_number", form.oem_reference_number);
+
+      if (form.barcode.trim()) {
+        payload.append("barcode", form.barcode.trim());
+      }
+
+      if (form.oem_reference_number.trim()) {
+        payload.append("oem_reference_number", form.oem_reference_number.trim());
       }
 
       const validSuppliers = productSuppliers.filter(
@@ -172,7 +224,10 @@ export default function ProductModal({
       );
 
       validSuppliers.forEach((supplier, index) => {
-        payload.append(`suppliers[${index}][supplier_id]`, supplier.supplier_id);
+        payload.append(
+          `suppliers[${index}][supplier_id]`,
+          supplier.supplier_id
+        );
 
         if (supplier.supplier_cost.trim() !== "") {
           payload.append(
@@ -182,8 +237,13 @@ export default function ProductModal({
         }
       });
 
-      if (variantId) payload.append("car_variant_id", variantId);
-      if (imageFile) payload.append("image", imageFile);
+      if (variantId) {
+        payload.append("car_variant_id", variantId);
+      }
+
+      if (imageFile) {
+        payload.append("image", imageFile);
+      }
 
       await api.post("/products", payload, {
         headers: {
@@ -196,7 +256,13 @@ export default function ProductModal({
       onOpenChange(false);
     } catch (error: any) {
       console.error("Failed to save product:", error);
-      alert(error?.response?.data?.message || "Failed to save product.");
+
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to save product.";
+
+      alert(message);
     } finally {
       setSaving(false);
     }
@@ -209,7 +275,7 @@ export default function ProductModal({
     form.part_number.trim();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleModalChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Product</DialogTitle>
@@ -241,6 +307,10 @@ export default function ProductModal({
                     e.stopPropagation();
                     setImageFile(null);
                     setImagePreview("");
+
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
                   }}
                 >
                   <X className="w-4 h-4" />
@@ -303,7 +373,7 @@ export default function ProductModal({
             <option value="">Select category</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
-                {category.name}
+                {getOptionLabel(category)}
               </option>
             ))}
           </select>
@@ -316,7 +386,7 @@ export default function ProductModal({
             <option value="">Select manufacturer</option>
             {manufacturers.map((manufacturer) => (
               <option key={manufacturer.id} value={manufacturer.id}>
-                {manufacturer.name}
+                {getOptionLabel(manufacturer)}
               </option>
             ))}
           </select>
@@ -329,7 +399,7 @@ export default function ProductModal({
             <option value="">Select unit</option>
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
-                {unit.name}
+                {getOptionLabel(unit)}
               </option>
             ))}
           </select>
@@ -382,9 +452,17 @@ export default function ProductModal({
                       }
                     >
                       <option value="">Select supplier</option>
+
                       {suppliers.map((supplier) => (
-                        <option key={supplier.id} value={supplier.id}>
-                          {supplier.name}
+                        <option
+                          key={supplier.id}
+                          value={supplier.id}
+                          disabled={isSupplierAlreadySelected(
+                            supplier.id,
+                            index
+                          )}
+                        >
+                          {getOptionLabel(supplier)}
                         </option>
                       ))}
                     </select>
@@ -441,11 +519,16 @@ export default function ProductModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleModalChange(false)}
+            disabled={saving}
+          >
             Cancel
           </Button>
 
-          <Button onClick={handleSave} disabled={saving || !canSave}>
+          <Button type="button" onClick={handleSave} disabled={saving || !canSave}>
             {saving ? "Saving..." : "Save Product"}
           </Button>
         </DialogFooter>

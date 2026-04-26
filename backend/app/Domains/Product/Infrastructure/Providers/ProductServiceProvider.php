@@ -6,7 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use App\Domains\Product\Domain\Repositories\CategoryRepositoryInterface;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Infrastructure\Repositories\EloquentCategoryRepository;
-use App\Domains\Product\Infrastrutcure\Repositories\EloquentProductRepository;
+use App\Domains\Product\Infrastructcure\Repositories\EloquentProductRepository;
 
 class ProductServiceProvider extends ServiceProvider
 {

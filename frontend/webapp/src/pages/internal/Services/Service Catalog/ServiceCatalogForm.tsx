@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import CurrencyInput from "@/components/ui/currencyInput";
 import { Label } from "@/components/ui/label";
 import Combobox from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import DataToolbar from "@/components/DataToolbar";
 import AssignTaskModal from "@/components/popupModal/ServiceCatalog/AssignTasksModal";
+
 
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
@@ -629,29 +631,26 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                               {/* PRICE */}
                               <TableCell className="text-right py-0">
                                 {isEditing ? (
-                                  <Input
-                                    type="number"
-                                    className="text-right ml-auto max-w-[200px]"
+                                  <CurrencyInput
                                     value={editSize.price}
-                                    onChange={(e) =>
+                                    onChange={(val) =>
                                       setEditSize((p) => ({
                                         ...p,
-                                        price: Number(e.target.value) || 0,
+                                        price: val,
                                       }))
                                     }
+                                    className="ml-auto max-w-[200px]"
                                   />
                                 ) : (
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    className="text-right ml-auto max-w-[200px]"
+                                  <CurrencyInput
                                     value={sizePricing[vs.id] ?? 0}
-                                    onChange={(e) =>
+                                    onChange={(val) =>
                                       setSizePricing((prev) => ({
                                         ...prev,
-                                        [vs.id]: Number(e.target.value) || 0,
+                                        [vs.id]: val,
                                       }))
                                     }
+                                    className="ml-auto max-w-[200px]"
                                   />
                                 )}
                               </TableCell>
@@ -737,16 +736,15 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
 
                             {/* PRICE */}
                             <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                className="text-right ml-auto max-w-[120px]"
+                              <CurrencyInput
                                 value={newSize.price}
-                                onChange={(e) =>
+                                onChange={(val) =>
                                   setNewSize((p) => ({
                                     ...p,
-                                    price: Number(e.target.value) || 0,
+                                    price: val,
                                   }))
                                 }
+                                className="ml-auto max-w-[120px]"
                               />
                             </TableCell>
 

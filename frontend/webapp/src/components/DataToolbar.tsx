@@ -1,12 +1,7 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Search,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
+import { Plus, Search, SlidersHorizontal, X } from "lucide-react";
 
 import {
   Select,
@@ -17,11 +12,8 @@ import {
 } from "@/components/ui/select";
 
 import { Badge } from "@/components/ui/badge";
-import {
-  ScrollArea,
-  ScrollBar,
-} from "@/components/ui/scrollArea";
-
+import { ScrollArea, ScrollBar } from "@/components/ui/scrollArea";
+import { cn } from "@/lib/utils";
 
 export interface FilterOption {
   key: string;
@@ -36,16 +28,21 @@ interface DataToolbarProps {
 
   searchPlaceholder?: string;
   onSearch?: (query: string) => void;
+
   filters?: FilterOption[];
   onFilterChange?: (key: string, value: string) => void;
   activeFilters?: Record<string, string>;
+
+  beforeAdd?: React.ReactNode;
+
   onAdd?: () => void;
   addLabel?: string;
 
   title?: React.ReactNode;
   actions?: React.ReactNode;
-}
 
+  className?: string;
+}
 
 const DataToolbar: React.FC<DataToolbarProps> = ({
   variant = "default",
@@ -57,11 +54,15 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
   onFilterChange,
   activeFilters = {},
 
+  beforeAdd,
+  
   onAdd,
   addLabel = "Add",
 
   title,
   actions,
+
+  className,
 }) => {
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -76,12 +77,13 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
   ).length;
 
   return (
-    <div className="space-y-2 mb-4">
+    <div className={cn("space-y-2 mb-4", className)}>
 
+      {/* ================= DEFAULT VARIANT ================= */}
       {variant === "default" ? (
         <div className="flex items-center justify-between gap-3">
 
-          {/* LEFT SIDE: SEARCH + FILTER */}
+          {/* SEARCH + FILTER */}
           <div className="flex items-center gap-2 w-full max-w-sm">
 
             <div className="relative flex-1">
@@ -90,7 +92,7 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
                 value={search}
                 placeholder={searchPlaceholder}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="pl-9 bg-white"
+                className="pl-9 bg-card"
               />
             </div>
 
@@ -111,16 +113,14 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
                 )}
               </Button>
             )}
-
           </div>
 
+          {/* ACTIONS */}
           <div className="flex items-center gap-2">
+            {beforeAdd}
+
             {onAdd && (
-              <Button
-                size="sm"
-                onClick={onAdd}
-                className="flex items-center gap-2"
-              >
+              <Button size="sm" onClick={onAdd} className="flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 {addLabel}
               </Button>
@@ -128,20 +128,30 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-between">
+        /* ================= DETAIL VARIANT ================= */
+        <div className="flex items-center gap-2">
 
-          {/* TITLE / LEFT */}
-          <div className="text-lg font-semibold">
-            {title}
-          </div>
+          {/* TITLE */}
+          {title && (
+            <div className="flex-1 text-lg font-semibold">
+              {title}
+            </div>
+          )}
 
-          {/* ACTIONS / RIGHT */}
-          <div className="flex items-center gap-2">
+          {/* ACTIONS */}
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              title ? "ml-auto" : "flex-1 justify-start"
+            )}
+          >
             {actions}
           </div>
+
         </div>
       )}
 
+      {/* ================= FILTER PANEL ================= */}
       {variant === "default" && showFilters && filters.length > 0 && (
         <div>
           <hr className="my-1" />

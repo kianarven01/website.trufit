@@ -11,23 +11,29 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
 
-import CustomerContainer from "./pages/internal/Customer/CustomerContainer";
+import DashboardContainer from "./components/DashboardContainer";
+
 import CustomersList from "./pages/internal/Customer/Customers";
 import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 
-import Appointments from "./pages/internal/Sales/Appointments";
+import Appointments from "./pages/internal/Appointments";
 
 import JobOrder from "./pages/internal/Services/JobOrder";
-import ServiceCatalog from "./pages/internal/Services/ServiceCatalog";
+import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
+import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
+import ServiceCatalogForm from "./pages/internal/Services/Service Catalog/ServiceCatalogForm";
+import ServiceDetail from "./pages/internal/Services/Service Catalog/ServiceDetail";
 
-import SalesOrder from "./pages/internal/Sales/SalesOrder";
-import Estimates from "./pages/internal/Sales/Estimates";
+import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
+import SalesOrderDetails from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";
 
-import PurchOrderContainer from "./pages/internal/Purchasing/PurchaseOrders/POContainer";
+import Estimates from "./pages/internal/Sales/Estimates/Estimates";
+import AddEstimate from "./pages/internal/Sales/Estimates/AddEstimate";
+
 import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
 import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";
+
 import SupplierList from "./pages/internal/Purchasing/Suppliers/SupplierList";
-import SupplierContainer from "./pages/internal/Purchasing/Suppliers/SuppliersContainer";
 import SupplierDetails from "./pages/internal/Purchasing/Suppliers/SupplierDetail";
 
 import ProductCatalog from "./pages/internal/Products/ProductCatalogContainer";
@@ -58,30 +64,61 @@ const App: React.FC = () => {
         <Route path="/webapp/register" element={<Register />} />
 
           <Route element={<ProtectedRoute />}>
+
+
             <Route path="/webapp/dashboard" element={<Dashboard />} />
 
-            <Route path="/webapp/customers" element={<CustomerContainer />}>
-              <Route index element={<CustomersList />} />
-              <Route path=":id" element={<CustomerDetail />} />
+            <Route path="/webapp" element={<DashboardContainer />}>
+              
+              {/* Customers */}
+              <Route path="customers">
+                <Route index element={<CustomersList />} />
+                <Route path=":id" element={<CustomerDetail />} />
+              </Route>
+
+              {/* Services */}
+              <Route path="services">
+                <Route path="service-catalog">
+                  <Route index element={<ServiceCatalog />} />
+                  <Route path="task-library" element={<TaskLibraryList />} />
+                  <Route path="new-service" element={<ServiceCatalogForm mode="add" />} />
+                  <Route path=":id/edit" element={<ServiceCatalogForm mode="edit" />} />
+                  <Route path=":id" element={<ServiceDetail />} />
+                </Route>
+
+              </Route>
+
+              {/* Sales */}
+              <Route path="sales">
+                <Route path="sales-orders">
+                  <Route index element={<SalesOrder />} />
+                  <Route path=":id" element={<SalesOrderDetails />} />
+                </Route>
+
+                <Route path="estimates">
+                  <Route index element={<Estimates />} />
+                  <Route path="new-estimate" element={<AddEstimate />} />
+                </Route>
+              </Route>
+
+              {/* Purchasing */}
+              <Route path="purchasing">
+                <Route path="purchase-orders">
+                  <Route index element={<PurchaseOrderList />} />
+                  <Route path=":id" element={<PurchaseOrderDetails />} />
+                </Route>
+
+                <Route path="suppliers">
+                  <Route index element={<SupplierList />} />
+                  <Route path=":supplierId" element={<SupplierDetails />} />
+                </Route>
+              </Route>
+
             </Route>
 
             <Route path="/webapp/appointments" element={<Appointments />} />
 
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
-            <Route path="/webapp/services/service-catalog" element={<ServiceCatalog />} />
-
-            <Route path="/webapp/sales/sales-orders" element={<SalesOrder />} />
-            <Route path="/webapp/sales/estimates" element={<Estimates />} />
-
-            <Route path="/webapp/purchasing/purchase-orders" element={<PurchOrderContainer />}>
-              <Route index element={<PurchaseOrderList />} />
-              <Route path=":id" element={<PurchaseOrderDetails />} />
-            </Route>
-
-            <Route path="/webapp/purchasing/suppliers" element={<SupplierContainer />}>
-              <Route index element={<SupplierList />} />
-              <Route path=":supplierId" element={<SupplierDetails />} />
-            </Route>
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
               <Route index element={<VehiclesPage />} />

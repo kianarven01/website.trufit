@@ -58,7 +58,6 @@ export default function ProductModal({
   const [form, setForm] = useState({
     name: "",
     SKU: "",
-    cost: "",
     description: "",
     category_id: categoryId || "",
     unit: "",
@@ -138,7 +137,10 @@ export default function ProductModal({
     );
   };
 
-  const isSupplierAlreadySelected = (supplierId: string, currentIndex: number) => {
+  const isSupplierAlreadySelected = (
+    supplierId: string,
+    currentIndex: number
+  ) => {
     return productSuppliers.some(
       (row, index) => index !== currentIndex && row.supplier_id === supplierId
     );
@@ -155,7 +157,6 @@ export default function ProductModal({
     setForm({
       name: "",
       SKU: "",
-      cost: "",
       description: "",
       category_id: categoryId || "",
       unit: "",
@@ -191,7 +192,6 @@ export default function ProductModal({
 
       payload.append("name", form.name.trim());
       payload.append("SKU", form.SKU.trim());
-      payload.append("cost", form.cost);
       payload.append("part_number", form.part_number.trim());
       payload.append("is_oem", form.is_oem ? "1" : "0");
 
@@ -269,10 +269,7 @@ export default function ProductModal({
   };
 
   const canSave =
-    form.name.trim() &&
-    form.SKU.trim() &&
-    form.cost.trim() &&
-    form.part_number.trim();
+    form.name.trim() && form.SKU.trim() && form.part_number.trim();
 
   return (
     <Dialog open={open} onOpenChange={handleModalChange}>
@@ -348,15 +345,6 @@ export default function ProductModal({
             placeholder="SKU"
             value={form.SKU}
             onChange={(e) => updateField("SKU", e.target.value)}
-          />
-
-          <Input
-            placeholder="Cost"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.cost}
-            onChange={(e) => updateField("cost", e.target.value)}
           />
 
           <Input
@@ -528,7 +516,7 @@ export default function ProductModal({
             Cancel
           </Button>
 
-          <Button type="button" onClick={handleSave} disabled={saving || !canSave}>
+          <Button type="button" onClick={handleSave} disabled={!canSave || saving}>
             {saving ? "Saving..." : "Save Product"}
           </Button>
         </DialogFooter>

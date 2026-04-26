@@ -26,7 +26,6 @@ class CreateProductDTO
         $productData = [
             'name' => $data['name'],
             'SKU' => $data['SKU'] ?? $data['sku'] ?? null,
-            'cost' => isset($data['cost']) ? (float) $data['cost'] : 0,
             'part_number' => $data['part_number'] ?? null,
             'description' => $data['description'] ?? null,
             'image_path' => $data['image_path'] ?? null,

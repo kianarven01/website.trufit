@@ -16,24 +16,22 @@ class Product extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id',
         'name',
         'SKU',
-        'cost',
         'description',
         'image_path',
         'category_id',
-        'unit',
         'barcode',
         'part_number',
-        'part_id',
-        'manufacturer_id',
         'is_oem',
         'oem_reference_number',
+        'unit',
+        'part_id',
+        'manufacturer_id',
     ];
 
     protected $casts = [
-        'cost' => 'decimal:2',
+        
         'is_oem' => 'boolean',
     ];
 

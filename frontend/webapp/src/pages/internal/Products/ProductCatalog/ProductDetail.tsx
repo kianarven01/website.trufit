@@ -16,6 +16,27 @@ import { Trash2, Pencil, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import api from "@/api/axios";
 
+interface ProductSupplier {
+  id?: string;
+  supplier_id: string | number;
+  supplier_cost?: number | string | null;
+  is_preferred?: boolean;
+  supplier?: {
+    id?: string | number;
+    CompanyName?: string;
+    name?: string;
+    supplier_code?: string;
+  };
+  Supplier?: {
+    id?: string | number;
+    CompanyName?: string;
+    name?: string;
+    supplier_code?: string;
+  };
+  supplier_name?: string;
+  CompanyName?: string;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -26,15 +47,13 @@ interface Product {
   oemRef?: string | null;
   description: string;
   unit: string;
-  costPrice: number;
   price: number;
   category: string;
   manufacturer: string;
   location?: string;
   barcode?: string;
-  supplier?: string;
   categoryId?: string | number | null;
-  supplierCode?: string;
+  suppliers?: ProductSupplier[];
   compatibleVehicles?: {
     make: string;
     model: string;
@@ -68,52 +87,43 @@ const fromSlug = (slug?: string) =>
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
+const normalizeSuppliers = (row: any): ProductSupplier[] => {
+  if (Array.isArray(row.suppliers)) return row.suppliers;
+  if (Array.isArray(row.product_suppliers)) return row.product_suppliers;
+  if (Array.isArray(row.productSuppliers)) return row.productSuppliers;
+  if (Array.isArray(row.ProductSuppliers)) return row.ProductSuppliers;
+
+  return [];
+};
+
 const normalizeProduct = (row: any): Product => ({
   id: String(row.id),
   name: String(row.name || ""),
   sku: String(row.SKU || row.sku || ""),
-  image: row.image || row.image_URL || undefined,
+  image: row.image || row.image_URL || row.image_path || undefined,
   partNumber: String(row.part_number || row.partNumber || ""),
   isOEM: Boolean(row.is_oem || row.isOEM || false),
   oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
-  unit:
-    row.unit?.name ||
-    row.Unit?.name ||
-    row.unit_name ||
-    row.unit ||
-    "-",
-  costPrice: Number(row.cost || row.costPrice || 0),
+  unit: row.unit?.name || row.Unit?.name || row.unit_name || row.unit || "-",
   price: Number(row.selling_price || row.price || row.sell_price || 0),
-  category:
-    row.category?.name || row.Category?.name || row.category_name || "-",
+  category: row.category?.name || row.Category?.name || row.category_name || "-",
   manufacturer:
+    row.manufacturer?.name ||
+    row.Manufacturer?.name ||
     row.manufacturer_name ||
-    row.manufacturer ||
     row.brand?.name ||
     row.Brand?.name ||
     row.brand_name ||
     "-",
   location: row.location || row.warehouse_location || "-",
   barcode: row.barcode || "",
-  supplier:
-    row.supplier?.CompanyName ||
-    row.Supplier?.CompanyName ||
-    row.supplier_name ||
-    row.supplier ||
-    "-",
   categoryId: row.category_id ?? row.categoryId ?? null,
-  supplierCode:
-    row.supplier_code ||
-    row.supplier?.supplier_code ||
-    row.Supplier?.supplier_code ||
-    "",
+  suppliers: normalizeSuppliers(row),
   compatibleVehicles: Array.isArray(row.compatibleVehicles)
     ? row.compatibleVehicles
     : [],
-  crossReferences: Array.isArray(row.crossReferences)
-    ? row.crossReferences
-    : [],
+  crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
 
 const ProductDetail: React.FC = () => {
@@ -121,12 +131,7 @@ const ProductDetail: React.FC = () => {
   const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const {
-    vehicleSlug,
-    variantSlug,
-    categorySlug,
-    productId,
-  } = useParams<{
+  const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
     variantSlug: string;
     categorySlug: string;
@@ -143,11 +148,14 @@ const ProductDetail: React.FC = () => {
       }
     | undefined;
 
-  const [product, setProduct] = useState<Product | null>(routeState?.product || null);
+  const [product, setProduct] = useState<Product | null>(
+    routeState?.product || null
+  );
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [loading, setLoading] = useState(!routeState?.product);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
 
   const loadCategories = async () => {
     const res = await api.get("/products/categories");
@@ -229,12 +237,13 @@ const ProductDetail: React.FC = () => {
         },
       });
 
-      const rows = Array.isArray(listRes.data?.data) ? listRes.data.data : listRes.data;
+      const rows = Array.isArray(listRes.data?.data)
+        ? listRes.data.data
+        : listRes.data;
       const normalized = (Array.isArray(rows) ? rows : []).map(normalizeProduct);
 
       const found =
-        normalized.find((item) => item.id === selectedProductId) ||
-        null;
+        normalized.find((item) => item.id === selectedProductId) || null;
 
       setProduct(found);
     } catch (error) {
@@ -249,6 +258,19 @@ const ProductDetail: React.FC = () => {
     void Promise.all([loadCategories(), loadManufacturers(), loadSuppliers()]);
     void loadProduct();
   }, [routeState?.productId, productId]);
+
+  useEffect(() => {
+    if (!product?.suppliers?.length) {
+      setSelectedSupplierId("");
+      return;
+    }
+
+    const preferredSupplier =
+      product.suppliers.find((supplier) => supplier.is_preferred) ||
+      product.suppliers[0];
+
+    setSelectedSupplierId(String(preferredSupplier.supplier_id));
+  }, [product]);
 
   const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
   const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
@@ -281,12 +303,32 @@ const ProductDetail: React.FC = () => {
     );
   }
 
+  const selectedSupplier = product.suppliers?.find(
+    (supplier) => String(supplier.supplier_id) === selectedSupplierId
+  );
+
+  const selectedSupplierCost = selectedSupplier?.supplier_cost ?? null;
+
+  const getSupplierName = (supplier: ProductSupplier) => {
+    return (
+      supplier.supplier?.CompanyName ||
+      supplier.supplier?.name ||
+      supplier.Supplier?.CompanyName ||
+      supplier.Supplier?.name ||
+      supplier.supplier_name ||
+      supplier.CompanyName ||
+      `Supplier #${supplier.supplier_id}`
+    );
+  };
+
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+            <BreadcrumbLink
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
               Product Catalog
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -391,21 +433,28 @@ const ProductDetail: React.FC = () => {
 
             <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
               <div>
-                <span className="font-medium text-foreground">SKU:</span> {product.sku || "-"}
+                <span className="font-medium text-foreground">SKU:</span>{" "}
+                {product.sku || "-"}
               </div>
               <div>
-                <span className="font-medium text-foreground">Part No:</span> {product.partNumber || "-"}
+                <span className="font-medium text-foreground">Part No:</span>{" "}
+                {product.partNumber || "-"}
               </div>
               <div>
-                <span className="font-medium text-foreground">Brand:</span> {product.manufacturer || "-"}
+                <span className="font-medium text-foreground">Brand:</span>{" "}
+                {product.manufacturer || "-"}
               </div>
               {product.isOEM && (
                 <div>
-                  <span className="font-medium text-foreground">OEM Reference:</span> {product.oemRef || "-"}
+                  <span className="font-medium text-foreground">
+                    OEM Reference:
+                  </span>{" "}
+                  {product.oemRef || "-"}
                 </div>
               )}
               <div>
-                <span className="font-medium text-foreground">Category:</span> {product.category || "-"}
+                <span className="font-medium text-foreground">Category:</span>{" "}
+                {product.category || "-"}
               </div>
             </div>
 
@@ -445,8 +494,35 @@ const ProductDetail: React.FC = () => {
                   <h2 className="font-semibold">Product Details</h2>
 
                   <div className="grid grid-cols-2 gap-y-3 text-sm flex-1">
-                    <span className="text-muted-foreground">Cost Price</span>
-                    <span>₱{product.costPrice?.toFixed(2) ?? "0.00"}</span>
+                    <span className="text-muted-foreground">Supplier</span>
+                    <select
+                      className="border rounded-md px-2 py-1 bg-background"
+                      value={selectedSupplierId}
+                      onChange={(e) => setSelectedSupplierId(e.target.value)}
+                    >
+                      {product.suppliers && product.suppliers.length > 0 ? (
+                        product.suppliers.map((supplier) => (
+                          <option
+                            key={String(supplier.supplier_id)}
+                            value={String(supplier.supplier_id)}
+                          >
+                            {getSupplierName(supplier)}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">No suppliers</option>
+                      )}
+                    </select>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Supplier Cost</span>
+                    <span>
+                      {selectedSupplierCost !== null &&
+                      selectedSupplierCost !== undefined
+                        ? `₱${Number(selectedSupplierCost).toFixed(2)}`
+                        : "-"}
+                    </span>
 
                     <Separator className="col-span-2" />
 
@@ -460,12 +536,9 @@ const ProductDetail: React.FC = () => {
 
                     <Separator className="col-span-2" />
 
-                    <span className="text-muted-foreground">Supplier</span>
-                    <span>{product.supplier}</span>
-
-                    <Separator className="col-span-2" />
-
-                    <span className="text-muted-foreground">Warehouse Location</span>
+                    <span className="text-muted-foreground">
+                      Warehouse Location
+                    </span>
                     <span>{product.location || "-"}</span>
 
                     <Separator className="col-span-2" />
@@ -496,7 +569,8 @@ const ProductDetail: React.FC = () => {
               </div>
 
               <div className="text-sm space-y-2">
-                {product.compatibleVehicles && product.compatibleVehicles.length > 0 ? (
+                {product.compatibleVehicles &&
+                product.compatibleVehicles.length > 0 ? (
                   product.compatibleVehicles.map((vehicle, idx) => (
                     <div
                       key={idx}
@@ -558,7 +632,10 @@ const ProductDetail: React.FC = () => {
         manufacturers={manufacturers}
         suppliers={suppliers}
         variantId={routeState?.variantId || null}
-        categoryId={routeState?.categoryId || (product.categoryId ? String(product.categoryId) : null)}
+        categoryId={
+          routeState?.categoryId ||
+          (product.categoryId ? String(product.categoryId) : null)
+        }
         onSaved={async () => {
           await loadProduct();
         }}

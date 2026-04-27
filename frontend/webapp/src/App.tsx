@@ -18,11 +18,13 @@ import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 
 import Appointments from "./pages/internal/Appointments";
 
-import JobOrder from "./pages/internal/Services/JobOrder";
+import JobOrder from "./pages/internal/Services/Job Order/JobOrder";
 import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
 import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
 import ServiceCatalogForm from "./pages/internal/Services/Service Catalog/ServiceCatalogForm";
 import ServiceDetail from "./pages/internal/Services/Service Catalog/ServiceDetail";
+import JobOrderForm from "./pages/internal/Services/Job Order/JobOrderForm";
+
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
 import SalesOrderDetails from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";
@@ -84,6 +86,13 @@ const App: React.FC = () => {
                   <Route path="new-service" element={<ServiceCatalogForm mode="add" />} />
                   <Route path=":id/edit" element={<ServiceCatalogForm mode="edit" />} />
                   <Route path=":id" element={<ServiceDetail />} />
+                </Route>
+
+                <Route>
+                  <Route path="job-orders">
+                    <Route index element={<JobOrder />} />
+                    <Route path=":new-job-order" element={<JobOrderForm />} />
+                  </Route>
                 </Route>
 
               </Route>

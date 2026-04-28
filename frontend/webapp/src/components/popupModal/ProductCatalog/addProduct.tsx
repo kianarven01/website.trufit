@@ -79,7 +79,7 @@ export default function ProductModal({
       .get("/products/units")
       .then((res) => {
         const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
-        setUnits(rows || []);
+        setUnits(Array.isArray(rows) ? rows : []);
       })
       .catch((error) => {
         console.error("Failed to load units:", error);
@@ -105,6 +105,15 @@ export default function ProductModal({
   const updateField = (key: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  /**
+   * Supplier IDs are UUIDs in your Supabase table.
+   * So DO NOT use Number(supplier.id).
+   */
+  const validSupplierOptions = suppliers.filter((supplier) => {
+    const supplierId = String(supplier.id || "").trim();
+    return supplierId !== "" && supplierId !== "0";
+  });
 
   const addSupplierRow = () => {
     setProductSuppliers((prev) => [
@@ -142,7 +151,9 @@ export default function ProductModal({
     currentIndex: number
   ) => {
     return productSuppliers.some(
-      (row, index) => index !== currentIndex && row.supplier_id === supplierId
+      (row, index) =>
+        index !== currentIndex &&
+        String(row.supplier_id).trim() === String(supplierId).trim()
     );
   };
 
@@ -219,20 +230,25 @@ export default function ProductModal({
         payload.append("oem_reference_number", form.oem_reference_number.trim());
       }
 
-      const validSuppliers = productSuppliers.filter(
-        (supplier) => supplier.supplier_id.trim() !== ""
-      );
+      /**
+       * Supplier IDs are UUIDs, so keep them as strings.
+       * Only remove blank placeholder values.
+       */
+      const validSuppliers = productSuppliers.filter((supplier) => {
+        const supplierId = String(supplier.supplier_id || "").trim();
+        return supplierId !== "" && supplierId !== "0";
+      });
 
       validSuppliers.forEach((supplier, index) => {
         payload.append(
           `suppliers[${index}][supplier_id]`,
-          supplier.supplier_id
+          String(supplier.supplier_id).trim()
         );
 
         if (supplier.supplier_cost.trim() !== "") {
           payload.append(
             `suppliers[${index}][supplier_cost]`,
-            supplier.supplier_cost
+            supplier.supplier_cost.trim()
           );
         }
       });
@@ -285,8 +301,12 @@ export default function ProductModal({
             onDragOver={(e) => e.preventDefault()}
             onDrop={(e) => {
               e.preventDefault();
+
               const file = e.dataTransfer.files?.[0];
-              if (file) handleFile(file);
+
+              if (file) {
+                handleFile(file);
+              }
             }}
           >
             {imagePreview ? (
@@ -302,6 +322,7 @@ export default function ProductModal({
                   className="absolute top-2 right-2 bg-background border rounded-full p-1"
                   onClick={(e) => {
                     e.stopPropagation();
+
                     setImageFile(null);
                     setImagePreview("");
 
@@ -330,7 +351,10 @@ export default function ProductModal({
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleFile(file);
+
+                if (file) {
+                  handleFile(file);
+                }
               }}
             />
           </div>
@@ -359,6 +383,7 @@ export default function ProductModal({
             onChange={(e) => updateField("category_id", e.target.value)}
           >
             <option value="">Select category</option>
+
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {getOptionLabel(category)}
@@ -372,6 +397,7 @@ export default function ProductModal({
             onChange={(e) => updateField("manufacturer_id", e.target.value)}
           >
             <option value="">Select manufacturer</option>
+
             {manufacturers.map((manufacturer) => (
               <option key={manufacturer.id} value={manufacturer.id}>
                 {getOptionLabel(manufacturer)}
@@ -385,6 +411,7 @@ export default function ProductModal({
             onChange={(e) => updateField("unit", e.target.value)}
           >
             <option value="">Select unit</option>
+
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
                 {getOptionLabel(unit)}
@@ -441,7 +468,7 @@ export default function ProductModal({
                     >
                       <option value="">Select supplier</option>
 
-                      {suppliers.map((supplier) => (
+                      {validSupplierOptions.map((supplier) => (
                         <option
                           key={supplier.id}
                           value={supplier.id}
@@ -516,7 +543,11 @@ export default function ProductModal({
             Cancel
           </Button>
 
-          <Button type="button" onClick={handleSave} disabled={!canSave || saving}>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !canSave}
+          >
             {saving ? "Saving..." : "Save Product"}
           </Button>
         </DialogFooter>

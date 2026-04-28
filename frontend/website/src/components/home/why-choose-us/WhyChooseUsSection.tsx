@@ -127,7 +127,7 @@ export default function WhyChooseUsSection() {
               key={idx}
               className="why-feature flex flex-col items-center text-center group opacity-0 translate-y-12"
             >
-              <div className="mb-6 p-4 rounded-full bg-red-50 transition-transform duration-300 group-hover:scale-110">
+              <div className="mb-6 p-4 rounded-full bg-red-50 transition-transform duration-300">
                 {feature.icon}
               </div>
               <h3 className="text-xl font-semibold mb-4 text-brand-dark">

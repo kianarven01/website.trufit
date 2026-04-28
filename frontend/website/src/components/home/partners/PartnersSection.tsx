@@ -103,7 +103,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
           {[...PARTNERS, ...PARTNERS, ...PARTNERS].map((partner, index) => (
             <div 
               key={index} 
-              className={`w-[140px] md:w-[200px] h-[80px] md:h-[100px] flex items-center justify-center px-4 md:px-8 flex-shrink-0 transition-transform hover:scale-105 ${
+              className={`w-[140px] md:w-[200px] h-[80px] md:h-[100px] flex items-center justify-center px-4 md:px-8 flex-shrink-0 transition-transform ${
                 isTransparent 
                   ? 'bg-white rounded-sm mx-3 shadow-lg' 
                   : ''

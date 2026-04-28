@@ -269,12 +269,6 @@
   transition: all 0.4s ease;
 }
 
-.vmv-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-4px);
-}
-
 .vmv-card::before {
   content: '';
   position: absolute;
@@ -285,10 +279,6 @@
   background: linear-gradient(90deg, var(--brand-red), #ff4d4d);
   opacity: 0;
   transition: opacity 0.4s ease;
-}
-
-.vmv-card:hover::before {
-  opacity: 1;
 }
 
 /* --------------- CTA Section --------------- */

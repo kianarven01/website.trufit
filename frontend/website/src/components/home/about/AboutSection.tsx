@@ -444,7 +444,7 @@ export default function AboutSection() {
               {features.map((feature, idx) => (
                 <div key={idx} className="flex gap-5 group">
                   <div className="shrink-0 mt-1">
-                    <CheckCircle2 className="text-brand-red w-6 h-6 transition-transform group-hover:scale-110" />
+                    <CheckCircle2 className="text-brand-red w-6 h-6 transition-transform" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-brand-dark uppercase text-xs tracking-widest mb-2">

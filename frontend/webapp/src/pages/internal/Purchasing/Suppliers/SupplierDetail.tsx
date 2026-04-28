@@ -6,14 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsTrigger, TabsList, TabsContent } from "@/components/ui/tabs";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage, BreadcrumbLink, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardTitle, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import DataToolbar from "@/components/DataToolbar";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import SupplierModal from "@/components/popupModal/Purchasing/addSupplier"; 
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import ContactSupplierModal from "@/components/popupModal/Purchasing/contactSupplier";
+
+import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
 
-import { Mail, Phone, User, MessageCircle, Edit, Trash2, Percent } from "lucide-react";
+import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent } from "lucide-react";
 
 interface Supplier {
   id: string;
@@ -27,15 +31,6 @@ interface Supplier {
   vatRate: number;
 }
 
-interface Transaction {
-  id: string;
-  date: string;
-  time: string;
-  partsOrdered: number;
-  amount: number;
-  status: string;
-}
-
 interface Product {
   id: string;
   name: string;
@@ -46,15 +41,6 @@ interface Product {
 
 const STORAGE_KEY = "suppliers";
 
-const generateDummyTransactions = (): Transaction[] =>
-  Array.from({ length: 10 }, (_, i) => ({
-    id: `txn-${i}`,
-    date: new Date().toISOString().split("T")[0],
-    time: new Date().toLocaleTimeString(),
-    partsOrdered: Math.floor(Math.random() * 10),
-    amount: Math.floor(Math.random() * 10000),
-    status: i % 2 === 0 ? "Completed" : "Pending",
-  }));
 
 const generateDummyProducts = (): Product[] =>
   Array.from({ length: 12 }, (_, i) => ({
@@ -70,10 +56,10 @@ const SupplierDetails: React.FC = () => {
   const navigate = useNavigate();
 
   const [supplier, setSupplier] = useState<Supplier | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(false);
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
@@ -86,7 +72,6 @@ const SupplierDetails: React.FC = () => {
   }, [supplierId]);
 
   useEffect(() => {
-    setTransactions(generateDummyTransactions());
     setProducts(generateDummyProducts());
   }, []);
 
@@ -161,195 +146,188 @@ const SupplierDetails: React.FC = () => {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+      
+    {/* TOOLBAR */}
+    <DataToolbar
+      variant="detail"
+      actions={
+        <div className="flex items-center justify-between w-full">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+          </Button>
 
-      <div className="grid grid-cols-5 gap-6 flex-1 min-h-0">
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <Pencil className="w-4 h-4 mr-1" />
+              Edit Service
+            </Button>
 
-        {/* LEFT */}
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setIsDeleteOpen(true)}
+            >
+              <XCircle className="w-4 h-4 mr-1" />
+              Remove Service
+            </Button>
+          </div>
+        </div>
+      }
+    />
+
+      <div className="grid grid-cols-6 gap-6 flex-1 min-h-0">
+
         <div className="col-span-2 flex flex-col min-h-0">
-          <Card className="flex flex-col h-fit">
+          <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-lg font-bold">{supplier.name}</h1>
-                  <p className="text-xs text-gray-500">{supplier.supplierCode}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="icon_xs"
-                    onClick={() => setIsEditOpen(true)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon_xs" 
-                    className="text-destructive"
-                    onClick={() => setIsDeleteOpen(true)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <CardTitle className="text-lg">{supplier.name}</CardTitle>
+              <p className="text-xs text-muted-foreground">{supplier.supplierCode}</p>
             </CardHeader>
 
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-5">
 
-              {[{
-                label: "Contact Person",
-                icon: User,
-                value: supplier.contactPerson || "No contact person available",
-                clickable: false
-              }, {
-                label: "Email",
-                icon: Mail,
-                value: supplier.email || "No email available",
-                clickable: !!supplier.email,
-                action: () => supplier.email && window.open(`mailto:${supplier.email}`)
-              }, {
-                label: "Phone",
-                icon: Phone,
-                value: supplier.phone ? formatPHPhone(supplier.phone) : "No phone number available",
-                clickable: !!supplier.phone,
-                action: () => supplier.phone && window.open(`tel:${supplier.phone}`)
-              }, {
-                label: "Viber",
-                icon: MessageCircle,
-                value: supplier.viber || "No Viber available",
-                clickable: !!supplier.viber,
-                action: () => supplier.viber && window.open(`viber://chat?number=${supplier.viber}`)
-              }, {
-                label: "Tax",
-                icon: Percent,
-                value: "",
-                clickable: false,
-                isTax: true
-              }].map((field: any, i) => (
-                <div key={i} className="space-y-1">
-                  <Label>{field.label}</Label>
-                  <div className="relative">
-                    <field.icon
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                    />
-
-                    {field.isTax ? (
-                      <div className="flex items-center pl-9 h-9 border rounded-md">
-                        {supplier.isVAT ? (
-                          `${supplier.vatRate}% VAT applied`
-                        ) : (
-                          "Non-VAT supplier"
-                        )}
-                      </div>
-                    ) : (
-                      <Input
-                        value={field.value}
-                        readOnly
-                        onClick={field.action}
-                        className={`pl-9 ${field.clickable ? "cursor-pointer" : "text-foreground"}`}
-                      />
-                    )}
-                  </div>
+              {/* Contact Person */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Contact Person
+                </p>
+                <div className="flex items-center gap-2">
+                  <User className="w-3.5 h-3.5" />
+                  <p className="text-sm">
+                    {supplier.contactPerson || "—"}
+                  </p>
                 </div>
-              ))}
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Email
+                </p>
+                <div className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5" />
+                  <p className="text-sm">{supplier.email || "—"}</p>
+                </div>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Phone
+                </p>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5" />
+                  <p className="text-sm">
+                    {supplier.phone ? formatPHPhone(supplier.phone) : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Viber */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Viber
+                </p>
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <p className="text-sm">{supplier.viber || "—"}</p>
+                </div>
+              </div>
+
+              {/* Tax */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Tax
+                </p>
+                <div className="flex items-center gap-2">
+                  <Percent className="w-3.5 h-3.5" />
+                  <p className="text-sm">
+                    {supplier.isVAT
+                      ? `${supplier.vatRate}% VAT applied`
+                      : "Non-VAT supplier"}
+                  </p>
+                </div>
+              </div>
 
             </CardContent>
 
             <CardFooter>
-              <Button className="w-full">Contact Supplier</Button>
+              <Button 
+              className="w-full"
+              onClick={() => setIsContactOpen(true)}
+            >
+              Contact Supplier
+            </Button>
             </CardFooter>
           </Card>
         </div>
-
-        {/* RIGHT unchanged */}
-        {/* (kept exactly as-is) */}
-
-        <div className="col-span-3 flex flex-col min-h-0">
+        
+        <div className="col-span-4 flex flex-col min-h-0">
           <Card className="flex flex-col flex-1 min-h-0">
+            <CardHeader>
+              <CardTitle className="text-lg">
+                Supplied Products ({products.length})
+              </CardTitle>
+            </CardHeader>
 
-            <Tabs defaultValue="transactions" className="flex flex-col flex-1 min-h-0 p-4">
+            <CardContent className="flex flex-col flex-1 overflow-hidden p-0">
+              {products.length > 0 ? (
+                <div className="flex flex-col flex-1 border rounded-lg mx-4 mb-4 overflow-hidden">
+                  
+                  <Table className="table-fixed w-full">
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-[40%]">Product Name</TableHead>
+                        <TableHead className="w-[20%]">Part Number</TableHead>
+                        <TableHead className="w-[20%]">Price</TableHead>
+                        <TableHead className="w-[20%]">Stock</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                  </Table>
 
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="transactions">Recent Transactions</TabsTrigger>
-                <TabsTrigger value="products">Supplied Products ({products.length})</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="transactions" className="flex-1 min-h-0 mt-4">
-                <div className="h-full overflow-hidden">
-                  <div className="h-full overflow-y-auto">
+                  {/* SCROLLABLE BODY */}
+                  <ScrollArea className="flex-1">
                     <Table className="table-fixed w-full">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Purchase Date</TableHead>
-                          <TableHead>Parts Ordered</TableHead>
-                          <TableHead>Amount</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-
                       <TableBody>
-                        {transactions.slice(0, 10).map((txn) => (
-                          <TableRow key={txn.id}>
-                            <TableCell>
-                              <div>
-                                <p className="text-sm font-medium leading-none">{txn.date}</p>
-                                <p className="text-xs text-muted-foreground">{txn.time}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>{txn.partsOrdered}</TableCell>
-                            <TableCell>{txn.amount}</TableCell>
-                            <TableCell>
-                              <Badge>{txn.status}</Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-
-                    </Table>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="products" className="flex-1 min-h-0 mt-4">
-                <div className="h-full overflow-hidden flex flex-col">
-                  <div className="flex-1 overflow-y-auto">
-                    <Table className="table-fixed w-full">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Product Name</TableHead>
-                          <TableHead>Part Number</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Stock</TableHead>
-                        </TableRow>
-                      </TableHeader>
-
-                      <TableBody>
-                        {paginate(products).map((prod) => (
+                        {paginate(products).map((prod, index) => (
                           <TableRow key={prod.id}>
-                            <TableCell className="truncate">{prod.name}</TableCell>
-                            <TableCell>{prod.partNumber}</TableCell>
-                            <TableCell>{prod.price}</TableCell>
-                            <TableCell>{prod.stock}</TableCell>
+                            <TableCell className="w-[40%] truncate">
+                              {prod.name}
+                            </TableCell>
+                            <TableCell className="w-[20%]">
+                              {prod.partNumber}
+                            </TableCell>
+                            <TableCell className="w-[20%]">
+                              {prod.price}
+                            </TableCell>
+                            <TableCell className="w-[20%]">
+                              {prod.stock}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </ScrollArea>
 
-                  {products.length > 25 && (
-                    <div className="mt-2">
-                      <Pagination
-                        totalItems={products.length}
-                        page={page}
-                        pageSize={pageSize}
-                        onPageChange={setPage}
-                        onPageSizeChange={setPageSize}
-                      />
-                    </div>
+                  {products.length > pageSize && (
+                    <Pagination
+                      totalItems={products.length}
+                      page={page}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                    />
                   )}
                 </div>
-              </TabsContent>
-
-            </Tabs>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
+                  No supplied products available.
+                </div>
+              )}
+            </CardContent>
           </Card>
         </div>
 
@@ -360,6 +338,17 @@ const SupplierDetails: React.FC = () => {
         onOpenChange={setIsEditOpen}
         supplier={supplier}
         onSaved={handleSaveSupplier}
+      />      
+
+      <ContactSupplierModal
+        open={isContactOpen}
+        onOpenChange={setIsContactOpen}
+        supplier={{
+          name: supplier.name,
+          email: supplier.email,
+          phone: supplier.phone,
+          viber: supplier.viber,
+        }}
       />      
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>

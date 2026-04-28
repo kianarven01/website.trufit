@@ -61,10 +61,9 @@ const SupplierList: React.FC = () => {
 
   const navigate = useNavigate();
 
-  /* PAGINATION */
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  /* LOAD SUPPLIERS */
+  /* LOAD */
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
 
@@ -85,32 +84,41 @@ const SupplierList: React.FC = () => {
     }
   }, []);
 
-  /* SAVE SUPPLIERS */
+  /* SAVE */
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(suppliers));
   }, [suppliers]);
 
-  /* RESET PAGE ON SEARCH */
   useEffect(() => {
     setPage(1);
   }, [search]);
 
   /* FILTER */
-  const filtered = suppliers.filter((s) =>
-    `${s.name} ${s.supplierCode} ${s.email} ${s.phone} ${s.contactPerson} ${s.viber}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
+const filtered = suppliers.filter((s) => {
+  const q = search.toLowerCase().trim();
+
+  if (!q) return true;
+
+  return (
+    s.name?.toLowerCase().includes(q) ||
+    s.email?.toLowerCase().includes(q) ||
+    s.phone?.toLowerCase().includes(q) ||
+    s.viber?.toLowerCase().includes(q) ||
+    s.contactPerson?.toLowerCase().includes(q)
   );
+});
 
   const paginated = paginate(filtered);
 
-  /* SAVE OR UPDATE SUPPLIER */
+  /* SAVE / UPDATE */
   const handleSaveSupplier = (newSupplier: Supplier) => {
     setSuppliers((prev) => {
       const exists = prev.find((s) => s.id === newSupplier.id);
 
       if (exists) {
-        return prev.map((s) => (s.id === newSupplier.id ? newSupplier : s));
+        return prev.map((s) =>
+          s.id === newSupplier.id ? newSupplier : s
+        );
       }
 
       return [newSupplier, ...prev];
@@ -139,10 +147,12 @@ const SupplierList: React.FC = () => {
         addLabel="Add Supplier"
       />
 
-      {/* TABLE */}
+      {/* TABLE + PAGINATION */}
       {suppliers.length > 0 ? (
-        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
-          <div className="flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col border rounded-xl  overflow-hidden">
+
+          {/* Scrollable Table */}
+          <ScrollArea className="flex-1 px-3">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -155,7 +165,7 @@ const SupplierList: React.FC = () => {
               </TableHeader>
 
               <TableBody>
-                {filtered.length > 0 ? (
+                {paginated.length > 0 ? (
                   paginated.map((s) => (
                     <TableRow
                       key={s.id}
@@ -186,7 +196,9 @@ const SupplierList: React.FC = () => {
                     <TableCell colSpan={5}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">No suppliers found</p>
+                        <p className="text-sm font-medium">
+                          No suppliers found
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           Try adjusting your search
                         </p>
@@ -196,24 +208,28 @@ const SupplierList: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </ScrollArea>
 
-          {/* Always-visible Sticky Pagination */}
-          <div className="sticky bottom-0 bg-background z-10">
-            <Pagination
-              totalItems={filtered.length}
-              page={page}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
-        </ScrollArea>
+          {/* PAGINATION */}
+          {filtered.length > 0 && (
+            <div className="border-t mx-3">
+              <Pagination
+                totalItems={filtered.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
+          )}
+        </div>
       ) : (
         <Card>
           <CardContent className="py-16 flex flex-col items-center text-center">
             <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">No current suppliers available</p>
+            <p className="text-sm font-medium">
+              No current suppliers available
+            </p>
             <p className="text-xs text-muted-foreground">
               Add a new supplier to get started
             </p>

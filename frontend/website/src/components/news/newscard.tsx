@@ -12,7 +12,10 @@ type Props = {
 };
 
 export default function NewsCard({ item, index }: Props) {
+  const href = `/news/${item.slug}`;
+
   return (
+    <Link href={href} className="block">
     <article 
       className="news-card group relative bg-brand-dark border border-white/5 rounded-2xl overflow-hidden hover:border-brand-red/30 transition-all duration-500 hover:shadow-2xl hover:shadow-brand-red/10 animate-reveal"
       style={{ animationDelay: `${index * 100}ms` }}
@@ -44,14 +47,12 @@ export default function NewsCard({ item, index }: Props) {
           {item.excerpt}
         </p>
 
-        <Link 
-          href={`/news/${item.slug}`}
-          className="inline-flex items-center gap-2 text-white font-bold text-xs uppercase tracking-widest hover:text-brand-red transition-all group/btn"
-        >
+        <div className="inline-flex items-center gap-2 text-white font-bold text-xs uppercase tracking-widest group-hover:text-brand-red transition-all group/btn">
           Read More 
-          <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-        </Link>
+          <ArrowRight className="w-4 h-4" />
+        </div>
       </div>
     </article>
+    </Link>
   );
 }

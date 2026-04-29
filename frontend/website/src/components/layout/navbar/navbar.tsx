@@ -210,7 +210,7 @@ export default function Navbar() {
                 onClick={() => setIsOpen(!isOpen)}
                 className={isScrolled ? "text-brand-dark" : "text-white"}
               >
-                {isOpen ? <X size={28} /> : <Menu size={28} />}
+                {isOpen ? <X size={32} /> : <Menu size={32} />}
               </button>
             </div>
           </div>

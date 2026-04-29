@@ -3,7 +3,11 @@
 namespace App\Domains\Product\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Domains\Product\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\Category;
+use App\Domains\Product\Domain\Models\Manufacturers;
+use App\Domains\Product\Domain\Models\Unit;
+use App\Domains\Supplier\Domain\Models\Supplier;
+use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 
 class Product extends Model
 {
@@ -31,9 +35,14 @@ class Product extends Model
     ];
 
     protected $casts = [
-        
         'is_oem' => 'boolean',
     ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relationships
+    |--------------------------------------------------------------------------
+    */
 
     public function category()
     {
@@ -52,11 +61,25 @@ class Product extends Model
 
     public function vehicleCompatibilities()
     {
-        return $this->hasMany(ProductVehicleCompatibility::class, 'product_id');
+        return $this->hasMany(
+            ProductVehicleCompatibility::class,
+            'product_id'
+        );
     }
 
+    /**
+     * Product ↔ Supplier (Many-to-Many via ProductSuppliers pivot)
+     */
     public function suppliers()
     {
-        return $this->hasMany(ProductSupplier::class, 'product_id', 'id');
+        return $this->belongsToMany(
+            Supplier::class,
+            'Main.ProductSuppliers',
+            'product_id',
+            'supplier_id'
+        )
+            ->withPivot([
+                'supplier_cost'
+            ]);
     }
 }

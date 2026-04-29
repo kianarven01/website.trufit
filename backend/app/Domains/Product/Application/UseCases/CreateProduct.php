@@ -16,7 +16,7 @@ class CreateProduct
     {
         return $this->repository->create(
             productData: $dto->productData,
-            suppliers: $dto->suppliers,
+            suppliers: $dto->productSuppliers, // ✅ fixed
             compatibility: $dto->compatibility,
         );
     }

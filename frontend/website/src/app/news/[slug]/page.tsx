@@ -103,7 +103,7 @@ export default async function ArticlePage({ params }: Props) {
                 T
               </div>
               <div>
-                <p className="text-white font-bold text-sm">Trufit Editorial</p>
+                <p className="text-white font-bold text-sm">Trufit IT Department</p>
                 <p className="text-gray-500 text-xs">
                   Official News & Updates from Trufit Auto Center
                 </p>

@@ -1,6 +1,7 @@
 // src/components/layout/Footer/Footer.tsx
 import Image from "next/image"
 import Link from "next/link"
+import ShareButtons from "@/components/ui/ShareButtons";
 
 export default function Footer() {
   return (
@@ -109,6 +110,10 @@ export default function Footer() {
             <li><Link href="/about" className="hover:text-brand-red transition-colors">About Us</Link></li>
             <li><Link href="/contact" className="hover:text-brand-red transition-colors">Contact Us</Link></li>
           </ul>
+          {/* share buttons */}
+          <div className="mt-8">
+            <ShareButtons />
+          </div>
         </div>
 
         {/* FAQ */}

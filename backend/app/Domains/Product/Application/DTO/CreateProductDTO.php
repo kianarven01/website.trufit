@@ -6,24 +6,22 @@ class CreateProductDTO
 {
     public function __construct(
         public readonly array $productData,
-        public readonly array $suppliers = [],
-        public readonly ?array $compatibility = null,
+        public readonly array $productSuppliers,
+        public readonly ?array $compatibility,
     ) {}
 
     public static function fromArray(array $data): self
     {
-        $suppliers = $data['suppliers'] ?? [];
+        return new self(
+            productData: self::extractProductData($data),
+            productSuppliers: self::extractProductSuppliers($data),
+            compatibility: self::extractCompatibility($data),
+        );
+    }
 
-        $compatibility = null;
-
-        if (!empty($data['car_variant_id'])) {
-            $compatibility = [
-                'car_variant_id' => (int) $data['car_variant_id'],
-                'notes' => $data['compatibility_notes'] ?? null,
-            ];
-        }
-
-        $productData = [
+    private static function extractProductData(array $data): array
+    {
+        return [
             'name' => $data['name'],
             'SKU' => $data['SKU'] ?? $data['sku'] ?? null,
             'part_number' => $data['part_number'] ?? null,
@@ -37,11 +35,37 @@ class CreateProductDTO
             'is_oem' => filter_var($data['is_oem'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'oem_reference_number' => $data['oem_reference_number'] ?? null,
         ];
+    }
 
-        return new self(
-            productData: $productData,
-            suppliers: $suppliers,
-            compatibility: $compatibility,
-        );
+    private static function extractProductSuppliers(array $data): array
+    {
+        if (empty($data['suppliers']) || !is_array($data['suppliers'])) {
+            return [];
+        }
+
+        return collect($data['suppliers'])
+            ->filter(fn($row) => !empty($row['supplier_id']))
+            ->map(function ($row) {
+                return [
+                    'supplier_id' => $row['supplier_id'],
+                    'supplier_cost' => isset($row['supplier_cost'])
+                        ? (float) $row['supplier_cost']
+                        : null,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
+
+    private static function extractCompatibility(array $data): ?array
+    {
+        if (empty($data['car_variant_id'])) {
+            return null;
+        }
+
+        return [
+            'car_variant_id' => (int) $data['car_variant_id'],
+            'notes' => $data['compatibility_notes'] ?? null,
+        ];
     }
 }

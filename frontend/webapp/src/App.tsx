@@ -23,7 +23,6 @@ import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCat
 import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
 import ServiceCatalogForm from "./pages/internal/Services/Service Catalog/ServiceCatalogForm";
 import ServiceDetail from "./pages/internal/Services/Service Catalog/ServiceDetail";
-import JobOrderForm from "./pages/internal/Services/Job Order/JobOrderForm";
 
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
@@ -90,7 +89,6 @@ const App: React.FC = () => {
                 <Route>
                   <Route path="job-orders">
                     <Route index element={<JobOrder />} />
-                    <Route path=":new-job-order" element={<JobOrderForm />} />
                   </Route>
                 </Route>
 

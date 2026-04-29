@@ -13,8 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import DataToolbar from "@/components/DataToolbar";
-import AssignTaskModal from "@/components/popupModal/ServiceCatalog/AssignTasksModal";
-import TaskLibraryModal from "@/components/popupModal/ServiceCatalog/TaskLibraryModal";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
 import { ScrollArea } from "@/components/ui/scrollArea";
@@ -26,8 +24,6 @@ const CATEGORY_KEY = "serviceCategories";
 const SERVICE_KEY = "services";
 const VEHICLE_SIZE_KEY = "vehicleSizes";
 const PRICING_KEY = "servicePricing";
-const SERVICE_TASK_KEY = "serviceTasks";
-const TASK_LIBRARY_KEY = "taskLibrary";
 
 
 /* ================= TYPES ================= */
@@ -52,8 +48,9 @@ interface Service {
 
 interface VehicleSize {
   id: string;
-  name: string;
-  description: string;
+  name: string;           
+  abbreviation: string;
+  vehicleTypes: string[];
 }
 
 interface ServicePricing {
@@ -61,17 +58,6 @@ interface ServicePricing {
   serviceId: string;
   vehicleSizeId: string;
   price: number;
-}
-
-interface ServiceTask {
-  id: string;
-  serviceId: string;
-  taskId: string;}
-
-interface TaskLibraryItem {
-  id: string;
-  name: string;
-  description?: string;
 }
 
 /* ================= HELPERS ================= */
@@ -87,11 +73,9 @@ const ServiceCatalogForm: React.FC<Props> = ({ mode }) => {
 const [categories, setCategories] = useState<ServiceCategory[]>([]);
 const [services, setServices] = useState<Service[]>([]);
 const [pricing, setPricing] = useState<ServicePricing[]>([]);
-const [tasks, setTasks] = useState<ServiceTask[]>([]);
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-const [assignOpen, setAssignOpen] = useState(false);
-const [taskModalOpen, setTaskModalOpen] = useState(false);
+
 const scrollRef = useRef<HTMLDivElement | null>(null);
 
 /* ================= FORM ================= */
@@ -102,11 +86,13 @@ const [description, setDescription] = useState("");
 const [pricingType, setPricingType] = useState<PricingType>("fixed");
 
 const [sizePricing, setSizePricing] = useState<Record<string, number>>({});
-const [serviceTasks, setServiceTasks] = useState<ServiceTask[]>([]);
-const [taskLibrary, setTaskLibrary] = useState<TaskLibraryItem[]>([]);
+const [vehicleTypeInput, setVehicleTypeInput] = useState("");
+const [editVehicleTypeInput, setEditVehicleTypeInput] = useState("");
+const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
+const [editingTagValue, setEditingTagValue] = useState("");
 
 const [confirmOpen, setConfirmOpen] = useState(false);
-const [confirmType, setConfirmType] = useState<"size" | "task" | null>(null);
+const [confirmType, setConfirmType] = useState<"size" | null>(null);
 const [targetId, setTargetId] = useState<string | null>(null);
 
 /* ================= ADD/EDIT SIZE (INLINE ROW) ================= */
@@ -114,7 +100,7 @@ const [isAddingSize, setIsAddingSize] = useState(false);
 
 const [newSize, setNewSize] = useState({
   name: "",
-  description: "",
+  vehicleTypes: [] as string[],
   price: 0,
 });
 
@@ -122,7 +108,7 @@ const [editingSizeId, setEditingSizeId] = useState<string | null>(null);
 
 const [editSize, setEditSize] = useState({
   name: "",
-  description: "",
+  vehicleTypes: [] as string[],
   price: 0,
 });
 
@@ -132,9 +118,6 @@ useEffect(() => {
   setServices(JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]"));
   setPricing(JSON.parse(localStorage.getItem(PRICING_KEY) || "[]"));
   setVehicleSizes(JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]"));
-
-  setTaskLibrary(JSON.parse(localStorage.getItem(TASK_LIBRARY_KEY) || "[]"));
-  setTasks(JSON.parse(localStorage.getItem(SERVICE_TASK_KEY) || "[]"));
 }, []);
 
 
@@ -191,9 +174,8 @@ useEffect(() => {
     p.forEach((x) => (map[x.vehicleSizeId] = x.price));
     setSizePricing(map);
 
-    setServiceTasks(tasks.filter((x) => x.serviceId === id));
   }
-}, [mode, id, services, pricing, tasks]);
+}, [mode, id, services, pricing]);
 
 /* ================= CATEGORIES ================= */
 
@@ -223,46 +205,89 @@ const categoryOptions = useMemo(() => {
   }));
 }, [categories]);
 
-/* ================= TASKS ================= */
-
-const removeTask = (taskId: string) => {
-  setServiceTasks((prev) =>
-    prev.filter((t) => t.taskId !== taskId)
-  );
-};
-
-
-const handleAssignTasks = (newTasks: ServiceTask[]) => {
-  setServiceTasks((prev) => {
-    const map = new Map<string, ServiceTask>();
-
-    [...prev, ...newTasks].forEach((t) => {
-      map.set(t.taskId, t);
-    });
-
-    return Array.from(map.values());
-  });
-};
-
-
-const handleNewTaskSaved = (task: TaskLibraryItem) => {
-  setTaskLibrary((prev) => [...prev, task]);
-
-  setServiceTasks((prev) => [
-    ...prev,
-    {
-      id: genId(),
-      serviceId: id || "",
-      taskId: task.id,
-    },
-  ]);
-};
 
 /* ================= VEHICLE SIZE ================= */
+const toArray = (val: string) =>
+  val.split(",").map(v => v.trim()).filter(Boolean);
 
 const handleAddRow = () => {
   setIsAddingSize(true);
-  setNewSize({ name: "", description: "", price: 0 });
+  setNewSize({ name: "", vehicleTypes: [], price: 0 });
+};
+
+const generateAbbreviation = (name: string) => {
+  return name
+    .split(" ")
+    .map(w => w[0]?.toUpperCase())
+    .join("");
+};
+
+const handleAddVehicleType = (value: string, isEdit = false) => {
+  const trimmed = value.trim();
+  if (!trimmed) return;
+
+  if (isEdit) {
+    setEditSize((prev) => {
+      if (prev.vehicleTypes.includes(trimmed)) return prev;
+      return {
+        ...prev,
+        vehicleTypes: [...prev.vehicleTypes, trimmed],
+      };
+    });
+    setEditVehicleTypeInput("");
+  } else {
+    setNewSize((prev) => {
+      if (prev.vehicleTypes.includes(trimmed)) return prev;
+      return {
+        ...prev,
+        vehicleTypes: [...prev.vehicleTypes, trimmed],
+      };
+    });
+    setVehicleTypeInput("");
+  }
+};
+
+const removeVehicleType = (value: string, isEdit = false) => {
+  if (isEdit) {
+    setEditSize((prev) => ({
+      ...prev,
+      vehicleTypes: prev.vehicleTypes.filter((v) => v !== value),
+    }));
+  } else {
+    setNewSize((prev) => ({
+      ...prev,
+      vehicleTypes: prev.vehicleTypes.filter((v) => v !== value),
+    }));
+  }
+};
+
+const startEditTag = (index: number, value: string) => {
+  setEditingTagIndex(index);
+  setEditingTagValue(value);
+};
+
+const saveEditTag = (isEdit = false) => {
+  if (editingTagIndex === null) return;
+
+  const trimmed = editingTagValue.trim();
+  if (!trimmed) return;
+
+  if (isEdit) {
+    setEditSize((prev) => {
+      const updated = [...prev.vehicleTypes];
+      updated[editingTagIndex] = trimmed;
+      return { ...prev, vehicleTypes: updated };
+    });
+  } else {
+    setNewSize((prev) => {
+      const updated = [...prev.vehicleTypes];
+      updated[editingTagIndex] = trimmed;
+      return { ...prev, vehicleTypes: updated };
+    });
+  }
+
+  setEditingTagIndex(null);
+  setEditingTagValue("");
 };
 
 const handleSaveNewSize = () => {
@@ -281,7 +306,8 @@ const handleSaveNewSize = () => {
   const newEntry: VehicleSize = {
     id: genId(),
     name: newSize.name,
-    description: newSize.description,
+    abbreviation: generateAbbreviation(newSize.name),
+    vehicleTypes: newSize.vehicleTypes,
   };
 
   const updatedSizes = [...vehicleSizes, newEntry];
@@ -307,7 +333,7 @@ const handleEditSize = (vs: VehicleSize) => {
   setEditingSizeId(vs.id);
   setEditSize({
     name: vs.name,
-    description: vs.description,
+    vehicleTypes: vs.vehicleTypes,
     price: sizePricing[vs.id] ?? 0,
   });
 };
@@ -317,7 +343,7 @@ const handleSaveEditSize = () => {
 
   const updatedSizes = vehicleSizes.map((vs) =>
     vs.id === editingSizeId
-      ? { ...vs, name: editSize.name, description: editSize.description }
+      ? { ...vs, name: editSize.name,  abbreviation: generateAbbreviation(editSize.name), vehicleTypes: editSize.vehicleTypes }
       : vs
   );
 
@@ -413,16 +439,6 @@ const handleSubmit = () => {
     price: sizePricing[vs.id] || 0,
   }));
 
-  /* -------- TASKS (SAFE MERGE) -------- */
-  const filteredTasks = tasks.filter(
-    (t) => t.serviceId !== serviceId
-  );
-
-  const newTasks: ServiceTask[] = serviceTasks.map((t) => ({
-    id: t.id || genId(),
-    serviceId,
-    taskId: t.taskId,
-  }));
 
   /* -------- SAVE -------- */
   localStorage.setItem(SERVICE_KEY, JSON.stringify(updatedServices));
@@ -431,11 +447,6 @@ const handleSubmit = () => {
     PRICING_KEY,
     JSON.stringify([...filteredPricing, ...newPricing])
   );
-  localStorage.setItem(
-    SERVICE_TASK_KEY,
-    JSON.stringify([...filteredTasks, ...newTasks])
-  );
-
   
   toast.success("Service saved");
 
@@ -470,16 +481,6 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
       });
 
       toast.success("Vehicle size deleted");
-    }
-
-    if (confirmType === "task") {
-      setServiceTasks((prev) =>
-        prev.filter((t) => t.taskId !== targetId)
-      );
-
-      if (mode === "edit") {
-      toast.success("Task removed from service");      
-      } 
     }
 
     setConfirmOpen(false);
@@ -638,8 +639,8 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                     <Table className="table-fixed w-full border-separate border-spacing-y-2">
                       <TableHeader>
                         <TableRow className="bg-secondary/50">
-                          <TableHead className="text-xs tracking-wide uppercase rounded-l-lg w-[15%]">Size</TableHead>
-                          <TableHead className="text-xs tracking-wide uppercase">Description</TableHead>
+                          <TableHead className="text-xs tracking-wide uppercase rounded-l-lg">Size</TableHead>
+                          <TableHead className="text-xs tracking-wide uppercase">Vehicle Type</TableHead>
                           <TableHead className="text-xs tracking-wide uppercase text-right">
                             {pricingType === "hourly rate" ? "Rate / hr" : "Price"}
                           </TableHead>
@@ -664,7 +665,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                                   />
                                 ) : (
                                   <Badge variant="outline" className="font-mono">
-                                    {vs.name}
+                                    {vs.name} ({vs.abbreviation})
                                   </Badge>
                                 )}
                               </TableCell>
@@ -672,17 +673,61 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                               {/* DESCRIPTION */}
                               <TableCell className="text-muted-foreground">
                                 {isEditing ? (
-                                  <Input
-                                    value={editSize.description}
-                                    onChange={(e) =>
-                                      setEditSize((p) => ({
-                                        ...p,
-                                        description: e.target.value,
-                                      }))
-                                    }
-                                  />
+                                  <div className="space-y-1">
+                                    <div className="flex flex-wrap gap-1">
+                                      {editSize.vehicleTypes.map((type, index) => (
+                                        <div key={index}>
+                                          {editingTagIndex === index ? (
+                                            <input
+                                              autoFocus
+                                              className="text-sm px-2 py-2 border rounded-md"
+                                              value={editingTagValue}
+                                              onChange={(e) => setEditingTagValue(e.target.value)}
+                                              onBlur={() => saveEditTag(true)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  e.preventDefault();
+                                                  saveEditTag(true);
+                                                }
+                                              }}
+                                            />
+                                          ) : (
+                                            <span
+                                              className="flex items-center gap-1 px-2 py-0.5 text-sm border rounded-md bg-muted cursor-pointer"
+                                              onClick={() => startEditTag(index, type)}
+                                            >
+                                              {type}
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  removeVehicleType(type, true);
+                                                }}
+                                                className="text-muted-foreground hover:text-red-500"
+                                              >
+                                                ×
+                                              </button>
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    <Input
+                                      className="text-xs"
+                                      placeholder="type and press enter"
+                                      value={editVehicleTypeInput}
+                                      onChange={(e) => setEditVehicleTypeInput(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          handleAddVehicleType(editVehicleTypeInput, true);
+                                        }
+                                      }}
+                                    />
+                                  </div>
                                 ) : (
-                                  vs.description
+                                  vs.vehicleTypes.join(", ")
                                 )}
                               </TableCell>
 
@@ -757,7 +802,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                                         className="text-red-500"
                                         onClick={() => {
                                           setConfirmType("size");
-                                          handleDeleteSize(vs.id);
+                                          setTargetId(vs.id);
                                           setConfirmOpen(true);
                                         }}
                                       >
@@ -777,7 +822,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                             {/* SIZE */}
                             <TableCell className="text-muted-foreground">
                               <Input
-                                placeholder="e.g. XL"
+                                placeholder="e.g. Small"
                                 value={newSize.name}
                                 onChange={(e) =>
                                   setNewSize((p) => ({ ...p, name: e.target.value }))
@@ -786,14 +831,62 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                             </TableCell>
 
                             {/* DESCRIPTION */}
-                            <TableCell>
-                              <Input
-                                placeholder="e.g. Extra Large"
-                                value={newSize.description}
-                                onChange={(e) =>
-                                  setNewSize((p) => ({ ...p, description: e.target.value }))
-                                }
-                              />
+                            <TableCell className="align-top">
+                              <div className="space-y-1">
+                                {/* TAGS OUTSIDE INPUT */}
+                                <div className="flex flex-wrap gap-1">
+                                  {newSize.vehicleTypes.map((type, index) => (
+                                    <div key={index}>
+                                      {editingTagIndex === index ? (
+                                        <input
+                                          autoFocus
+                                          className="text-sm px-2 py-2 border rounded-md"
+                                          value={editingTagValue}
+                                          onChange={(e) => setEditingTagValue(e.target.value)}
+                                          onBlur={() => saveEditTag()}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                              e.preventDefault();
+                                              saveEditTag();
+                                            }
+                                          }}
+                                        />
+                                      ) : (
+                                        <span
+                                          className="flex items-center gap-1 px-2 py-0.5 text-sm border rounded-md bg-muted cursor-pointer hover:bg-muted/70"
+                                          onClick={() => startEditTag(index, type)}
+                                        >
+                                          {type}
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              removeVehicleType(type);
+                                            }}
+                                            className="text-muted-foreground hover:text-red-500"
+                                          >
+                                            ×
+                                          </button>
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* INPUT BELOW */}
+                                <Input
+                                  className="text-xs"
+                                  placeholder="type and press enter"
+                                  value={vehicleTypeInput}
+                                  onChange={(e) => setVehicleTypeInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleAddVehicleType(vehicleTypeInput);
+                                    }
+                                  }}
+                                />
+                              </div>
                             </TableCell>
 
                             {/* PRICE */}
@@ -845,135 +938,27 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
             </CardContent>
           </Card>
         </div>
-      </div>
+      </div>  
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Tasks Involved ({serviceTasks.length})</CardTitle>
-              <p className="text-xs text-muted-foreground">
-                Necessary tasks to involved to complete this service.
-              </p>              
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setAssignOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Assign Task
-              </Button>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => setTaskModalOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add New Task
-              </Button>
-            </div>
-          </div>
-        </CardHeader> 
-        <CardContent>
-          <div className="border px-2 rounded-lg">
-            <Table className="table-fixed w-full border-separate border-spacing-y-2">
-              <TableHeader>
-                <TableRow className="bg-secondary/50">
-                  <TableHead className="text-xs tracking-wide uppercase w-[8%] rounded-l-lg">#</TableHead>
-                  <TableHead className="text-xs tracking-wide uppercase w-1/3">Task</TableHead>
-                  <TableHead className="text-xs tracking-wide uppercase">Description</TableHead>
-                  <TableHead className="w-[8%] rounded-r-lg"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {serviceTasks.map((st, index) => {
-                  const task = taskLibrary.find((t) => t.id === st.taskId);
-                  return (
-                  <TableRow 
-                    key={st.id}
-                    className="rounded-lg border bg-card shadow-sm hover:shadow-md"
-                  >
-                    <TableCell className="text-xs">{index + 1}</TableCell>
-                    <TableCell className="text-xs">{task?.name}</TableCell>
-                    <TableCell className="text-xs">{task?.description || "—"}</TableCell>
-                    <TableCell className="py-0">
-                      <Button
-                        size="icon_xs"
-                        variant="ghost"
-                        onClick={() => {
-                          setConfirmType("task");
-                          setTargetId(st.taskId);
-
-                          if (mode === "edit") {
-                            setConfirmOpen(true);
-                          } else {
-                            setServiceTasks((prev) => prev.filter((t) => t.taskId !== st.taskId));
-                          }
-                        }}
-                        className="bg-red-50 hover:bg-red-200"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600"/>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                )})}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>       
-      </Card>
-
-      <AssignTaskModal
-        open={assignOpen}
-        onOpenChange={setAssignOpen}
-        serviceId={id || ""}
-        existingTasks={serviceTasks}
-        onAssign={handleAssignTasks}
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title= "Delete Vehicle Size"
+        description={
+            <>
+              Are you sure you want to delete this vehicle size?
+              <br />
+              <br />
+              <span className="text-muted-foreground">
+                Note: This will permanently delete the vehicle size
+                (including all services that use it).
+              </span>
+            </>
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleConfirmDelete}
       />
-
-      <TaskLibraryModal
-        open={taskModalOpen}
-        onOpenChange={setTaskModalOpen}
-        onSaved={handleNewTaskSaved}
-      />      
-
-<ConfirmDialog
-  open={confirmOpen}
-  onOpenChange={setConfirmOpen}
-  title={
-    confirmType === "size"
-      ? "Delete Vehicle Size"
-      : "Remove Task"
-  }
-  description={
-    confirmType === "size" ? (
-      <>
-        Are you sure you want to delete this vehicle size?
-        <br />
-        <br />
-        <span className="text-muted-foreground">
-          Note: This will permanently delete the vehicle size
-          (including all services that use it).
-        </span>
-      </>
-    ) : (
-      <>
-        Are you sure you want to remove this task from this service?
-        <br />
-        <br />
-        <span className="text-muted-foreground">
-          Note: This will only remove the task from this service
-          (it will NOT delete it from the task library).
-        </span>
-      </>
-    )
-  }
-  confirmLabel="Delete"
-  destructive
-  onConfirm={handleConfirmDelete}
-/>
 
     </div>
   );

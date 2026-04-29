@@ -103,7 +103,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
           {[...PARTNERS, ...PARTNERS, ...PARTNERS].map((partner, index) => (
             <div 
               key={index} 
-              className={`w-[140px] md:w-[200px] h-[80px] md:h-[100px] flex items-center justify-center px-4 md:px-8 flex-shrink-0 transition-transform ${
+              className={`w-[180px] md:w-[260px] h-[110px] md:h-[140px] flex items-center justify-center px-4 md:px-8 flex-shrink-0 transition-transform ${
                 isTransparent 
                   ? 'bg-white rounded-sm mx-3 shadow-lg' 
                   : ''
@@ -114,7 +114,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
                 alt={partner.name}
                 onLoad={() => setImagesLoaded(prev => prev + 1)}
                 onError={() => setImagesLoaded(prev => prev + 1)}
-                className="h-10 md:h-12 w-auto object-contain pointer-events-none"
+                className="h-14 md:h-20 w-auto object-contain pointer-events-none"
               />
             </div>
           ))}

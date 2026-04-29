@@ -19,7 +19,7 @@ export default function Footer() {
               width={180}
               height={48}
               priority
-              className="w-[150px] md:w-[180px]"
+              className="w-[180px] md:w-[200px]"
             />
           </Link>
           <p className="mt-8 text-gray-400 text-sm leading-relaxed">

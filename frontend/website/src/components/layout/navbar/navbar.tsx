@@ -176,7 +176,7 @@ export default function Navbar() {
                 alt="logo"
                 width={220}
                 height={58}
-                className="object-contain transition-all duration-500 w-[140px] md:w-[220px] landscape:w-[100px] md:landscape:w-[140px]"
+                className="object-contain transition-all duration-500 w-[180px] md:w-[220px] landscape:w-[100px] md:landscape:w-[200px]"
               />
             </Link>
 

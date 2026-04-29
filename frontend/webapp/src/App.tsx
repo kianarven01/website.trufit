@@ -16,7 +16,7 @@ import DashboardContainer from "./components/DashboardContainer";
 import CustomersList from "./pages/internal/Customer/Customers";
 import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 
-import Appointments from "./pages/internal/Appointments";
+import AppointmentsList from "./pages/internal/Appointment/Appointments";
 
 import JobOrder from "./pages/internal/Services/Job Order/JobOrder";
 import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
@@ -72,6 +72,12 @@ const App: React.FC = () => {
 
             <Route path="/webapp" element={<DashboardContainer />}>
               
+              <Route>
+                <Route path="appointments">
+                  <Route index element={<AppointmentsList />} />
+                </Route>
+              </Route>
+
               {/* Customers */}
               <Route path="customers">
                 <Route index element={<CustomersList />} />
@@ -91,7 +97,7 @@ const App: React.FC = () => {
                 <Route>
                   <Route path="job-orders">
                     <Route index element={<JobOrder />} />
-                    <Route path=":new-job-order" element={<JobOrderForm />} />
+                    <Route path=":new-job-order" element={<JobOrderForm mode="add" />} />
                   </Route>
                 </Route>
 
@@ -124,8 +130,6 @@ const App: React.FC = () => {
               </Route>
 
             </Route>
-
-            <Route path="/webapp/appointments" element={<Appointments />} />
 
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
 

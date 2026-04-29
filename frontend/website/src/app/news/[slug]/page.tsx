@@ -59,7 +59,7 @@ export default async function ArticlePage({ params }: Props) {
               Back to News
             </Link>
 
-            <div className="flex flex-wrap items-center gap-4 md:gap-8 text-gray-400 text-xs md:text-sm mb-6 uppercase tracking-[0.2em] font-medium">
+            <div className="flex flex-wrap items-center gap-4 md:gap-8 text-white text-xs md:text-sm mb-6 uppercase tracking-[0.2em] font-medium">
               <div className="flex items-center gap-2">
                 <Tag className="w-4 h-4 text-brand-red" />
                 <span>{article.category}</span>

@@ -295,7 +295,7 @@ useEffect(() => {
       const vehicle = vehicleMap.get(a.vehicleModelId) ?? EMPTY_VEHICLE;
 
       const matchesStatus =
-        filters.status === "all" || a.status === filters.status;
+        filters.status === "all" || normalize(a.status) === normalize(filters.status);
 
       const matchesService =
         filters.service === "all" || a.service === filters.service;
@@ -334,8 +334,10 @@ useEffect(() => {
 
   /* ================= FILTER OPTIONS ================= */
   const statusOptions = [
+    { label: "For Approval", value: "for approval" },
     { label: "Confirmed", value: "confirmed" },
     { label: "Cancelled", value: "cancelled" },
+    { label: "Completed", value: "completed" },
   ];
 
   const serviceOptions = useMemo(() => {

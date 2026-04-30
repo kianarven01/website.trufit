@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Phone, Mail, Clock, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import BibleVerseMarquee from "./BibleVerseMarquee"
 import { useModalStore } from "@/store/useModalStore"
+import ShareButtons from "@/components/ui/ShareButtons"
 
 export default function Navbar() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
@@ -24,7 +27,7 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "Services", href: "/services" },
     { name: "Gallery", href: "/gallery" },
-
+    { name: "News", href: "/news" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ]
@@ -102,14 +105,24 @@ export default function Navbar() {
 
   // disable background scroll when mobile menu is open
   useEffect(() => {
-    if (isOpen || isAppointmentOpen) document.body.classList.add("overflow-hidden")
-    else document.body.classList.remove("overflow-hidden")
-    return () => document.body.classList.remove("overflow-hidden")
+    if (isOpen || isAppointmentOpen) {
+      document.body.classList.add("overflow-hidden")
+      document.documentElement.classList.add("overflow-hidden")
+    } else {
+      document.body.classList.remove("overflow-hidden")
+      document.documentElement.classList.remove("overflow-hidden")
+    }
+    return () => {
+      document.body.classList.remove("overflow-hidden")
+      document.documentElement.classList.remove("overflow-hidden")
+    }
   }, [isOpen, isAppointmentOpen])
 
-  const linkStyle = `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${
-    isScrolled ? "text-brand-dark" : "text-white"
-  }`
+  const getLinkStyle = (isActive: boolean) => {
+    const baseColor = isActive ? "!text-brand-red font-semibold" : isScrolled ? "text-brand-dark" : "text-white";
+    const underline = isActive ? "after:w-full" : "after:w-0";
+    return `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] ${underline} after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${baseColor}`;
+  }
 
   return (
     <header
@@ -159,22 +172,25 @@ export default function Navbar() {
           <div className="flex items-center h-16 w-full">
             {/* logo - swapped logic for user files */}
             <Link href="/" className="flex items-center">
-              <Image
-                src={isScrolled ? "/images/logo-white1.png" : "/images/logo-dark1.png"}
+              <Image 
+                src={isScrolled ? "/images/logo-white1.webp" : "/images/logo-dark1.webp"}
                 alt="logo"
                 width={220}
                 height={58}
-                className="object-contain transition-all duration-500 w-[140px] md:w-[220px] landscape:w-[100px] md:landscape:w-[140px]"
+                className="object-contain transition-all duration-500 w-[180px] md:w-[220px] landscape:w-[100px] md:landscape:w-[200px]"
               />
             </Link>
 
             {/* desktop nav - hidden below lg */}
             <div className="hidden lg:flex flex-1 justify-center gap-12 ml-4">
-              {navLinks.map((link) => (
-                <Link key={link.name} href={link.href} className={linkStyle}>
-                  {link.name}
-                </Link>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+                return (
+                  <Link key={link.name} href={link.href} className={getLinkStyle(isActive ?? false)}>
+                    {link.name}
+                  </Link>
+                );
+              })}
             </div>
 
             {/* desktop book button - hidden below lg */}
@@ -195,7 +211,7 @@ export default function Navbar() {
                 onClick={() => setIsOpen(!isOpen)}
                 className={isScrolled ? "text-brand-dark" : "text-white"}
               >
-                {isOpen ? <X size={28} /> : <Menu size={28} />}
+                {isOpen ? <X size={32} /> : <Menu size={32} />}
               </button>
             </div>
           </div>
@@ -218,36 +234,31 @@ export default function Navbar() {
                 <X size={32} />
               </button>
               <div className="flex flex-col items-center gap-6 py-20 min-h-full">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="text-white text-3xl font-brawler hover:text-brand-red transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+                {navLinks.map((link) => {
+                  const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className={`text-3xl transition-colors ${isActive ? 'text-brand-red font-bold' : 'text-white hover:text-brand-red'}`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {link.name}
+                    </Link>
+                  );
+                })}
 
                 <button
                   onClick={() => {
                     setIsOpen(false)
                     openAppointment()
                   }}
-                  className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
+                  className="mt-4 px-11 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
                 >
                   Book Now
                 </button>
-
-                <div className="mt-auto flex gap-6 text-white/40 pb-6">
-                  <a href="tel:09187747788" className="hover:text-white transition-colors">
-                    <Phone size={20} />
-                  </a>
-
-                  <a href="mailto:trufitautocenter@gmail.com" className="hover:text-white transition-colors">
-                    <Mail size={20} />
-                  </a>
-                  <span className="text-sm">Trufit Auto Center</span>
+                <div className="mt-12">
+                  <ShareButtons />
                 </div>
               </div>
             </motion.div>

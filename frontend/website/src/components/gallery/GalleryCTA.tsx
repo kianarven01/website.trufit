@@ -33,7 +33,7 @@ export default function GalleryCTA() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="cta-parallax-bg absolute top-[-20%] left-0 w-full h-[140%]">
           <Image 
-              src="/images/gallery/laboratory.jpg"
+              src="/images/gallery/laboratory.webp"
               alt="Trufit Automotive Facility"
               fill
               className="object-cover opacity-40"
@@ -45,7 +45,7 @@ export default function GalleryCTA() {
 
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 text-center relative z-10">
           <h2 className="text-3xl md:text-5xl font-semibold text-white mb-8 uppercase tracking-tight">Ready to see the <br className="md:hidden" /> <span className="text-brand-red">Trufit difference?</span></h2>
-          <p className="text-white/60 mb-12 max-w-2xl mx-auto font-medium">Experience professional-grade automotive care with the technologies you've seen here. Book your appointment today.</p>
+          <p className="text-white/60 mb-12 max-w-2xl mx-auto font-medium">Experience professional-grade automotive service with the technologies you've seen here. Book your appointment today.</p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <button 
               onClick={openAppointment}

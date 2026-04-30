@@ -15,35 +15,35 @@ const steps = [
     title: "CONSULTATION",
     description:
       "We will ask you about your car’s issues and do a quick check to see what needs to be done",
-    image: "/images/home/our_work/consultation.jpg",
+    image: "/images/home/our_work/consultation.webp",
   },
   {
     id: "diagnostics",
     title: "DIAGNOSTICS",
     description:
       "We will run an extensive inspection with our special diagnostic tools to help us find the exact problem.",
-    image: "/images/home/our_work/diagnostics.jpg",
+    image: "/images/home/our_work/diagnostics.webp",
   },
   {
     id: "maintenance",
     title: "Repair",
     description:
       "Our expert technicians will perform the necessary repairs and maintenance with proper tools and using premium parts.",
-    image: "/images/home/our_work/repair.jpg",
+    image: "/images/home/our_work/repair.webp",
   },
   {
     id: "quality",
     title: "QUALITY CONTROL",
     description:
       "We will test-drive and inspect your car one last time to make sure everything is working properly.",
-    image: "/images/home/our_work/quality_control.jpg",
+    image: "/images/home/our_work/quality_control.webp",
   },
   {
     id: "delivery",
     title: "DELIVERY",
     description:
       "We will hand over your car in great condition while providing a detailed report of all services performed.",
-    image: "/images/home/our_work/delivery.jpg",
+    image: "/images/home/our_work/delivery.webp",
   },
 ]
 

@@ -32,18 +32,25 @@ export default function NewsPage() {
     <div className="bg-brand-dark min-h-screen">
       <NewsHero />
       
-      <section className="section-padding bg-brand-dark pt-0">
+      <section className="section-padding bg-brand-dark pt-0 relative z-10">
         <div className="container">
-          <NewsCategories 
-            activeCategory={activeCategory} 
-            onCategoryChange={(cat) => {
-              setActiveCategory(cat);
-              setCurrentPage(1);
-            }} 
-          />
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
+            <div className="section-label mb-0">
+              <div className="section-label-line" />
+              <span className="section-label-text">Explore Articles</span>
+            </div>
+            
+            <NewsCategories 
+              activeCategory={activeCategory} 
+              onCategoryChange={(cat) => {
+                setActiveCategory(cat);
+                setCurrentPage(1);
+              }} 
+            />
+          </div>
 
-          {/* If "All" or "News", show featured item first */}
-          {(activeCategory === "All" || activeCategory === "News") && featuredItem && (
+          {/* Show featured item if it matches the active category or if we're viewing "All" */}
+          {featuredItem && (activeCategory === "All" || featuredItem.category === activeCategory) && (
             <NewsFeatured item={featuredItem} />
           )}
 
@@ -62,7 +69,7 @@ export default function NewsPage() {
           )}
 
           {filteredItems.length === 0 && (
-            <div className="text-center py-40 border border-dashed border-white/10 rounded-3xl">
+            <div className="text-center py-40 border border-white/5 rounded-3xl bg-white/[0.02]">
               <p className="text-gray-500 text-xl font-light italic">No articles found in this category.</p>
             </div>
           )}

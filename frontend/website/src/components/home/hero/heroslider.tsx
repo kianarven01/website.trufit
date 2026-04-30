@@ -123,7 +123,7 @@ export default function HeroSlider() {
   return (
     <section
       ref={containerRef}
-      className="relative h-[600px] md:h-screen w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
+      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >

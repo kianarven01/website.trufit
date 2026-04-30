@@ -26,56 +26,31 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
 
   // Intersection Observer for Reveal Animation
   useGSAP(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // Header Reveal (Keeps original vertical reveal)
-          const headerElements = gsap.utils.toArray(".partners-header > *");
-          if (headerElements.length > 0) {
-            gsap.to(headerElements, {
-              opacity: 1,
-              y: 0,
-              duration: 1,
-              stagger: 0.2,
-              ease: "power3.out",
-              overwrite: "auto"
-            })
-          }
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: sectionRef.current,
+        start: "top 85%",
+        toggleActions: "play none none reverse",
+      }
+    });
 
-          // Slider Reveal (Updated to Right to Left)
-          const sliderElement = gsap.utils.toArray(".partners-slider");
-          if (sliderElement.length > 0) {
-            gsap.to(sliderElement, {
-              opacity: 1,
-              x: 0, // Moves to center
-              duration: 1,
-              ease: "power2.out",
-              delay: 0.4,
-              overwrite: "auto"
-            })
-          }
-        } else {
-          // Reset
-          const headerElements = gsap.utils.toArray(".partners-header > *");
-          const sliderElement = gsap.utils.toArray(".partners-slider");
+    // Header Reveal
+    tl.to(".partners-header > *", {
+      opacity: 1,
+      y: 0,
+      duration: 0.8,
+      stagger: 0.15,
+      ease: "power3.out",
+    })
+    // Slider Reveal
+    .to(".partners-slider", {
+      opacity: 1,
+      x: 0,
+      duration: 0.8,
+      ease: "power2.out",
+    }, "-=0.4");
 
-          if (headerElements.length > 0) {
-            gsap.to(headerElements, { opacity: 0, y: 50, duration: 0.5, overwrite: "auto" })
-          }
-          if (sliderElement.length > 0) {
-            gsap.to(sliderElement, { opacity: 0, x: 100, duration: 0.5, overwrite: "auto" })
-          }
-        }
-      },
-      { threshold: 0.15 }
-    )
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, { scope: sectionRef })
+  }, { scope: sectionRef });
 
   // Infinite Slider Logic
   useEffect(() => {
@@ -128,7 +103,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
           {[...PARTNERS, ...PARTNERS, ...PARTNERS].map((partner, index) => (
             <div 
               key={index} 
-              className={`w-[140px] md:w-[200px] h-[80px] md:h-[100px] flex items-center justify-center px-4 md:px-8 flex-shrink-0 transition-transform hover:scale-105 ${
+              className={`w-[180px] md:w-[260px] h-[110px] md:h-[140px] flex items-center justify-center px-4 md:px-8 flex-shrink-0 transition-transform ${
                 isTransparent 
                   ? 'bg-white rounded-sm mx-3 shadow-lg' 
                   : ''
@@ -139,7 +114,7 @@ export default function PartnersSection({ isTransparent = false }: PartnersSecti
                 alt={partner.name}
                 onLoad={() => setImagesLoaded(prev => prev + 1)}
                 onError={() => setImagesLoaded(prev => prev + 1)}
-                className="h-10 md:h-12 w-auto object-contain pointer-events-none"
+                className="h-14 md:h-20 w-auto object-contain pointer-events-none"
               />
             </div>
           ))}

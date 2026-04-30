@@ -46,7 +46,7 @@ export default function ServicesHero() {
           tl.fromTo(
             subtitleRef.current,
             { y: 20, opacity: 0 },
-            { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
+            { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
           );
         }
 
@@ -55,7 +55,7 @@ export default function ServicesHero() {
             titleRef.current,
             { y: 30, opacity: 0 },
             { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" },
-            "-=0.4"
+            "-=0.4",
           );
         }
 
@@ -64,7 +64,7 @@ export default function ServicesHero() {
             textRef.current,
             { y: 20, opacity: 0 },
             { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
-            "-=0.5"
+            "-=0.5",
           );
         }
 
@@ -74,12 +74,12 @@ export default function ServicesHero() {
             scrollIndicator,
             { opacity: 0 },
             { opacity: 1, duration: 0.6, ease: "power2.out" },
-            "-=0.2"
+            "-=0.2",
           );
         }
       }
     },
-    { scope: container }
+    { scope: container },
   );
 
   return (
@@ -91,7 +91,7 @@ export default function ServicesHero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
           <Image
-            src="/images/services/entrance1.jpg"
+            src="/images/services/entrance1.webp"
             alt="Trufit Auto Center Entrance"
             fill
             className="object-cover object-center"
@@ -104,8 +104,11 @@ export default function ServicesHero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 text-center px-6 max-w-6xl mx-auto" style={{ paddingTop: '60px' }}>
-        <div 
+      <div
+        className="relative z-10 text-center px-6 max-w-6xl mx-auto"
+        style={{ paddingTop: "60px" }}
+      >
+        <div
           ref={subtitleRef}
           className="section-label justify-center opacity-0 mb-6"
         >
@@ -115,24 +118,26 @@ export default function ServicesHero() {
           </span>
           <div className="section-label-line" />
         </div>
-        
-        <h1 
+
+        <h1
           ref={titleRef}
           className="font-semibold text-white leading-[1.1] tracking-tight opacity-0 mb-8"
-          style={{ fontSize: 'clamp(2.25rem, 5vw, 5rem)' }}
+          style={{ fontSize: "clamp(2.25rem, 5vw, 5rem)" }}
         >
           Suzuki Authorized <br className="hidden md:block" />
-          <span className="text-gradient-red font-semibold">Service Center</span>
+          <span className="text-gradient-red font-semibold">
+            Service Center
+          </span>
         </h1>
-        
-        <p 
+
+        <p
           ref={textRef}
           className="text-white/60 font-medium max-w-3xl mx-auto leading-relaxed opacity-0"
-          style={{ fontSize: 'clamp(1rem, 1.3vw, 1.5rem)' }}
+          style={{ fontSize: "clamp(1rem, 1.3vw, 1.5rem)" }}
         >
-          We set the gold standard in automotive care. As an authorized Suzuki 
-          Service Center, we provide specialized maintenance that guarantees 
-          reliability, safety, and peak performance.
+          We treat every Suzuki like it’s our own. As an authorized service
+          center, we use the right parts and the right tools to keep you driving
+          safely and smoothly.
         </p>
 
         {/* Floating Accent badges could go here if needed, but keeping it clean for Hero */}

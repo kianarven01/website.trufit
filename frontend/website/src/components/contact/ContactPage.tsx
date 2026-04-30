@@ -31,7 +31,7 @@ export default function ContactPage() {
         },
       });
     },
-    { scope: wrapperRef }
+    { scope: wrapperRef },
   );
 
   return (
@@ -45,7 +45,7 @@ export default function ContactPage() {
         <div className="absolute inset-0 z-0 overflow-hidden">
           <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
             <Image
-              src="/images/contact/lounge2.jpg"
+              src="/images/contact/lounge2.webp"
               alt="Trufit Auto Center"
               fill
               className="object-cover object-center"

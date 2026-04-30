@@ -73,7 +73,7 @@ export default function PromoPopup() {
               />
               <div className="relative w-full transition-transform duration-700 hover:scale-110">
                 <img
-                  src="/images/promopopup/oil-bottle.png"
+                  src="/images/promopopup/oil-bottle.webp"
                   alt="Synthetic Oil Bottle"
                   className="w-full h-auto drop-shadow-2xl"
                 />

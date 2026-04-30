@@ -53,7 +53,7 @@ const contactInfo = [
   {
     icon: MapPin,
     label: "Address",
-    value: "P1, Brgy. Gahonon, Daet, Camarines Norte",
+    value: "1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines",
     href: "https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8",
   },
   {
@@ -158,7 +158,7 @@ export default function ContactHero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div ref={bgImageRef} className="absolute inset-0 -top-24 -bottom-24">
           <Image
-            src="/images/contact/lounge1.jpg"
+            src="/images/contact/lounge1.webp"
             alt="Trufit Auto Center Lounge"
             fill
             className="object-cover object-center"

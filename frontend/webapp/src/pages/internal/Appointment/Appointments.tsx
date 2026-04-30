@@ -8,7 +8,9 @@ import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/co
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import { Button } from "@/components/ui/button";
-import { Calendar, Plus } from "lucide-react";
+import Calendar from "@/components/ui/calendar-appointment";
+
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
 
 /* ================= STORAGE ================= */
 const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
@@ -20,11 +22,8 @@ interface Customer {
   id: string;
   firstName: string;
   lastName: string;
-  address: string;
   mobileNumber: string;
-  landline?: string;
   email?: string;
-  businessPhone?: string;
 }
 
 interface VehicleModel {
@@ -32,7 +31,6 @@ interface VehicleModel {
   year: number;
   make: string;
   model: string;
-  variant: string;
 }
 
 interface Appointment {
@@ -62,10 +60,12 @@ const AppointmentsList: React.FC = () => {
   const [vehicles, setVehicles] = useState<VehicleModel[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
-
   const [filters, setFilters] = useState({
     status: "all",
     service: "all",
+  });
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => {
+    return localStorage.getItem("appointmentDateFilter");
   });
 
   const { page, setPage, pageSize, setPageSize, paginate } =
@@ -87,7 +87,6 @@ const seedAppointments = () => {
       id: genId(),
       firstName: "Juan",
       lastName: "Dela Cruz",
-      address: "Quezon City",
       mobileNumber: "09171234567",
       email: "juan@email.com",
     },
@@ -95,14 +94,12 @@ const seedAppointments = () => {
       id: genId(),
       firstName: "Maria",
       lastName: "Santos",
-      address: "Manila",
       mobileNumber: "09981234567",
     },
     {
       id: genId(),
       firstName: "Carlo",
       lastName: "Reyes",
-      address: "Makati",
       mobileNumber: "09175556666",
     },
   ];
@@ -114,26 +111,23 @@ const seedAppointments = () => {
       year: 2020,
       make: "Toyota",
       model: "Vios",
-      variant: "G",
     },
     {
       id: genId(),
       year: 2019,
       make: "Honda",
       model: "Civic",
-      variant: "RS",
     },
     {
       id: genId(),
       year: 2022,
       make: "Ford",
       model: "Ranger",
-      variant: "Wildtrak",
     },
   ];
 
   /* ---- APPOINTMENTS ---- */
-  const statuses = ["pending", "confirmed", "completed", "cancelled"];
+  const statuses = ["confirmed", "cancelled", "for approval", "completed"];
 
   const services = [
     "Oil Change",
@@ -176,6 +170,7 @@ useEffect(() => {
 }, []);
 
   /* ================= MAP ================= */
+
   const customerMap = useMemo(() => {
     const map = new Map<string, Customer>();
     customers.forEach((c) => map.set(c.id, c));
@@ -193,7 +188,6 @@ useEffect(() => {
     id: "",
     firstName: "",
     lastName: "",
-    address: "",
     mobileNumber: "",
   };
 
@@ -202,8 +196,16 @@ useEffect(() => {
     year: 0,
     make: "",
     model: "",
-    variant: "",
   };
+
+  const calendarEvents = useMemo(() => {
+    return appointments.map((a) => ({
+      date: new Date(a.datetime),
+      status: a.status.toLowerCase(),
+    }));
+  }, [appointments]);
+
+  /* ================ FORMATTERS ================= */
 
   const formatPHPhone = (num?: string) => {
     if (!num) return "";
@@ -251,6 +253,36 @@ useEffect(() => {
     return `${hours}:${minutes} ${ampm}`;
   };
 
+
+  /* ================= DATE FILTER ================= */
+
+  const toLocalDateString = (date: string | Date) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+  };
+
+  const handleDateSelect = (selected: Date | null) => {
+    if (!selected) {
+      clearDateFilter();
+      return;
+    }
+
+    const dateString = selected.toLocaleDateString("en-CA");
+
+    if (selectedDate === dateString) {
+      clearDateFilter();
+    } else {
+      setSelectedDate(dateString);
+      localStorage.setItem("appointmentDateFilter", dateString);
+    }
+  };
+      
+  const clearDateFilter = () => {
+    setSelectedDate(null);
+    localStorage.removeItem("appointmentDateFilter");
+  };
+
+
   /* ================= SEARCH ================= */
   const normalize = (val: string) =>
     (val || "").toLowerCase().trim();
@@ -268,7 +300,10 @@ useEffect(() => {
       const matchesService =
         filters.service === "all" || a.service === filters.service;
 
-      if (!q) return matchesStatus && matchesService;
+      const matchesDate =
+        !selectedDate || toLocalDateString(a.datetime) === selectedDate;
+
+      if (!q) return matchesStatus && matchesService && matchesDate;
 
       const firstName = normalize(customer.firstName);
       const lastName = normalize(customer.lastName);
@@ -290,17 +325,16 @@ useEffect(() => {
           service.includes(term)
         );
 
-      return matchesStatus && matchesService && matchesSearch;;
+      return matchesStatus && matchesService && matchesDate && matchesSearch;
     });
-  }, [appointments, customerMap, vehicleMap, search, filters]);
+  }, [appointments, customerMap, vehicleMap, search, filters, selectedDate]);
+
 
   const paginated = paginate(filtered);
 
   /* ================= FILTER OPTIONS ================= */
   const statusOptions = [
-    { label: "Pending", value: "pending" },
     { label: "Confirmed", value: "confirmed" },
-    { label: "Completed", value: "completed" },
     { label: "Cancelled", value: "cancelled" },
   ];
 
@@ -324,7 +358,7 @@ useEffect(() => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize]);
+  }, [search, pageSize, selectedDate]);
 
   /* ================= UI ================= */
 
@@ -348,123 +382,139 @@ useEffect(() => {
         activeFilters={filters}
       />
 
-      {appointments.length > 0 ? (
-        <div className="flex-1 flex flex-col border rounded-xl overflow-hidden">
-          <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full border-separate border-spacing-y-2">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[10%]">ID</TableHead>
-                  <TableHead className="w-[20%]">Customer</TableHead>
-                  <TableHead className="w-[20%]">Vehicle</TableHead>
-                  <TableHead className="w-[15%]">Service</TableHead>
-                  <TableHead className="w-[20%]">Date & Time</TableHead>
-                  <TableHead className="w-[15%]">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {filtered.length > 0 ? (
-                  paginated.map((a, index) => {
-                    const customer = customerMap.get(a.customerId);
-                    const vehicle = vehicleMap.get(a.vehicleModelId);
-
-                    return (
-                      <TableRow
-                        key={a.id}
-                        onClick={() =>
-                          navigate(`/webapp/appointments/${a.id}`)
-                        }
-                        className="rounded-lg border bg-card shadow-sm hover:shadow-md"
-                      >
-                        <TableCell>
-                          {formatAPT(a.id, index)}
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>
-                              {customer?.firstName} {customer?.lastName}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatPHPhone(customer?.mobileNumber)}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          {vehicle
-                            ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
-                            : "-"}
-                        </TableCell>
-
-                        <TableCell>
-                          {a.service}
-                        </TableCell>
-
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span>
-                              {formatDate(a.datetime)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatTime(a.datetime)}
-                            </span>
-                          </div>
-                        </TableCell>
-
-                        <TableCell>
-                          <Badge variant="outline">
-                            {a.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
+      <div className="grid lg:grid-cols-7 gap-x-4 overflow-hidden flex-1 min-h-0">
+        {appointments.length > 0 ? (
+          <div className="flex-1 flex flex-col border rounded-xl overflow-hidden lg:col-span-5">
+            <ScrollArea className="flex-1 px-3">
+              <Table className="table-fixed w-full border-separate border-spacing-y-2 h-full">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6}>
-                      <div className="py-16 flex flex-col items-center text-center">
-                        <Calendar className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">
-                          No appointments found
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Try adjusting your search or filters
-                        </p>
-                      </div>
-                    </TableCell>
+                    <TableHead className="w-[10%]">ID</TableHead>
+                    <TableHead className="w-[20%]">Customer</TableHead>
+                    <TableHead className="w-[20%]">Vehicle</TableHead>
+                    <TableHead className="w-[15%]">Service</TableHead>
+                    <TableHead className="w-[20%]">Date & Time</TableHead>
+                    <TableHead className="w-[15%]">Status</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+                </TableHeader>
 
-          {filtered.length > 0 && (
-            <div className="border-t mx-3">
-              <Pagination
-                totalItems={filtered.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+                <TableBody>
+                  {filtered.length > 0 ? (
+                    paginated.map((a, index) => {
+                      const customer = customerMap.get(a.customerId);
+                      const vehicle = vehicleMap.get(a.vehicleModelId);
+
+                      return (
+                        <TableRow
+                          key={a.id}
+                          onClick={() =>
+                            navigate(`/webapp/appointments/${a.id}`)
+                          }
+                          className="rounded-lg border bg-card shadow-sm hover:shadow-md"
+                        >
+                          <TableCell>
+                            {formatAPT(a.id, index)}
+                          </TableCell>
+
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span>
+                                {customer?.firstName} {customer?.lastName}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatPHPhone(customer?.mobileNumber)}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          <TableCell>
+                            {vehicle
+                              ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
+                              : "-"}
+                          </TableCell>
+
+                          <TableCell>
+                            {a.service}
+                          </TableCell>
+
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span>
+                                {formatDate(a.datetime)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTime(a.datetime)}
+                              </span>
+                            </div>
+                          </TableCell>
+
+                          <TableCell>
+                            <Badge variant="outline">
+                              {a.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <div className="py-16 flex flex-col items-center text-center">
+                          <CalendarIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                          <p className="text-sm font-medium">
+                            No appointments found
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Try adjusting your search or filters
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+
+            {filtered.length > 0 && (
+              <div className="border-t mx-3">
+                <Pagination
+                  totalItems={filtered.length}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
+            )}
+          </div>        
+        ) : (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <CalendarIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">
+              No appointments available
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Add an appointment to get started
+            </p>
+          </CardContent>
+        </Card>
+        )}
+        <div className="flex-1 flex flex-col overflow-hidden lg:col-span-2">
+          <Calendar 
+            mode="single" 
+            value={selectedDate ? new Date(selectedDate) : null}
+            onSelect={handleDateSelect} 
+            events={calendarEvents}
+              statusColors={{
+              confirmed: "bg-green-500",
+              cancelled: "bg-red-500",
+              "for approval": "bg-yellow-400",
+              completed: "bg-blue-500",
+            }}
+          />          
         </div>        
-      ) : (
-      <Card>
-        <CardContent className="py-16 flex flex-col items-center text-center">
-          <Calendar className="h-6 w-6 mb-2 text-muted-foreground" />
-          <p className="text-sm font-medium">
-            No appointments available
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Add an appointment to get started
-          </p>
-        </CardContent>
-      </Card>
-      )}
+      </div>
     </div>
   );
 };

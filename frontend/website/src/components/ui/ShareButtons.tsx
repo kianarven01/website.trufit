@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Facebook, MessageCircle, Twitter, Copy } from "lucide-react";
 
-export default function ShareButtons() {
+function ShareButtonsContent() {
   const [copied, setCopied] = useState(false);
   const [url, setUrl] = useState("https://trufitautocenter.com");
   const shareText = "Check out TRUFIT Auto Center!";
@@ -138,5 +138,13 @@ export default function ShareButtons() {
         Link Copied
       </div>
     </div>
+  );
+}
+
+export default function ShareButtons() {
+  return (
+    <Suspense fallback={<div className="h-[76px]" />}>
+      <ShareButtonsContent />
+    </Suspense>
   );
 }

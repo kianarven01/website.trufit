@@ -1,0 +1,114 @@
+/* =============================================
+   SERVICES PAGE — Custom Styles
+   ============================================= */
+
+/* --------------- Background Decoration Text --------------- */
+.services-bg-text {
+  position: absolute;
+  top: 10%;
+  left: 5%;
+  font-size: 15vw;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.03;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--brand-dark);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  white-space: nowrap;
+  font-family: var(--font-barlow);
+}
+
+.services-bg-text-light {
+  -webkit-text-stroke: 1px #FFFFFF;
+  opacity: 0.05;
+}
+
+/* --------------- Floating Accent Graphics --------------- */
+.services-image-wrap {
+  position: relative;
+  z-index: 10;
+}
+
+.services-floating-badge {
+  position: absolute;
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: 2px;
+  z-index: 20;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.services-corner-accents::before,
+.services-corner-accents::after {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-color: var(--brand-red);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.services-corner-accents::before {
+  top: -10px;
+  left: -10px;
+  border-top: 3px solid;
+  border-left: 3px solid;
+}
+
+.services-corner-accents::after {
+  bottom: -10px;
+  right: -10px;
+  border-bottom: 3px solid;
+  border-right: 3px solid;
+}
+
+/* --------------- PMS Checklist --------------- */
+.pms-checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1rem;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.pms-checklist-item:hover {
+  background: rgba(227, 27, 35, 0.03);
+  border-color: rgba(227, 27, 35, 0.1);
+  transform: translateX(5px);
+}
+
+.pms-icon-box {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(227, 27, 35, 0.1);
+  border-radius: 2px;
+  color: var(--brand-red);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.pms-checklist-item:hover .pms-icon-box {
+  background: var(--brand-red);
+  color: white;
+  transform: scale(1.1);
+}
+
+/* --------------- Utilities --------------- */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

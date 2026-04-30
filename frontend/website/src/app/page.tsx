@@ -1,9 +1,10 @@
-import AppointmentSection from "@/components/home/appointment/appointment"
+
 import HeroSection from "@/components/home/hero/herosection"
 import ServicesSection from "@/components/home/services/servicessection"
 import AboutSection from "@/components/home/about/AboutSection"
 import ProcessSection from "@/components/home/process/ProcessSection"
 import WhyChooseUsSection from "@/components/home/why-choose-us/WhyChooseUsSection"
+import HomeCTABlock from "@/components/home/HomeCTABlock"
 
 export default function HomePage() {
   return (
@@ -13,7 +14,7 @@ export default function HomePage() {
       <AboutSection />
       <ProcessSection />
       <WhyChooseUsSection />
-      <AppointmentSection />
+      <HomeCTABlock />
     </>
   )
 }

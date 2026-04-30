@@ -4,11 +4,14 @@ import { Barlow } from "next/font/google"
 import Navbar from "@/components/layout/navbar/navbar"
 import Footer from "@/components/layout/footer/footer"
 import ScrollToTopButton from "@/components/ui/scrolltotopbutton"
+import PromoPopup from "@/components/ui/promopopup"
+import GlobalModals from "@/components/global/GlobalModals"
+
 import "@/styles/globals.css"
 
 const barlow = Barlow({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 })
 
 export const metadata: Metadata = {
@@ -33,6 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         {/* scroll-to-top button */}
         <ScrollToTopButton />
+
+        <PromoPopup/>
+        <GlobalModals />
       </body>
     </html>
   )

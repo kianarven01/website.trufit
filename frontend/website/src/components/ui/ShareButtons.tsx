@@ -52,9 +52,10 @@ export default function ShareButtons() {
 
   const handleFacebook = () => {
     const url = getUrl();
-    openAppOrFallback(
-      `fb://facewebmodal/f?href=${encodeURIComponent(url)}`,
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+    window.open(
+    `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+    "_blank",
+    "noopener,noreferrer"
     );
   };
 

@@ -53,7 +53,7 @@ const contactInfo = [
   {
     icon: MapPin,
     label: "Address",
-    value: "P1, Brgy. Gahonon, Daet, Camarines Norte",
+    value: "1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines",
     href: "https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8",
   },
   {

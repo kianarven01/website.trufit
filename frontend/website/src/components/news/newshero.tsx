@@ -70,7 +70,7 @@ export default function NewsHero() {
         <div ref={textRef} className="max-w-4xl mx-auto flex flex-col items-center">
           <div className="flex items-center gap-3 mb-6 hero-reveal">
             <div className="h-[2px] w-12 bg-brand-red" />
-            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase !text-white/60">
               Latest Updates
             </span>
             <div className="h-[2px] w-12 bg-brand-red" />

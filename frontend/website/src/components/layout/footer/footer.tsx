@@ -23,7 +23,7 @@ export default function Footer() {
             />
           </Link>
           <p className="mt-8 text-gray-400 text-sm leading-relaxed">
-            Quality auto care inspired by world-class engineering standards. Your vehicle deserves the best.
+            Quality auto service inspired by world-class engineering standards. Your vehicle deserves the best.
           </p>
 
           {/* Contact Details */}
@@ -39,7 +39,7 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="hover:text-white transition-colors"
               >
-                P1, Brgy. Gahonon, Daet, <br />
+                1042 Brgy. Gahonon, Vinzons Ave, Daet, <br /> 
                 Camarines Norte, Philippines
               </a>
             </div>

@@ -8,6 +8,7 @@ import { Phone, Mail, Clock, Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import BibleVerseMarquee from "./BibleVerseMarquee"
 import { useModalStore } from "@/store/useModalStore"
+import ShareButtons from "@/components/ui/ShareButtons"
 
 export default function Navbar() {
   const pathname = usePathname()
@@ -252,20 +253,12 @@ export default function Navbar() {
                     setIsOpen(false)
                     openAppointment()
                   }}
-                  className="mt-4 px-10 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
+                  className="mt-4 px-11 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
                 >
                   Book Now
                 </button>
-
-                <div className="mt-auto flex gap-6 text-white/40 pb-6">
-                  <a href="tel:09187747788" className="hover:text-white transition-colors">
-                    <Phone size={20} />
-                  </a>
-
-                  <a href="mailto:trufitautocenter@gmail.com" className="hover:text-white transition-colors">
-                    <Mail size={20} />
-                  </a>
-                  <span className="text-sm">Trufit Auto Center</span>
+                <div className="mt-12">
+                  <ShareButtons />
                 </div>
               </div>
             </motion.div>

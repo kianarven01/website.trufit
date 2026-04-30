@@ -1,17 +1,24 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 export default function ShareButtons() {
   const [copied, setCopied] = useState(false);
   const [url, setUrl] = useState("https://trufitautocenter.com");
   const shareText = "Check out TRUFIT Auto Center!";
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setUrl(window.location.href);
-    }
-  }, []);
+    const base = window.location.origin;
+    const query = searchParams.toString();
+
+    const fullUrl = query
+      ? `${base}${pathname}?${query}`
+      : `${base}${pathname}`;
+
+    setUrl(fullUrl);
+  }, [pathname, searchParams]);
 
   const showToast = () => {
     setCopied(true);

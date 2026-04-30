@@ -5,21 +5,13 @@ import { Facebook, MessageCircle, Twitter, Copy } from "lucide-react";
 
 export default function ShareButtons() {
   const [copied, setCopied] = useState(false);
-  const [url, setUrl] = useState("https://trufitautocenter.com");
+  
   const shareText = "Check out TRUFIT Auto Center!";
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
-  useEffect(() => {
-    const base = window.location.origin;
-    const query = searchParams.toString();
-
-    const fullUrl = query
-      ? `${base}${pathname}?${query}`
-      : `${base}${pathname}`;
-
-    setUrl(fullUrl);
-  }, [pathname, searchParams]);
+  const getUrl = () =>
+    typeof window !== "undefined"
+      ? window.location.href
+      : "https://trufitautocenter.com";
 
   const showToast = () => {
     setCopied(true);
@@ -59,6 +51,7 @@ export default function ShareButtons() {
   };
 
   const handleFacebook = () => {
+    const url = getUrl();
     openAppOrFallback(
       `fb://facewebmodal/f?href=${encodeURIComponent(url)}`,
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
@@ -66,6 +59,7 @@ export default function ShareButtons() {
   };
 
   const handleMessenger = () => {
+    const url = getUrl();
     openAppOrFallback(
       `fb-messenger://share?link=${encodeURIComponent(url)}`,
       `https://www.facebook.com/dialog/send?link=${encodeURIComponent(
@@ -75,6 +69,7 @@ export default function ShareButtons() {
   };
 
   const handleTwitter = () => {
+    const url = getUrl();
     openAppOrFallback(
       `twitter://post?message=${encodeURIComponent(shareText + " " + url)}`,
       `https://twitter.com/intent/tweet?url=${encodeURIComponent(
@@ -85,11 +80,11 @@ export default function ShareButtons() {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(getUrl());
       showToast();
     } catch {
       const textarea = document.createElement("textarea");
-      textarea.value = url;
+      textarea.value = getUrl();
       textarea.style.position = "fixed";
       textarea.style.left = "-9999px";
       document.body.appendChild(textarea);

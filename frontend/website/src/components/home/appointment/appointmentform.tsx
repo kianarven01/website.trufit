@@ -4,7 +4,7 @@ import React, { useEffect, useState, forwardRef } from "react"
 import { services } from "@/data/services"
 import { Appointment } from "@/types/appointment"
 import DatePicker from "react-datepicker"
-import { Calendar, ChevronDown } from "lucide-react"
+import { Calendar, ChevronDown, X } from "lucide-react"
 import "react-datepicker/dist/react-datepicker.css"
 
 // --- custom date input ---
@@ -58,6 +58,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   const [otherService, setOtherService] = useState("")
   const [otherVehicleMake, setOtherVehicleMake] = useState("")
   const [sending, setSending] = useState(false)
+  const [showTermsModal, setShowTermsModal] = useState(false)
 
   // Generate years from current year down to 1990
   const currentYear = new Date().getFullYear();
@@ -134,8 +135,13 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     peer-focus:text-brand-red
   `
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setShowTermsModal(true)
+  }
+
+  const handleConfirmSubmit = async () => {
+    setShowTermsModal(false)
     setSending(true)
     const finalService = form.service === "other" ? otherService : form.service
     const finalVehicleMake = form.vehicleMake === "other" ? otherVehicleMake : form.vehicleMake
@@ -376,6 +382,41 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           )}
         </button>
       </div>
+
+    {/* TERMS MODAL */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0f1115] border border-white/10 rounded-sm p-6 md:p-8 max-w-md w-full relative shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowTermsModal(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-brand-red transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-wider font-barlow">Accept Terms</h3>
+            <p className="text-white/60 text-sm mb-8 leading-relaxed font-barlow">
+              By proceeding, you agree to our <a href="/terms" className="text-brand-red hover:underline" target="_blank">Terms of Service</a> and <a href="/privacy" className="text-brand-red hover:underline" target="_blank">Privacy Policy</a>. We will process your information in accordance with these terms to book your appointment.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="flex-1 py-3 border border-white/20 text-white rounded-sm font-semibold hover:bg-white/5 transition-colors font-barlow uppercase tracking-wider text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                className="flex-1 py-3 bg-brand-red text-white rounded-sm font-semibold hover:bg-red-700 transition-colors font-barlow uppercase tracking-wider text-sm shadow-lg hover:shadow-brand-red/30"
+              >
+                I Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </form>
   )

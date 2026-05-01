@@ -212,12 +212,6 @@ useEffect(() => {
     model: "",
   };
 
-  const calendarEvents = useMemo(() => {
-    return appointments.map((a) => ({
-      date: new Date(a.datetime),
-      status: a.status.toLowerCase(),
-    }));
-  }, [appointments]);
 
   /* ================ FORMATTERS ================= */
 
@@ -295,6 +289,29 @@ useEffect(() => {
     setSelectedDate(null);
     localStorage.removeItem("appointmentDateFilter");
   };
+
+  const calendarEvents = useMemo(() => {
+    const grouped = new Map<string, Set<string>>();
+
+    /* highlight appointments based on status */
+    appointments.forEach((a) => {
+      const dateKey = toLocalDateString(a.datetime);
+      const status = a.status.toLowerCase();
+
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, new Set());
+      }
+
+      grouped.get(dateKey)!.add(status);
+    });
+
+    return Array.from(grouped.entries()).flatMap(([date, statuses]) =>
+      Array.from(statuses).map((status) => ({
+        date: new Date(date),
+        status,
+      }))
+    );
+  }, [appointments]);
 
   /* ================= APPOINTMENT STATUS ================ */
 const updateAppointmentStatus = (id: string, status: string) => {
@@ -647,19 +664,57 @@ const updateAppointmentStatus = (id: string, status: string) => {
             {/* Action Footer */}
             <div className="py-3 px-6 border-t bg-white">
               <div className="flex flex-col gap-2">
-                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-11"
-                onClick={() => {
-                  if (!selectedAppointment) return;
-                  updateAppointmentStatus(selectedAppointment.id, "confirmed");
-                }}
-                >
-                  Confirm Appointment
-                </Button>
-                <Button variant="outline" className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
-                onClick={() => setIsCancelDialogOpen(true)}
-                >
-                  Cancel 
-                </Button>                
+
+                {/* FOR APPROVAL */}
+                {selectedAppointment?.status === "for approval" && (
+                  <>
+                    <Button
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 h-11"
+                      onClick={() => {
+                        if (!selectedAppointment) return;
+                        updateAppointmentStatus(selectedAppointment.id, "confirmed");
+                      }}
+                    >
+                      Confirm Appointment
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => setIsCancelDialogOpen(true)}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+
+                {/* CONFIRMED */}
+                {selectedAppointment?.status === "confirmed" && (
+                  <>
+                    <Button
+                      className="w-full bg-blue-600 hover:bg-blue-700 h-11"
+                    >
+                      Reschedule Appointment
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => setIsCancelDialogOpen(true)}
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+
+                {/* COMPLETED or CANCELLED */}
+                {(selectedAppointment?.status === "completed" ||
+                  selectedAppointment?.status === "cancelled") && (
+                  <div className="text-center text-sm text-muted-foreground py-2">
+                    No actions available
+                  </div>
+                )}
+
               </div>
             </div>
           </SheetContent>

@@ -245,17 +245,16 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <DatePicker
           selected={form.date ? new Date(form.date) : null}
           onChange={handleDateChange}
+          filterDate={(date) => date.getDay() !== 0}
+          onMonthChange={() => setForm(prev => ({ ...prev, date: "" }))}
+          focusSelectedMonth={false}
+          selectsStart
           showTimeSelect
-          timeIntervals={30}
+          timeIntervals={5}
           minDate={new Date()}
           minTime={minTime}
           maxTime={maxTime}
           filterTime={filterPassedTime}
-          focusSelectedMonth={false}
-          selectsStart
-          onMonthChange={() => {
-            setForm(prev => ({ ...prev, date: "" }));
-          }}
           dateFormat="MMMM d, yyyy h:mm aa"
           placeholderText="Select date & time"
           customInput={<CustomDateInput />}

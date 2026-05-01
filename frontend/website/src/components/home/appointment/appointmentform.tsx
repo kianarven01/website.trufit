@@ -185,6 +185,22 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     }
   }
 
+  // 1. Helper to filter allowed times
+  const filterPassedTime = (time: Date) => {
+    const currentDate = new Date();
+    const selectedDate = new Date(time);
+
+    // If they picked today, hide times in the past
+    if (currentDate.toDateString() === selectedDate.toDateString()) {
+      return currentDate.getTime() < selectedDate.getTime();
+    }
+    return true;
+  };
+
+  // 2. Define the Business Hours (8:00 AM to 4:30 PM)
+  const minTime = new Date(new Date().setHours(8, 0, 0));
+  const maxTime = new Date(new Date().setHours(16, 30, 0));
+
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
 
@@ -230,10 +246,21 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           selected={form.date ? new Date(form.date) : null}
           onChange={handleDateChange}
           showTimeSelect
+          timeIntervals={30}
+          minDate={new Date()}
+          minTime={minTime}
+          maxTime={maxTime}
+          filterTime={filterPassedTime}
+          focusSelectedMonth={false}
+          selectsStart
+          onMonthChange={() => {
+            setForm(prev => ({ ...prev, date: "" }));
+          }}
           dateFormat="MMMM d, yyyy h:mm aa"
           placeholderText="Select date & time"
           customInput={<CustomDateInput />}
           wrapperClassName="w-full"
+          calendarClassName="modern-calendar"
         />
       </div>
 

@@ -120,8 +120,32 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   }
 
   const handleDateChange = (date: Date | null) => {
-    if (date) setForm({ ...form, date: date.toISOString() })
-  }
+    if (date) {
+      const selectedDate = new Date(date);
+      const now = new Date();
+      
+      const isToday = selectedDate.toDateString() === now.toDateString();
+
+      if (isToday) {
+        const currentMinutes = now.getMinutes();
+        const nextInterval = Math.ceil(currentMinutes / 5) * 5;
+        
+        now.setMinutes(nextInterval, 0, 0);
+        if (now.getHours() < 8) {
+          selectedDate.setHours(8, 0, 0, 0);
+        } else {
+          selectedDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
+        }
+      } else {
+        // 2. If it's a future date, default to your opening time (8:00 AM)
+        selectedDate.setHours(8, 0, 0, 0);
+      }
+
+      setForm({ ...form, date: selectedDate.toISOString() });
+    } else {
+      setForm({ ...form, date: "" });
+    }
+  };
 
   const inputClass = `
     peer w-full bg-white/10 border border-white/20 rounded-sm

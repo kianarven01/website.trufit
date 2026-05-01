@@ -256,6 +256,32 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
       </div>
 
+      {/* OTHER SERVICE INPUT */}
+      <div className="relative md:col-span-2">
+        <input
+          type="text"
+          placeholder="Specify service"
+          value={otherService}
+          onChange={(e) => setOtherService(e.target.value)}
+          required={form.service === "other"}
+          disabled={form.service !== "other"}
+          className={`
+            peer w-full
+            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
+            border rounded-sm
+            px-4 pt-6 pb-2
+            focus:outline-none focus:ring-1 focus:ring-brand-red
+            transition duration-300
+          `}
+        />
+        <label className={`
+          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
+          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
+        `}>
+          Specify Service
+        </label>
+      </div>
+
       {/* VEHICLE MAKE */}
       <div className="relative">
         <select
@@ -321,32 +347,6 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         </select>
         <label className={labelClass}>Vehicle Year</label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
-      </div>
-
-      {/* OTHER SERVICE INPUT */}
-      <div className="relative md:col-span-2">
-        <input
-          type="text"
-          placeholder="Specify service"
-          value={otherService}
-          onChange={(e) => setOtherService(e.target.value)}
-          required={form.service === "other"}
-          disabled={form.service !== "other"}
-          className={`
-            peer w-full
-            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
-            border rounded-sm
-            px-4 pt-6 pb-2
-            focus:outline-none focus:ring-1 focus:ring-brand-red
-            transition duration-300
-          `}
-        />
-        <label className={`
-          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
-          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
-        `}>
-          Specify Service
-        </label>
       </div>
 
       {/* MESSAGE */}

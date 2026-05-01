@@ -78,6 +78,7 @@ const AppointmentsList: React.FC = () => {
   });
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
 
   const handleRowClick = (apt: Appointment) => {
     setSelectedAppointment(apt);
@@ -333,6 +334,18 @@ const updateAppointmentStatus = (id: string, status: string) => {
   );
 };
 
+  const removeAppointment = (id: string) => {
+    setAppointments((prev) => {
+      const updated = prev.filter((a) => a.id !== id);
+
+      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    // close sheet after delete
+    setSelectedAppointment(null);
+    setIsSheetOpen(false);
+  };
 
   /* ================= SEARCH ================= */
   const normalize = (val: string) =>
@@ -708,9 +721,15 @@ const updateAppointmentStatus = (id: string, status: string) => {
                 {/* COMPLETED or CANCELLED */}
                 {(selectedAppointment?.status === "completed" ||
                   selectedAppointment?.status === "cancelled") && (
-                  <div className="text-center text-sm text-muted-foreground py-2">
-                    No actions available
-                  </div>
+                  <>
+                  <Button 
+                    variant="outline"
+                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"  
+                    onClick={() => setIsRemoveDialogOpen(true)}                
+                  >
+                    Remove
+                  </Button>
+                  </>
                 )}
 
               </div>
@@ -749,6 +768,35 @@ const updateAppointmentStatus = (id: string, status: string) => {
         </AlertDialogContent>
       </AlertDialog>
 
+
+      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Appointment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the appointment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => {
+                if (!selectedAppointment) return;
+
+                removeAppointment(selectedAppointment.id);
+                setIsRemoveDialogOpen(false);
+              }}
+            >
+              Yes, remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+</AlertDialog>      
     </div>
   );
 };

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
@@ -9,9 +11,10 @@ import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import { Button } from "@/components/ui/button";
 import Calendar from "@/components/ui/calendar-appointment";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 
 import { Calendar as CalendarIcon, Plus } from "lucide-react";
-
+import { User, Car, ClipboardList, Phone, Mail, MessageSquare } from "lucide-react";
 /* ================= STORAGE ================= */
 const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
@@ -28,9 +31,15 @@ interface Customer {
 
 interface VehicleModel {
   id: string;
-  year: number;
   make: string;
   model: string;
+}
+
+interface Vehicle {
+  id: string;
+  customerId: string;
+  vehicleModelId: string;
+  plateNumber?: string;
 }
 
 interface Appointment {
@@ -40,6 +49,7 @@ interface Appointment {
   service: string;
   datetime: string;
   status: string;
+  notes?: string;
 }
 
 /* ================= HELPERS ================= */
@@ -67,7 +77,15 @@ const AppointmentsList: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(() => {
     return localStorage.getItem("appointmentDateFilter");
   });
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  const handleRowClick = (apt: Appointment) => {
+    setSelectedAppointment(apt);
+    setIsSheetOpen(true);
+  };
+
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const { page, setPage, pageSize, setPageSize, paginate } =
     usePagination(25);
 
@@ -108,19 +126,16 @@ const seedAppointments = () => {
   const vehicles: VehicleModel[] = [
     {
       id: genId(),
-      year: 2020,
       make: "Toyota",
       model: "Vios",
     },
     {
       id: genId(),
-      year: 2019,
       make: "Honda",
       model: "Civic",
     },
     {
       id: genId(),
-      year: 2022,
       make: "Ford",
       model: "Ranger",
     },
@@ -193,7 +208,6 @@ useEffect(() => {
 
   const EMPTY_VEHICLE: VehicleModel = {
     id: "",
-    year: 0,
     make: "",
     model: "",
   };
@@ -281,6 +295,23 @@ useEffect(() => {
     setSelectedDate(null);
     localStorage.removeItem("appointmentDateFilter");
   };
+
+  /* ================= APPOINTMENT STATUS ================ */
+const updateAppointmentStatus = (id: string, status: string) => {
+  setAppointments((prev) => {
+    const updated = prev.map((a) =>
+      a.id === id ? { ...a, status } : a
+    );
+
+    localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
+    return updated;
+  });
+
+  // also update selectedAppointment so UI refreshes instantly
+  setSelectedAppointment((prev) =>
+    prev ? { ...prev, status } : prev
+  );
+};
 
 
   /* ================= SEARCH ================= */
@@ -391,7 +422,7 @@ useEffect(() => {
               <Table className="table-fixed w-full border-separate border-spacing-y-2 h-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[10%]">ID</TableHead>
+                    <TableHead className="w-[10%]">No.</TableHead>
                     <TableHead className="w-[20%]">Customer</TableHead>
                     <TableHead className="w-[20%]">Vehicle</TableHead>
                     <TableHead className="w-[15%]">Service</TableHead>
@@ -409,9 +440,7 @@ useEffect(() => {
                       return (
                         <TableRow
                           key={a.id}
-                          onClick={() =>
-                            navigate(`/webapp/appointments/${a.id}`)
-                          }
+                          onClick={() => handleRowClick(a)}
                           className="rounded-lg border bg-card shadow-sm hover:shadow-md"
                         >
                           <TableCell>
@@ -431,7 +460,7 @@ useEffect(() => {
 
                           <TableCell>
                             {vehicle
-                              ? `${vehicle.year} ${vehicle.make} ${vehicle.model}`
+                              ? `${vehicle.make} ${vehicle.model}`
                               : "-"}
                           </TableCell>
 
@@ -515,8 +544,158 @@ useEffect(() => {
               completed: "bg-blue-500",
             }}
           />          
-        </div>        
+        </div>  
+
+
+        {/* APPOINTMENT DETAIL SHEET */}
+
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetContent className="sm:max-w-[450px] flex flex-col p-0 gap-0">
+            
+            {/* Sticky Header */}
+            <div className="border-b pr-10 bg-slate-50/50">
+              <SheetHeader className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <SheetTitle className="text-xl font-bold">
+                    Appointment Detail
+                  </SheetTitle>   
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {selectedAppointment && formatAPT(selectedAppointment.id, 0)}
+                  </span>
+                </div>
+              </SheetHeader>
+            </div>
+
+            {/* Scrollable Content */}
+            <ScrollArea className="flex-1">
+              <div className="p-6 space-y-8">
+                
+                {/* Customer Info */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <User className="w-4 h-4" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider">Customer</h3>
+                  </div>
+                  <div className="grid gap-3 pl-6 border-l-2 border-slate-100">
+                    <div>
+                      <p className="text-sm font-semibold">
+                        {customerMap.get(selectedAppointment?.customerId || "")?.firstName} {customerMap.get(selectedAppointment?.customerId || "")?.lastName}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Phone className="w-3.5 h-3.5" />
+                      {formatPHPhone(customerMap.get(selectedAppointment?.customerId || "")?.mobileNumber) || "No phone number provided"}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      <Mail className="w-3.5 h-3.5" />
+                      {customerMap.get(selectedAppointment?.customerId || "")?.email || "No email provided"}
+                    </div>
+                  </div>
+                </section>
+
+                {/* Vehicle Info */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Car className="w-4 h-4" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider">Vehicle</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-slate-100">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] uppercase font-medium text-slate-400">Model</p>
+                      <p className="text-sm font-medium">
+                        {vehicleMap.get(selectedAppointment?.vehicleModelId || "")?.make} {vehicleMap.get(selectedAppointment?.vehicleModelId || "")?.model}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[10px] uppercase font-medium text-slate-400">Plate Number</p>
+                      <p className="text-sm font-medium">ABC-1234</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Appointment Info */}
+                <section className="space-y-4">
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <ClipboardList className="w-4 h-4" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider">Service</h3>
+                  </div>
+                  <div className="space-y-4 pl-6 border-l-2 border-slate-100">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-base font-medium">{selectedAppointment?.service}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedAppointment && formatDate(selectedAppointment.datetime)} at {selectedAppointment && formatTime(selectedAppointment.datetime)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-100/50">
+                      <div className="flex items-center gap-2 mb-1 text-amber-600">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <p className="text-[10px] uppercase font-bold tracking-wide">Notes</p>
+                      </div>
+                      <p className="text-sm text-slate-700 leading-relaxed italic">
+                        {selectedAppointment?.notes || "No additional message provided"}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+              </div>
+            </ScrollArea>
+
+            {/* Action Footer */}
+            <div className="py-3 px-6 border-t bg-white">
+              <div className="flex flex-col gap-2">
+                <Button className="w-full bg-indigo-600 hover:bg-indigo-700 h-11"
+                onClick={() => {
+                  if (!selectedAppointment) return;
+                  updateAppointmentStatus(selectedAppointment.id, "confirmed");
+                }}
+                >
+                  Confirm Appointment
+                </Button>
+                <Button variant="outline" className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
+                onClick={() => setIsCancelDialogOpen(true)}
+                >
+                  Cancel 
+                </Button>                
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>       
       </div>
+
+      {/* Cancel Appointment Dialog */}
+      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Appointment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The appointment will be marked as cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              No, keep it
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => {
+                if (!selectedAppointment) return;
+
+                updateAppointmentStatus(selectedAppointment.id, "cancelled");
+                setIsCancelDialogOpen(false);
+              }}
+            >
+              Yes, cancel appointment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 };

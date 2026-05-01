@@ -72,7 +72,6 @@ const AppointmentsList: React.FC = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
     status: "all",
-    service: "all",
   });
   const [selectedDate, setSelectedDate] = useState<string | null>(() => {
     return localStorage.getItem("appointmentDateFilter");
@@ -293,10 +292,14 @@ useEffect(() => {
   const calendarEvents = useMemo(() => {
     const grouped = new Map<string, Set<string>>();
 
-    /* highlight appointments based on status */
+    const allowedStatuses = new Set(["confirmed", "for approval"]);
+
     appointments.forEach((a) => {
-      const dateKey = toLocalDateString(a.datetime);
       const status = a.status.toLowerCase();
+
+      if (!allowedStatuses.has(status)) return;
+
+      const dateKey = toLocalDateString(a.datetime);
 
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, new Set());
@@ -345,13 +348,11 @@ const updateAppointmentStatus = (id: string, status: string) => {
       const matchesStatus =
         filters.status === "all" || normalize(a.status) === normalize(filters.status);
 
-      const matchesService =
-        filters.service === "all" || a.service === filters.service;
 
       const matchesDate =
         !selectedDate || toLocalDateString(a.datetime) === selectedDate;
 
-      if (!q) return matchesStatus && matchesService && matchesDate;
+      if (!q) return matchesStatus && matchesDate;
 
       const firstName = normalize(customer.firstName);
       const lastName = normalize(customer.lastName);
@@ -373,7 +374,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
           service.includes(term)
         );
 
-      return matchesStatus && matchesService && matchesDate && matchesSearch;
+      return matchesStatus && matchesDate && matchesSearch;
     });
   }, [appointments, customerMap, vehicleMap, search, filters, selectedDate]);
 
@@ -399,7 +400,6 @@ const updateAppointmentStatus = (id: string, status: string) => {
 
   const toolbarFilters = [
     { key: "status", label: "Status", options: statusOptions },
-    { key: "service", label: "Service", options: serviceOptions },
   ];
 
   const handleFilterChange = (key: string, value: string) => {
@@ -555,10 +555,8 @@ const updateAppointmentStatus = (id: string, status: string) => {
             onSelect={handleDateSelect} 
             events={calendarEvents}
               statusColors={{
-              confirmed: "bg-green-500",
-              cancelled: "bg-red-500",
-              "for approval": "bg-yellow-400",
-              completed: "bg-blue-500",
+              confirmed: "bg-blue-500",
+              "for approval": "bg-muted-foreground/50",
             }}
           />          
         </div>  

@@ -124,7 +124,7 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
                   rel="noopener noreferrer"
                   className="text-gray-200 hover:underline text-sm md:text-base"
                 >
-                  P1, Brgy. Gahonon, Daet, Camarines Norte
+                  1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines
                 </a>
               </div>
               <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6 will-change-[transform,opacity]">

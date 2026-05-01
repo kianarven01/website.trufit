@@ -89,7 +89,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc pl-6 mt-2 space-y-1">
               <li>Phone: 0918-774-7788</li>
               <li>Email: trufitautocenter@gmail.com</li>
-              <li>Address: P1, Brgy. Gahonon, Daet, Camarines Norte</li>
+              <li>Address: 1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines</li>
             </ul>
           </section>
         </div>

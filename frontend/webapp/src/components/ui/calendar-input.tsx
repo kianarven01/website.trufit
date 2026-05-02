@@ -210,7 +210,7 @@ export const Calendar: React.FC<CalendarProps> = ({
 };
 
 /* =========================================================
-   TIME PICKER (SMART FILTERED)
+   TIME PICKER
 ========================================================= */
 
 interface TimePickerProps {
@@ -219,11 +219,9 @@ interface TimePickerProps {
   selectedDate: Date | null;
   onSelect: (time: string) => void;
   onClose: () => void;
+  position: "bottom" | "top";
 }
 
-/* =========================================================
-   HELPERS
-========================================================= */
 
 const roundToNext5Min = (date: Date) => {
   const ms = 1000 * 60 * 5;
@@ -288,6 +286,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   selectedDate,
   onSelect,
   onClose,
+  position = "bottom",
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -330,7 +329,11 @@ export const TimePicker: React.FC<TimePickerProps> = ({
   return (
     <div
       ref={ref}
-      className="absolute right-0 mt-2 w-[160px] bg-card border rounded-lg shadow-lg z-50"
+      className={cn(
+        "absolute right-0 w-[160px] bg-card border rounded-lg shadow-lg z-50",
+        position === "bottom" && "top-full mt-2",
+        position === "top" && "bottom-full mb-2"
+      )}
     >
       <ScrollArea className="h-64 py-1 pl-1 pr-2.5">
         <div className="space-y-1">
@@ -342,6 +345,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({
                 if (t.disabled) return;
                 onSelect(t.label);
                 onClose();
+                
               }}
               className={cn(
                 "w-full text-xs px-2 py-2 rounded-md text-left transition",

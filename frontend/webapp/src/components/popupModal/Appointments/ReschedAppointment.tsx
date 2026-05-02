@@ -196,6 +196,7 @@ const ReschedAppointment: React.FC<Props> = ({
               selectedDate={selectedDate}
               onSelect={(t) => setSelectedTime(t)}
               onClose={() => setOpenTimePicker(false)}
+              position="bottom"
             />
           </div>
         </div>

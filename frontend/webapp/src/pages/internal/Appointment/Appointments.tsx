@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
@@ -12,12 +11,16 @@ import DataToolbar from "@/components/DataToolbar";
 import { Button } from "@/components/ui/button";
 import Calendar from "@/components/ui/calendar-appointment";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import ReschedAppointment from "@/components/popupModal/Appointments/ReschedAppointment";
+import { toast } from "sonner";
 
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+
+import { Calendar as CalendarIcon } from "lucide-react";
 import { User, Car, ClipboardList, Phone, Mail, MessageSquare } from "lucide-react";
 /* ================= STORAGE ================= */
 const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+const VEHICLE_STORAGE_KEY = "vehicles";
 const APPOINTMENT_KEY = "appointments";
 
 /* ================= TYPES ================= */
@@ -76,12 +79,14 @@ const AppointmentsList: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(() => {
     return localStorage.getItem("appointmentDateFilter");
   });
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
+
 
   const handleRowClick = (apt: Appointment) => {
-    setSelectedAppointment(apt);
+    setEditingAppointmentId(apt.id);
     setIsSheetOpen(true);
   };
 
@@ -318,6 +323,11 @@ useEffect(() => {
   }, [appointments]);
 
   /* ================= APPOINTMENT STATUS ================ */
+
+  const selectedAppointment = useMemo(() => {
+    return appointments.find(a => a.id === editingAppointmentId) || null;
+  }, [appointments, editingAppointmentId]);
+
 const updateAppointmentStatus = (id: string, status: string) => {
   setAppointments((prev) => {
     const updated = prev.map((a) =>
@@ -327,11 +337,6 @@ const updateAppointmentStatus = (id: string, status: string) => {
     localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
     return updated;
   });
-
-  // also update selectedAppointment so UI refreshes instantly
-  setSelectedAppointment((prev) =>
-    prev ? { ...prev, status } : prev
-  );
 };
 
   const removeAppointment = (id: string) => {
@@ -342,8 +347,6 @@ const updateAppointmentStatus = (id: string, status: string) => {
       return updated;
     });
 
-    // close sheet after delete
-    setSelectedAppointment(null);
     setIsSheetOpen(false);
   };
 
@@ -438,7 +441,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
       <DataToolbar
         searchPlaceholder="Search appointments..."
         onSearch={setSearch}
-        onAdd={() => navigate("/webapp/appointments/new")}
+        onAdd={()=>navigate("/internal/appointments/new")}
         addLabel="Add Appointment"
         filters={toolbarFilters}
         onFilterChange={handleFilterChange}
@@ -704,6 +707,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
                   <>
                     <Button
                       className="w-full bg-blue-600 hover:bg-blue-700 h-11"
+                      onClick={() => setIsReschedDialogOpen(true)}
                     >
                       Reschedule Appointment
                     </Button>
@@ -796,7 +800,26 @@ const updateAppointmentStatus = (id: string, status: string) => {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-</AlertDialog>      
+      </AlertDialog>   
+
+      <ReschedAppointment
+        open={isReschedDialogOpen}
+        onOpenChange={setIsReschedDialogOpen}
+        appointment={selectedAppointment}
+        onSave={(updatedDateTime) => {
+          if (!selectedAppointment) return;
+
+          setAppointments((prev) =>
+            prev.map((a) =>
+              a.id === selectedAppointment.id
+                ? { ...a, datetime: updatedDateTime }
+                : a
+            )
+          );
+          toast.success("Appointment rescheduled successfully!");
+        }}
+      />
+
     </div>
   );
 };

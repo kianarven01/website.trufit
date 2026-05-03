@@ -11,12 +11,14 @@ import DataToolbar from "@/components/DataToolbar";
 import { Button } from "@/components/ui/button";
 import Calendar from "@/components/ui/calendar-appointment";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import ScheduleAppointment from "@/components/popupModal/Appointments/ScheduleAppointment";
 import ReschedAppointment from "@/components/popupModal/Appointments/ReschedAppointment";
 import { toast } from "sonner";
 
-
 import { Calendar as CalendarIcon } from "lucide-react";
 import { User, Car, ClipboardList, Phone, Mail, MessageSquare } from "lucide-react";
+
+
 /* ================= STORAGE ================= */
 const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
@@ -48,7 +50,7 @@ interface Vehicle {
 interface Appointment {
   id: string;
   customerId: string;
-  vehicleModelId: string;
+  vehicleId: string;
   service: string;
   datetime: string;
   status: string;
@@ -70,7 +72,8 @@ const AppointmentsList: React.FC = () => {
   const navigate = useNavigate();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleModel[]>([]);
+  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
@@ -79,6 +82,7 @@ const AppointmentsList: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(() => {
     return localStorage.getItem("appointmentDateFilter");
   });
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
@@ -106,55 +110,27 @@ const seedAppointments = () => {
 
   /* ---- CUSTOMERS ---- */
   const customers: Customer[] = [
-    {
-      id: genId(),
-      firstName: "Juan",
-      lastName: "Dela Cruz",
-      mobileNumber: "09171234567",
-      email: "juan@email.com",
-    },
-    {
-      id: genId(),
-      firstName: "Maria",
-      lastName: "Santos",
-      mobileNumber: "09981234567",
-    },
-    {
-      id: genId(),
-      firstName: "Carlo",
-      lastName: "Reyes",
-      mobileNumber: "09175556666",
-    },
+    { id: genId(), firstName: "Juan", lastName: "Dela Cruz", mobileNumber: "09171234567", email: "juan@email.com" },
+    { id: genId(), firstName: "Maria", lastName: "Santos", mobileNumber: "09981234567" },
+    { id: genId(), firstName: "Carlo", lastName: "Reyes", mobileNumber: "09175556666" },
   ];
 
-  /* ---- VEHICLES ---- */
-  const vehicles: VehicleModel[] = [
-    {
-      id: genId(),
-      make: "Toyota",
-      model: "Vios",
-    },
-    {
-      id: genId(),
-      make: "Honda",
-      model: "Civic",
-    },
-    {
-      id: genId(),
-      make: "Ford",
-      model: "Ranger",
-    },
+  const vehicleModels: VehicleModel[] = [
+    { id: genId(), make: "Toyota", model: "Vios" },
+    { id: genId(), make: "Honda", model: "Civic" },
+    { id: genId(), make: "Ford", model: "Ranger" },
   ];
 
-  /* ---- APPOINTMENTS ---- */
+  /* ✅ CREATE VEHICLES */
+  const vehicles: Vehicle[] = customers.map((c, i) => ({
+    id: genId(),
+    customerId: c.id,
+    vehicleModelId: vehicleModels[i % vehicleModels.length].id,
+    plateNumber: `ABC-${i + 123}`,
+  }));
+
   const statuses = ["confirmed", "cancelled", "for approval", "completed"];
-
-  const services = [
-    "Oil Change",
-    "Brake Service",
-    "Car Wash",
-    "Engine Tune-up",
-  ];
+  const services = ["Oil Change", "Brake Service", "Car Wash", "Engine Tune-up"];
 
   const appointments: Appointment[] = [];
 
@@ -165,27 +141,26 @@ const seedAppointments = () => {
     appointments.push({
       id: genId(),
       customerId: customer.id,
-      vehicleModelId: vehicle.id,
+      vehicleId: vehicle.id, // ✅ FIXED
       service: services[i % services.length],
-      datetime: new Date(
-        Date.now() + i * 1000 * 60 * 60 * 6
-      ).toISOString(),
+      datetime: new Date(Date.now() + i * 1000 * 60 * 60 * 6).toISOString(),
       status: statuses[i % statuses.length],
     });
   }
 
-  /* ---- SAVE ---- */
   localStorage.setItem(APPOINTMENT_CUSTOMER_KEY, JSON.stringify(customers));
-  localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(vehicles));
+  localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(vehicleModels));
+  localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(vehicles));
   localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(appointments));
-};    
+};   
 
   /* ================= LOAD ================= */
 useEffect(() => {
   seedAppointments();
 
   setCustomers(JSON.parse(localStorage.getItem(APPOINTMENT_CUSTOMER_KEY) || "[]"));
-  setVehicles(JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"));
+  setVehicleModels(JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"));
+  setVehicles(JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]"));
   setAppointments(JSON.parse(localStorage.getItem(APPOINTMENT_KEY) || "[]"));
 }, []);
 
@@ -198,10 +173,16 @@ useEffect(() => {
   }, [customers]);
 
   const vehicleMap = useMemo(() => {
-    const map = new Map<string, VehicleModel>();
+    const map = new Map<string, Vehicle>();
     vehicles.forEach((v) => map.set(v.id, v));
     return map;
   }, [vehicles]);
+
+  const vehicleModelMap = useMemo(() => {
+    const map = new Map<string, VehicleModel>();
+    vehicleModels.forEach((vm) => map.set(vm.id, vm));
+    return map;
+  }, [vehicleModels]);
 
 
   const EMPTY_CUSTOMER: Customer = {
@@ -210,13 +191,6 @@ useEffect(() => {
     lastName: "",
     mobileNumber: "",
   };
-
-  const EMPTY_VEHICLE: VehicleModel = {
-    id: "",
-    make: "",
-    model: "",
-  };
-
 
   /* ================ FORMATTERS ================= */
 
@@ -238,6 +212,7 @@ useEffect(() => {
 
     return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
   };
+
 
   /*  Date Time Format */
   const formatDate = (val: string) => {
@@ -359,7 +334,13 @@ const updateAppointmentStatus = (id: string, status: string) => {
 
     return appointments.filter((a) => {
       const customer = customerMap.get(a.customerId) ?? EMPTY_CUSTOMER;
-      const vehicle = vehicleMap.get(a.vehicleModelId) ?? EMPTY_VEHICLE;
+      const vehicle = vehicleMap.get(a.vehicleId);
+      const vehicleModel = vehicle?.vehicleModelId
+        ? vehicleModelMap.get(vehicle.vehicleModelId)
+        : null;
+
+      const make = normalize(vehicleModel?.make || "");
+      const model = normalize(vehicleModel?.model || "");
 
       const matchesStatus =
         filters.status === "all" || normalize(a.status) === normalize(filters.status);
@@ -373,10 +354,6 @@ const updateAppointmentStatus = (id: string, status: string) => {
       const firstName = normalize(customer.firstName);
       const lastName = normalize(customer.lastName);
       const fullName = normalize(`${customer.firstName} ${customer.lastName}`);
-
-      const make = normalize(vehicle.make);
-      const model = normalize(vehicle.model);
-
       const service = normalize(a.service);
 
         const terms = q.split(" ").filter(Boolean);
@@ -392,7 +369,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
 
       return matchesStatus && matchesDate && matchesSearch;
     });
-  }, [appointments, customerMap, vehicleMap, search, filters, selectedDate]);
+  }, [appointments, customerMap, vehicleMap, vehicleModelMap, search, filters, selectedDate]);
 
 
   const paginated = paginate(filtered);
@@ -426,6 +403,15 @@ const updateAppointmentStatus = (id: string, status: string) => {
     setPage(1);
   }, [search, pageSize, selectedDate]);
 
+  const selectedVehicle = selectedAppointment
+    ? vehicleMap.get(selectedAppointment.vehicleId)
+    : null;
+
+  const selectedVehicleModel = selectedVehicle
+    ? vehicleModelMap.get(selectedVehicle.vehicleModelId)
+    : null;
+
+
   /* ================= UI ================= */
 
   return (
@@ -441,7 +427,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
       <DataToolbar
         searchPlaceholder="Search appointments..."
         onSearch={setSearch}
-        onAdd={()=>navigate("/internal/appointments/new")}
+        onAdd={()=>setIsScheduleDialogOpen(true)}
         addLabel="Add Appointment"
         filters={toolbarFilters}
         onFilterChange={handleFilterChange}
@@ -468,7 +454,10 @@ const updateAppointmentStatus = (id: string, status: string) => {
                   {filtered.length > 0 ? (
                     paginated.map((a, index) => {
                       const customer = customerMap.get(a.customerId);
-                      const vehicle = vehicleMap.get(a.vehicleModelId);
+                      const vehicle = vehicleMap.get(a.vehicleId);
+                      const vehicleModel = vehicle
+                        ? vehicleModelMap.get(vehicle.vehicleModelId)
+                        : null;
 
                       return (
                         <TableRow
@@ -492,8 +481,8 @@ const updateAppointmentStatus = (id: string, status: string) => {
                           </TableCell>
 
                           <TableCell>
-                            {vehicle
-                              ? `${vehicle.make} ${vehicle.model}`
+                            {vehicleModel
+                              ? `${vehicleModel.make} ${vehicleModel.model}`
                               : "-"}
                           </TableCell>
 
@@ -634,12 +623,15 @@ const updateAppointmentStatus = (id: string, status: string) => {
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <p className="text-[10px] uppercase font-medium text-slate-400">Model</p>
                       <p className="text-sm font-medium">
-                        {vehicleMap.get(selectedAppointment?.vehicleModelId || "")?.make} {vehicleMap.get(selectedAppointment?.vehicleModelId || "")?.model}
+                        {selectedVehicleModel
+                          ? `${selectedVehicleModel.make} ${selectedVehicleModel.model}`
+                          : "No vehicle model provided"
+                        }
                       </p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <p className="text-[10px] uppercase font-medium text-slate-400">Plate Number</p>
-                      <p className="text-sm font-medium">ABC-1234</p>
+                      <p className="text-sm font-medium">{selectedVehicle?.plateNumber || "Not provided"}</p>
                     </div>
                   </div>
                 </section>
@@ -801,6 +793,11 @@ const updateAppointmentStatus = (id: string, status: string) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>   
+
+      <ScheduleAppointment
+        open={isScheduleDialogOpen}
+        onOpenChange={setIsScheduleDialogOpen}
+      />
 
       <ReschedAppointment
         open={isReschedDialogOpen}

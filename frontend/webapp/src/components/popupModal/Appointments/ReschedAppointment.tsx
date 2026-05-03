@@ -17,7 +17,7 @@ import { Calendar as CalendarIcon, Clock } from "lucide-react";
 interface Appointment {
   id: string;
   customerId: string;
-  vehicleModelId: string;
+  vehicleId: string;
   service: string;
   datetime: string;
   status: string;

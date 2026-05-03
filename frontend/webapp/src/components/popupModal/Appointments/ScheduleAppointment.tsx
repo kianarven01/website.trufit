@@ -49,7 +49,7 @@ interface Vehicle {
 interface Appointment {
   id: string;
   customerId: string;
-  vehicleModelId: string;
+  vehicleId: string;
   service: string;
   datetime: string;
   status: string;
@@ -186,7 +186,7 @@ const ScheduleAppointment: React.FC<Props> = ({
     setOpenCalendar(false);
   };
 
-  /* SAVE */
+  /* ================= SAVE ================= */
   const handleSave = () => {
     if (!selectedDate || !selectedTime) {
       toast.error("Please select date and time.");
@@ -195,13 +195,8 @@ const ScheduleAppointment: React.FC<Props> = ({
 
     const datetime = combineDateTime(selectedDate, selectedTime);
 
-    if (!datetime) {
-      toast.error("Invalid time selected.");
-      return;
-    }
-
-    if (new Date(datetime) < new Date()) {
-      toast.error("Cannot select past time.");
+    if (!datetime || new Date(datetime) < new Date()) {
+      toast.error("Invalid or past time selected.");
       return;
     }
 
@@ -221,10 +216,11 @@ const ScheduleAppointment: React.FC<Props> = ({
       return;
     }
 
-    const formattedMake = toTitleCase(make).trim();
-    const formattedModel = toTitleCase(model).trim();
+    const formattedMake = toTitleCase(make);
+    const formattedModel = toTitleCase(model);
+    const formattedPlate = formatPlate(plateNumber);
 
-    /* VEHICLE MODEL */
+    /* ================= VEHICLE MODEL ================= */
     let storedModels: VehicleModel[] = safeParse(
       localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY),
       []
@@ -243,7 +239,7 @@ const ScheduleAppointment: React.FC<Props> = ({
         model: formattedModel,
       };
 
-      storedModels.push(vehicleModel);
+      storedModels = [...storedModels, vehicleModel];
       localStorage.setItem(
         VEHICLE_MODEL_STORAGE_KEY,
         JSON.stringify(storedModels)
@@ -251,87 +247,87 @@ const ScheduleAppointment: React.FC<Props> = ({
       setVehicleModels(storedModels);
     }
 
-    /* CUSTOMER */
-    const existingCustomers: Customer[] = safeParse(
+    /* ================= CUSTOMER ================= */
+    let customers: Customer[] = safeParse(
       localStorage.getItem(APPOINTMENT_CUSTOMER_KEY),
       []
     );
 
-    let existingCustomer = existingCustomers.find(
+    let customer = customers.find(
       c => normalizePhone(c.mobileNumber) === normalizePhone(phone)
     );
 
-    const customerId = existingCustomer?.id || genId();
-
-    if (!existingCustomer) {
-      const customer: Customer = {
-        id: customerId,
+    if (!customer) {
+      customer = {
+        id: genId(),
         firstName,
         lastName,
         mobileNumber: phone,
         email: email || undefined,
       };
 
+      customers = [...customers, customer];
       localStorage.setItem(
         APPOINTMENT_CUSTOMER_KEY,
-        JSON.stringify([customer, ...existingCustomers])
+        JSON.stringify(customers)
       );
     }
 
-    /* VEHICLE */
-    const existingVehicles: Vehicle[] = safeParse(
+    /* ================= VEHICLE ================= */
+    let vehicles: Vehicle[] = safeParse(
       localStorage.getItem(VEHICLE_STORAGE_KEY),
       []
     );
 
-    const formattedPlate = formatPlate(plateNumber);
-
-    const existingVehicle = existingVehicles.find(
+    let vehicle = vehicles.find(
       v =>
-        v.customerId === customerId &&
+        v.customerId === customer!.id &&
         v.vehicleModelId === vehicleModel!.id &&
         normalize(v.plateNumber || "") === normalize(formattedPlate)
     );
 
-    if (!existingVehicle) {
-      const vehicle: Vehicle = {
+    if (!vehicle) {
+      vehicle = {
         id: genId(),
-        customerId,
+        customerId: customer.id,
         vehicleModelId: vehicleModel.id,
         plateNumber: formattedPlate,
       };
 
+      vehicles = [...vehicles, vehicle];
       localStorage.setItem(
         VEHICLE_STORAGE_KEY,
-        JSON.stringify([vehicle, ...existingVehicles])
+        JSON.stringify(vehicles)
       );
     }
 
-    /* APPOINTMENT */
-    const existingAppointments: Appointment[] = safeParse(
+    /* ================= APPOINTMENT ================= */
+    let appointments: Appointment[] = safeParse(
       localStorage.getItem(APPOINTMENT_KEY),
       []
     );
 
     const appointment: Appointment = {
       id: genId(),
-      customerId,
-      vehicleModelId: vehicleModel.id,
+      customerId: customer.id,
+      vehicleId: vehicle.id, // ✅ CORRECT RELATION
       service,
       datetime,
       status: "for approval",
-      notes: form.notes,
+      notes: form.notes || undefined,
     };
+
+    appointments = [...appointments, appointment];
 
     localStorage.setItem(
       APPOINTMENT_KEY,
-      JSON.stringify([appointment, ...existingAppointments])
+      JSON.stringify(appointments)
     );
 
     toast.success("Appointment created successfully");
     onSaved?.(appointment);
 
-    /* RESET */
+    /* ================= RESET ================= */
     setForm({
       firstName: "",
       lastName: "",

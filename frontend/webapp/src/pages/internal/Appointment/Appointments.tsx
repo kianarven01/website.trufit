@@ -412,6 +412,99 @@ const updateAppointmentStatus = (id: string, status: string) => {
     : null;
 
 
+    
+  const handleCreateAppointment = (data: any) => {
+    /* ================= VEHICLE MODEL ================= */
+    let storedModels: VehicleModel[] =
+      JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
+
+    let vehicleModel = storedModels.find(
+      v =>
+        v.make.toLowerCase() === data.make.toLowerCase() &&
+        v.model.toLowerCase() === data.model.toLowerCase()
+    );
+
+    if (!vehicleModel) {
+      vehicleModel = {
+        id: genId(),
+        make: data.make,
+        model: data.model,
+      };
+
+      storedModels.push(vehicleModel);
+      localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(storedModels));
+      setVehicleModels(storedModels);
+    }
+
+    /* ================= CUSTOMER ================= */
+    let customers: Customer[] =
+      JSON.parse(localStorage.getItem(APPOINTMENT_CUSTOMER_KEY) || "[]");
+
+    let customer = customers.find(
+      c => c.mobileNumber.replace(/\D/g, "") === data.phone.replace(/\D/g, "")
+    );
+
+    if (!customer) {
+      customer = {
+        id: genId(),
+        firstName: data.firstName,
+        lastName: data.lastName,
+        mobileNumber: data.phone,
+        email: data.email,
+      };
+
+      customers.push(customer);
+      localStorage.setItem(APPOINTMENT_CUSTOMER_KEY, JSON.stringify(customers));
+      setCustomers(customers);
+    }
+
+    /* ================= VEHICLE ================= */
+    let vehicles: Vehicle[] =
+      JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
+
+    let vehicle = vehicles.find(
+      v =>
+        v.customerId === customer.id &&
+        v.vehicleModelId === vehicleModel.id &&
+        (v.plateNumber || "").toLowerCase() === (data.plateNumber || "").toLowerCase()
+    );
+
+    if (!vehicle) {
+      vehicle = {
+        id: genId(),
+        customerId: customer.id,
+        vehicleModelId: vehicleModel.id,
+        plateNumber: data.plateNumber,
+      };
+
+      vehicles.push(vehicle);
+      localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(vehicles));
+      setVehicles(vehicles);
+    }
+
+    /* ================= APPOINTMENT ================= */
+    let appointments: Appointment[] =
+      JSON.parse(localStorage.getItem(APPOINTMENT_KEY) || "[]");
+
+    const appointment: Appointment = {
+      id: genId(),
+      customerId: customer.id,
+      vehicleId: vehicle.id,
+      service: data.service,
+      datetime: data.datetime,
+      status: "for approval",
+      notes: data.notes,
+    };
+
+    appointments.push(appointment);
+
+    localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(appointments));
+    setAppointments(appointments);
+
+    toast.success("Appointment created successfully!");
+  };
+
+
   /* ================= UI ================= */
 
   return (
@@ -679,6 +772,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
                       onClick={() => {
                         if (!selectedAppointment) return;
                         updateAppointmentStatus(selectedAppointment.id, "confirmed");
+                        toast.success("Appointment confirmed");
                       }}
                     >
                       Confirm Appointment
@@ -755,6 +849,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
                 if (!selectedAppointment) return;
 
                 updateAppointmentStatus(selectedAppointment.id, "cancelled");
+                toast.error("Appointment cancelled");
                 setIsCancelDialogOpen(false);
               }}
             >
@@ -785,6 +880,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
                 if (!selectedAppointment) return;
 
                 removeAppointment(selectedAppointment.id);
+                toast.error("Appointment removed");
                 setIsRemoveDialogOpen(false);
               }}
             >
@@ -797,6 +893,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
       <ScheduleAppointment
         open={isScheduleDialogOpen}
         onOpenChange={setIsScheduleDialogOpen}
+        onSaved={handleCreateAppointment}
       />
 
       <ReschedAppointment

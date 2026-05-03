@@ -15,23 +15,14 @@ import {
   Calendar,
   TimePicker,
   generateTimeSlots
-} from "@/components/ui/calendar-input";
+} from "@/components/ui/date-time-picker";
 import { CalendarIcon, Clock } from "lucide-react";
 
 /* ================= STORAGE ================= */
-const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
-const VEHICLE_STORAGE_KEY = "vehicles";
-const APPOINTMENT_KEY = "appointments";
+
 
 /* ================= TYPES ================= */
-interface Customer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  mobileNumber: string;
-  email?: string;
-}
 
 interface VehicleModel {
   id: string;
@@ -39,27 +30,21 @@ interface VehicleModel {
   model: string;
 }
 
-interface Vehicle {
-  id: string;
-  customerId: string;
-  vehicleModelId: string;
-  plateNumber?: string;
-}
-
-interface Appointment {
-  id: string;
-  customerId: string;
-  vehicleId: string;
-  service: string;
-  datetime: string;
-  status: string;
-  notes?: string;
-}
-
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: (appointment: Appointment) => void;
+  onSaved?: (data: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email?: string;
+    make: string;
+    model: string;
+    plateNumber: string;
+    service: string;
+    notes?: string;
+    datetime: string;
+  }) => void;
 }
 
 /* ================= HELPERS ================= */
@@ -126,67 +111,67 @@ const combineDateTime = (date: Date, time: string) => {
 };
 
 /* ================= COMPONENT ================= */
-const ScheduleAppointment: React.FC<Props> = ({
-  open,
-  onOpenChange,
-  onSaved,
-}) => {
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    email: "",
-    make: "",
-    model: "",
-    plateNumber: "",
-    service: "",
-    notes: "",
-  });
+  const ScheduleAppointment: React.FC<Props> = ({
+    open,
+    onOpenChange,
+    onSaved,
+  }) => {
+    const [form, setForm] = useState({
+      firstName: "",
+      lastName: "",
+      phone: "",
+      email: "",
+      make: "",
+      model: "",
+      plateNumber: "",
+      service: "",
+      notes: "",
+    });
 
-  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
+    const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
 
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState("");
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [selectedTime, setSelectedTime] = useState("");
 
-  const [openCalendar, setOpenCalendar] = useState(false);
-  const [openTimePicker, setOpenTimePicker] = useState(false);
+    const [openCalendar, setOpenCalendar] = useState(false);
+    const [openTimePicker, setOpenTimePicker] = useState(false);
 
-  /* LOAD MODELS */
-  useEffect(() => {
-    const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
-    setVehicleModels(safeParse(stored, []));
-  }, [open]);
+    /* LOAD MODELS */
+    useEffect(() => {
+      const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
+      setVehicleModels(safeParse(stored, []));
+    }, [open]);
 
-  /* OPTIONS */
-  const makeOptions = useMemo(() => {
-    const makes = Array.from(new Set(vehicleModels.map(v => v.make)));
-    return makes.map(m => ({ label: m, value: m }));
-  }, [vehicleModels]);
+    /* OPTIONS */
+    const makeOptions = useMemo(() => {
+      const makes = Array.from(new Set(vehicleModels.map(v => v.make)));
+      return makes.map(m => ({ label: m, value: m }));
+    }, [vehicleModels]);
 
-  const modelOptions = useMemo(() => {
-    const filtered = vehicleModels.filter(
-      v => normalize(v.make) === normalize(form.make)
-    );
-    const models = Array.from(new Set(filtered.map(v => v.model)));
-    return models.map(m => ({ label: m, value: m }));
-  }, [vehicleModels, form.make]);
+    const modelOptions = useMemo(() => {
+      const filtered = vehicleModels.filter(
+        v => normalize(v.make) === normalize(form.make)
+      );
+      const models = Array.from(new Set(filtered.map(v => v.model)));
+      return models.map(m => ({ label: m, value: m }));
+    }, [vehicleModels, form.make]);
 
-  const serviceOptions = [
-    { label: "Oil Change", value: "Oil Change" },
-    { label: "Brake Service", value: "Brake Service" },
-    { label: "Car Wash", value: "Car Wash" },
-    { label: "Engine Tune-up", value: "Engine Tune-up" },
-  ];
+    const serviceOptions = [
+      { label: "Oil Change", value: "Oil Change" },
+      { label: "Brake Service", value: "Brake Service" },
+      { label: "Car Wash", value: "Car Wash" },
+      { label: "Engine Tune-up", value: "Engine Tune-up" },
+    ];
 
-  const handleDateSelect = (d: Date) => {
-    setSelectedDate(d);
-    const slots = generateTimeSlots(d);
-    const firstValid = slots.find(t => !t.disabled);
-    if (firstValid) setSelectedTime(firstValid.label);
-    setOpenCalendar(false);
-  };
+    const handleDateSelect = (d: Date) => {
+      setSelectedDate(d);
+      const slots = generateTimeSlots(d);
+      const firstValid = slots.find(t => !t.disabled);
+      if (firstValid) setSelectedTime(firstValid.label);
+      setOpenCalendar(false);
+    };
 
-  /* ================= SAVE ================= */
+    /* ================= SAVE ================= */
   const handleSave = () => {
     if (!selectedDate || !selectedTime) {
       toast.error("Please select date and time.");
@@ -209,6 +194,7 @@ const ScheduleAppointment: React.FC<Props> = ({
       model,
       plateNumber,
       service,
+      notes,
     } = form;
 
     if (!firstName || !lastName || !phone || !make || !model || !service) {
@@ -216,132 +202,18 @@ const ScheduleAppointment: React.FC<Props> = ({
       return;
     }
 
-    const formattedMake = toTitleCase(make);
-    const formattedModel = toTitleCase(model);
-    const formattedPlate = formatPlate(plateNumber);
-
-    /* ================= VEHICLE MODEL ================= */
-    let storedModels: VehicleModel[] = safeParse(
-      localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY),
-      []
-    );
-
-    let vehicleModel = storedModels.find(
-      v =>
-        normalize(v.make) === normalize(formattedMake) &&
-        normalize(v.model) === normalize(formattedModel)
-    );
-
-    if (!vehicleModel) {
-      vehicleModel = {
-        id: genId(),
-        make: formattedMake,
-        model: formattedModel,
-      };
-
-      storedModels = [...storedModels, vehicleModel];
-      localStorage.setItem(
-        VEHICLE_MODEL_STORAGE_KEY,
-        JSON.stringify(storedModels)
-      );
-      setVehicleModels(storedModels);
-    }
-
-    /* ================= CUSTOMER ================= */
-    let customers: Customer[] = safeParse(
-      localStorage.getItem(APPOINTMENT_CUSTOMER_KEY),
-      []
-    );
-
-    let customer = customers.find(
-      c => normalizePhone(c.mobileNumber) === normalizePhone(phone)
-    );
-
-    if (!customer) {
-      customer = {
-        id: genId(),
-        firstName,
-        lastName,
-        mobileNumber: phone,
-        email: email || undefined,
-      };
-
-      customers = [...customers, customer];
-      localStorage.setItem(
-        APPOINTMENT_CUSTOMER_KEY,
-        JSON.stringify(customers)
-      );
-    }
-
-    /* ================= VEHICLE ================= */
-    let vehicles: Vehicle[] = safeParse(
-      localStorage.getItem(VEHICLE_STORAGE_KEY),
-      []
-    );
-
-    let vehicle = vehicles.find(
-      v =>
-        v.customerId === customer!.id &&
-        v.vehicleModelId === vehicleModel!.id &&
-        normalize(v.plateNumber || "") === normalize(formattedPlate)
-    );
-
-    if (!vehicle) {
-      vehicle = {
-        id: genId(),
-        customerId: customer.id,
-        vehicleModelId: vehicleModel.id,
-        plateNumber: formattedPlate,
-      };
-
-      vehicles = [...vehicles, vehicle];
-      localStorage.setItem(
-        VEHICLE_STORAGE_KEY,
-        JSON.stringify(vehicles)
-      );
-    }
-
-    /* ================= APPOINTMENT ================= */
-    let appointments: Appointment[] = safeParse(
-      localStorage.getItem(APPOINTMENT_KEY),
-      []
-    );
-
-    const appointment: Appointment = {
-      id: genId(),
-      customerId: customer.id,
-      vehicleId: vehicle.id, // ✅ CORRECT RELATION
+    onSaved?.({
+      firstName,
+      lastName,
+      phone,
+      email,
+      make,
+      model,
+      plateNumber,
       service,
+      notes,
       datetime,
-      status: "for approval",
-      notes: form.notes || undefined,
-    };
-
-    appointments = [...appointments, appointment];
-
-    localStorage.setItem(
-      APPOINTMENT_KEY,
-      JSON.stringify(appointments)
-    );
-
-    toast.success("Appointment created successfully");
-    onSaved?.(appointment);
-
-    /* ================= RESET ================= */
-    setForm({
-      firstName: "",
-      lastName: "",
-      phone: "",
-      email: "",
-      make: "",
-      model: "",
-      plateNumber: "",
-      service: "",
-      notes: "",
     });
-
-    setSelectedDate(null);
-    setSelectedTime("");
 
     onOpenChange(false);
   };

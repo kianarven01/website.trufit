@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
 import Combobox from "@/components/ui/combobox";
-import { Calendar } from "@/components/ui/calendar-input";
+import { Calendar } from "@/components/ui/date-time-picker";
 
 interface PurchaseOrderItem {
   id: string;

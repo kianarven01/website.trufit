@@ -10,7 +10,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
-import { Calendar, TimePicker, generateTimeSlots } from "@/components/ui/calendar-input";
+import { Calendar, TimePicker, generateTimeSlots } from "@/components/ui/date-time-picker";
 import { Calendar as CalendarIcon, Clock } from "lucide-react";
 
 

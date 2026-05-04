@@ -242,7 +242,7 @@ export default function ChapterThree() {
             </div>
           ))}
         </div>
-
+        
         {/* Mobile sport stats */}
         <div className="lg:hidden mt-10">
           <p className="ch3-reveal text-gray-500 text-sm leading-relaxed mb-6">
@@ -268,6 +268,39 @@ export default function ChapterThree() {
               <span className="text-brand-dark font-semibold text-sm">
                 Team Spirit
               </span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Achievements (mobile) */}
+        <div className="lg:hidden mt-10 p-5 bg-gray-50 border-l-4 border-brand-red rounded-sm">
+          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-3">
+            Recent Achievements
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <Trophy className="text-brand-red mt-0.5" size={16} />
+              <div>
+                <p className="text-brand-dark font-bold text-sm leading-tight">
+                  3rd Place — Men&apos;s Elite
+                </p>
+                <p className="text-gray-500 text-[10px] font-medium">
+                  Bantayog Talisay Triathlon Year 5
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <Trophy className="text-brand-red mt-0.5" size={16} />
+              <div>
+                <p className="text-brand-dark font-bold text-sm leading-tight">
+                  2nd Place — Mixed Relay
+                </p>
+                <p className="text-gray-500 text-[10px] font-medium">
+                  Bantayog Talisay Triathlon Year 5
+                </p>
+              </div>
             </div>
           </div>
         </div>

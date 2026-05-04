@@ -46,7 +46,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     lastName: "",
     email: "",
     phone: "",
-    date: "",
+    date: null,
     service: "",
     vehicleMake: "",
     vehicleModel: "",
@@ -120,32 +120,38 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   }
 
   const handleDateChange = (date: Date | null) => {
-    if (date) {
-      const selectedDate = new Date(date);
-      const now = new Date();
-      
-      const isToday = selectedDate.toDateString() === now.toDateString();
+    if (!date) {
+      setForm({ ...form, date: null })
+      return
+    }
+
+    const prev = form.date
+    const selected = new Date(date)
+
+    const isSameDay =
+      prev &&
+      new Date(prev).toDateString() === selected.toDateString()
+
+    // 👉 ONLY set default time if user changed the DAY
+    if (!isSameDay) {
+      const now = new Date()
+      const isToday =
+        selected.toDateString() === now.toDateString()
 
       if (isToday) {
-        const currentMinutes = now.getMinutes();
-        const nextInterval = Math.ceil(currentMinutes / 5) * 5;
-        
-        now.setMinutes(nextInterval, 0, 0);
-        if (now.getHours() < 8) {
-          selectedDate.setHours(8, 0, 0, 0);
-        } else {
-          selectedDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
-        }
+        const nextInterval = Math.ceil(now.getMinutes() / 5) * 5
+        selected.setHours(now.getHours(), nextInterval, 0, 0)
       } else {
-        // 2. If it's a future date, default to your opening time (8:00 AM)
-        selectedDate.setHours(8, 0, 0, 0);
+        selected.setHours(8, 0, 0, 0)
       }
-
-      setForm({ ...form, date: selectedDate.toISOString() });
-    } else {
-      setForm({ ...form, date: "" });
     }
-  };
+
+    // 👉 if same day → user is changing time → KEEP it
+    setForm(prevState => ({
+      ...prevState,
+      date: selected
+    }))
+  }
 
   const inputClass = `
     peer w-full bg-white/10 border border-white/20 rounded-sm
@@ -191,7 +197,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         lastName: "",
         email: "",
         phone: "",
-        date: "",
+        date: null,
         service: "",
         vehicleMake: "",
         vehicleModel: "",
@@ -267,10 +273,9 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       {/* DATE */}
       <div className="w-full relative">
         <DatePicker
-          selected={form.date ? new Date(form.date) : null}
+          selected={form.date}
           onChange={handleDateChange}
           filterDate={(date) => date.getDay() !== 0}
-          onMonthChange={() => setForm(prev => ({ ...prev, date: "" }))}
           focusSelectedMonth={false}
           selectsStart
           showTimeSelect

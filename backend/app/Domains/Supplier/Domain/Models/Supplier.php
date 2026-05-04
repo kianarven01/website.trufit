@@ -3,7 +3,8 @@
 namespace App\Domains\Supplier\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Domains\Product\Domain\Models\ProductSupplier;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\Product;
 
 class Supplier extends Model
 {
@@ -30,5 +31,18 @@ class Supplier extends Model
     public function productSuppliers()
     {
         return $this->hasMany(ProductSupplier::class, 'supplier_id', 'id');
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'Main.ProductSuppliers',
+            'supplier_id',
+            'product_id'
+        )->withPivot([
+            'id',
+            'supplier_cost',
+        ]);
     }
 }

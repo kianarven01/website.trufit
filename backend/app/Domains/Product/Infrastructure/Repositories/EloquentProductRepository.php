@@ -3,7 +3,7 @@
 namespace App\Domains\Product\Infrastructure\Repositories;
 
 use App\Domains\Product\Domain\Models\Product;
-use App\Domains\Product\Domain\Models\ProductSupplier;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use Illuminate\Support\Facades\DB;

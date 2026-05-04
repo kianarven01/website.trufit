@@ -4,6 +4,13 @@ use Illuminate\Support\Facades\Route;
 use App\Domains\Product\Http\Controllers\ProductController;
 use App\Domains\Product\Http\Controllers\ProductReferenceController;
 use App\Domains\Supplier\Http\Controllers\SupplierController;
+use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
+use App\Domains\Product\Infrastructure\Repositories\EloquentProductRepository;
+
+app()->bind(
+    ProductRepositoryInterface::class,
+    EloquentProductRepository::class
+);
 
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);

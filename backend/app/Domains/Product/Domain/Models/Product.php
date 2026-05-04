@@ -7,6 +7,7 @@ use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Manufacturers;
 use App\Domains\Product\Domain\Models\Unit;
 use App\Domains\Supplier\Domain\Models\Supplier;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 
 class Product extends Model
@@ -20,6 +21,7 @@ class Product extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'name',
         'SKU',
         'description',
@@ -32,9 +34,16 @@ class Product extends Model
         'unit',
         'part_id',
         'manufacturer_id',
+        'car_variant_id',
     ];
 
     protected $casts = [
+        'id' => 'string',
+        'category_id' => 'string',
+        'manufacturer_id' => 'string',
+        'unit' => 'string',
+        'part_id' => 'string',
+        'car_variant_id' => 'string',
         'is_oem' => 'boolean',
     ];
 
@@ -63,7 +72,17 @@ class Product extends Model
     {
         return $this->hasMany(
             ProductVehicleCompatibility::class,
-            'product_id'
+            'product_id',
+            'id'
+        );
+    }
+
+    public function productSuppliers()
+    {
+        return $this->hasMany(
+            ProductSupplier::class,
+            'product_id',
+            'id'
         );
     }
 
@@ -77,9 +96,9 @@ class Product extends Model
             'Main.ProductSuppliers',
             'product_id',
             'supplier_id'
-        )
-            ->withPivot([
-                'supplier_cost'
-            ]);
+        )->withPivot([
+            'id',
+            'supplier_cost',
+        ]);
     }
 }

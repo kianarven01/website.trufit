@@ -14,9 +14,26 @@ class EloquentProductRepository implements ProductRepositoryInterface
     public function create(array $productData, array $suppliers = [], ?array $compatibility = null): Product
     {
         return DB::transaction(function () use ($productData, $suppliers, $compatibility) {
+            $productId = (string) Str::uuid();
+
             $product = Product::create([
-                'id' => (string) Str::uuid(),
-                ...$productData,
+                'id' => $productId,
+                'name' => $productData['name'],
+                'SKU' => $productData['SKU'] ?? $productData['sku'] ?? null,
+                'description' => $productData['description'] ?? null,
+                'image_path' => $productData['image_path'] ?? null,
+                'category_id' => $productData['category_id'] ?? null,
+                'barcode' => $productData['barcode'] ?? null,
+                'part_number' => $productData['part_number'] ?? null,
+                'is_oem' => $productData['is_oem'] ?? false,
+                'oem_reference_number' => $productData['oem_reference_number'] ?? null,
+
+                // Your Product model uses "unit", not "unit_id"
+                'unit' => $productData['unit'] ?? $productData['unit_id'] ?? null,
+
+                'part_id' => $productData['part_id'] ?? null,
+                'manufacturer_id' => $productData['manufacturer_id'] ?? null,
+                'car_variant_id' => $productData['car_variant_id'] ?? null,
             ]);
 
             foreach ($suppliers as $supplier) {
@@ -26,23 +43,23 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
                 ProductSupplier::create([
                     'id' => (string) Str::uuid(),
-                    'product_id' => $product->id,
+                    'product_id' => $productId,
                     'supplier_id' => $supplier['supplier_id'],
                     'supplier_cost' => $supplier['supplier_cost'] ?? null,
                 ]);
             }
 
-            if ($compatibility) {
+            if ($compatibility && !empty($compatibility['car_variant_id'])) {
                 ProductVehicleCompatibility::create([
                     'id' => (string) Str::uuid(),
-                    'product_id' => $product->id,
+                    'product_id' => $productId,
                     'car_variant_id' => $compatibility['car_variant_id'],
                     'notes' => $compatibility['notes'] ?? null,
                     'created_at' => now(),
                 ]);
             }
 
-            return $product->load([
+            return $product->fresh([
                 'category',
                 'manufacturer',
                 'unitRelation',

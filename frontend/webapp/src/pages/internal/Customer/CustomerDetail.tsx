@@ -17,6 +17,8 @@ import AddVehicleRecord
  from "@/components/popupModal/Customers/addVehicleRecord";
 
 import { ArrowLeft, Edit, XCircle, Trash2, Plus, Mail, Phone, MapPin, Car, ClipboardClock, MoreHorizontal } from "lucide-react";
+import api from "@/api/axios";
+import { toast } from "sonner";
 
 /* ================= STORAGE ================= */
 const STORAGE_KEY = "customers";
@@ -80,6 +82,7 @@ const CustomerDetail: React.FC = () => {
   const navigate = useNavigate();
 
   const [customerData, setCustomerData] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [history, setHistory] = useState<VehicleHistory[]>([]);
@@ -105,10 +108,102 @@ const CustomerDetail: React.FC = () => {
 
 
   /* ================= LOAD ================= */
+  const fetchCustomerData = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/customers/${id}`);
+      const c = res.data.data;
+      if (c.vehicles) {
+        const mappedVehicles = c.vehicles.map((v: any) => ({
+          id: v.plate_number,
+          customerId: c.customer_id.toString(),
+          vehicleModelId: v.variant_id?.toString() || "",
+          color: v.color,
+          plateNo: v.plate_number,
+          engineNo: v.engine_number,
+          vin: v.VIN,
+          registrationNo: v.registration_number || v['registration _number'],
+          sellingDealer: v.selling_dealer,
+          hasWarranty: false,
+          year: v.year_model || v.vehicleVariant?.year || undefined,
+          make: v.make || v.vehicleVariant?.vehicleModel?.manufacturer?.name || v.vehicleVariant?.vehicle_model?.manufacturer?.name || undefined,
+          model: v.model || v.vehicleVariant?.vehicleModel?.model || v.vehicleVariant?.vehicle_model?.model || undefined,
+          variant: v.variant || v.vehicleVariant?.variant_name || undefined,
+          variant_id: v.variant_id
+        }));
+        setVehicles(mappedVehicles);
+
+        setCustomerData({
+          id: c.customer_id?.toString() || "",
+          firstName: c.first_name || "",
+          lastName: c.last_name || "",
+          address: c.address || "",
+          mobileNumber: c.mobile_number || "",
+          landline: c.landline || "",
+          email: c.email || "",
+          businessPhone: c.business || "",
+          vehicles: mappedVehicles
+        } as any);
+
+      } else {
+        setVehicles([]);
+        setCustomerData({
+          id: c.customer_id?.toString() || "",
+          firstName: c.first_name || "",
+          lastName: c.last_name || "",
+          address: c.address || "",
+          mobileNumber: c.mobile_number || "",
+          landline: c.landline || "",
+          email: c.email || "",
+          businessPhone: c.business || "",
+          vehicles: []
+        } as any);
+      }
+    } catch (err) {
+      console.error("Failed to fetch customer data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const customers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    setCustomerData(customers.find((c: Customer) => c.id === id));
+    if (id) fetchCustomerData();
   }, [id]);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const res = await api.get('/products/vehicles');
+        const models = res.data.data.flatMap((m: any) => {
+          return m.variants.length > 0 ? m.variants.map((v: any) => ({
+            id: v.id.toString(),
+            year: v.year,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: v.variant_name
+          })) : [{
+            id: m.id.toString(),
+            year: 0,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: ""
+          }];
+        });
+        setVehicleModels(models);
+      } catch (error) {
+        console.error("Failed to load models", error);
+      }
+    };
+    fetchModels();
+  }, []);
+
+  const reloadVehiclesAndModels = () => {
+    fetchCustomerData();
+  };
+
+  const reloadCustomer = () => {
+    fetchCustomerData();
+  };  
 
   const fullName = useMemo(() => {
     if (!customerData) return "";
@@ -116,36 +211,9 @@ const CustomerDetail: React.FC = () => {
   }, [customerData]);
 
   useEffect(() => {
-    const allVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
-    setVehicles(allVehicles.filter((v: Vehicle) => v.customerId === id));
-  }, [id]);
-
-  useEffect(() => {
-    setVehicleModels(JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"));
-  }, []);
-
-  useEffect(() => {
     const all = JSON.parse(localStorage.getItem(VEHICLE_HISTORY_STORAGE_KEY) || "[]");
     setHistory(all);
   }, []);
-
-  const reloadVehiclesAndModels = () => {
-    const freshVehicles = JSON.parse(
-      localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]"
-    ) as Vehicle[];
-
-    const freshModels = JSON.parse(
-      localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"
-    ) as VehicleModel[];
-
-    setVehicles(freshVehicles.filter(v => v.customerId === id));
-    setVehicleModels(freshModels);
-  };
-
-  const reloadCustomer = () => {
-    const customers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    setCustomerData(customers.find((c: Customer) => c.id === id));
-  };  
 
   /* ================= MAP ================= */
   const vehicleModelMap = useMemo(() => {
@@ -159,10 +227,10 @@ const CustomerDetail: React.FC = () => {
       const m = vehicleModelMap[v.vehicleModelId];
       return {
         ...v,
-        year: m?.year,
-        make: m?.make,
-        model: m?.model,
-        variant: m?.variant,
+        year: (v as any).year || m?.year,
+        make: (v as any).make || m?.make,
+        model: (v as any).model || m?.model,
+        variant: (v as any).variant || m?.variant,
       };
     });
   }, [vehicles, vehicleModelMap]);
@@ -188,10 +256,10 @@ useEffect(() => {
 
     setSelectedVehicle({
       ...v,
-      year: m?.year,
-      make: m?.make,
-      model: m?.model,
-      variant: m?.variant,
+      year: (v as any).year || m?.year,
+      make: (v as any).make || m?.make,
+      model: (v as any).model || m?.model,
+      variant: (v as any).variant || m?.variant,
     });
 
     return;
@@ -208,47 +276,38 @@ useEffect(() => {
     setOpenAddVehicle(true);
   };
 
-  const handleRemoveVehicle = () => {
-    if (!vehicleToRemove) return;
+  const handleRemoveVehicle = async () => {
+    if (!vehicleToRemove || !customerData) return;
 
-    const allVehicles: Vehicle[] = JSON.parse(
-      localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]"
-    );
+    try {
+      const plateNumber = vehicleToRemove.plateNo || vehicleToRemove.id;
+      await api.delete(`/customers/${customerData.id}/vehicles/${encodeURIComponent(plateNumber)}`);
+      toast.success("Vehicle removed successfully");
 
-    const updated = allVehicles.filter(v => v.id !== vehicleToRemove.id);
-                                         
-    localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(updated));
+      if (selectedVehicle?.id === vehicleToRemove.id) {
+        setSelectedVehicle(null);
+      }
 
-    const customerVehicles = updated.filter(v => v.customerId === id);
-    setVehicles(customerVehicles);
-
-    if (selectedVehicle?.id === vehicleToRemove.id) {
-      setSelectedVehicle(null);
+      setVehicleToRemove(null);
+      setOpenRemoveVehicleDialog(false);
+      fetchCustomerData();
+    } catch (err: any) {
+      console.error("Failed to remove vehicle", err);
+      toast.error(err.response?.data?.message || "Failed to remove vehicle");
     }
-
-    setVehicleToRemove(null);
-    setOpenRemoveVehicleDialog(false);
   };
 
-  const handleRemoveCustomer = () => {
+  const handleRemoveCustomer = async () => {
     if (!customerData) return;
-    const customers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-
-    const updated = customers.filter(
-      (c: Customer) => c.id !== customerData.id
-    );
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-
-    const allVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
-    const filteredVehicles = allVehicles.filter(
-      (v: Vehicle) => v.customerId !== customerData.id
-    );
-
-    localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(filteredVehicles));
-
-    setOpenRemoveDialog(false);
-    navigate("/webapp/customers");
+    try {
+      await api.delete(`/customers/${customerData.id}`);
+      toast.success("Customer removed successfully");
+      setOpenRemoveDialog(false);
+      navigate("/webapp/customers");
+    } catch (err: any) {
+      console.error("Failed to remove customer", err);
+      toast.error(err.response?.data?.message || "Failed to remove customer");
+    }
   };
 
 
@@ -346,6 +405,14 @@ useEffect(() => {
 
 
   /* ================= UI ================= */
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <p className="text-muted-foreground animate-pulse">Loading Customer Profile...</p>
+      </div>
+    );
+  }
+
   if (!customerData) {
     return (
       <Card>
@@ -447,7 +514,11 @@ useEffect(() => {
                 <Car className="w-5 h-5 text-primary" />
                 {selectedVehicle ? (
                   <div className="flex items-center gap-2">
-                    <span>{`${selectedVehicle.year} ${selectedVehicle.make} ${selectedVehicle.model}`}</span>
+                    <span>
+                      {[selectedVehicle.year, selectedVehicle.make, selectedVehicle.model]
+                        .filter(Boolean)
+                        .join(" ") || "Unknown Vehicle (Legacy)"}
+                    </span>
                     {selectedVehicle.hasWarranty && <Badge variant="secondary">Warranty</Badge>}
                   </div>
                 ) : (
@@ -499,12 +570,12 @@ useEffect(() => {
                             <div className="flex items-center justify-between mb-2">
 
                               <h3
-                                className={`text-sm font-semibold leading-tight transition-colors duration-300 ${
-                                  isHovered ? "text-blue-600" : ""
-                                }`}
-                              >
-                                {v.year} {v.make} {v.model}
-                              </h3>
+                                  className={`text-sm font-semibold leading-tight transition-colors duration-300 ${
+                                    isHovered ? "text-blue-600" : ""
+                                  }`}
+                                >
+                                  {[v.year, v.make, v.model].filter(Boolean).join(" ") || "Unknown Vehicle (Legacy)"}
+                                </h3>
 
                               {/* RIGHT SIDE: BADGE ↔ ACTION SWAP */}
                               <div className="flex items-center gap-2">
@@ -822,13 +893,7 @@ useEffect(() => {
       {/* MODALS */}
       <CustomerFormModal
         open={openEdit}
-        onOpenChange={(val) => {
-          setOpenEdit(val);
-          if (!val) {
-            reloadVehiclesAndModels();
-            reloadCustomer();
-          }
-        }}
+        onOpenChange={setOpenEdit}
         customer={customerData}
         onSaved={() => {
           if (!customerData) return;
@@ -847,73 +912,38 @@ useEffect(() => {
           if (!val) setVehicleToEdit(null);
         }}
         vehicleToEdit={vehicleToEdit}
-        onSaved={(newVehicles) => {
+
+        onSaved={async (newVehicles) => {
           if (!customerData) return;
+          try {
+            const existingVehicles = (customerData as any).vehicles || [];
+            
+            let updatedVehicles;
+            if (vehicleToEdit) {
+              updatedVehicles = existingVehicles.map((v: any) => 
+                v.id === vehicleToEdit.id ? newVehicles[0] : v
+              );
+            } else {
+              updatedVehicles = [...existingVehicles, ...newVehicles];
+            }
 
-          const stored: Vehicle[] =
-            JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
+            const payload = {
+              first_name: customerData.firstName,
+              last_name: customerData.lastName,
+              address: customerData.address,
+              mobile_number: customerData.mobileNumber,
+              landline: customerData.landline,
+              email: customerData.email,
+              business: customerData.businessPhone,
+              vehicles: updatedVehicles
+            };
 
-          let updated: Vehicle[];
-
-          if (vehicleToEdit) {
-            updated = stored.map(v =>
-              v.id === vehicleToEdit.id
-                ? { ...newVehicles[0], id: v.id, customerId: customerData.id }
-                : v
-            );
-          } else {
-            const vehiclesWithCustomer = newVehicles.map(v => ({
-              ...v,
-              customerId: customerData.id,
-            }));
-
-            const existingWithoutDuplicates = stored.filter(
-              v => !vehiclesWithCustomer.some(nv => nv.id === v.id)
-            );
-
-            updated = [...existingWithoutDuplicates, ...vehiclesWithCustomer];
-          }
-
-          localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(updated));
-          const freshVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
-          setVehicles(freshVehicles.filter(
-            (v: Vehicle) => v.customerId === customerData.id)
-          );
-
-          const freshModels = JSON.parse(
-            localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"
-          );
-            setVehicleModels(freshModels);          
-
-          const customerVehicles = updated.filter(
-            v => v.customerId === customerData.id
-          );
-
-          setVehicles(customerVehicles);
-
-          const models = JSON.parse(
-            localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"
-          );
-
-          setVehicleModels(models);
-
-          const latest = newVehicles[newVehicles.length - 1];
-          setLastAddedVehicle(latest.id);
-
-          // ALWAYS refresh selection cleanly
-          if (customerVehicles.length === 1) {
-            const m = models.find((x: VehicleModel) => x.id === latest.vehicleModelId);
-
-            setSelectedVehicle({
-              ...latest,
-              customerId: customerData.id,
-              year: m?.year,
-              make: m?.make,
-              model: m?.model,
-              variant: m?.variant,
-            });
-          } else {
+            await api.put(`/customers/${customerData.id}`, payload);
+            fetchCustomerData();
+            setVehicleToEdit(null);
             setSelectedVehicle(null);
+          } catch (err) {
+            console.error("Failed to save vehicle", err);
           }
         }}
       />

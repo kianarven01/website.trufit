@@ -5,6 +5,7 @@ namespace App\Domains\Product\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Unit;
+use App\Domains\Product\Domain\Models\VehicleModel;
 
 class ProductReferenceController extends Controller
 {
@@ -27,6 +28,14 @@ class ProductReferenceController extends Controller
 
         return response()->json([
             'data' => $units
+        ]);
+    }
+
+    public function vehicles()
+    {
+        $models = VehicleModel::with(['manufacturer', 'variants'])->get();
+        return response()->json([
+            'data' => $models
         ]);
     }
 }

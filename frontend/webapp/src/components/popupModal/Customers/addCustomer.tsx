@@ -10,11 +10,7 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Plus, Trash2, Car } from "lucide-react";
 import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
-
-/* ================= STORAGE ================= */
-const STORAGE_KEY = "customers";
-const VEHICLE_STORAGE_KEY = "vehicles";
-const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+import api from "@/api/axios";
 
 /* ================= TYPES ================= */
 interface Customer {
@@ -26,6 +22,7 @@ interface Customer {
   landline?: string;
   email?: string;
   businessPhone?: string;
+  vehicles?: any[];
 }
 
 interface VehicleModel {
@@ -129,8 +126,31 @@ const emptyVehicle = (): VehicleForm => ({
   useEffect(() => {
     if (!open) return;
 
-    const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
-    if (stored) setVehicleModels(JSON.parse(stored));
+    const fetchModels = async () => {
+      try {
+        const res = await api.get('/products/vehicles');
+        // Extract models from the backend response
+        const models = res.data.data.flatMap((m: any) => {
+          return m.variants.length > 0 ? m.variants.map((v: any) => ({
+            id: v.id,
+            year: v.year,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: v.variant_name
+          })) : [{
+            id: m.id,
+            year: 0,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: ""
+          }];
+        });
+        setVehicleModels(models);
+      } catch (error) {
+        console.error("Failed to load vehicle models:", error);
+      }
+    };
+    fetchModels();
   }, [open]);
 
   /* ================= RESET ================= */
@@ -162,31 +182,27 @@ const emptyVehicle = (): VehicleForm => ({
     setEmail(customer.email || "");
     setBusinessPhone(customer.businessPhone || "");
 
-    const storedVehicles = localStorage.getItem(VEHICLE_STORAGE_KEY);
-    const all: Vehicle[] = storedVehicles ? JSON.parse(storedVehicles) : [];
-
-    const customerVehicles = all.filter(v => v.customerId === customer.id);
-
-    const mapped: VehicleForm[] = customerVehicles.map(v => {
-      const model = vehicleModels.find(m => m.id === v.vehicleModelId);
-
-      return {
-        id: v.id,
-        year: model?.year?.toString() || "",
-        make: model?.make || "",
-        model: model?.model || "",
-        variant: model?.variant || "",
-        color: v.color,
-        plateNo: v.plateNo,
-        engineNo: v.engineNo,
-        vin: v.vin,
-        registrationNo: v.registrationNo,
-        sellingDealer: v.sellingDealer,
-        _deleted: false,
-      };
-    });
-
-    setVehicles(mapped.length ? mapped : [emptyVehicle()]);
+    if (customer.vehicles && customer.vehicles.length > 0) {
+      const mappedVehicles = customer.vehicles.map((v: any) => {
+        return {
+          id: v.id || v.plateNo,
+          year: v.year || "",
+          make: v.make || "",
+          model: v.model || "",
+          variant: v.variant || "",
+          color: v.color || "",
+          plateNo: v.plateNo || "",
+          engineNo: v.engineNo || "",
+          vin: v.vin || "",
+          registrationNo: v.registrationNo || "",
+          sellingDealer: v.sellingDealer || "",
+          _deleted: false,
+        };
+      });
+      setVehicles(mappedVehicles);
+    } else {
+      setVehicles([emptyVehicle()]);
+    }
   }, [open, customer, vehicleModels, resetForm]);
 
   /* ================= DERIVED ================= */
@@ -251,113 +267,75 @@ const emptyVehicle = (): VehicleForm => ({
     );
   };
 
-  /* ================= SAVE (INCREMENTAL DIFF UPDATE) ================= */
-  const handleSave = () => {
-    if (!firstName || !lastName || !mobileNumber || !address) {
+  /* ================= SAVE (API) ================= */
+  const handleSave = async () => {
+    if (!firstName || !lastName || !mobileNumber) {
       toast.error("Please fill in required fields.");
       return;
     }
 
-    const customerId = customer?.id || genId();
+    const validVehicles = vehicles.filter(
+      v => !v._deleted && v.plateNo
+    );
 
-    const storedCustomers = localStorage.getItem(STORAGE_KEY);
-    const existingCustomers: Customer[] = storedCustomers
-      ? JSON.parse(storedCustomers)
-      : [];
-
-    const customerPayload: Customer = {
-      id: customerId,
-      firstName,
-      lastName,
+    const payload = {
+      first_name: firstName,
+      last_name: lastName,
       address,
-      mobileNumber,
+      mobile_number: mobileNumber,
       landline,
       email,
-      businessPhone,
+      business: businessPhone,
+      vehicles: validVehicles.map(v => {
+        let variant_id = null;
+        const formattedMake = toTitleCase(v.make);
+        const formattedModel = toTitleCase(v.model);
+        const formattedVariant = toTitleCase(v.variant).trim() || "";
+
+        let match = vehicleModels.find(
+          m =>
+            m.year === Number(v.year) &&
+            normalize(m.make) === normalize(formattedMake) &&
+            normalize(m.model) === normalize(formattedModel) &&
+            normalize(m.variant || "") === normalize(formattedVariant)
+        );
+        
+        if (match) {
+           variant_id = match.id;
+        }
+
+        return {
+          year: v.year,
+          make: v.make,
+          model: v.model,
+          variant: v.variant,
+          variant_id: variant_id,
+          color: v.color,
+          plateNo: v.plateNo,
+          engineNo: v.engineNo,
+          vin: v.vin,
+          registrationNo: v.registrationNo,
+          sellingDealer: v.sellingDealer
+        };
+      })
     };
 
-    const updatedCustomers = isEdit
-      ? existingCustomers.map(c =>
-          c.id === customerId ? customerPayload : c
-        )
-      : [...existingCustomers, customerPayload];
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedCustomers));
-
-    const storedVehicles = localStorage.getItem(VEHICLE_STORAGE_KEY);
-    const existingVehicles: Vehicle[] = storedVehicles
-      ? JSON.parse(storedVehicles)
-      : [];
-
-    const customerExisting = existingVehicles.filter(
-      v => v.customerId === customerId
-    );
-
-    const existingMap = new Map(customerExisting.map(v => [v.id, v]));
-
-    const validVehicles = vehicles.filter(
-      v => !v._deleted && v.year && v.make && v.model
-    );
-
-    const updatedModels: VehicleModel[] = [...vehicleModels];
-
-    const finalVehicles: Vehicle[] = validVehicles.map(v => {
-      const formattedMake = toTitleCase(v.make);
-      const formattedModel = toTitleCase(v.model);
-      const formattedVariant = toTitleCase(v.variant).trim() || undefined;
-  
-      let match = updatedModels.find(
-        m =>
-          m.year === Number(v.year) &&
-          normalize(m.make) === normalize(formattedMake) &&
-          normalize(m.model) === normalize(formattedModel) &&
-          normalize(m.variant || "") === normalize(formattedVariant || "")
-      );
-
-      if (!match) {
-        match = {
-          id: genId(),
-          year: Number(v.year),
-          make: formattedMake,
-          model: formattedModel,
-          variant: formattedVariant || "",
-        };
-        updatedModels.push(match);
+    try {
+      if (isEdit) {
+        const res = await api.put(`/customers/${customer.id}`, payload);
+        toast.success("Customer updated successfully");
+        onSaved?.(res.data.data);
+        onOpenChange(false);
+      } else {
+        const res = await api.post('/customers', payload);
+        toast.success("Customer created successfully");
+        onSaved?.(res.data.data);
+        onOpenChange(false);
       }
-
-      const existing = existingMap.get(v.id);
-
-      return {
-        id: existing?.id ?? v.id ?? genId(),
-        customerId,
-        vehicleModelId: match.id,
-        color: v.color,
-        plateNo: v.plateNo,
-        engineNo: v.engineNo,
-        vin: v.vin,
-        registrationNo: v.registrationNo,
-        sellingDealer: v.sellingDealer,
-      };
-    });
-
-    const updatedVehicles = [
-      ...existingVehicles.filter(v => v.customerId !== customerId),
-      ...finalVehicles,
-    ];
-
-    localStorage.setItem(
-      VEHICLE_STORAGE_KEY,
-      JSON.stringify(updatedVehicles)
-    );
-
-    localStorage.setItem(
-      VEHICLE_MODEL_STORAGE_KEY,
-      JSON.stringify(updatedModels)
-    );
-
-    toast.success(isEdit ? "Updated successfully" : "Created successfully");
-    onSaved?.(customerPayload);
-    onOpenChange(false);
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to save customer");
+    }
   };
 
 
@@ -497,11 +475,11 @@ const emptyVehicle = (): VehicleForm => ({
                     <div className="grid md:grid-cols-3 gap-2">
 
                       <div className="bg-muted/30">
-                        <Combobox
-                          value={v.year}
-                          onChange={(val) => updateVehicle(v.id, "year", val)}
-                          items={years}
+                        <Input
+                          className="bg-muted/30"
                           placeholder="Year"
+                          value={v.year}
+                          onChange={(e) => updateVehicle(v.id, "year", e.target.value)}
                         />
                       </div>
 

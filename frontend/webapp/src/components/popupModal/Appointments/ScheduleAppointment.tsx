@@ -121,12 +121,37 @@ const combineDateTime = (date: Date, time: string) => {
     const [selectedTime, setSelectedTime] = useState("");
 
     const [openCalendar, setOpenCalendar] = useState(false);
+    const calendarRef = useRef<HTMLDivElement>(null);
     const [openTimePicker, setOpenTimePicker] = useState(false);
-
 
     const handleBlur = (field: string) => {
       setTouched((prev) => ({ ...prev, [field]: true }));
     };
+
+
+  useEffect(() => {
+    if (!open) {
+      setOpenCalendar(false);
+      setOpenTimePicker(false);
+    }
+  }, [open]);
+
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        calendarRef.current &&
+        !calendarRef.current.contains(e.target as Node)
+      ) {
+        setOpenCalendar(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 
     /* LOAD MODELS */
     useEffect(() => {
@@ -608,7 +633,10 @@ const combineDateTime = (date: Date, time: string) => {
                         <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
 
                         {openCalendar && (
-                          <div className="absolute z-50 bottom-full mb-2 w-max">
+                          <div 
+                            ref={calendarRef}
+                            className="absolute z-50 bottom-full mb-2 w-max"
+                          >
                             <Calendar
                               selectedDate={selectedDate}
                               onSelectDate={handleDateSelect}

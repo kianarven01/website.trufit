@@ -188,31 +188,31 @@
 .staggered-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(2, 200px);
+  grid-auto-rows: 200px;
   gap: 1rem;
 }
 
 @media (min-width: 768px) {
   .staggered-grid {
     grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(2, 200px);
+    grid-template-rows: repeat(2, 240px);
     gap: 1.25rem;
   }
 }
 
 @media (min-width: 1024px) {
   .staggered-grid {
-    grid-template-rows: repeat(2, 240px);
+    grid-template-rows: repeat(2, 300px);
     gap: 1.5rem;
   }
 }
 
 .staggered-grid .grid-item-1 {
-  grid-column: span 1;
-  grid-row: span 1;
+  grid-column: span 2;
+  grid-row: span 2;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .staggered-grid .grid-item-1 {
     grid-column: span 2;
     grid-row: span 2;
@@ -224,21 +224,37 @@
   grid-row: span 1;
 }
 
+@media (max-width: 767px) {
+  .staggered-grid .grid-item-2 {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+}
+
 .staggered-grid .grid-item-3 {
   grid-column: span 1;
   grid-row: span 1;
 }
 
 .staggered-grid .grid-item-4 {
-  grid-column: span 1;
+  grid-column: span 2;
   grid-row: span 1;
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .staggered-grid .grid-item-4 {
     grid-column: span 2;
     grid-row: span 1;
   }
+}
+
+/* Ensure overlays don't block clicks if we put click on the container */
+.tri-grid-item {
+  cursor: pointer;
+}
+
+.tri-grid-item > * {
+  pointer-events: none;
 }
 
 /* --------------- VMV Cards --------------- */
@@ -253,12 +269,6 @@
   transition: all 0.4s ease;
 }
 
-.vmv-card:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-4px);
-}
-
 .vmv-card::before {
   content: '';
   position: absolute;
@@ -269,10 +279,6 @@
   background: linear-gradient(90deg, var(--brand-red), #ff4d4d);
   opacity: 0;
   transition: opacity 0.4s ease;
-}
-
-.vmv-card:hover::before {
-  opacity: 1;
 }
 
 /* --------------- CTA Section --------------- */

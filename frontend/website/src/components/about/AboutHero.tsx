@@ -72,7 +72,7 @@ export default function AboutHero() {
       <div ref={bgRef} className="absolute inset-0 -top-[50px]">
         <div className="about-placeholder w-full h-[120%]">
           <Camera className="about-placehoylder-icon" size={64} />
-          <img src="/images/about/header.jpg" alt="Hero Banner" className="w-full h-full object-cover" />
+          <img src="/images/about/header.webp" alt="Hero Banner" className="w-full h-full object-cover" />
         </div>
       </div>
 

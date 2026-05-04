@@ -58,6 +58,7 @@ export default function VideoTour() {
               controlsList="nodownload"
               playsInline
               preload="metadata"
+              onContextMenu={(e) => e.preventDefault()}
             />
           </div>
 

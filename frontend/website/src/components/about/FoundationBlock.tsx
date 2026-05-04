@@ -43,7 +43,7 @@ export default function FoundationBlock() {
       <div className="absolute inset-x-0 -top-[10%] h-[120%] z-0 overflow-hidden">
         <div ref={bgRef} className="absolute inset-0 h-full w-full">
           <img
-            src="/images/about/foundation.jpg"
+            src="/images/about/foundation.webp"
             alt="Foundation Background"
             className="w-full h-full object-cover opacity-30"
           />

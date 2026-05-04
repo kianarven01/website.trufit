@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { services } from "@/data/services";
-import { ChevronDown, Send, CheckCircle } from "lucide-react";
+import { ChevronDown, Send, CheckCircle, X } from "lucide-react";
 
 export default function ContactForm() {
   const [form, setForm] = useState({
@@ -12,10 +12,12 @@ export default function ContactForm() {
     phone: "",
     service: "",
     message: "",
+    website_url: "",
   });
 
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -33,8 +35,13 @@ export default function ContactForm() {
     setForm({ ...form, phone: formatted });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowTermsModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowTermsModal(false);
     setSending(true);
 
     try {
@@ -69,6 +76,7 @@ export default function ContactForm() {
         phone: "",
         service: "",
         message: "",
+        website_url: "",
       });
     }, 4000);
   };
@@ -89,6 +97,18 @@ export default function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2" id="contact-form">
+      {/* HONEYPOT - Hidden from real users to catch bots */}
+      <div style={{ position: "absolute", width: "0", height: "0", overflow: "hidden", opacity: 0 }}>
+        <input
+          type="text"
+          name="website_url"
+          tabIndex={-1}
+          autoComplete="off"
+          value={(form as any).website_url || ""}
+          onChange={handleChange}
+        />
+      </div>
+
       {/* FIRST NAME */}
       <div className="relative">
         <input
@@ -212,16 +232,51 @@ export default function ContactForm() {
       <div className="md:col-span-2">
         <p className="text-white/30 text-[11px] text-center leading-relaxed font-barlow">
           By submitting this form, you agree to our{" "}
-          <span className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
+          <a href="/terms" className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors" target="_blank">
             Terms of Service
-          </span>{" "}
+          </a>{" "}
           and{" "}
-          <span className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors">
+          <a href="/privacy" className="text-brand-red/60 hover:text-brand-red cursor-pointer transition-colors" target="_blank">
             Privacy Policy
-          </span>
+          </a>
           .
         </p>
       </div>
+
+      {/* TERMS MODAL */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#0f1115] border border-white/10 rounded-sm p-6 md:p-8 max-w-md w-full relative shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowTermsModal(false)}
+              className="absolute top-4 right-4 text-white/30 hover:text-brand-red transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-white mb-3 uppercase tracking-wider font-barlow">Accept Terms</h3>
+            <p className="text-white/60 text-sm mb-8 leading-relaxed font-barlow">
+              By proceeding, you agree to our <a href="/terms" className="text-brand-red hover:underline" target="_blank">Terms of Service</a> and <a href="/privacy" className="text-brand-red hover:underline" target="_blank">Privacy Policy</a>. We will process your information in accordance with these terms to respond to your inquiry.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="flex-1 py-3 border border-white/20 text-white rounded-sm font-semibold hover:bg-white/5 transition-colors font-barlow uppercase tracking-wider text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                className="flex-1 py-3 bg-brand-red text-white rounded-sm font-semibold hover:bg-red-700 transition-colors font-barlow uppercase tracking-wider text-sm shadow-lg hover:shadow-brand-red/30"
+              >
+                I Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

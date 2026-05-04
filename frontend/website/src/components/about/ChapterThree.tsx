@@ -6,83 +6,97 @@ import { Camera, Trophy, Users, Flame } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import { useState } from "react";
+import ImageModal from "../ui/ImageModal";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const triathlonImages = [
-  { 
-    label: "Race Day", 
-    sublabel: "Triathlon event photo", 
+  {
+    label: "Race Day",
+    sublabel: "Triathlon event photo",
     className: "grid-item-1",
-    src: "/images/about/triathlon/race_day.jpg" 
+    src: "/images/about/triathlon/race_day_v3.webp",
   },
-  { 
-    label: "Team Prep", 
-    sublabel: "Pre-race preparation", 
+  {
+    label: "Team Prep",
+    sublabel: "Pre-race preparation",
     className: "grid-item-2",
-    src: "/images/about/triathlon/team_prep.jpg" 
+    src: "/images/about/triathlon/team_prep_v2.webp",
   },
-  { 
-    label: "On Course", 
-    sublabel: "In-action shot", 
+  {
+    label: "On Course",
+    sublabel: "In-action shot",
     className: "grid-item-3",
-    src: "/images/about/triathlon/on_course.jpg" 
+    src: "/images/about/triathlon/on_course_v2.webp",
   },
-  { 
-    label: "Finish Line", 
-    sublabel: "Victory moment", 
+  {
+    label: "Finish Line",
+    sublabel: "Victory moment",
     className: "grid-item-4",
-    src: "/images/about/triathlon/finish_line.jpg" 
+    src: "/images/about/triathlon/finish_line_v2.webp",
   },
 ];
 
 export default function ChapterThree() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
-  useGSAP(() => {
-    const reveals = gsap.utils.toArray<HTMLElement>(".ch3-reveal");
-    reveals.forEach((item, i) => {
-      gsap.fromTo(
-        item,
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.9,
-          delay: i * 0.05,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: item,
-            start: "top 90%",
-            end: "bottom 10%",
-            toggleActions: "play reverse play reverse",
-          },
-        }
-      );
-    });
+  const imagesForModal = triathlonImages.map((img) => img.src);
 
-    // Staggered grid items reveal
-    const gridItems = gsap.utils.toArray<HTMLElement>(".tri-grid-item");
-    gridItems.forEach((item, i) => {
-      gsap.fromTo(
-        item,
-        { opacity: 0, y: 60, scale: 0.95 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.8,
-          delay: i * 0.12,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: "40% bottom",
-            toggleActions: "play none none reverse",
+  const openLightbox = (index: number) => {
+    setActiveImageIdx(index);
+    setModalOpen(true);
+  };
+
+  useGSAP(
+    () => {
+      const reveals = gsap.utils.toArray<HTMLElement>(".ch3-reveal");
+      reveals.forEach((item, i) => {
+        gsap.fromTo(
+          item,
+          { opacity: 0, y: 40 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.9,
+            delay: i * 0.05,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: item,
+              start: "top 90%",
+              end: "bottom 10%",
+              toggleActions: "play reverse play reverse",
+            },
           },
-        }
-      );
-    });
-  }, { scope: sectionRef });
+        );
+      });
+
+      // Staggered grid items reveal
+      const gridItems = gsap.utils.toArray<HTMLElement>(".tri-grid-item");
+      gridItems.forEach((item, i) => {
+        gsap.fromTo(
+          item,
+          { opacity: 0, y: 60, scale: 0.95 },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.8,
+            delay: i * 0.12,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "40% bottom",
+              toggleActions: "play none none reverse",
+            },
+          },
+        );
+      });
+    },
+    { scope: sectionRef },
+  );
 
   return (
     <section
@@ -115,17 +129,19 @@ export default function ChapterThree() {
             </h2>
 
             <p className="ch3-reveal text-gray-600 text-base md:text-lg leading-relaxed font-medium max-w-xl">
-              The same discipline that makes us precise mechanics fuels our passion
-              for sport. The Trufit team actively participates in local triathlon
-              events — swimming, cycling, and running alongside the community we serve.
+              The same discipline that makes us precise mechanics fuels our
+              passion for sport. The Trufit team actively participates in local
+              triathlon events — swimming, cycling, and running alongside the
+              community we serve.
             </p>
           </div>
 
           <div className="hidden lg:block">
             <p className="ch3-reveal text-gray-500 text-sm leading-relaxed max-w-md">
-              Triathlon demands endurance, precision, and teamwork — the same values
-              we bring to every vehicle in our workshop. It&apos;s more than competition;
-              it&apos;s a philosophy of pushing limits and never settling for less.
+              Triathlon demands endurance, precision, and teamwork — the same
+              values we bring to every vehicle in our workshop. It&apos;s more
+              than competition; it&apos;s a philosophy of pushing limits and
+              never settling for less.
             </p>
 
             {/* Sport Stats */}
@@ -133,22 +149,61 @@ export default function ChapterThree() {
               <div className="flex items-center gap-3">
                 <Trophy className="text-brand-red" size={20} />
                 <div>
-                  <p className="text-brand-dark font-semibold text-lg">Active</p>
-                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Competitors</p>
+                  <p className="text-brand-dark font-semibold text-lg">
+                    Active
+                  </p>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                    Competitors
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Flame className="text-brand-red" size={20} />
                 <div>
                   <p className="text-brand-dark font-semibold text-lg">Local</p>
-                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Triathlon Events</p>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                    Triathlon Events
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <Users className="text-brand-red" size={20} />
                 <div>
                   <p className="text-brand-dark font-semibold text-lg">Team</p>
-                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Spirit Driven</p>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                    Spirit Driven
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Achievements */}
+            <div className="ch3-reveal mt-10 p-5 bg-gray-50 border-l-4 border-brand-red rounded-sm">
+              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-3">
+                Recent Achievements
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Trophy className="text-brand-red mt-0.5" size={16} />
+                  <div>
+                    <p className="text-brand-dark font-bold text-sm leading-tight">
+                      3rd Place — Men&apos;s Elite
+                    </p>
+                    <p className="text-gray-500 text-[10px] font-medium">
+                      Bantayog Talisay Triathlon Year 5
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Trophy className="text-brand-red mt-0.5" size={16} />
+                  <div>
+                    <p className="text-brand-dark font-bold text-sm leading-tight">
+                      2nd Place — Mixed Relay
+                    </p>
+                    <p className="text-gray-500 text-[10px] font-medium">
+                      Bantayog Talisay Triathlon Year 5
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -161,19 +216,25 @@ export default function ChapterThree() {
             <div
               key={idx}
               className={`tri-grid-item ${img.className} relative rounded-sm overflow-hidden shadow-lg group`}
+              onClick={() => openLightbox(idx)}
             >
-              <Image 
+              <Image
                 src={img.src}
                 alt={img.label}
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                quality={90}
               />
 
               {/* Caption Overlay */}
               <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-brand-dark/80 to-transparent z-20">
-                <p className="text-white font-semibold text-[10px] uppercase tracking-widest mb-1">{img.label}</p>
-                <p className="text-white/60 text-[8px] uppercase tracking-widest font-medium">{img.sublabel}</p>
+                <p className="text-white font-semibold text-[10px] uppercase tracking-widest mb-1">
+                  {img.label}
+                </p>
+                <p className="text-white/60 text-[8px] uppercase tracking-widest font-medium">
+                  {img.sublabel}
+                </p>
               </div>
 
               {/* Hover overlay */}
@@ -185,26 +246,39 @@ export default function ChapterThree() {
         {/* Mobile sport stats */}
         <div className="lg:hidden mt-10">
           <p className="ch3-reveal text-gray-500 text-sm leading-relaxed mb-6">
-            Triathlon demands endurance, precision, and teamwork — the same values
-            we bring to every vehicle we service. It&apos;s a philosophy of pushing
-            limits and never settling for less.
+            Triathlon demands endurance, precision, and teamwork — the same
+            values we bring to every vehicle we service. It&apos;s a philosophy
+            of pushing limits and never settling for less.
           </p>
           <div className="ch3-reveal flex flex-wrap gap-6">
             <div className="flex items-center gap-2">
               <Trophy className="text-brand-red" size={18} />
-              <span className="text-brand-dark font-semibold text-sm">Active Competitors</span>
+              <span className="text-brand-dark font-semibold text-sm">
+                Active Competitors
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Flame className="text-brand-red" size={18} />
-              <span className="text-brand-dark font-semibold text-sm">Local Events</span>
+              <span className="text-brand-dark font-semibold text-sm">
+                Local Events
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Users className="text-brand-red" size={18} />
-              <span className="text-brand-dark font-semibold text-sm">Team Spirit</span>
+              <span className="text-brand-dark font-semibold text-sm">
+                Team Spirit
+              </span>
             </div>
           </div>
         </div>
       </div>
+
+      <ImageModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        images={imagesForModal}
+        currentIndex={activeImageIdx}
+      />
     </section>
   );
 }

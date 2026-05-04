@@ -63,7 +63,7 @@ export default function GalleryHero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="parallax-bg absolute top-[-20%] left-0 w-full h-[140%]">
           <Image 
-              src="/images/gallery/tools.jpg"
+              src="/images/gallery/tools.webp"
               alt="Trufit Precision Laboratory"
               fill
               priority
@@ -80,7 +80,7 @@ export default function GalleryHero() {
         <div ref={textRef} className="max-w-4xl mx-auto flex flex-col items-center">
           <div className="flex items-center gap-3 mb-6 hero-reveal">
             <div className="h-[2px] w-12 bg-brand-red" />
-            <span className="text-xs font-semibold tracking-[0.3em] uppercase text-brand-red">
+            <span className="text-xs font-semibold tracking-[0.3em] uppercase !text-white/60">
               Visual Showcase
             </span>
             <div className="h-[2px] w-12 bg-brand-red" />

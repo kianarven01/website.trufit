@@ -191,9 +191,17 @@ export default function GalleryGrid() {
         {totalPages > 1 && (
           <div className="mt-16 md:mt-24 flex justify-center items-center gap-4">
             <button
-              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-2 border-gray-200 rounded-sm text-brand-dark disabled:opacity-30 disabled:cursor-not-allowed hover:border-brand-red hover:text-brand-red transition-all"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                if (currentPage > 1) handlePageChange(currentPage - 1);
+              }}
+              aria-disabled={currentPage === 1}
+              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-2 border-gray-200 rounded-sm text-brand-dark transition-all ${
+                currentPage === 1 
+                  ? "opacity-30 cursor-not-allowed" 
+                  : "hover:border-brand-red hover:text-brand-red"
+              }`}
             >
               <ChevronLeft size={20} />
             </button>
@@ -213,9 +221,17 @@ export default function GalleryGrid() {
               ))}
             </div>
             <button
-              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-2 border-gray-200 rounded-sm text-brand-dark disabled:opacity-30 disabled:cursor-not-allowed hover:border-brand-red hover:text-brand-red transition-all"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                if (currentPage < totalPages) handlePageChange(currentPage + 1);
+              }}
+              aria-disabled={currentPage === totalPages}
+              className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center border-2 border-gray-200 rounded-sm text-brand-dark transition-all ${
+                currentPage === totalPages 
+                  ? "opacity-30 cursor-not-allowed" 
+                  : "hover:border-brand-red hover:text-brand-red"
+              }`}
             >
               <ChevronRight size={20} />
             </button>

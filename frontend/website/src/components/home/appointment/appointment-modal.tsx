@@ -93,7 +93,7 @@ export default function AppointmentModal() {
             <div className="flex items-start gap-3">
               <MapPin className="w-5 h-5 text-brand-red mt-1" />
               <a href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8" target="_blank" rel="noopener noreferrer" className="hover:underline">
-                P1, Brgy. Gahonon, Daet, Camarines Norte
+                1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines
               </a>
             </div>
             <div className="flex items-start gap-3">

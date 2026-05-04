@@ -127,8 +127,8 @@ export default function LocationSection() {
                 </h3>
                 <div className="space-y-1 text-gray-500 text-sm leading-relaxed">
                   <p className="font-semibold text-gray-700">Trufit Auto Center</p>
-                  <p>P1, Brgy. Gahonon</p>
-                  <p>Daet, Camarines Norte</p>
+                  <p>1042 Brgy. Gahonon</p>
+                  <p>Vinzons Ave, Daet, Camarines Norte</p>
                   <p>Philippines</p>
                 </div>
               </div>

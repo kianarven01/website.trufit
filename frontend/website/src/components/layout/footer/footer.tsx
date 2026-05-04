@@ -1,7 +1,7 @@
 // src/components/layout/Footer/Footer.tsx
 import Image from "next/image"
 import Link from "next/link"
-
+import ShareButtons from "@/components/ui/ShareButtons";
 
 export default function Footer() {
   return (
@@ -14,16 +14,16 @@ export default function Footer() {
         <div className="flex flex-col items-start lg:pr-8">
           <Link href="/">
             <Image
-              src="/images/logo-dark1.png"
+              src="/images/logo-dark1.webp"
               alt="TruFit Auto Center"
               width={180}
               height={48}
               priority
-              className="w-[150px] md:w-[180px]"
+              className="w-[180px] md:w-[200px]"
             />
           </Link>
           <p className="mt-8 text-gray-400 text-sm leading-relaxed">
-            Quality auto care inspired by world-class engineering standards. Your vehicle deserves the best.
+            Quality auto service inspired by world-class engineering standards. Your vehicle deserves the best.
           </p>
 
           {/* Contact Details */}
@@ -33,7 +33,15 @@ export default function Footer() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span>P1, Brgy. Gahonon, Daet, <br />Camarines Norte, Philippines</span>
+              <a
+                href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors"
+              >
+                1042 Brgy. Gahonon, Vinzons Ave, Daet, <br /> 
+                Camarines Norte, Philippines
+              </a>
             </div>
             <div className="flex items-center gap-3">
               <svg className="w-5 h-5 text-brand-red shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,20 +55,30 @@ export default function Footer() {
               </svg>
               <a href="mailto:trufitautocenter@gmail.com" className="hover:text-white transition-colors whitespace-nowrap">trufitautocenter@gmail.com</a>
             </div>
-          </div>
-
-          {/* Social Icons */}
-          <div className="mt-8 flex items-center gap-6">
-            <Link 
-              href="https://www.facebook.com/ac.trufit" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-white transition-all hover:scale-110"
-            >
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            <div className="flex items-center gap-3">
+              <svg 
+                className="w-5 h-5 text-brand-red shrink-0" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth="2"
+                  d="M18 2h-3a4 4 0 00-4 4v3H8v4h3v9h4v-9h3l1-4h-4V6a1 1 0 011-1h3z"
+                />
               </svg>
-            </Link>
+
+              <a 
+                href="https://www.facebook.com/ac.trufit"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition-colors"
+              >
+                Trufit Daet
+              </a>
+            </div>
           </div>
         </div>
 
@@ -81,17 +99,21 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Company */}
+        {/* Quick Links */}
         <div className="lg:pl-8">
           <h4 className="font-bold mb-6 text-lg tracking-tight uppercase">Quick Links</h4>
           <ul className="space-y-3 text-gray-400 text-sm">
             <li><Link href="/" className="hover:text-brand-red transition-colors">Home</Link></li>
             <li><Link href="/services" className="hover:text-brand-red transition-colors">Services</Link></li>
             <li><Link href="/gallery" className="hover:text-brand-red transition-colors">Gallery</Link></li>
-            
+            <li><Link href="/news" className="hover:text-brand-red transition-colors">News</Link></li>
             <li><Link href="/about" className="hover:text-brand-red transition-colors">About Us</Link></li>
             <li><Link href="/contact" className="hover:text-brand-red transition-colors">Contact Us</Link></li>
           </ul>
+          {/* share buttons */}
+          <div className="mt-8">
+            <ShareButtons />
+          </div>
         </div>
 
         {/* FAQ */}
@@ -143,8 +165,8 @@ export default function Footer() {
 
             {/* right: links */}
             <div className="flex gap-8 text-gray-600 text-xs font-medium">
-              <Link href="/" className="hover:text-white transition-colors">Privacy Policy</Link>
-              <Link href="/" className="hover:text-white transition-colors">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
           </div>
 

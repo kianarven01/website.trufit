@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react" // Added useState
+import { useRef, useState } from "react" // Added useState
 import Image from "next/image"
 import AppointmentForm from "./appointmentform"
 import { MapPin, Phone, Mail, Clock } from "lucide-react"
@@ -21,67 +21,51 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
   // State to hold promo data
   const [promoData, setPromoData] = useState<any>(null);
 
-  useEffect(() => {
+  useGSAP(() => {
     // Listener for the Promo Popup event
     const handleClaim = (e: any) => {
       setPromoData(e.detail);
     };
-
     window.addEventListener("claimOffer", handleClaim);
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // Left Column Content Scroll Reveal
-          gsap.to(".appointment-content > *", {
-            opacity: 1,
-            x: 0,
-            duration: 1,
-            stagger: 0.15,
-            ease: "power3.out",
-            overwrite: "auto"
-          })
+    // Create a timeline for the scroll-triggered animations
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: container.current,
+        start: "top 80%",
+        end: "bottom 20%",
+        toggleActions: "play reverse play reverse",
+        // markers: true, // Uncomment for debugging
+      }
+    });
 
-          // Contact Info Items Stagger
-          gsap.to(".contact-item", {
-            opacity: 1,
-            y: 0,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power2.out",
-            delay: 0.4,
-            overwrite: "auto"
-          })
-
-          // Right Column Form Reveal
-          gsap.to(".appointment-form-container", {
-            opacity: 1,
-            x: 0,
-            scale: 1,
-            duration: 1.2,
-            ease: "power4.out",
-            delay: 0.2,
-            overwrite: "auto"
-          })
-        } else {
-          // Reverse
-          gsap.to(".appointment-content > *", { opacity: 0, x: -50, duration: 0.5, overwrite: "auto" })
-          gsap.to(".contact-item", { opacity: 0, y: 20, duration: 0.5, overwrite: "auto" })
-          gsap.to(".appointment-form-container", { opacity: 0, x: 50, scale: 0.95, duration: 0.5, overwrite: "auto" })
-        }
-      },
-      { threshold: 0.15 }
-    )
-
-    if (container.current) {
-      observer.observe(container.current)
-    }
+    tl.to(".appointment-content > *", {
+      opacity: 1,
+      x: 0,
+      duration: 0.8,
+      stagger: 0.1,
+      ease: "power3.out",
+    })
+    .to(".contact-item", {
+      opacity: 1,
+      y: 0,
+      duration: 0.6,
+      stagger: 0.08,
+      ease: "power2.out",
+    }, "-=0.4")
+    .to(".appointment-form-container", {
+      opacity: 1,
+      x: 0,
+      scale: 1,
+      duration: 1,
+      ease: "power4.out",
+      force3D: true,
+    }, "-=0.6");
 
     return () => {
-      observer.disconnect();
       window.removeEventListener("claimOffer", handleClaim);
-    }
-  }, [])
+    };
+  }, { scope: container });
 
   return (
     <section 
@@ -111,7 +95,7 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
           {/* LEFT COLUMN */}
           <div className="space-y-6 md:space-y-8 appointment-content">
             {/* SMALL TITLE WITH LINE */}
-            <div className="flex items-center gap-4 opacity-0 -translate-x-12">
+            <div className="flex items-center gap-4 opacity-0 -translate-x-12 will-change-[transform,opacity]">
               <div className="h-[2px] w-10 bg-brand-red"></div>
               <p className="text-sm font-semibold uppercase tracking-wider text-white/60">
                 get in touch
@@ -119,20 +103,20 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
             </div>
 
             {/* MAIN TITLE */}
-            <h2 className="text-4xl md:text-6xl font-semibold leading-tight text-white opacity-0 -translate-x-12">
+            <h2 className="text-4xl md:text-6xl font-semibold leading-tight text-white opacity-0 -translate-x-12 will-change-[transform,opacity]">
               Schedule Your <br />
               <span className="text-brand-red uppercase">Appointment</span>
             </h2>
 
             {/* SUBTITLE */}
-            <p className="text-gray-300 max-w-lg opacity-0 -translate-x-12">
+            <p className="text-gray-300 max-w-lg opacity-0 -translate-x-12 will-change-[transform,opacity]">
               Ready to experience quality auto care? Contact us today or fill
               out the form to book your next service appointment.
             </p>
 
             {/* CONTACT INFO */}
             <div className="space-y-4 md:space-y-6 pt-2 md:pt-4 contact-info">
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6 will-change-[transform,opacity]">
                 <MapPin className="w-5 h-5 text-brand-red mt-1" />
                 <a
                   href="https://maps.app.goo.gl/aPGe5t9YmpYhqZNQ8"
@@ -140,22 +124,22 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
                   rel="noopener noreferrer"
                   className="text-gray-200 hover:underline text-sm md:text-base"
                 >
-                  P1, Brgy. Gahonon, Daet, Camarines Norte
+                  1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6 will-change-[transform,opacity]">
                 <Phone className="w-5 h-5 text-brand-red mt-1" />
                 <a href="tel:09187747788" className="text-gray-200 hover:underline text-sm md:text-base">
                   0918-774-7788
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6 will-change-[transform,opacity]">
                 <Mail className="w-5 h-5 text-brand-red mt-1" />
                 <a href="mailto:trufitautocenter@gmail.com" className="text-gray-200 hover:underline text-sm md:text-base">
                   trufitautocenter@gmail.com
                 </a>
               </div>
-              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6">
+              <div className="flex items-start gap-3 md:gap-4 contact-item opacity-0 translate-y-6 will-change-[transform,opacity]">
                 <Clock className="w-5 h-5 text-brand-red mt-1" />
                 <p className="text-gray-200 text-sm md:text-base">
                   Mon – Sat: 8:00 AM – 5:00 PM
@@ -165,8 +149,8 @@ export default function AppointmentSection({ isTransparent = false }: Appointmen
           </div>
 
           {/* RIGHT COLUMN - GLASSMORPHISM FORM */}
-          <div className="relative mt-12 lg:mt-0 appointment-form-container opacity-0 translate-x-12 scale-95">
-            <div className="bg-[rgba(255,255,255,0.06)] backdrop-blur-[31px] border border-[rgba(255,255,255,0.1)] rounded-sm shadow-premium p-6 md:p-10 transition duration-300">
+          <div className="relative mt-12 lg:mt-0 appointment-form-container opacity-0 translate-x-12 scale-95 will-change-[transform,opacity]">
+            <div className="bg-[rgba(255,255,255,0.06)] backdrop-blur-[31px] border border-[rgba(255,255,255,0.1)] rounded-sm shadow-premium p-6 md:p-10">
               {/* Passed promoData to the form */}
               <AppointmentForm initialData={promoData} />
             </div>

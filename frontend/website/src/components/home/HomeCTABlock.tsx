@@ -46,7 +46,7 @@ export default function HomeCTABlock() {
       <div className="absolute inset-x-0 -top-[15%] h-[130%] z-0">
         <div ref={bgRef} className="absolute inset-0 h-full w-full">
           <Image
-            src="/images/home/appointment_partners_image_bg.jpg"
+            src="/images/home/appointment_partners_image_bg.webp"
             alt="Partners & Appointment Background"
             fill
             className="object-cover opacity-30 scale-110" // dimming based on Services section

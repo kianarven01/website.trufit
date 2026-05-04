@@ -22,6 +22,7 @@ import { User, Car, ClipboardList, Phone, Mail, MessageSquare } from "lucide-rea
 const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
 const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
 const VEHICLE_STORAGE_KEY = "vehicles";
+const APPOINTMENT_SERVICE_KEY = "appointmentServices";
 const APPOINTMENT_KEY = "appointments";
 
 /* ================= TYPES ================= */
@@ -54,6 +55,7 @@ interface Appointment {
   customerId: string;
   vehicleId: string;
   service: string;
+  customService?: string;
   datetime: string;
   status: AppointmentStatus;
   notes?: string;
@@ -360,15 +362,6 @@ const AppointmentsList: React.FC = () => {
     { label: "Cancelled", value: "cancelled" },
   ];
 
-  const serviceOptions = useMemo(() => {
-    const unique = Array.from(new Set(appointments.map(a => a.service)));
-
-    return unique.map((s) => ({
-      label: s,
-      value: s,
-    }));
-  }, [appointments]);  
-
   const toolbarFilters = [
     { key: "status", label: "Status", options: statusOptions },
   ];
@@ -539,6 +532,7 @@ const AppointmentsList: React.FC = () => {
       customerId: customer.id,
       vehicleId: vehicle.id,
       service: data.service,
+      customService: data.customService,
       datetime: data.datetime,
       status: "for approval",
       notes: data.notes,
@@ -549,6 +543,9 @@ const AppointmentsList: React.FC = () => {
       localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
       return updated;
     });
+
+    setEditingAppointmentId(null);
+    setIsScheduleDialogOpen(false);
 
     toast.success("Appointment created successfully!");
   };
@@ -572,6 +569,7 @@ const AppointmentsList: React.FC = () => {
               customerId: customer.id,
               vehicleId: vehicle.id,
               service: data.service,
+              customServie: data.customService,
               datetime: data.datetime,
               notes: data.notes,
             }
@@ -581,6 +579,10 @@ const AppointmentsList: React.FC = () => {
       localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
       return updated;
     });
+
+    setEditingAppointmentId(null);
+    setIsScheduleDialogOpen(false);
+    setIsSheetOpen(false);
 
     toast.success("Appointment updated!");
   };
@@ -834,7 +836,12 @@ const AppointmentsList: React.FC = () => {
                   <div className="space-y-4 pl-6 border-l-2 border-slate-100">
                     <div className="flex justify-between items-end">
                       <div>
-                        <p className="text-base font-medium">{selectedAppointment?.service}</p>
+                        <p className="text-base font-medium">
+                          {selectedAppointment?.service === "Others"
+                            ? selectedAppointment?.customService
+                            : selectedAppointment?.service
+                          }
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {selectedAppointment && formatDate(selectedAppointment.datetime)} at {selectedAppointment && formatTime(selectedAppointment.datetime)}
                         </p>

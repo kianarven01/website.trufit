@@ -25,6 +25,8 @@ const VEHICLE_STORAGE_KEY = "vehicles";
 const APPOINTMENT_KEY = "appointments";
 
 /* ================= TYPES ================= */
+type AppointmentStatus = "for approval" | "confirmed" | "cancelled" ;
+
 interface Customer {
   id: string;
   firstName: string;
@@ -48,17 +50,26 @@ interface Vehicle {
 
 interface Appointment {
   id: string;
+  appointmentCode: string;
   customerId: string;
   vehicleId: string;
   service: string;
   datetime: string;
-  status: string;
+  status: AppointmentStatus;
   notes?: string;
 }
 
 /* ================= HELPERS ================= */
-const formatAPT = (id: string, index: number) => {
-  return `APT-${String(index + 1).padStart(4, "0")}`;
+const generateAppointmentCode = (appointments: Appointment[]) => {
+  const nums = appointments
+    .map(a => a.appointmentCode)
+    .filter(Boolean)
+    .map(code => parseInt(code.replace("APT-", ""), 10))
+    .filter(n => !isNaN(n));
+
+  const next = nums.length ? Math.max(...nums) + 1 : 1;
+
+  return `APT-${String(next).padStart(4, "0")}`;
 };
 
 const getLS = <T,>(key: string): T[] => {
@@ -69,17 +80,21 @@ const setLS = (key: string, data: any) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-const normalizePhone = (val: string) => val.replace(/\D/g, "").trim();
+const normalizePhone = (val: string) => (val || "").replace(/\D/g, "").trim();
 const normalizeText = (val: string) => (val || "").toLowerCase().trim();
 
 const normalizePlate = (val?: string) => {
   if (!val) return "";
 
   return val
-    .toUpperCase()        
-    .replace(/\s+/g, "")  
-    .replace(/[^A-Z0-9-]/g, ""); 
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s-]/g, "") 
+    .replace(/\s+/g, " ") 
+    .trim();
 };
+
+const genId = () => crypto.randomUUID();
+
 
 /* ================= COMPONENT ================= */
 const AppointmentsList: React.FC = () => {
@@ -89,20 +104,22 @@ const AppointmentsList: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({
+  
+  type FilterStatus = AppointmentStatus | "all";
+  const [filters, setFilters] = useState<{ status: FilterStatus }>({
     status: "all",
   });
+
   const [selectedDate, setSelectedDate] = useState<string | null>(() => {
     return localStorage.getItem("appointmentDateFilter");
   });
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   // const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
 
-
+     
   const handleRowClick = (apt: Appointment) => {
     setEditingAppointmentId(apt.id);
     setIsSheetOpen(true);
@@ -113,70 +130,14 @@ const AppointmentsList: React.FC = () => {
     usePagination(25);
 
 
-/* ================= DUMMY SEED ================= */
-const genId = () =>
-  crypto.randomUUID
-    ? crypto.randomUUID()
-    : Math.random().toString(36).substring(2);
-
-const seedAppointments = () => {
-  if (localStorage.getItem(APPOINTMENT_KEY)) return;
-
-  /* ---- CUSTOMERS ---- */
-  const customers: Customer[] = [
-    { id: genId(), firstName: "Juan", lastName: "Dela Cruz", mobileNumber: "09171234567", email: "juan@email.com" },
-    { id: genId(), firstName: "Maria", lastName: "Santos", mobileNumber: "09981234567" },
-    { id: genId(), firstName: "Carlo", lastName: "Reyes", mobileNumber: "09175556666" },
-  ];
-
-  const vehicleModels: VehicleModel[] = [
-    { id: genId(), make: "Toyota", model: "Vios" },
-    { id: genId(), make: "Honda", model: "Civic" },
-    { id: genId(), make: "Ford", model: "Ranger" },
-  ];
-
-  /* CREATE VEHICLES */
-  const vehicles: Vehicle[] = customers.map((c, i) => ({
-    id: genId(),
-    customerId: c.id,
-    vehicleModelId: vehicleModels[i % vehicleModels.length].id,
-    plateNumber: `ABC-${i + 123}`,
-  }));
-
-  const statuses = ["confirmed", "cancelled", "for approval", "completed"];
-  const services = ["Oil Change", "Brake Service", "Car Wash", "Engine Tune-up"];
-
-  const appointments: Appointment[] = [];
-
-  for (let i = 0; i < 18; i++) {
-    const customer = customers[i % customers.length];
-    const vehicle = vehicles[i % vehicles.length];
-
-    appointments.push({
-      id: genId(),
-      customerId: customer.id,
-      vehicleId: vehicle.id, 
-      service: services[i % services.length],
-      datetime: new Date(Date.now() + i * 1000 * 60 * 60 * 6).toISOString(),
-      status: statuses[i % statuses.length],
-    });
-  }
-
-  localStorage.setItem(APPOINTMENT_CUSTOMER_KEY, JSON.stringify(customers));
-  localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(vehicleModels));
-  localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(vehicles));
-  localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(appointments));
-};   
-
   /* ================= LOAD ================= */
-useEffect(() => {
-  seedAppointments();
 
-  setCustomers(JSON.parse(localStorage.getItem(APPOINTMENT_CUSTOMER_KEY) || "[]"));
-  setVehicleModels(JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]"));
-  setVehicles(JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]"));
-  setAppointments(JSON.parse(localStorage.getItem(APPOINTMENT_KEY) || "[]"));
-}, []);
+  useEffect(() => {
+    setCustomers(getLS<Customer>(APPOINTMENT_CUSTOMER_KEY));
+    setVehicleModels(getLS<VehicleModel>(VEHICLE_MODEL_STORAGE_KEY));
+    setVehicles(getLS<Vehicle>(VEHICLE_STORAGE_KEY));
+    setAppointments(getLS<Appointment>(APPOINTMENT_KEY));
+  }, []);
 
   /* ================= MAP ================= */
 
@@ -208,23 +169,14 @@ useEffect(() => {
 
   /* ================ FORMATTERS ================= */
 
-  const formatPHPhone = (num?: string) => {
-    if (!num) return "";
+  const formatPhone = (value?: string) => {
+    if (!value) return "";
 
-    // remove non-digits
-    let digits = num.replace(/\D/g, "");
+    const digits = value.replace(/\D/g, "").slice(0, 11);
 
-    if (digits.startsWith("0")) {
-      digits = "63" + digits.slice(1);
-    } else if (digits.startsWith("9")) {
-      digits = "63" + digits;
-    } else if (!digits.startsWith("63")) {
-      return num;
-    }
-
-    if (digits.length !== 12) return num;
-
-    return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+    if (digits.length <= 4) return digits;
+    if (digits.length <= 7) return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
   };
 
 
@@ -285,13 +237,14 @@ useEffect(() => {
   };
 
   const calendarEvents = useMemo(() => {
-    const grouped = new Map<string, Set<string>>();
+    const grouped = new Map<string, Set<AppointmentStatus>>();
 
-    const allowedStatuses = new Set(["confirmed", "for approval"]);
+    const allowedStatuses = new Set<AppointmentStatus>([
+      "confirmed", "for approval"
+    ]);
 
     appointments.forEach((a) => {
-      const status = a.status.toLowerCase();
-
+      const status = a.status;
       if (!allowedStatuses.has(status)) return;
 
       const dateKey = toLocalDateString(a.datetime);
@@ -327,9 +280,9 @@ useEffect(() => {
 
     return {
       id: apt.id,
-      firstName: customer?.firstName,
-      lastName: customer?.lastName,
-      phone: customer?.mobileNumber,
+      firstName: customer?.firstName ?? "",
+      lastName: customer?.lastName ?? "",
+      phone: customer?.mobileNumber ?? "",
       email: customer?.email,
       make: vehicleModel?.make,
       model: vehicleModel?.model,
@@ -340,7 +293,7 @@ useEffect(() => {
     };
   };  
 
-  const updateAppointmentStatus = (id: string, status: string) => {
+  const updateAppointmentStatus = (id: string, status: AppointmentStatus) => {
     setAppointments((prev) => {
       const updated = prev.map((a) =>
         a.id === id ? { ...a, status } : a
@@ -369,7 +322,7 @@ useEffect(() => {
       const model = normalize(vehicleModel?.model || "");
 
       const matchesStatus =
-        filters.status === "all" || normalize(a.status) === normalize(filters.status);
+        filters.status === "all" || a.status === filters.status;
 
 
       const matchesDate =
@@ -401,11 +354,10 @@ useEffect(() => {
   const paginated = paginate(filtered);
 
   /* ================= FILTER OPTIONS ================= */
-  const statusOptions = [
+  const statusOptions: { label: string; value: string }[] = [
     { label: "For Approval", value: "for approval" },
     { label: "Confirmed", value: "confirmed" },
     { label: "Cancelled", value: "cancelled" },
-    { label: "Completed", value: "completed" },
   ];
 
   const serviceOptions = useMemo(() => {
@@ -422,12 +374,22 @@ useEffect(() => {
   ];
 
   const handleFilterChange = (key: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+    if (key === "status") {
+      if (
+        value === "all" ||
+        ["for approval", "confirmed", "cancelled"].includes(value)
+      ) {
+        setFilters((prev) => ({
+          ...prev,
+          [key]: value as FilterStatus,
+        }));
+      }
+    }
   };
 
   useEffect(() => {
     setPage(1);
-  }, [search, pageSize, selectedDate]);
+  }, [search, pageSize, selectedDate, filters]);
 
   const selectedVehicle = selectedAppointment
     ? vehicleMap.get(selectedAppointment.vehicleId)
@@ -440,47 +402,50 @@ useEffect(() => {
   /* ================= SCHEDULE APPOINTMENT ================= */
 
   /* Customer Upsert */
-  const upsertCustomer = (data: any) => {
+  const upsertCustomer = (data: any, existingCustomerId?: string) => {
     const customers = getLS<Customer>(APPOINTMENT_CUSTOMER_KEY);
 
-    const index = customers.findIndex(
-      c => normalizePhone(c.mobileNumber) === normalizePhone(data.phone)
-    );
+    // If editing, update directly by ID
+    if (existingCustomerId) {
+      const updated = customers.map(c =>
+        c.id === existingCustomerId
+          ? {
+              ...c,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              mobileNumber: data.phone,
+              email: data.email,
+            }
+          : c
+      );
 
-    let updatedCustomers;
+      setLS(APPOINTMENT_CUSTOMER_KEY, updated);
+      setCustomers(updated);
 
-    if (index === -1) {
-      const newCustomer: Customer = {
-        id: genId(),
-        firstName: data.firstName,
-        lastName: data.lastName,
-        mobileNumber: data.phone,
-        email: data.email,
-      };
-
-      updatedCustomers = [...customers, newCustomer];
-      setLS(APPOINTMENT_CUSTOMER_KEY, updatedCustomers);
-      setCustomers(updatedCustomers);
-
-      return newCustomer;
+      return updated.find(c => c.id === existingCustomerId)!;
     }
 
-    const updatedCustomer = {
-      ...customers[index],
+    // Create flow (no existing ID)
+    const existing = customers.find(
+      c =>
+        normalizePhone(c.mobileNumber) === normalizePhone(data.phone)
+    );
+
+    if (existing) return existing;
+
+    const newCustomer: Customer = {
+      id: genId(),
       firstName: data.firstName,
       lastName: data.lastName,
       mobileNumber: data.phone,
       email: data.email,
     };
 
-    updatedCustomers = customers.map((c, i) =>
-      i === index ? updatedCustomer : c
-    );
+    const updated = [...customers, newCustomer];
+    setLS(APPOINTMENT_CUSTOMER_KEY, updated);
+    setCustomers(updated);
 
-    setLS(APPOINTMENT_CUSTOMER_KEY, updatedCustomers);
-    setCustomers(updatedCustomers);
-
-    return updatedCustomer;
+    return newCustomer;
   };
 
 
@@ -512,13 +477,36 @@ useEffect(() => {
 
 
   /* Vehicle Upsert */
-  const upsertVehicle = (customerId: string, modelId: string, data: any) => {
+  const upsertVehicle = (
+    customerId: string,
+    modelId: string,
+    data: any,
+    existingVehicleId?: string
+  ) => {
     const vehicles = getLS<Vehicle>(VEHICLE_STORAGE_KEY);
 
+    // Editing → update directly
+    if (existingVehicleId) {
+      const updated = vehicles.map(v =>
+        v.id === existingVehicleId
+          ? {
+              ...v,
+              customerId,
+              vehicleModelId: modelId,
+              plateNumber: normalizePlate(data.plateNumber),
+            }
+          : v
+      );
+
+      setLS(VEHICLE_STORAGE_KEY, updated);
+      setVehicles(updated);
+
+      return updated.find(v => v.id === existingVehicleId)!;
+    }
+
+    // Create flow
     const existing = vehicles.find(
       v =>
-        v.customerId === customerId &&
-        v.vehicleModelId === modelId &&
         normalizePlate(v.plateNumber) === normalizePlate(data.plateNumber)
     );
 
@@ -532,7 +520,6 @@ useEffect(() => {
     };
 
     const updated = [...vehicles, newVehicle];
-
     setLS(VEHICLE_STORAGE_KEY, updated);
     setVehicles(updated);
 
@@ -548,6 +535,7 @@ useEffect(() => {
 
     const newAppointment: Appointment = {
       id: genId(),
+      appointmentCode: generateAppointmentCode(appointments),
       customerId: customer.id,
       vehicleId: vehicle.id,
       service: data.service,
@@ -570,9 +558,11 @@ useEffect(() => {
   const handleUpdateAppointment = (data: any) => {
     if (!editingAppointmentId) return;
 
-    const customer = upsertCustomer(data);
+    const existingAppointment = appointments.find(a => a.id === editingAppointmentId);
+    if (!existingAppointment) return;
+    const customer = upsertCustomer(data, existingAppointment?.customerId);
     const vehicleModel = upsertVehicleModel(data);
-    const vehicle = upsertVehicle(customer.id, vehicleModel.id, data);
+    const vehicle = upsertVehicle(customer.id, vehicleModel.id, data, existingAppointment?.vehicleId);
 
     setAppointments((prev) => {
       const updated = prev.map((a) =>
@@ -593,7 +583,6 @@ useEffect(() => {
     });
 
     toast.success("Appointment updated!");
-    setIsEditDialogOpen(false);
   };
 
 
@@ -666,7 +655,7 @@ useEffect(() => {
                           className="rounded-lg border bg-card shadow-sm hover:shadow-md"
                         >
                           <TableCell>
-                            {formatAPT(a.id, index)}
+                            {a.appointmentCode}
                           </TableCell>
 
                           <TableCell>
@@ -675,7 +664,7 @@ useEffect(() => {
                                 {customer?.firstName} {customer?.lastName}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {formatPHPhone(customer?.mobileNumber)}
+                                {formatPhone(customer?.mobileNumber)}
                               </span>
                             </div>
                           </TableCell>
@@ -741,7 +730,7 @@ useEffect(() => {
             )}
           </div>        
         ) : (
-        <Card>
+        <Card className="lg:col-span-5">
           <CardContent className="py-16 flex flex-col items-center text-center">
             <CalendarIcon className="h-6 w-6 mb-2 text-muted-foreground" />
             <p className="text-sm font-medium">
@@ -780,7 +769,7 @@ useEffect(() => {
                     Appointment Detail
                   </SheetTitle>   
                   <span className="text-xs text-muted-foreground font-mono">
-                    {selectedAppointment && formatAPT(selectedAppointment.id, 0)}
+                    {selectedAppointment?.appointmentCode}
                   </span>
                 </div>
               </SheetHeader>
@@ -804,7 +793,7 @@ useEffect(() => {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Phone className="w-3.5 h-3.5" />
-                      {formatPHPhone(customerMap.get(selectedAppointment?.customerId || "")?.mobileNumber) || "No phone number provided"}
+                      {formatPhone(customerMap.get(selectedAppointment?.customerId || "")?.mobileNumber) || "No phone number provided"}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Mail className="w-3.5 h-3.5" />
@@ -902,6 +891,7 @@ useEffect(() => {
                       className="w-full bg-blue-600 hover:bg-blue-700 h-11"
                       onClick={() => {
                         setIsSheetOpen(false);
+                        setEditingAppointmentId(selectedAppointment?.id || null);
                         setIsScheduleDialogOpen(true)}}
                     >
                       Edit Appointment
@@ -917,9 +907,8 @@ useEffect(() => {
                   </>
                 )}
 
-                {/* COMPLETED or CANCELLED */}
-                {(selectedAppointment?.status === "completed" ||
-                  selectedAppointment?.status === "cancelled") && (
+                {/* CANCELLED */}
+                {(selectedAppointment?.status === "cancelled") && (
                   <>
                   <Button 
                     variant="outline"
@@ -1002,6 +991,7 @@ useEffect(() => {
       <ScheduleAppointment
         key={editingAppointmentId ?? "create"}  
         open={isScheduleDialogOpen}
+        isEdit={!!editingAppointmentId}
         initialData={editingAppointmentId && selectedAppointment
           ? getEditableData(selectedAppointment)
           : undefined

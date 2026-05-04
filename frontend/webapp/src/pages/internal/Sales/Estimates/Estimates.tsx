@@ -271,7 +271,7 @@ const Estimates: React.FC = () => {
           </ScrollArea>
 
           {filtered.length > 25 && (
-            <div className="border-t bg-background">
+            <div className="border-t mx-3">
               <Pagination
                 totalItems={filtered.length}
                 page={page}

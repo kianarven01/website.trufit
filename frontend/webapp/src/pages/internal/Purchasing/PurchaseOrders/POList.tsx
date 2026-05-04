@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage } from "@/components/ui/breadcrumb";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 import DataToolbar from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
@@ -27,7 +39,14 @@ interface PurchaseOrder {
   orderDate: string;
   requestedShipDate: string;
   eta?: string | null;
-  status: "for-approval" | "pending" | "approved" | "cancelled" | "in-transit" | "received" | "delivered";
+  status:
+    | "for-approval"
+    | "pending"
+    | "approved"
+    | "cancelled"
+    | "in-transit"
+    | "received"
+    | "delivered";
   notes?: string;
   requestedBy: string;
   linkedSO?: string | null;
@@ -43,22 +62,22 @@ const STORAGE_KEY = "purchase_orders";
 /* DUMMY DATA */
 const generateDummyOrders = (): PurchaseOrder[] => {
   return Array.from({ length: 26 }, (_, i) => {
-const items = Array.from(
-  { length: Math.floor(Math.random() * 16) + 15 },
-  (_, j) => {
-    const qty = Math.floor(Math.random() * 10) + 1;
-    const price = Math.floor(Math.random() * 2000) + 200;
+    const items = Array.from(
+      { length: Math.floor(Math.random() * 16) + 15 },
+      (_, j) => {
+        const qty = Math.floor(Math.random() * 10) + 1;
+        const price = Math.floor(Math.random() * 2000) + 200;
 
-    return {
-      id: `item-${i}-${j}`,
-      itemName: `Item ${j + 1}`,
-      sku: `SKU-${i}${j}`,
-      unitPrice: price,
-      quantity: qty,
-      amount: qty * price,
-    };
-  }
-);
+        return {
+          id: `item-${i}-${j}`,
+          itemName: `Item ${j + 1}`,
+          sku: `SKU-${i}${j}`,
+          unitPrice: price,
+          quantity: qty,
+          amount: qty * price,
+        };
+      }
+    );
 
     return {
       id: `po-${i + 1}`,
@@ -75,10 +94,16 @@ const items = Array.from(
               .toISOString()
               .split("T")[0]
           : null,
-      status: ["for-approval", "pending", "approved", "in-transit", "received", "delivered", "cancelled"][
-        i % 7
-      ] as PurchaseOrder["status"],
-      remarks: i % 2 === 0 ? "Handle with care" : "",
+      status: [
+        "for-approval",
+        "pending",
+        "approved",
+        "in-transit",
+        "received",
+        "delivered",
+        "cancelled",
+      ][i % 7] as PurchaseOrder["status"],
+      notes: i % 2 === 0 ? "Handle with care" : "",
       requestedBy: "Juan Dela Cruz",
       items,
       total: items.reduce((s, i) => s + i.amount, 0),
@@ -88,9 +113,7 @@ const items = Array.from(
   });
 };
 
-/* STATUS CONFIG (uses custom badge variants) */
-
-
+/* STATUS CONFIG */
 const statusConfig: Record<
   PurchaseOrder["status"],
   { variant: PurchaseOrder["status"]; label: string }
@@ -108,10 +131,13 @@ const PurchaseOrderList: React.FC = () => {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
+
+  const { page, setPage, pageSize, setPageSize, paginate } =
+    usePagination(25);
+
   const [openModal, setOpenModal] = useState(false);
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
-  
+
   /* LOAD */
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -147,8 +173,8 @@ const PurchaseOrderList: React.FC = () => {
     `${o.id} ${o.supplier} ${o.status}`
       .toLowerCase()
       .includes(search.toLowerCase())
-
   );
+
   const paginated = paginate(filtered);
 
   return (
@@ -174,10 +200,12 @@ const PurchaseOrderList: React.FC = () => {
         addLabel="Create Order"
       />
 
-      {/* TABLE */}
+      {/* TABLE + PAGINATION CONTAINER */}
       {orders.length > 0 ? (
-        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
-          <div className="flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col border rounded-xl overflow-hidden">
+
+          {/* Scrollable Table */}
+          <ScrollArea className="flex-1 px-3">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -192,13 +220,16 @@ const PurchaseOrderList: React.FC = () => {
               <TableBody>
                 {filtered.length > 0 ? (
                   paginated.map((o) => {
-                    const total = o.total;
                     const { variant, label } = statusConfig[o.status];
 
                     return (
                       <TableRow
                         key={o.id}
-                        onClick={() => navigate(`/webapp/purchasing/purchase-orders/${o.id}`)}
+                        onClick={() =>
+                          navigate(
+                            `/webapp/purchasing/purchase-orders/${o.id}`
+                          )
+                        }
                         className={cn(
                           "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                           "hover:bg-accent/30"
@@ -207,7 +238,9 @@ const PurchaseOrderList: React.FC = () => {
                         <TableCell>{o.supplier}</TableCell>
                         <TableCell>{o.orderDate}</TableCell>
                         <TableCell>{o.items.length}</TableCell>
-                        <TableCell>₱ {total.toLocaleString()}</TableCell>
+                        <TableCell>
+                          ₱ {o.total.toLocaleString()}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={variant}>{label}</Badge>
                         </TableCell>
@@ -219,19 +252,23 @@ const PurchaseOrderList: React.FC = () => {
                     <TableCell colSpan={5}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">No purchase orders found</p>
-                        <p className="text-xs text-muted-foreground">Try adjusting your search</p>
+                        <p className="text-sm font-medium">
+                          No purchase orders found
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your search
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-          </div>
+          </ScrollArea>
 
-          {/* Sticky Pagination */}
+          {/* ✅ ALWAYS BOTTOM */}
           {filtered.length > 25 && (
-            <div className="sticky bottom-0 bg-background z-10">
+            <div className="border-t mx-3">
               <Pagination
                 totalItems={filtered.length}
                 page={page}
@@ -241,7 +278,7 @@ const PurchaseOrderList: React.FC = () => {
               />
             </div>
           )}
-        </ScrollArea>
+        </div>
       ) : (
         <Card>
           <CardContent className="py-16 flex flex-col items-center text-center">
@@ -256,25 +293,23 @@ const PurchaseOrderList: React.FC = () => {
         </Card>
       )}
 
-<PurchaseOrderModal
-  open={openModal}
-  onOpenChange={setOpenModal}
-  initialData={editingPO}
-  onSave={(data) => {
-    setOrders(prev => {
-      const exists = prev.find(p => p.id === data.id);
+      {/* MODAL */}
+      <PurchaseOrderModal
+        open={openModal}
+        onOpenChange={setOpenModal}
+        initialData={editingPO}
+        onSave={(data) => {
+          setOrders((prev) => {
+            const exists = prev.find((p) => p.id === data.id);
 
-      if (exists) {
-        // UPDATE
-        return prev.map(p => (p.id === data.id ? data : p));
-      }
+            if (exists) {
+              return prev.map((p) => (p.id === data.id ? data : p));
+            }
 
-      // CREATE
-      return [data, ...prev];
-    });
-  }}
-/>
-
+            return [data, ...prev];
+          });
+        }}
+      />
     </div>
   );
 };

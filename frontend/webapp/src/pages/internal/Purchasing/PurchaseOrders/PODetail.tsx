@@ -223,7 +223,7 @@ const PurchaseOrderDetails: React.FC = () => {
           <BreadcrumbItem>
             <BreadcrumbLink
               onClick={() =>
-                navigate("/webapp/purchasing/purchase-orders")
+                navigate(-1)
               }
             >
               Purchase Orders

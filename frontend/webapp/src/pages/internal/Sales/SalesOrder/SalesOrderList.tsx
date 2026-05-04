@@ -23,47 +23,118 @@ import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon } from "lucide-react";
 
 /* TYPES */
-interface SalesOrderItem {
+interface Customer {
+  name: string;
+  email: string;
+  mobile: string;
+  address: string;
+}
+
+interface Vehicle {
+  year: string;
+  make: string;
+  model: string;
+  variant: string;
+  plateNo: string;
+  mileage: number;
+}
+
+interface Product {
   id: string;
-  itemName: string;
-  image?: string;
-  sku: string;
-  quantity: number;
-  unitPrice: number;
+  name: string;
+  qty: number;
+  price: number;
   amount: number;
+}
+
+interface Payment {
+  id: string;
+  date: string;
+  amount: number;
+  method: string;
 }
 
 interface SalesOrder {
   id: string;
-  customer: string;
-  customerEmail: string;
-  plateNo: string;
-  status: "pending" | "approved" | "delivered";
-  items: SalesOrderItem[];
+  status: "pending" | "partial" | "paid";
+  customer: Customer;
+  vehicle: Vehicle;
+  products: Product[];
+  tax: number;
+  payments: Payment[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 const STORAGE_KEY = "sales_orders";
 
-/* STATUS CONFIG */
-const statusConfig = {
-  pending: { variant: "secondary" as const, label: "Pending" },
-  approved: { variant: "default" as const, label: "Approved" },
-  delivered: { variant: "outline" as const, label: "Delivered" },
+/* DUMMY */
+const generateDummySalesOrders = (): SalesOrder[] => {
+  return Array.from({ length: 30 }, (_, i) => {
+    const products = Array.from({ length: 3 }, (_, j) => {
+      const qty = Math.floor(Math.random() * 5) + 1;
+      const price = Math.floor(Math.random() * 3000) + 500;
+
+      return {
+        id: `prod-${i}-${j}`,
+        name: `Product ${j + 1}`,
+        qty,
+        price,
+        amount: qty * price,
+      };
+    });
+
+    return {
+      id: `SO-${1000 + i}`,
+      status: ["pending", "partial", "paid"][i % 3] as const,
+      customer: {
+        name: `Customer ${i + 1}`,
+        email: `customer${i + 1}@mail.com`,
+        mobile: "09123456789",
+        address: "Sample Address",
+      },
+      vehicle: {
+        year: "2020",
+        make: "Toyota",
+        model: "Vios",
+        variant: "G",
+        plateNo: `ABC-${Math.floor(1000 + Math.random() * 9000)}`,
+        mileage: 12000,
+      },
+      products,
+      tax: 500,
+      payments: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  });
 };
 
 const SalesOrderList: React.FC = () => {
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  /* LOAD (NO DUMMY DATA) */
+  const { page, setPage, pageSize, setPageSize, paginate } =
+    usePagination(25);
+
+  /* LOAD */
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
+
     if (stored) {
-      setOrders(JSON.parse(stored));
+      const parsed = JSON.parse(stored);
+      if (!parsed.length) {
+        const dummy = generateDummySalesOrders();
+        setOrders(dummy);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+      } else {
+        setOrders(parsed);
+      }
     } else {
-      setOrders([]);
+      const dummy = generateDummySalesOrders();
+      setOrders(dummy);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
     }
   }, []);
 
@@ -76,9 +147,9 @@ const SalesOrderList: React.FC = () => {
     setPage(1);
   }, [search]);
 
-  /* SEARCH */
+  /* FILTER */
   const filtered = orders.filter((o) =>
-    `${o.id} ${o.customer} ${o.plateNo} ${o.status}`
+    `${o.id} ${o.customer.name} ${o.vehicle.plateNo} ${o.status}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -87,7 +158,6 @@ const SalesOrderList: React.FC = () => {
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-      {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -96,18 +166,18 @@ const SalesOrderList: React.FC = () => {
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search sales orders..."
         onSearch={setSearch}
-        onAdd={() => navigate("/webapp/sales-orders/create")}
+        onAdd={() => navigate("/webapp/sales/sales-orders/create")}
         addLabel="Create Order"
       />
 
-      {/* TABLE */}
       {orders.length > 0 ? (
-        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
-          <div className="flex-1 overflow-auto">
+        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
+
+          {/* Scrollable Table */}
+          <ScrollArea className="flex-1">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -123,31 +193,26 @@ const SalesOrderList: React.FC = () => {
               <TableBody>
                 {filtered.length > 0 ? (
                   paginated.map((o) => {
-                    const total = o.items.reduce(
-                      (sum, item) => sum + item.amount,
-                      0
-                    );
-
-                    const { variant, label } = statusConfig[o.status];
+                    const total =
+                      o.products.reduce((s, p) => s + p.amount, 0) + o.tax;
 
                     return (
                       <TableRow
                         key={o.id}
                         onClick={() =>
-                          navigate(`/webapp/sales-orders/${o.id}`)
+                          navigate(`/webapp/sales/sales-orders/${o.id}`)
                         }
                         className={cn(
-                          "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
-                          "hover:bg-accent/30"
+                          "cursor-pointer rounded-lg border shadow-sm hover:bg-accent/30"
                         )}
                       >
                         <TableCell>{o.id}</TableCell>
-                        <TableCell>{o.customer}</TableCell>
-                        <TableCell>{o.plateNo}</TableCell>
-                        <TableCell>{o.items.length}</TableCell>
+                        <TableCell>{o.customer.name}</TableCell>
+                        <TableCell>{o.vehicle.plateNo}</TableCell>
+                        <TableCell>{o.products.length}</TableCell>
                         <TableCell>₱ {total.toLocaleString()}</TableCell>
                         <TableCell>
-                          <Badge variant={variant}>{label}</Badge>
+                          <Badge>{o.status}</Badge>
                         </TableCell>
                       </TableRow>
                     );
@@ -155,25 +220,20 @@ const SalesOrderList: React.FC = () => {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6}>
-                      <div className="py-16 flex flex-col items-center text-center">
-                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">
-                          No sales orders found
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Try adjusting your search
-                        </p>
+                      <div className="py-16 text-center">
+                        <ImageIcon className="mx-auto mb-2" />
+                        No sales orders found
                       </div>
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
-          </div>
+          </ScrollArea>
 
           {/* Pagination */}
           {filtered.length > 25 && (
-            <div className="sticky bottom-0 bg-background z-10">
+            <div className="border-t bg-background">
               <Pagination
                 totalItems={filtered.length}
                 page={page}
@@ -183,17 +243,12 @@ const SalesOrderList: React.FC = () => {
               />
             </div>
           )}
-        </ScrollArea>
+        </div>
       ) : (
         <Card>
-          <CardContent className="py-16 flex flex-col items-center text-center">
-            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">
-              No sales orders available
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Create a sales order to get started
-            </p>
+          <CardContent className="py-16 text-center">
+            <ImageIcon className="mx-auto mb-2" />
+            No sales orders available
           </CardContent>
         </Card>
       )}

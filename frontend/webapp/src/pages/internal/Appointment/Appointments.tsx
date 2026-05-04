@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
@@ -58,18 +57,32 @@ interface Appointment {
 }
 
 /* ================= HELPERS ================= */
-const formatDateTime = (val: string) => {
-  const d = new Date(val);
-  return d.toLocaleString();
-};
-
 const formatAPT = (id: string, index: number) => {
   return `APT-${String(index + 1).padStart(4, "0")}`;
 };
 
+const getLS = <T,>(key: string): T[] => {
+  return JSON.parse(localStorage.getItem(key) || "[]");
+};
+
+const setLS = (key: string, data: any) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+const normalizePhone = (val: string) => val.replace(/\D/g, "").trim();
+const normalizeText = (val: string) => (val || "").toLowerCase().trim();
+
+const normalizePlate = (val?: string) => {
+  if (!val) return "";
+
+  return val
+    .toUpperCase()        
+    .replace(/\s+/g, "")  
+    .replace(/[^A-Z0-9-]/g, ""); 
+};
+
 /* ================= COMPONENT ================= */
 const AppointmentsList: React.FC = () => {
-  const navigate = useNavigate();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
@@ -83,10 +96,11 @@ const AppointmentsList: React.FC = () => {
     return localStorage.getItem("appointmentDateFilter");
   });
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
+  // const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
 
 
   const handleRowClick = (apt: Appointment) => {
@@ -121,7 +135,7 @@ const seedAppointments = () => {
     { id: genId(), make: "Ford", model: "Ranger" },
   ];
 
-  /* ✅ CREATE VEHICLES */
+  /* CREATE VEHICLES */
   const vehicles: Vehicle[] = customers.map((c, i) => ({
     id: genId(),
     customerId: c.id,
@@ -141,7 +155,7 @@ const seedAppointments = () => {
     appointments.push({
       id: genId(),
       customerId: customer.id,
-      vehicleId: vehicle.id, // ✅ FIXED
+      vehicleId: vehicle.id, 
       service: services[i % services.length],
       datetime: new Date(Date.now() + i * 1000 * 60 * 60 * 6).toISOString(),
       status: statuses[i % statuses.length],
@@ -303,26 +317,38 @@ useEffect(() => {
     return appointments.find(a => a.id === editingAppointmentId) || null;
   }, [appointments, editingAppointmentId]);
 
-const updateAppointmentStatus = (id: string, status: string) => {
-  setAppointments((prev) => {
-    const updated = prev.map((a) =>
-      a.id === id ? { ...a, status } : a
-    );
 
-    localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
-    return updated;
-  });
-};
+  const getEditableData = (apt: Appointment) => {
+    const customer = customerMap.get(apt.customerId);
+    const vehicle = vehicleMap.get(apt.vehicleId);
+    const vehicleModel = vehicle
+      ? vehicleModelMap.get(vehicle.vehicleModelId)
+      : null;
 
-  const removeAppointment = (id: string) => {
+    return {
+      id: apt.id,
+      firstName: customer?.firstName,
+      lastName: customer?.lastName,
+      phone: customer?.mobileNumber,
+      email: customer?.email,
+      make: vehicleModel?.make,
+      model: vehicleModel?.model,
+      plateNumber: vehicle?.plateNumber,
+      service: apt.service,
+      notes: apt.notes,
+      datetime: apt.datetime,
+    };
+  };  
+
+  const updateAppointmentStatus = (id: string, status: string) => {
     setAppointments((prev) => {
-      const updated = prev.filter((a) => a.id !== id);
+      const updated = prev.map((a) =>
+        a.id === id ? { ...a, status } : a
+      );
 
       localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
       return updated;
     });
-
-    setIsSheetOpen(false);
   };
 
   /* ================= SEARCH ================= */
@@ -411,41 +437,20 @@ const updateAppointmentStatus = (id: string, status: string) => {
     ? vehicleModelMap.get(selectedVehicle.vehicleModelId)
     : null;
 
+  /* ================= SCHEDULE APPOINTMENT ================= */
 
-    
-  const handleCreateAppointment = (data: any) => {
-    /* ================= VEHICLE MODEL ================= */
-    let storedModels: VehicleModel[] =
-      JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
+  /* Customer Upsert */
+  const upsertCustomer = (data: any) => {
+    const customers = getLS<Customer>(APPOINTMENT_CUSTOMER_KEY);
 
-    let vehicleModel = storedModels.find(
-      v =>
-        v.make.toLowerCase() === data.make.toLowerCase() &&
-        v.model.toLowerCase() === data.model.toLowerCase()
+    const index = customers.findIndex(
+      c => normalizePhone(c.mobileNumber) === normalizePhone(data.phone)
     );
 
-    if (!vehicleModel) {
-      vehicleModel = {
-        id: genId(),
-        make: data.make,
-        model: data.model,
-      };
+    let updatedCustomers;
 
-      storedModels.push(vehicleModel);
-      localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(storedModels));
-      setVehicleModels(storedModels);
-    }
-
-    /* ================= CUSTOMER ================= */
-    let customers: Customer[] =
-      JSON.parse(localStorage.getItem(APPOINTMENT_CUSTOMER_KEY) || "[]");
-
-    let customer = customers.find(
-      c => c.mobileNumber.replace(/\D/g, "") === data.phone.replace(/\D/g, "")
-    );
-
-    if (!customer) {
-      customer = {
+    if (index === -1) {
+      const newCustomer: Customer = {
         id: genId(),
         firstName: data.firstName,
         lastName: data.lastName,
@@ -453,40 +458,95 @@ const updateAppointmentStatus = (id: string, status: string) => {
         email: data.email,
       };
 
-      customers.push(customer);
-      localStorage.setItem(APPOINTMENT_CUSTOMER_KEY, JSON.stringify(customers));
-      setCustomers(customers);
+      updatedCustomers = [...customers, newCustomer];
+      setLS(APPOINTMENT_CUSTOMER_KEY, updatedCustomers);
+      setCustomers(updatedCustomers);
+
+      return newCustomer;
     }
 
-    /* ================= VEHICLE ================= */
-    let vehicles: Vehicle[] =
-      JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
+    const updatedCustomer = {
+      ...customers[index],
+      firstName: data.firstName,
+      lastName: data.lastName,
+      mobileNumber: data.phone,
+      email: data.email,
+    };
 
-    let vehicle = vehicles.find(
-      v =>
-        v.customerId === customer.id &&
-        v.vehicleModelId === vehicleModel.id &&
-        (v.plateNumber || "").toLowerCase() === (data.plateNumber || "").toLowerCase()
+    updatedCustomers = customers.map((c, i) =>
+      i === index ? updatedCustomer : c
     );
 
-    if (!vehicle) {
-      vehicle = {
-        id: genId(),
-        customerId: customer.id,
-        vehicleModelId: vehicleModel.id,
-        plateNumber: data.plateNumber,
-      };
+    setLS(APPOINTMENT_CUSTOMER_KEY, updatedCustomers);
+    setCustomers(updatedCustomers);
 
-      vehicles.push(vehicle);
-      localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(vehicles));
-      setVehicles(vehicles);
-    }
+    return updatedCustomer;
+  };
 
-    /* ================= APPOINTMENT ================= */
-    let appointments: Appointment[] =
-      JSON.parse(localStorage.getItem(APPOINTMENT_KEY) || "[]");
 
-    const appointment: Appointment = {
+  /*  Vehicle Model Upsert */
+  const upsertVehicleModel = (data: any) => {
+    const models = getLS<VehicleModel>(VEHICLE_MODEL_STORAGE_KEY);
+
+    const existing = models.find(
+      v =>
+        normalizeText(v.make) === normalizeText(data.make) &&
+        normalizeText(v.model) === normalizeText(data.model)
+    );
+
+    if (existing) return existing;
+
+    const newModel: VehicleModel = {
+      id: genId(),
+      make: data.make,
+      model: data.model,
+    };
+
+    const updated = [...models, newModel];
+
+    setLS(VEHICLE_MODEL_STORAGE_KEY, updated);
+    setVehicleModels(updated);
+
+    return newModel;
+  };
+
+
+  /* Vehicle Upsert */
+  const upsertVehicle = (customerId: string, modelId: string, data: any) => {
+    const vehicles = getLS<Vehicle>(VEHICLE_STORAGE_KEY);
+
+    const existing = vehicles.find(
+      v =>
+        v.customerId === customerId &&
+        v.vehicleModelId === modelId &&
+        normalizePlate(v.plateNumber) === normalizePlate(data.plateNumber)
+    );
+
+    if (existing) return existing;
+
+    const newVehicle: Vehicle = {
+      id: genId(),
+      customerId,
+      vehicleModelId: modelId,
+      plateNumber: normalizePlate(data.plateNumber),
+    };
+
+    const updated = [...vehicles, newVehicle];
+
+    setLS(VEHICLE_STORAGE_KEY, updated);
+    setVehicles(updated);
+
+    return newVehicle;
+  };
+
+
+  /*  Create Appointment */
+  const handleCreateAppointment = (data: any) => {
+    const customer = upsertCustomer(data);
+    const vehicleModel = upsertVehicleModel(data);
+    const vehicle = upsertVehicle(customer.id, vehicleModel.id, data);
+
+    const newAppointment: Appointment = {
       id: genId(),
       customerId: customer.id,
       vehicleId: vehicle.id,
@@ -496,15 +556,59 @@ const updateAppointmentStatus = (id: string, status: string) => {
       notes: data.notes,
     };
 
-    appointments.push(appointment);
-
-    localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(appointments));
-    setAppointments(appointments);
+    setAppointments((prev) => {
+      const updated = [...prev, newAppointment];
+      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
+      return updated;
+    });
 
     toast.success("Appointment created successfully!");
   };
+    
+
+  /* Update Appointment */
+  const handleUpdateAppointment = (data: any) => {
+    if (!editingAppointmentId) return;
+
+    const customer = upsertCustomer(data);
+    const vehicleModel = upsertVehicleModel(data);
+    const vehicle = upsertVehicle(customer.id, vehicleModel.id, data);
+
+    setAppointments((prev) => {
+      const updated = prev.map((a) =>
+        a.id === editingAppointmentId
+          ? {
+              ...a,
+              customerId: customer.id,
+              vehicleId: vehicle.id,
+              service: data.service,
+              datetime: data.datetime,
+              notes: data.notes,
+            }
+          : a
+      );
+
+      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    toast.success("Appointment updated!");
+    setIsEditDialogOpen(false);
+  };
 
 
+  /* Remove Appointment */
+  const removeAppointment = (id: string) => {
+    setAppointments((prev) => {
+      const updated = prev.filter((a) => a.id !== id);
+      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    setIsSheetOpen(false);
+  };
+
+  
   /* ================= UI ================= */
 
   return (
@@ -520,7 +624,10 @@ const updateAppointmentStatus = (id: string, status: string) => {
       <DataToolbar
         searchPlaceholder="Search appointments..."
         onSearch={setSearch}
-        onAdd={()=>setIsScheduleDialogOpen(true)}
+        onAdd={()=> {
+          setEditingAppointmentId(null);
+          setIsScheduleDialogOpen(true);
+        }}
         addLabel="Add Appointment"
         filters={toolbarFilters}
         onFilterChange={handleFilterChange}
@@ -793,9 +900,11 @@ const updateAppointmentStatus = (id: string, status: string) => {
                   <>
                     <Button
                       className="w-full bg-blue-600 hover:bg-blue-700 h-11"
-                      onClick={() => setIsReschedDialogOpen(true)}
+                      onClick={() => {
+                        setIsSheetOpen(false);
+                        setIsScheduleDialogOpen(true)}}
                     >
-                      Reschedule Appointment
+                      Edit Appointment
                     </Button>
 
                     <Button
@@ -891,11 +1000,18 @@ const updateAppointmentStatus = (id: string, status: string) => {
       </AlertDialog>   
 
       <ScheduleAppointment
+        key={editingAppointmentId ?? "create"}  
         open={isScheduleDialogOpen}
+        initialData={editingAppointmentId && selectedAppointment
+          ? getEditableData(selectedAppointment)
+          : undefined
+        }
         onOpenChange={setIsScheduleDialogOpen}
-        onSaved={handleCreateAppointment}
+        onSaved={editingAppointmentId ? handleUpdateAppointment : handleCreateAppointment}
+
       />
 
+      {/* Reschedule Appointment Dialog 
       <ReschedAppointment
         open={isReschedDialogOpen}
         onOpenChange={setIsReschedDialogOpen}
@@ -913,6 +1029,7 @@ const updateAppointmentStatus = (id: string, status: string) => {
           toast.success("Appointment rescheduled successfully!");
         }}
       />
+      */}
 
     </div>
   );

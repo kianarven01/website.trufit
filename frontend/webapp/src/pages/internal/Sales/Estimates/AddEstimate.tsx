@@ -13,7 +13,8 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
-
+import AddCustomerVehicle from "@/components/popupModal/Customers/addCustomerVehicle";
+import { toast } from "sonner";
 import { Plus, Trash2, User, Car, Wrench, Box, Percent, Banknote, Calculator } from "lucide-react";
 
 interface Customer {
@@ -24,11 +25,11 @@ interface Customer {
   mobileNumber: string;
   landline?: string;
   businessPhone?: string;
-  vehicles: Vehicle[];
 }
 
 interface Vehicle {
   id: string;
+  customerId: string;
   year: number;
   make: string;
   model: string;
@@ -43,16 +44,17 @@ interface Vehicle {
   mileage?: number;
 }
 
-interface ServiceItem {
+interface ServiceType {
+  id: string;
   name: string;
   category: string;
-  price: number;
+  hourlyRate: number;
 }
 
-interface PartItem {
+interface Product {
+  id: string;
   name: string;
   sku: string;
-  quantity: number;
   price: number;
   unit: string;
   currentStock: number;
@@ -60,54 +62,53 @@ interface PartItem {
 
 export interface Estimate {
   id: string;
-  estimateNo: string;
-  services: ServiceItem[];
-  parts: PartItem[];
-  date: string;
+  customer: Customer;
+  vehicle: Vehicle;
+  services: JOServiceLine[];
+  parts: SOPartLine[];
+  createdAt: string;
   lastEdited?: string;
   status: "issued" | "approved";
+  subtotalServices: number;
+  subtotalParts: number;
+  serviceTax: number;
+  partsTax: number;  
+  total: number;
+  notes?: string;
 }
 
 interface JOServiceLine {
   id: string;
-  service: string;
+  ServiceTypeId: string;
+  name: string;
   category: string;
   hourlyRate: number;
-  hours: number;
+  hours: number | ""; 
   amount: number;
 }
 
 interface SOPartLine {
   id: string;
-  itemName: string;
-  partNo: string;
-  quantity: number;
-  unitPrice: number;
+  ProductId: string;
+  name: string;
+  sku: string;
+  unit: string;
+  price: number;
+  quantity: number | "";
   amount: number;
 }
 
-interface ServiceCatalog {
-  name: string;
-  category: string;
-  hourlyRate: number;
-}
-
-interface PartCatalog {
-  name: string;
-  sku: string;
-  price: number;
-}
 
 /* STORAGE */
 const STORAGE_KEY = "estimates";
 
 
-let lineId = 100;
-const genLineId = () => `LN-${lineId++}`;
+const genLineId = () => crypto.randomUUID();
 
 const emptyJOLine = (): JOServiceLine => ({
   id: genLineId(),
-  service: "",
+  ServiceTypeId: "",
+  name: "",
   category: "",
   hourlyRate: 0,
   hours: 1,
@@ -116,10 +117,12 @@ const emptyJOLine = (): JOServiceLine => ({
 
 const emptySOLine = (): SOPartLine => ({
   id: genLineId(),
-  itemName: "",
-  partNo: "",
+  ProductId: "",
+  name: "",
+  sku: "",
+  unit: "",
+  price: 0,
   quantity: 1,
-  unitPrice: 0,
   amount: 0,
 });
 
@@ -128,11 +131,14 @@ const AddEstimate: React.FC = () => {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
+  // Add Vehicle Modal
+  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
 
   const [date, setDate] = useState(new Date().toISOString());
   const [notes, setNotes] = useState("");
@@ -146,8 +152,31 @@ const AddEstimate: React.FC = () => {
   const [joLines, setJoLines] = useState<JOServiceLine[]>([emptyJOLine()]);
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
 
-  const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalog[]>([]);
-  const [partsCatalog, setPartsCatalog] = useState<PartCatalog[]>([]);
+  const [servicesCatalog, setServicesCatalog] = useState<ServiceType[]>([]);
+  const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
+
+  const servicesMap = useMemo<Record<string, ServiceType>>(() => {
+    return Object.fromEntries(
+      servicesCatalog.map(s => [s.id, s])
+    );
+  }, [servicesCatalog]);
+
+  const partsMap = useMemo<Record<string, Product>>(() => {
+    return Object.fromEntries(
+      partsCatalog.map(p => [p.id, p])
+    );
+  }, [partsCatalog]);
+
+  const addJOLine = () => setJoLines((p) => [...p, emptyJOLine()]);
+  const removeJOLine = (i: number) => setJoLines((p) => p.filter((_, idx) => idx !== i));
+
+  const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
+  const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
+
+  const getCustomerVehicles = (customerId: string) => vehicles.filter(v => v.customerId === customerId);
+  const customerVehicles = vehicles.filter(v => v.customerId === selectedCustomer?.id);
+
+
 
   const handleAddCustomer = (search: string) => {
     setCustomerSearch(search); // optional prefill
@@ -156,19 +185,20 @@ const AddEstimate: React.FC = () => {
 
   const handleCustomerSaved = (newCustomer: Customer & { __lastAddedVehicle?: Vehicle }) => {
     setCustomers((prev) => [...prev, newCustomer]);
-
-    // auto select new customer
     setSelectedCustomer(newCustomer);
 
-    // auto select vehicle if exists
+    // Vehicle selection
+    const relatedVehicles = getCustomerVehicles(newCustomer.id);
+
     if (newCustomer.__lastAddedVehicle) {
       setSelectedVehicle(newCustomer.__lastAddedVehicle);
-    } else if (newCustomer.vehicles.length === 1) {
-      setSelectedVehicle(newCustomer.vehicles[0]);
+    } else if (relatedVehicles.length === 1) {
+      setSelectedVehicle(relatedVehicles[0]);
     } else {
-      setSelectedVehicle(null);
+      setSelectedVehicle(null); //if multiple vehicles, user must pick
     }
   };
+
 
 
 useEffect(() => {
@@ -181,34 +211,6 @@ useEffect(() => {
       mobileNumber: "09123456789",
       landline: "02-12345678",
       businessPhone: "02-12345678",
-      vehicles: [
-        {
-          id: "v1",
-          year: 2020,
-          make: "Toyota",
-          model: "Vios",
-          variant: "G",
-          color: "Red",
-          plateNo: "ABC123",
-          engineNo: "ENG001",
-          vin: "VIN001",
-          registrationNo: "REG001",
-          sellingDealer: "Toyota QC",
-        },
-        {
-          id: "v2",
-          year: 2021,
-          make: "Honda",
-          model: "Civic",
-          variant: "G",
-          color: "Blue",
-          plateNo: "DEF456",
-          engineNo: "ENG002",
-          vin: "VIN002",
-          registrationNo: "REG002",
-          sellingDealer: "Honda QC",
-        },
-      ],
     },
   ]);
 }, []);
@@ -217,17 +219,18 @@ useEffect(() => {
   useEffect(() => {
     // replace with API calls
     setServicesCatalog([
-      { name: "Oil Change", category: "Maintenance", hourlyRate: 1500 },
-      { name: "Brake Cleaning", category: "Brake", hourlyRate: 1200 },
-      { name: "Wheel Alignment", category: "Suspension", hourlyRate: 1800 },
+      { id: "1", name: "Oil Change", category: "Maintenance", hourlyRate: 1500 },
+      { id: "2", name: "Brake Cleaning", category: "Brake", hourlyRate: 1200 },
+      { id: "3", name: "Wheel Alignment", category: "Suspension", hourlyRate: 1800 },
     ]);
 
     setPartsCatalog([
-      { name: "Oil Filter", sku: "OF-100", price: 450 },
-      { name: "Air Filter", sku: "AF-220", price: 650 },
-      { name: "Brake Pad", sku: "BP-330", price: 2200 },
+      { id: "1", name: "Oil Filter", sku: "OF-100", price: 450, unit: "piece", currentStock: 10 },
+      { id: "2", name: "Air Filter", sku: "AF-220", price: 650, unit: "piece", currentStock: 5 },
+      { id: "3", name: "Brake Pad", sku: "BP-330", price: 2200, unit: "piece", currentStock: 3 },
     ]);
   }, []);
+
 
   const updateJO = (idx: number, field: keyof JOServiceLine, value: any) => {
     setJoLines((prev) =>
@@ -236,19 +239,36 @@ useEffect(() => {
 
         let updated = { ...l, [field]: value };
 
-        if (field === "service") {
-          const found = servicesCatalog.find((s) => s.name.toLowerCase() === value.toLowerCase());
+        if (field === "ServiceTypeId") {
+          const found = servicesMap[value];
+
           if (found) {
+            updated.name = found.name;
             updated.category = found.category;
             updated.hourlyRate = found.hourlyRate;
-          } else if (!value) {
+            updated.amount = (updated.hours || 0) * found.hourlyRate;
+          } else {
+            updated.name = "";
             updated.category = "";
             updated.hourlyRate = 0;
+            updated.amount = 0;
           }
         }
 
-        // recalc amount
-        updated.amount = updated.hourlyRate * updated.hours;
+        if (field === "hours") {
+          const hours = value === "" ? 0 : Math.max(0, Number(value));
+          const found = servicesMap[updated.ServiceTypeId];
+
+          updated.hours = hours;
+
+          if (!found) {
+            updated.amount = 0;
+            return updated;
+          }
+
+          updated.amount = hours * found.hourlyRate;
+        }
+
         return updated;
       })
     );
@@ -261,36 +281,48 @@ useEffect(() => {
 
         let updated = { ...l, [field]: value };
 
-        if (field === "itemName") {
-          const found = partsCatalog.find((p) => p.name.toLowerCase() === value.toLowerCase());
+        if (field === "ProductId") {
+          const found = partsMap[value];
+
           if (found) {
-            updated.partNo = found.sku;
-            updated.unitPrice = found.price;
-          } else if (!value) {
-            updated.partNo = "";
-            updated.unitPrice = 0;
+            updated.name = found.name;
+            updated.sku = found.sku;
+            updated.unit = found.unit;
+            updated.price = found.price;
+            updated.amount = (updated.quantity || 0) * found.price;
+          } else {
+            updated.name = "";
+            updated.sku = "";
+            updated.unit = "";
+            updated.price = 0;
+            updated.amount = 0;
           }
         }
 
         if (field === "quantity") {
-          updated.quantity = Math.max(1, Number(value));
+          const qty = value === "" ? 0 : Math.max(0, Number(value));
+          const found = partsMap[updated.ProductId];
+
+          updated.quantity = qty;
+
+          if (!found) {
+            updated.amount = 0;
+            return updated;
+          }
+
+          const safeQty = Math.min(qty, found.currentStock);
+          updated.amount = safeQty * found.price;
         }
 
-        updated.amount = updated.quantity * updated.unitPrice;
         return updated;
       })
     );
   };
 
-  const addJOLine = () => setJoLines((p) => [...p, emptyJOLine()]);
-  const removeJOLine = (i: number) => setJoLines((p) => p.filter((_, idx) => idx !== i));
-
-  const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
-  const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
 
   const totals = useMemo(() => {
-    const validJO = joLines.filter((l) => l.service.trim());
-    const validSO = soLines.filter((l) => l.itemName.trim());
+    const validJO = joLines.filter((l) => l.ServiceTypeId);
+    const validSO = soLines.filter((l) => l.ProductId);
 
     const totalServices = validJO.reduce((s, l) => s + l.amount, 0);
     const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
@@ -304,6 +336,12 @@ useEffect(() => {
 
     return { totalServices, totalParts, subtotal, serviceTax, partsTax, totalTax, total, validJO, validSO };
   }, [joLines, soLines, serviceTaxType, serviceTaxValue, partsTaxType, partsTaxValue]);
+
+  const toNumber = (val: string, max = Infinity) => {
+    const num = parseFloat(val);
+    if (isNaN(num)) return 0;
+    return Math.min(Math.max(0, num), max);
+  };
 
   const peso = (n: number) =>
     `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -321,36 +359,110 @@ useEffect(() => {
       {type === "₱" ? (
         <div className="relative">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₱</span>
-          <Input type="number" value={value || ""} onChange={e => setValue(Number(e.target.value))} className="w-24 h-7 pl-6 text-sm" />
+          <Input type="number" value={value || ""} onChange={e => setValue(toNumber(e.target.value))} className="w-24 h-7 pl-6 text-sm" />
         </div>
       ) : (
         <div className="relative">
-          <Input type="number" value={value || ""} onChange={e => setValue(Number(e.target.value))} className="w-24 h-7 pr-6 text-right text-sm" />
+          <Input type="number" value={value || ""} onChange={e => setValue(toNumber(e.target.value, type === "%" ? 100 : 100000))} className="w-24 h-7 pr-6 text-right text-sm" />
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
         </div>
       )}
     </div>
   );
 
-  const saveEstimate = () => {
-    const now = new Date().toISOString();
-    const newEstimate: Estimate = {
-      id: `EST-${Date.now()}`,
-      estimateNo: `EST-${Date.now()}`,
-      date: now,
-      lastEdited: now,
-      status: "issued",
-      services: joLines.map((l) => ({ name: l.service, category: l.category, price: l.amount })),
-      parts: soLines.map((l) => ({ name: l.itemName, sku: l.partNo, quantity: l.quantity, unit: "pc", price: l.unitPrice, currentStock: 0 })),
-    };
-    console.log("Saved Estimate:", newEstimate);
+const saveEstimate = () => {
+  if (!selectedCustomer || !selectedVehicle) {
+    alert("Select customer and vehicle.");
+    return;
+  }
+
+  // validate relationship via customerId
+  const isValidVehicle = vehicles.some(
+    (v) =>
+      v.id === selectedVehicle.id &&
+      v.customerId === selectedCustomer.id
+  );
+
+  if (!isValidVehicle) {
+    alert("Invalid vehicle for selected customer.");
+    return;
+  }
+
+  const now = new Date().toISOString();
+
+  const newEstimate: Estimate = {
+    id: `EST-${crypto.randomUUID()}`,
+    customer: selectedCustomer,
+    vehicle: selectedVehicle,
+    services: joLines
+      .filter((l) => l.ServiceTypeId)
+      .map((l) => {
+        const found = servicesMap[l.ServiceTypeId];
+
+        return {
+          id: l.id,
+          ServiceTypeId: l.ServiceTypeId,
+          name: found?.name || "",
+          category: found?.category || "",
+          hourlyRate: found?.hourlyRate || 0,
+          hours: l.hours,
+          amount: l.amount,
+        };
+      }),
+    parts: soLines
+      .filter((l) => l.ProductId)
+      .map((l) => {
+        const found = partsMap[l.ProductId];
+
+        return {
+          id: l.id,
+          ProductId: l.ProductId,
+          name: found?.name || "",
+          sku: found?.sku || "",
+          price: found?.price || 0,
+          unit: found?.unit || "",
+          currentStock: found?.currentStock || 0,
+          quantity: l.quantity,
+          amount: l.amount,
+        };
+      }),
+    createdAt: now,
+    lastEdited: now,
+    status: "issued",
+    subtotalServices: totals.totalServices,
+    subtotalParts: totals.totalParts,
+    serviceTax: totals.serviceTax,
+    partsTax: totals.partsTax,
+    total: totals.total,
+    notes: notes || undefined,
   };
 
-  const calculateDropdown = (el: HTMLInputElement | null) => {
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    return { top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width };
-  };
+  if (totals.validJO.length === 0 && totals.validSO.length === 0) {
+    alert("Add at least one service or part.");
+    return;
+  }
+
+  if (totals.validJO.some(l => !l.hours || l.hours <= 0) || totals.validSO.some(l => !l.quantity || l.quantity <= 0)) {
+    alert("Ensure all services/parts is not empty.");
+    return;
+}
+
+  let estimates: Estimate[] = [];
+  try {
+    const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    estimates = Array.isArray(existing) ? existing : [];
+  } catch (err) {
+    console.error("Invalid localStorage data", err);
+    estimates = [];
+  }
+
+  estimates.push(newEstimate);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(estimates));
+
+  console.log("Estimate saved to localStorage:", newEstimate);
+  alert("Estimate successfully created!");
+};
+
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
@@ -382,27 +494,38 @@ useEffect(() => {
             <div className="space-y-2">
               <div>
                 <Label className="text-muted-foreground font-normal text-xs">Full Name</Label>
-                  <Combobox
-                    value={selectedCustomer?.id || ""}
-                    onChange={(val) => {
-                      const customer = customers.find((c) => c.id === val) || null;
-                      setSelectedCustomer(customer);
+                <Combobox
+                  value={selectedCustomer?.name || ""} 
+                  onChange={(val) => {
+                    const customer = customers.find(c => c.id === val) || null;
 
-                      if (customer?.vehicles.length === 1) {
-                        setSelectedVehicle(customer.vehicles[0]);
-                      } else {
-                        setSelectedVehicle(null);
-                      }
-                    }}
-                    items={customers.map((c) => ({
-                      label: c.name,
-                      value: c.id,
-                    }))}
-                    placeholder="Select customer"
-                    allowAdd
-                    addLabel="customer"
-                    onAdd={handleAddCustomer}
-                  />
+                    setSelectedCustomer(customer);
+
+                    // Normalize vehicle selection
+                    if (!customer) {
+                      setSelectedVehicle(null);
+                      return;
+                    }
+
+                    const customerVehicles = vehicles.filter(v => v.customerId === customer.id);
+                    
+                    if (customerVehicles.length === 0) {
+                      setSelectedVehicle(null);
+                    } else if (customerVehicles.length === 1) {
+                      setSelectedVehicle(customerVehicles[0]);
+                    } else {
+                      setSelectedVehicle(null);
+                    }
+                  }}
+                  items={customers.map((c) => ({
+                    label: c.name,
+                    value: c.id,
+                  }))}
+                  placeholder="Select customer"
+                  allowAdd
+                  addLabel="customer"
+                  onAdd={handleAddCustomer}
+                />
               </div>
               <div>
                 <Label className="text-muted-foreground font-normal text-xs">Address</Label>
@@ -461,33 +584,35 @@ useEffect(() => {
                     Year / Make / Model
                   </Label>
 
-                  {/* NO CUSTOMER */}
-                  {!selectedCustomer && (
+                  {!selectedCustomer ? (
                     <Input value="" placeholder="Select customer first" disabled />
-                  )}
-
-                  {/* ONE VEHICLE → READ ONLY */}
-                  {selectedCustomer && selectedCustomer.vehicles.length === 1 && (
+                  ) : customerVehicles.length === 1 ? (
                     <Input
-                      value={`${selectedCustomer.vehicles[0].year} ${selectedCustomer.vehicles[0].make} ${selectedCustomer.vehicles[0].model}`}
+                      value={`${customerVehicles[0].year} ${customerVehicles[0].make} ${customerVehicles[0].model}`}
                       readOnly
                     />
-                  )}
-
-                  {/* MULTIPLE VEHICLES → COMBOBOX */}
-                  {selectedCustomer && selectedCustomer.vehicles.length > 1 && (
+                  ) : (
                     <Combobox
                       value={selectedVehicle?.id || ""}
                       onChange={(val) => {
                         const vehicle =
-                          selectedCustomer.vehicles.find(v => v.id === val) || null;
+                          customerVehicles.find(v => v.id === val) || null;
                         setSelectedVehicle(vehicle);
                       }}
-                      items={selectedCustomer.vehicles.map(v => ({
+                      items={customerVehicles.map(v => ({
                         label: `${v.year} ${v.make} ${v.model}`,
                         value: v.id,
                       }))}
-                      placeholder="Select vehicle"
+                      placeholder={
+                        customerVehicles.length === 0
+                          ? "Select vehicle"
+                          : "Select vehicle"
+                      }
+                      allowAdd
+                      addLabel="vehicle"
+                      onAdd={() => {
+                        setVehicleModalOpen(true);
+                      }}
                     />
                   )}
                 </div>
@@ -577,26 +702,42 @@ useEffect(() => {
                   </TableHeader>
                   <TableBody>
                     {joLines.map((l, idx) => {
-                      const filtered = servicesCatalog.filter((s) => s.name.toLowerCase().includes(l.service.toLowerCase()));
                       return (
                         <TableRow key={l.id}>
                           <TableCell className="relative overflow-visible">
                             <Combobox
-                              value={l.service}
-                              onChange={(val) => updateJO(idx, "service", val)}
+                              value={l.ServiceTypeId}
+                              onChange={(val) => updateJO(idx, "ServiceTypeId", val)}
                               items={servicesCatalog.map((s) => ({
                                 label: `${s.name} - ₱${s.hourlyRate.toLocaleString()}`,
-                                value: s.name,
+                                value: s.id,
                               }))}
                               placeholder="Select service"
-                              allowAdd={true}
-                              addLabel="service"
-                              onAdd={(val) => updateJO(idx, "service", val)}
                             />
                           </TableCell>
-                          <TableCell>{peso(l.hourlyRate)}</TableCell>
+                          <TableCell>{peso(
+                            servicesMap[l.ServiceTypeId]?.hourlyRate || 0
+                          )}</TableCell>
                           <TableCell>
-                            <Input value={l.hours} onChange={(e) => updateJO(idx, "hours", e.target.value)} />
+                            <Input
+                              type="number"
+                              min={0}
+                              value={l.hours === 0 ? "0" : String(l.hours)}
+                              onFocus={(e) => {
+                                if (l.hours === 0) { updateJO(idx, "hours", ""); }
+                              }}
+                              onBlur={(e) => {
+                                const val = e.target.value;
+
+                                if (val === "" || Number(val) === 0) { updateJO(idx, "hours", 0); }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                // block negative sign
+                                if (val.includes("-")) return;
+                                updateJO(idx, "hours", val === "" ? "" : Number(val));
+                              }}
+                            />
                           </TableCell>
                           <TableCell>{peso(l.amount)}</TableCell>
                           <TableCell>
@@ -636,27 +777,42 @@ useEffect(() => {
                   </TableHeader>
                   <TableBody>
                     {soLines.map((l, idx) => {
-                      const filtered = partsCatalog.filter((p) => p.name.toLowerCase().includes(l.itemName.toLowerCase()));
                       return (
                         <TableRow key={l.id}>
                           <TableCell>
                             <Combobox
-                              value={l.itemName}
-                              onChange={(val) => updateSO(idx, "itemName", val)}
+                              value={l.ProductId}
+                              onChange={(val) => updateSO(idx, "ProductId", val)}
                               items={partsCatalog.map((p) => ({
                                 label: `${p.name} - SKU: ${p.sku}`,
-                                value: p.name,
+                                value: p.id,
                               }))}
                               placeholder="Select part"
-                              allowAdd={true}
-                              addLabel="part"
-                              onAdd={(val) => updateSO(idx, "itemName", val)}
                             />
                           </TableCell>
                           <TableCell>
-                            <Input type="number" value={l.quantity} onChange={(e) => updateSO(idx, "quantity", Number(e.target.value))} />
+                            <Input
+                              type="number"
+                              min={0}
+                              value={l.quantity === 0 ? "0" : String(l.quantity)}
+                              onFocus={(e) => {
+                                if (l.quantity === 0) { updateSO(idx, "quantity", ""); }
+                              }}
+                              onBlur={(e) => {
+                                const val = e.target.value;
+                                if (val === "" || Number(val) === 0) { updateSO(idx, "quantity", 0); }
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                // block negative sign
+                                if (val.includes("-")) return;
+                                updateSO(idx, "quantity", val === "" ? "" : Number(val));
+                              }}
+                            />
                           </TableCell>
-                          <TableCell>{peso(l.unitPrice)}</TableCell>
+                          <TableCell>{peso(
+                            partsMap[l.ProductId]?.price || 0
+                          )}</TableCell> 
                           <TableCell>{peso(l.amount)}</TableCell>
                           <TableCell>
                             {soLines.length > 1 && (
@@ -705,15 +861,36 @@ useEffect(() => {
 
                   <div className="space-y-2 pt-2">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Internal Notes</Label>
-                    <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Terms, warranty info, etc..." rows={3} className="resize-none text-xs bg-background" />
+                    <Textarea 
+                    value={notes} 
+                      onChange={e => setNotes(e.target.value)} 
+                      placeholder="Terms, warranty info, etc..." 
+                      rows={3} 
+                      className="resize-none text-xs bg-background" 
+                    />
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
-                    <Button className="w-full shadow-md" size="lg">Issue Estimate</Button>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant="outline" size="sm">Generate Invoice</Button>
-                      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-destructive hover:bg-destructive/10">Discard</Button>
-                    </div>
+                    <Button
+                      className="w-full shadow-md" 
+                      size="lg"
+                      onClick={saveEstimate}
+                      disabled= {
+                        !selectedCustomer || 
+                        !selectedVehicle ||
+                        (totals.validJO.length === 0 && totals.validSO.length === 0) 
+                      }
+                    >
+                      Issue Estimate
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => navigate(-1)} 
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      Discard
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -726,11 +903,6 @@ useEffect(() => {
         </div>
       </div>
 
-      <CustomerFormModal
-        open={customerModalOpen}
-        onOpenChange={setCustomerModalOpen}
-        onSaved={handleCustomerSaved}
-      />
 
     </div>
   );

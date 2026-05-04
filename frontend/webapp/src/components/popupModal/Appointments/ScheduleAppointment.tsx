@@ -33,25 +33,12 @@ interface VehicleModel {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: (data: {
-    firstName: string;
-    lastName: string;
-    phone: string;
-    email?: string;
-    make: string;
-    model: string;
-    plateNumber: string;
-    service: string;
-    notes?: string;
-    datetime: string;
-  }) => void;
+  onSaved?: (data: any) => void;
+  initialData?: any;
+  isEdit?: boolean;
 }
 
 /* ================= HELPERS ================= */
-const genId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : Math.random().toString(36).substring(2);
 
 /* SAFE PARSE */
 const safeParse = <T,>(value: string | null, fallback: T): T => {
@@ -63,11 +50,6 @@ const safeParse = <T,>(value: string | null, fallback: T): T => {
 };
 
 const normalize = (val: string) => val?.trim().toLowerCase();
-
-const normalizePhone = (p: string) => p.replace(/\D/g, "");
-
-const formatPlate = (p: string) =>
-  p.toUpperCase().replace(/\s+/g, "").trim();
 
 const toTitleCase = (str: string) =>
   (str || "")
@@ -115,6 +97,8 @@ const combineDateTime = (date: Date, time: string) => {
     open,
     onOpenChange,
     onSaved,
+    initialData,
+    isEdit,
   }) => {
     const [form, setForm] = useState({
       firstName: "",
@@ -141,6 +125,54 @@ const combineDateTime = (date: Date, time: string) => {
       const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
       setVehicleModels(safeParse(stored, []));
     }, [open]);
+
+  const EMPTY_FORM = {
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    make: "",
+    model: "",
+    plateNumber: "",
+    service: "",
+    notes: "",
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (!initialData) {
+      setForm(EMPTY_FORM);
+      setSelectedDate(null);
+      setSelectedTime("");
+      return;
+    }
+
+    setForm({
+      firstName: initialData.firstName || "",
+      lastName: initialData.lastName || "",
+      phone: initialData.phone || "",
+      email: initialData.email || "",
+      make: initialData.make || "",
+      model: initialData.model || "",
+      plateNumber: initialData.plateNumber || "",
+      service: initialData.service || "",
+      notes: initialData.notes || "",
+    });
+
+    if (initialData.datetime) {
+      const d = new Date(initialData.datetime);
+      setSelectedDate(d);
+
+      const hours = d.getHours();
+      const minutes = d.getMinutes().toString().padStart(2, "0");
+      const ampm = hours >= 12 ? "PM" : "AM";
+      const formattedHour = hours % 12 || 12;
+
+      setSelectedTime(`${formattedHour}:${minutes} ${ampm}`);
+    }
+  }, [open, initialData]);
+
 
     /* OPTIONS */
     const makeOptions = useMemo(() => {
@@ -411,7 +443,7 @@ const combineDateTime = (date: Date, time: string) => {
             Cancel
           </Button>
           <Button onClick={handleSave}>
-            Save Appointment
+            {isEdit? "Update Appointment" : "Schedule Appointment"}
           </Button>
         </DialogFooter>
 

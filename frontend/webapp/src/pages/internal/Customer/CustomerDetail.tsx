@@ -216,7 +216,7 @@ useEffect(() => {
     );
 
     const updated = allVehicles.filter(v => v.id !== vehicleToRemove.id);
-
+                                         
     localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(updated));
 
     const customerVehicles = updated.filter(v => v.customerId === id);

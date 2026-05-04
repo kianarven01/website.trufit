@@ -19,6 +19,7 @@ interface CalendarProps {
 
 const Calendar: React.FC<CalendarProps> = ({
   mode = "single",
+  value,
   onSelect,
   events = [],
   statusColors = {
@@ -91,6 +92,12 @@ const Calendar: React.FC<CalendarProps> = ({
     setCurrentDate(new Date(y, m, 1));
     setOpenPicker(false);
   };
+
+  useEffect(() => {
+    if (mode === "single") {
+      setSelectedDate(value ?? null);
+    }
+  }, [value, mode]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

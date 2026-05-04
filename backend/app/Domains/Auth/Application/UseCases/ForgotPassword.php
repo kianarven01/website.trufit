@@ -50,7 +50,8 @@ class ForgotPassword
         }
 
         try {
-            $this->mailService->sendVerificationCode($employee->email, $code, $employee->name);
+            $employeeName = trim($employee->first_name . ' ' . $employee->last_name);
+            $this->mailService->sendVerificationCode($employee->email, $code, $employeeName);
             return [
                 'status' => 'success',
                 'message' => 'A password reset code has been sent to your email.'

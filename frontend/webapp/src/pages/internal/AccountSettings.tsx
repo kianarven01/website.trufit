@@ -22,7 +22,8 @@ const AccountSettings: React.FC = function () {
   const { user, updateUser } = useAuth();
 
   // Profile fields
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -38,7 +39,8 @@ const AccountSettings: React.FC = function () {
   // Sync state with user data
   useEffect(() => {
     if (user) {
-      setFullName(user.name || "");
+      setFirstName(user.first_name || "");
+      setLastName(user.last_name || "");
       setAddress(user.address || "");
       setEmail(user.email || "");
       setPhone(user.phone || "");
@@ -77,7 +79,8 @@ const AccountSettings: React.FC = function () {
     setLoading(true);
     try {
       const response = await api.put("/auth/profile", {
-        name: fullName,
+        first_name: firstName,
+        last_name: lastName,
         address,
         phone,
         username,
@@ -275,8 +278,11 @@ const AccountSettings: React.FC = function () {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="fullName" className="text-xs">Full Name</Label>
-                  <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} className="h-8" />
+                  <Label className="text-xs">Full Name</Label>
+                  <div className="flex gap-2">
+                    <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-8" placeholder="First Name" />
+                    <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-8" placeholder="Last Name" />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">

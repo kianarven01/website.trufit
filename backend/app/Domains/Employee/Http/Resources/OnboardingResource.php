@@ -11,7 +11,8 @@ class OnboardingResource extends JsonResource
         return [
             'id' => $this->id,
             // Try key record first, fall back to employee relationship for old records
-            'employee_name' => $this->employee_name ?? $this->employee->name ?? 'Unknown Employee', 
+            'first_name' => $this->first_name ?? $this->employee->first_name ?? 'Unknown',
+            'last_name' => $this->last_name ?? $this->employee->last_name ?? '',
             'email' => $this->email ?? $this->employee->email ?? 'N/A',
             'key_code' => $this->key_code,
             'is_used' => (bool)$this->is_used,

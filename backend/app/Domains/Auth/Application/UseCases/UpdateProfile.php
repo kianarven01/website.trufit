@@ -31,7 +31,8 @@ class UpdateProfile
 
         // Capture old values for audit
         $oldValues = [
-            'name' => $employee->name,
+            'first_name' => $employee->first_name,
+            'last_name' => $employee->last_name,
             'address' => $employee->address,
             'phone' => $employee->phone,
             'username' => $user->username,
@@ -40,7 +41,8 @@ class UpdateProfile
         try {
             DB::beginTransaction();
 
-            $employee->name = $dto->name;
+            $employee->first_name = $dto->first_name;
+            $employee->last_name = $dto->last_name;
             $employee->address = $dto->address ?: null;
             $employee->phone = $dto->phone ?: null;
             $this->employeeRepository->save($employee);
@@ -54,7 +56,8 @@ class UpdateProfile
                 (string)$employee->id,
                 $oldValues,
                 [
-                    'name' => $dto->name,
+                    'first_name' => $dto->first_name,
+                    'last_name' => $dto->last_name,
                     'address' => $employee->address,
                     'phone' => $employee->phone,
                     'username' => $dto->username,

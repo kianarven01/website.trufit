@@ -26,11 +26,11 @@ class KeyService
         return DB::transaction(function () use ($dto) {
             // 1. Generate Key
             $keyCode = 'TRUFIT-' . strtoupper(Str::random(6));
-            $employeeName = "{$dto->firstName} {$dto->lastName}";
 
             // 2. Save Key via Repository
             $key = $this->repository->create([
-                'employee_name' => $employeeName,
+                'first_name'    => $dto->firstName,
+                'last_name'     => $dto->lastName,
                 'email'         => $dto->email,
                 'address'       => $dto->address,
                 'phone'         => $dto->phone,
@@ -39,6 +39,8 @@ class KeyService
                 'key_code'      => $keyCode,
                 'expires_at'    => now()->addDays(7)
             ]);
+
+            $employeeName = "{$dto->firstName} {$dto->lastName}";
 
             // 3. Audit the action
             $this->auditService->log(
@@ -85,7 +87,8 @@ class KeyService
             );
 
              // 4. Send Email
-             $this->mailService->sendRegistrationKey($registrationKey->email, $newCode, $registrationKey->employee_name);
+             $employeeName = trim($registrationKey->first_name . ' ' . $registrationKey->last_name);
+             $this->mailService->sendRegistrationKey($registrationKey->email, $newCode, $employeeName);
 
             return $newCode;
         });

@@ -149,7 +149,7 @@ const LoginPage: React.FC = () => {
         navigate("/webapp/register", {
           state: {
             validKey: regKey,
-            employeeName: employeeData.employee_name,
+            employeeName: `${employeeData.first_name} ${employeeData.last_name}`.trim(),
             position: employeeData.position,
           },
         });

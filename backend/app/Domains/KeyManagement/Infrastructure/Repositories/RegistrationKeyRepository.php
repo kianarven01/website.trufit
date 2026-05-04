@@ -24,7 +24,8 @@ class RegistrationKeyRepository
     public function create(array $data): RegistrationKey
     {
         return RegistrationKey::create([
-            'employee_name' => $data['employee_name'],
+            'first_name'    => $data['first_name'],
+            'last_name'     => $data['last_name'],
             'email'         => $data['email'],
             'address'       => $data['address'],
             'phone'         => $data['phone'],

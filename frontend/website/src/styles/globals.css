@@ -113,6 +113,12 @@ body {
   color: white !important;
 }
 
+.react-datepicker {
+  display: flex !important;
+  width: max-content !important;
+  align-items: stretch !important;
+}
+
 .react-datepicker__header {
   background-color: #0f1115 !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -163,14 +169,24 @@ body {
 }
 
 .react-datepicker__time-container {
+  height: auto !important;
+  display: flex;
+  flex-direction: column;
   width: 80px !important;
   border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
   background-color: #0f1115 !important;
 }
 
 .react-datepicker__time-box {
+  height: 100% !important;
   width: 80px !important;
   background-color: #0f1115 !important;
+}
+
+.react-datepicker__time-list {
+  height: 100% !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
 }
 
 .react-datepicker__time-list-item {

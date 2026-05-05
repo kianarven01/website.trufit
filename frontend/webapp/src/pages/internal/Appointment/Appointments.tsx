@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -12,6 +12,7 @@ import Calendar from "@/components/ui/calendar-appointment";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import ScheduleAppointment from "@/components/popupModal/Appointments/ScheduleAppointment";
 import ReschedAppointment from "@/components/popupModal/Appointments/ReschedAppointment";
+import { NotesPanel } from "@/components/ui/note-panel";
 import { toast } from "sonner";
 
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -299,6 +300,11 @@ const AppointmentsList: React.FC = () => {
     return appointments.find(a => a.id === editingAppointmentId) || null;
   }, [appointments, editingAppointmentId]);
 
+  const getDateKey = (date?: string | null) => {
+    if (!date) return "no-date";
+
+    return new Date(date).toLocaleDateString("en-CA"); 
+  };
 
   const getEditableData = (apt: Appointment) => {
     const customer = customerMap.get(apt.customerId);
@@ -332,6 +338,7 @@ const AppointmentsList: React.FC = () => {
       return updated;
     });
   };
+
 
   /* ================= SEARCH ================= */
   const normalize = (val: string) =>
@@ -691,8 +698,8 @@ const AppointmentsList: React.FC = () => {
                     <TableHead className="w-[10%]">No.</TableHead>
                     <TableHead className="w-[20%]">Customer</TableHead>
                     <TableHead className="w-[20%]">Vehicle</TableHead>
-                    <TableHead className="w-[15%]">Service</TableHead>
-                    <TableHead className="w-[20%]">Date & Time</TableHead>
+                    <TableHead className="w-[18%]">Service</TableHead>
+                    <TableHead className="w-[17%]">Date & Time</TableHead>
                     <TableHead className="w-[15%]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -736,8 +743,8 @@ const AppointmentsList: React.FC = () => {
                               {(() => {
                                 const services: string[] = a.services ?? [];
 
-                                const visible = services.slice(0, 2);
-                                const hasMore = services.length > 2;
+                                const visible = services.slice(0, 1);
+                                const hasMore = services.length > 1;
 
                                 return (
                                   <>
@@ -821,7 +828,7 @@ const AppointmentsList: React.FC = () => {
           </CardContent>
         </Card>
         )}
-        <div className="w-[360px] flex-shrink-0 flex flex-col overflow-hidden">
+        <div className="w-[360px] flex-shrink-0 flex flex-col overflow-hidden space-y-4">
           <Calendar 
             mode="single" 
             value={selectedDate ? new Date(selectedDate) : null}
@@ -831,7 +838,18 @@ const AppointmentsList: React.FC = () => {
               confirmed: "bg-blue-600",
               "for approval": "bg-orange-400",
             }}
-          />          
+          />  
+          {selectedDate ? (
+            <NotesPanel
+              storageKey={`notes:date:${getDateKey(selectedDate)}`}
+              title="Notes for this day"
+              className="flex-1 min-h-0 h-full"
+            />
+          ) : (
+            <div className="flex-1 p-4 text-sm text-muted-foreground border rounded-xl">
+              Select a date from the calendar to view or add notes
+            </div>
+          )}
         </div>  
 
 

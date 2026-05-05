@@ -6,7 +6,8 @@ import { MoreVertical } from "lucide-react";
 
 interface Employee {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
   address?: string;
@@ -61,9 +62,12 @@ const Employees: React.FC = () => {
       })
       .filter((e) => {
         const q = searchQuery.toLowerCase();
+        const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
 
         return (
-          e.name?.toLowerCase().includes(q) ||
+          fullName.includes(q) ||
+          e.first_name?.toLowerCase().includes(q) ||
+          e.last_name?.toLowerCase().includes(q) ||
           e.email?.toLowerCase().includes(q) ||
           e.position?.toLowerCase().includes(q)
         );
@@ -101,12 +105,12 @@ const Employees: React.FC = () => {
     const [open, setOpen] = useState(false);
 
     const handleEdit = () => {
-      alert(`Edit ${emp.name}`);
+      alert(`Edit ${emp.first_name} ${emp.last_name}`);
       setOpen(false);
     };
 
     const handleDeactivate = () => {
-      alert(`Deactivate ${emp.name}`);
+      alert(`Deactivate ${emp.first_name} ${emp.last_name}`);
       setOpen(false);
     };
 
@@ -147,7 +151,7 @@ const Employees: React.FC = () => {
       render: (emp) => (
         <div>
           <div className="font-semibold uppercase tracking-tight">
-            {emp.name || "Unnamed"}
+            {`${emp.first_name} ${emp.last_name}`.trim() || "Unnamed"}
           </div>
           <div className="text-[10px] text-muted-foreground">{emp.email}</div>
         </div>

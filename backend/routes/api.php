@@ -27,6 +27,7 @@ Route::prefix('products')->group(function () {
     Route::get('/categories', [ProductReferenceController::class, 'categories']);
     Route::get('/units', [ProductReferenceController::class, 'units']);
     Route::get('/suppliers', [SupplierController::class, 'index']);
+    Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
 });
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require app_path('Domains/Employee/routes.php');
     require app_path('Domains/KeyManagement/routes.php');
     require app_path('Domains/Audit/routes.php');
+    require app_path('Domains/Customer/routes.php');
     // Future Domains will go here:
     // require app_path('Domains/Inventory/routes.php');
     // require app_path('Domains/Sales/routes.php');

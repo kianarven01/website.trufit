@@ -12,7 +12,7 @@ class AuditLogResource extends JsonResource
             'id' => $this->id,
             'actor' => [
                 'id' => $this->employee_id,
-                'name' => $this->actor->name ?? 'System',
+                'name' => $this->actor ? trim($this->actor->first_name . ' ' . $this->actor->last_name) : 'System',
             ],
             'event_type' => $this->event_type,
             'action' => $this->action,

@@ -1,15 +1,27 @@
 import { useState, useEffect, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
 import Combobox from "@/components/ui/combobox";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/date-time-picker";
 
 interface PurchaseOrderItem {
   id: string;
@@ -27,11 +39,16 @@ interface PurchaseOrder {
   orderDate: string;
   requestedShipDate: string;
   eta?: string | null;
-  status: "for-approval" | "pending" | "approved" | "cancelled" | "in-transit" | "received" | "delivered";
+  status:
+    | "for-approval"
+    | "pending"
+    | "approved"
+    | "cancelled"
+    | "in-transit"
+    | "received"
+    | "delivered";
   notes?: string;
   requestedBy: string;
-  linkedSO?: string | null;
-  linkedJO?: string | null;
   items: PurchaseOrderItem[];
   total: number;
   createdAt: string;
@@ -54,20 +71,34 @@ const emptyItem = (): PurchaseOrderItem => ({
   sku: "",
   quantity: 1,
   unitPrice: 0,
-  amount: 0,
+  amount: 0
 });
 
-const STATUS_OPTIONS: { value: PurchaseOrder["status"]; label: string }[] = [
+const STATUS_OPTIONS: {
+  value: PurchaseOrder["status"];
+  label: string;
+}[] = [
   { value: "for-approval", label: "For Approval" },
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "cancelled", label: "Cancelled" },
   { value: "in-transit", label: "In Transit" },
   { value: "received", label: "Received" },
-  { value: "delivered", label: "Delivered" },
+  { value: "delivered", label: "Delivered" }
 ];
 
-export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: Props) {
+// ✅ SAFE DATE PARSER (IMPORTANT FIX)
+const safeDate = (value: string) => {
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+export function PurchaseOrderModal({
+  open,
+  onOpenChange,
+  initialData,
+  onSave
+}: Props) {
   const isEdit = !!initialData;
 
   const [supplier, setSupplier] = useState("");
@@ -76,7 +107,10 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
   const [eta, setETA] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<PurchaseOrderItem[]>([emptyItem()]);
-  const [status, setStatus] = useState<PurchaseOrder["status"]>("for-approval");
+  const [status, setStatus] =
+    useState<PurchaseOrder["status"]>("for-approval");
+
+  const [activeCalendar, setActiveCalendar] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -90,7 +124,10 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
         setStatus(initialData.status);
       } else {
         const today = new Date().toISOString().split("T")[0];
-        const next7 = new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0];
+        const next7 = new Date(Date.now() + 7 * 86400000)
+          .toISOString()
+          .split("T")[0];
+
         setSupplier("");
         setOrderDate(today);
         setShipDate(next7);
@@ -99,27 +136,42 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
         setItems([emptyItem()]);
         setStatus("for-approval");
       }
+
+      setActiveCalendar(null);
     }
   }, [open, initialData]);
 
-  const updateItem = (idx: number, field: keyof PurchaseOrderItem, value: string | number) => {
-    setItems(prev =>
+  const updateItem = (
+    idx: number,
+    field: keyof PurchaseOrderItem,
+    value: string | number
+  ) => {
+    setItems((prev) =>
       prev.map((item, i) => {
         if (i !== idx) return item;
+
         const updated = { ...item, [field]: value } as PurchaseOrderItem;
+
         if (field === "quantity" || field === "unitPrice") {
           updated.amount = updated.quantity * updated.unitPrice;
         }
+
         return updated;
       })
     );
   };
 
-  const total = useMemo(() => items.reduce((s, i) => s + i.amount, 0), [items]);
-  const peso = (n: number) => `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  const total = useMemo(
+    () => items.reduce((s, i) => s + i.amount, 0),
+    [items]
+  );
+
+  const peso = (n: number) =>
+    `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
   const handleSave = () => {
-    const validItems = items.filter(i => i.itemName.trim());
+    const validItems = items.filter((i) => i.itemName.trim());
+
     if (!supplier.trim() || validItems.length === 0) {
       alert("Supplier and at least one item are required");
       return;
@@ -137,7 +189,7 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
       requestedBy: initialData?.requestedBy || "John Doe",
       notes,
       createdAt: initialData?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     onSave?.(data);
@@ -148,25 +200,34 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>{isEdit ? "Edit Purchase Order" : "Create Purchase Order"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "Edit Purchase Order" : "Create Purchase Order"}
+          </DialogTitle>
         </DialogHeader>
 
         <ScrollArea className="max-h-[68vh]">
           <div className="px-6 pb-4 space-y-4">
+
             {/* HEADER */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 ">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="md:col-span-2 flex flex-col">
                 <Label className="text-sm">Supplier *</Label>
-                <Input value={supplier} onChange={e => setSupplier(e.target.value)} placeholder="Supplier name" />
+                <Input
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  placeholder="Supplier name"
+                />
               </div>
 
-              <div className=" flex flex-col">
+              <div className="flex flex-col">
                 <Label className="text-sm">Status</Label>
                 {isEdit ? (
                   <Combobox
                     value={status}
-                    onChange={val => setStatus(val as PurchaseOrder["status"])}
-                    items={STATUS_OPTIONS.map(s => s.value)}
+                    onChange={(val) =>
+                      setStatus(val as PurchaseOrder["status"])
+                    }
+                    items={STATUS_OPTIONS.map((s) => s.value)}
                     placeholder="Select status"
                   />
                 ) : (
@@ -175,77 +236,91 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
               </div>
             </div>
 
-              {/* DATES */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-sm">Order Date</Label>
-                  <Calendar
-                    selectedDate={orderDate ? new Date(orderDate) : null}
-                    onSelectDate={(date) => setOrderDate(date.toISOString().split("T")[0])}
-                    placeholder="Select Order Date"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Request Ship Date</Label>
-                  <Calendar
-                    selectedDate={shipDate ? new Date(shipDate) : null}
-                    onSelectDate={(date) => setShipDate(date.toISOString().split("T")[0])}
-                    placeholder="Select Ship Date"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Estimated Arrival</Label>
-                  <Calendar
-                    selectedDate={eta ? new Date(eta) : null}
-                    onSelectDate={(date) => setETA(date.toISOString().split("T")[0])}
-                    placeholder="Select ETA"
-                  />
-                </div>
-              </div>
 
-            {/* ITEMS TABLE */}
+            {/* DATES (FIXED SAFE VERSION) 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Calendar
+                id="orderDate"
+                activeCalendar={activeCalendar}
+                setActiveCalendar={setActiveCalendar}
+                selectedDate={safeDate(orderDate)}
+                onSelectDate={(date) =>
+                  setOrderDate(date.toISOString().split("T")[0])
+                }
+                placeholder="Order Date"
+              />
+
+              <Calendar
+                id="shipDate"
+                activeCalendar={activeCalendar}
+                setActiveCalendar={setActiveCalendar}
+                selectedDate={safeDate(shipDate)}
+                onSelectDate={(date) =>
+                  setShipDate(date.toISOString().split("T")[0])
+                }
+                placeholder="Ship Date"
+              />
+
+              <Calendar
+                id="eta"
+                activeCalendar={activeCalendar}
+                setActiveCalendar={setActiveCalendar}
+                selectedDate={safeDate(eta)}
+                onSelectDate={(date) =>
+                  setETA(date.toISOString().split("T")[0])
+                }
+                placeholder="ETA"
+              />
+            </div>
+            
+            */}
+
+            {/* ITEMS */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold">Items</p>
                 <Button
                   variant="outline"
                   size="xs"
-                  onClick={() => setItems(prev => [...prev, emptyItem()])}
+                  onClick={() =>
+                    setItems((prev) => [...prev, emptyItem()])
+                  }
                 >
                   <Plus className="h-3 w-3" /> Add Item
                 </Button>
               </div>
 
               <div className="border rounded-lg">
-                <Table className=" table-fixed w-full">
+                <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-sm">Item</TableHead>
-                      <TableHead className="text-sm w-[18%]">SKU</TableHead>
-                      <TableHead className="text-sm w-[15%]">Unit Price</TableHead>
-                      <TableHead className="text-sm w-[10%]">Qty</TableHead>
-                      <TableHead className="text-sm w-[15%]">Amount</TableHead>
-                      <TableHead className="text-sm w-[5%]" />
+                      <TableHead>Item</TableHead>
+                      <TableHead className="w-[18%]">SKU</TableHead>
+                      <TableHead className="w-[15%]">Unit Price</TableHead>
+                      <TableHead className="w-[10%]">Qty</TableHead>
+                      <TableHead className="w-[15%]">Amount</TableHead>
+                      <TableHead className="w-[5%]" />
                     </TableRow>
                   </TableHeader>
 
                   <TableBody>
                     {items.map((item, idx) => (
-                      <TableRow 
-                        key={item.id}
-                      >
+                      <TableRow key={item.id}>
                         <TableCell className="p-1.5">
-                          <Input 
+                          <Input
                             value={item.itemName}
-                            onChange={e => updateItem(idx, "itemName", e.target.value)}
-                            placeholder="Item name"
+                            onChange={(e) =>
+                              updateItem(idx, "itemName", e.target.value)
+                            }
                           />
                         </TableCell>
 
                         <TableCell className="p-1.5">
                           <Input
                             value={item.sku}
-                            onChange={e => updateItem(idx, "sku", e.target.value)}
+                            onChange={(e) =>
+                              updateItem(idx, "sku", e.target.value)
+                            }
                           />
                         </TableCell>
 
@@ -253,7 +328,13 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
                           <Input
                             type="number"
                             value={item.unitPrice || ""}
-                            onChange={e => updateItem(idx, "unitPrice", Number(e.target.value))}
+                            onChange={(e) =>
+                              updateItem(
+                                idx,
+                                "unitPrice",
+                                Number(e.target.value)
+                              )
+                            }
                           />
                         </TableCell>
 
@@ -261,11 +342,19 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
                           <Input
                             type="number"
                             value={item.quantity || ""}
-                            onChange={e => updateItem(idx, "quantity", Number(e.target.value))}
+                            onChange={(e) =>
+                              updateItem(
+                                idx,
+                                "quantity",
+                                Number(e.target.value)
+                              )
+                            }
                           />
                         </TableCell>
 
-                        <TableCell className="p-1.5 text-right font-medium">{peso(item.amount)}</TableCell>
+                        <TableCell className="p-1.5 text-right font-medium">
+                          {peso(item.amount)}
+                        </TableCell>
 
                         <TableCell className="p-1.5 text-center">
                           {items.length > 1 && (
@@ -273,8 +362,11 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
-                              onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}
-                              aria-label="Remove item"
+                              onClick={() =>
+                                setItems((prev) =>
+                                  prev.filter((_, i) => i !== idx)
+                                )
+                              }
                             >
                               <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
@@ -283,7 +375,7 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>                
+                </Table>
               </div>
 
               <div className="flex justify-end mt-2">
@@ -296,7 +388,10 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
             {/* NOTES */}
             <div>
               <Label className="text-sm">Notes</Label>
-              <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes..." />
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
             </div>
           </div>
         </ScrollArea>
@@ -305,7 +400,9 @@ export function PurchaseOrderModal({ open, onOpenChange, initialData, onSave }: 
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>{isEdit ? "Update PO" : "Create PO"}</Button>
+          <Button onClick={handleSave}>
+            {isEdit ? "Update PO" : "Create PO"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

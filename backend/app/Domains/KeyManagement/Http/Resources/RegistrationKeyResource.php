@@ -9,7 +9,8 @@ class RegistrationKeyResource extends JsonResource
     {
         return [
             'id'            => $this->id,
-            'employee_name' => $this->employee_name ?? $this->employee->name ?? 'Unknown',
+            'first_name'    => $this->first_name ?? $this->employee->first_name ?? 'Unknown',
+            'last_name'     => $this->last_name ?? $this->employee->last_name ?? '',
             'email'         => $this->email ?? $this->employee->email ?? 'Unknown',
             'key_code'      => $this->key_code,
             'is_used'       => (bool) $this->is_used,

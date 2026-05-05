@@ -9,6 +9,7 @@ import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { ImageIcon } from "lucide-react";
+import api from "@/api/axios";
 
 interface Customer {
   id: string;
@@ -71,31 +72,75 @@ const CustomersList: React.FC = () => {
 
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-
-      if (stored) {
-        const parsed: Customer[] = JSON.parse(stored);
-        setCustomers(parsed || []);
-      } else {
-        setCustomers([]);
+    const fetchCustomers = async () => {
+      try {
+        const res = await api.get('/customers');
+        const parsed = res.data.data.map((c: any) => ({
+          id: c.customer_id?.toString() || "",
+          firstName: c.first_name || "",
+          lastName: c.last_name || "",
+          address: c.address || "",
+          mobileNumber: c.mobile_number || "",
+          landline: c.landline || "",
+          email: c.email || "",
+          businessPhone: c.business || "",
+          vehicles: c.vehicles || []
+        }));
+        setCustomers(parsed);
+        
+        // Extract all vehicles from customers
+        const allVehicles: Vehicle[] = [];
+        parsed.forEach((c: any) => {
+            if (c.vehicles) {
+                c.vehicles.forEach((v: any) => {
+                    allVehicles.push({
+                        id: v.plate_number,
+                        customerId: c.id,
+                        vehicleModelId: v.variant_id?.toString() || "",
+                        color: v.Color,
+                        plateNo: v.plate_number,
+                        engineNo: v.engine_number,
+                        vin: v.VIN,
+                        registrationNo: v['registration _number'],
+                        sellingDealer: v.selling_dealer,
+                        hasWarranty: false
+                    });
+                });
+            }
+        });
+        setVehicles(allVehicles);
+      } catch (err) {
+        console.error("Failed to load customers", err);
       }
-    } catch (err) {
-      console.error("Failed to load customers", err);
-      setCustomers([]);
-    }
+    };
+    fetchCustomers();
   }, []);
 
   useEffect(() => {
-    try {
-      const v = localStorage.getItem(VEHICLE_STORAGE_KEY);
-      const m = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
-
-      if (v) setVehicles(JSON.parse(v));
-      if (m) setVehicleModels(JSON.parse(m));
-    } catch (err) {
-      console.error("Failed to load vehicles/models", err);
-    }
+    const fetchModels = async () => {
+      try {
+        const res = await api.get('/products/vehicles');
+        const models = res.data.data.flatMap((m: any) => {
+          return m.variants.length > 0 ? m.variants.map((v: any) => ({
+            id: v.id.toString(),
+            year: v.year,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: v.variant_name
+          })) : [{
+            id: m.id.toString(),
+            year: 0,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: ""
+          }];
+        });
+        setVehicleModels(models);
+      } catch (error) {
+        console.error("Failed to load models", error);
+      }
+    };
+    fetchModels();
   }, []);
 
 
@@ -115,10 +160,7 @@ const CustomersList: React.FC = () => {
   }, [vehicles]);  
 
 
-  /* SAVE */
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
-  }, [customers]);
+
 
   /* SEARCH & FILTER */
   const normalize = (val: string) =>
@@ -138,22 +180,30 @@ const CustomersList: React.FC = () => {
     const customerVehicles = vehiclesByCustomer.get(c.id) || [];
 
     // APPLY VEHICLE FILTERS
-    const matchesVehicleFilter =
-      customerVehicles.length === 0
-        ? filters.warranty === "all" &&
-          filters.make === "all" &&
-          filters.model === "all"
-        : customerVehicles.some((v) => {
-            const m = vehicleModelsMap.get(v.vehicleModelId);
-            if (!m) return false;
+    let matchesVehicleFilter = true;
+    
+    // Only apply strict vehicle filtering if a specific filter is active
+    if (filters.warranty !== "all" || filters.make !== "all" || filters.model !== "all") {
+        if (customerVehicles.length === 0) {
+            matchesVehicleFilter = false;
+        } else {
+            matchesVehicleFilter = customerVehicles.some((v) => {
+                const m = vehicleModelsMap.get(v.vehicleModelId);
+                
+                if (filters.warranty === "yes" && !v.hasWarranty) return false;
+                if (filters.warranty === "no" && v.hasWarranty) return false;
+                
+                // If filtering by make/model, we MUST have a model match
+                if (filters.make !== "all" || filters.model !== "all") {
+                    if (!m) return false;
+                    if (filters.make !== "all" && m.make !== filters.make) return false;
+                    if (filters.model !== "all" && m.model !== filters.model) return false;
+                }
 
-            if (filters.warranty === "yes" && !v.hasWarranty) return false;
-            if (filters.warranty === "no" && v.hasWarranty) return false;
-            if (filters.make !== "all" && m.make !== filters.make) return false;
-            if (filters.model !== "all" && m.model !== filters.model) return false;
-
-            return true;
-          });
+                return true;
+            });
+        }
+    }
 
     const vehicleText = customerVehicles
       .map((v) => {
@@ -357,8 +407,37 @@ const toolbarFilters = [
       <CustomerFormModal
         open={customerModalOpen}
         onOpenChange={setCustomerModalOpen}
-        onSaved={(newCustomer: Customer) => {
-          setCustomers((prev) => [newCustomer, ...prev]);
+        onSaved={(newCustomer: any) => {
+          // Re-fetch everything or manually map. For safety, full page reload is reliable,
+          // but we can just map the new customer:
+          const parsed = {
+            id: newCustomer.customer_id?.toString() || "",
+            firstName: newCustomer.first_name || "",
+            lastName: newCustomer.last_name || "",
+            address: newCustomer.address || "",
+            mobileNumber: newCustomer.mobile_number || "",
+            landline: newCustomer.landline || "",
+            email: newCustomer.email || "",
+            businessPhone: newCustomer.business || "",
+            vehicles: newCustomer.vehicles || []
+          };
+          setCustomers((prev) => [parsed, ...prev]);
+          
+          if (newCustomer.vehicles) {
+             const newVehicles = newCustomer.vehicles.map((v: any) => ({
+                 id: v.plate_number,
+                 customerId: parsed.id,
+                 vehicleModelId: v.variant_id?.toString() || "",
+                 color: v.Color,
+                 plateNo: v.plate_number,
+                 engineNo: v.engine_number,
+                 vin: v.VIN,
+                 registrationNo: v['registration _number'],
+                 sellingDealer: v.selling_dealer,
+                 hasWarranty: false
+             }));
+             setVehicles((prev) => [...prev, ...newVehicles]);
+          }
         }}
       />
     </div>

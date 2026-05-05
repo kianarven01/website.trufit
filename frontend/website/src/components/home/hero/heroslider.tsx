@@ -22,19 +22,32 @@ export default function HeroSlider() {
     setIsCompleting(false)
   }
 
-  // 1. Progress Bar Logic
+  // 1. Progress Bar Logic using requestAnimationFrame for smoothness
   useEffect(() => {
-    if (nextIndex !== null || isCompleting) return;
+    if (nextIndex !== null || isCompleting) {
+      setProgress(0);
+      return;
+    }
 
-    const timer = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + (100 / (intervalTime / 16));
-        return next >= 100 ? 100 : next;
-      });
-    }, 16);
+    let rafId: number;
+    const startTime = performance.now();
 
-    return () => clearInterval(timer);
-  }, [index, nextIndex, isCompleting]);
+    const update = () => {
+      const currentTime = performance.now();
+      const elapsed = currentTime - startTime;
+      const newProgress = Math.min((elapsed / intervalTime) * 100, 100);
+      
+      setProgress(newProgress);
+
+      if (newProgress < 100) {
+        rafId = requestAnimationFrame(update);
+      }
+    };
+
+    rafId = requestAnimationFrame(update);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [index, nextIndex, isCompleting, intervalTime]);
 
   // 2. Start Completion Phase (The "Ping")
   useEffect(() => {
@@ -82,7 +95,8 @@ export default function HeroSlider() {
             clipPath: "polygon(0% 0%, 200% 0%, 0% 200%)", 
             webkitClipPath: "polygon(0% 0%, 200% 0%, 0% 200%)",
             duration: 1.5, 
-            ease: "expo.inOut" 
+            ease: "expo.inOut",
+            force3D: true
           }
         );
         tl.to({}, { duration: 1.5 });
@@ -109,7 +123,7 @@ export default function HeroSlider() {
   return (
     <section
       ref={containerRef}
-      className="relative h-[600px] md:h-screen w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
+      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -132,7 +146,7 @@ export default function HeroSlider() {
       )}
 
       {/* Progress Bars */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[1820px] px-6 sm:px-10 lg:px-16 flex gap-2 z-50">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[1820px] px-6 sm:px-10 lg:px-16 flex gap-2 z-20">
         {slides.map((_, i) => (
           <div
             key={i}
@@ -140,10 +154,10 @@ export default function HeroSlider() {
             className="flex-1 h-2 md:h-3 bg-white/30 cursor-pointer relative overflow-hidden"
           >
             <div
-              className={`h-full bg-white transition-all ${i === index && isCompleting ? 'opacity-50' : 'opacity-100'}`}
+              className={`h-full bg-brand-red transition-all ${i === index && isCompleting ? 'opacity-50' : 'opacity-100'}`}
               style={{
                 width: i === index ? `${progress}%` : '0%',
-                transition: i === index && progress < 100 ? 'width 16ms linear' : 'none'
+                transition: 'none'
               }}
             />
             {i === index && isCompleting && <div className="absolute inset-0 bg-white/80 animate-ping" />}

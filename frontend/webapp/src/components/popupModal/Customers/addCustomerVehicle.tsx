@@ -7,8 +7,7 @@ import { Plus, Trash2, Car } from "lucide-react";
 import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
 
-/* ================= CONSTANTS ================= */
-const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+import api from "@/api/axios";
 
 /* ================= TYPES ================= */
 interface VehicleModel {
@@ -108,8 +107,32 @@ const AddCustomerVehicle: React.FC<Props> = ({
 
   /* ================= LOAD MODELS ================= */
   useEffect(() => {
-    const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
-    setVehicleModels(stored ? JSON.parse(stored) : []);
+    if (!open) return;
+
+    const fetchModels = async () => {
+      try {
+        const res = await api.get('/products/vehicles');
+        const models = res.data.data.flatMap((m: any) => {
+          return m.variants.length > 0 ? m.variants.map((v: any) => ({
+            id: v.id,
+            year: v.year,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: v.variant_name
+          })) : [{
+            id: m.id,
+            year: 0,
+            make: m.manufacturer?.name || "",
+            model: m.model,
+            variant: ""
+          }];
+        });
+        setVehicleModels(models);
+      } catch (error) {
+        console.error("Failed to load vehicle models:", error);
+      }
+    };
+    fetchModels();
   }, [open]);
 
   useEffect(() => {
@@ -183,71 +206,45 @@ const AddCustomerVehicle: React.FC<Props> = ({
 
   /* ================= SAVE ================= */
   const handleSave = () => {
-    const validVehicles = vehicles.filter(v => v.year && v.make && v.model);
+    const validVehicles = vehicles.filter(v => v.plateNo);
 
     if (!validVehicles.length) {
       toast.error("Please add at least one valid vehicle");
       return;
     }
 
-    const storedModels: VehicleModel[] =
-      JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
-
-    let updatedModels = [...storedModels];
-
     const normalizedVehicles = validVehicles.map(v => {
+      let variant_id = null;
       const formattedMake = toTitleCase(v.make);
       const formattedModel = toTitleCase(v.model);
-      const formattedVariant = toTitleCase(v.variant).trim() || undefined;
+      const formattedVariant = toTitleCase(v.variant).trim() || "";
 
-      let model = updatedModels.find(m =>
-        m.year === Number(v.year) &&
-        normalize(m.make) === normalize(formattedMake) &&
-        normalize(m.model) === normalize(formattedModel) &&
-        normalize(m.variant || "") === normalize(formattedVariant || "")
+      let match = vehicleModels.find(
+        m =>
+          m.year === Number(v.year) &&
+          normalize(m.make) === normalize(formattedMake) &&
+          normalize(m.model) === normalize(formattedModel) &&
+          normalize(m.variant || "") === normalize(formattedVariant)
       );
-
-      if (!model) {
-        model = {
-          id: genId(),
-          year: Number(v.year),
-          make: formattedMake,
-          model: formattedModel,
-          variant: formattedVariant || "",
-        };
-        updatedModels.push(model);
+      
+      if (match) {
+         variant_id = match.id;
       }
 
       return {
-        id: v.id,
-        vehicleModelId: model.id,
+        year: v.year,
+        make: v.make,
+        model: v.model,
+        variant: v.variant,
+        variant_id: variant_id,
         color: v.color,
         plateNo: v.plateNo,
         engineNo: v.engineNo,
         vin: v.vin,
         registrationNo: v.registrationNo,
-        sellingDealer: v.sellingDealer,
+        sellingDealer: v.sellingDealer
       };
     });
-
-    /* SAVE MODELS ONLY */
-    const existingModels = JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
-
-    // merge without duplicates
-    const merged = [...existingModels];
-
-    updatedModels.forEach(newModel => {
-      const exists = merged.some(m =>
-        m.year === newModel.year &&
-        normalize(m.make) === normalize(newModel.make) &&
-        normalize(m.model) === normalize(newModel.model) &&
-        normalize(m.variant) === normalize(newModel.variant)
-      );
-
-      if (!exists) merged.push(newModel);
-    });
-
-    localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(merged));
 
     /* PASS TO PARENT */
     onSaved?.(normalizedVehicles);
@@ -293,16 +290,10 @@ const AddCustomerVehicle: React.FC<Props> = ({
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4">
-                  <Combobox
-                    value={v.year}
-                    onChange={(val) => {
-                      updateVehicle(idx, "year", val);
-                      updateVehicle(idx, "make", "");
-                      updateVehicle(idx, "model", "");
-                      updateVehicle(idx, "variant", "");
-                    }}
-                    items={years}
+                  <Input
                     placeholder="Year"
+                    value={v.year}
+                    onChange={(e) => updateVehicle(idx, "year", e.target.value)}
                   />
 
                   <Combobox

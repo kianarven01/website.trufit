@@ -8,7 +8,8 @@ import { MoreVertical, ClipboardCopy } from "lucide-react";
 
 interface OnboardingEmployee {
   id: number;
-  employee_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   key_code: string;
   is_used: boolean;
@@ -156,7 +157,7 @@ const OnboardingEmployees: React.FC = () => {
       render: (emp) => (
         <div>
           <div className="font-semibold uppercase tracking-tight">
-            {emp.employee_name}
+            {`${emp.first_name} ${emp.last_name}`.trim()}
           </div>
           <div className="text-[10px] text-muted-foreground">{emp.email}</div>
         </div>

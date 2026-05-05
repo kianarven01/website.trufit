@@ -12,7 +12,8 @@ class EmployeeRepository
         // Use Eager Loading to prevent N+1 on security relationship
         return Employee::with(['security', 'role'])
             ->where('status', true)
-            ->orderBy('name', 'asc')
+            ->orderBy('last_name', 'asc')
+            ->orderBy('first_name', 'asc')
             ->get();
     }
 

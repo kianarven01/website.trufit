@@ -23,6 +23,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  user-select: none;
 }
 
 /* Glassmorphism */
@@ -41,6 +42,13 @@ body {
 /* Text Gradients */
 .text-gradient-red {
   background: linear-gradient(90deg, #FF4B2B 0%, #E31B23 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-blue {
+  background: linear-gradient(90deg, #1E3A8A 0%, #002BA3 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -68,4 +76,28 @@ body {
     padding-top: 8rem;
     padding-bottom: 8rem;
   }
+}
+
+/* =============================================
+   Shared Section Label (used across all tabs)
+   ============================================= */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-label-line {
+  height: 2px;
+  width: 3rem;
+  background: var(--brand-red);
+}
+
+.section-label-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--brand-red);
 }

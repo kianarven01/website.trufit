@@ -120,7 +120,7 @@ class KeyController extends Controller
                 null, 
                 RegistrationKey::class, 
                 (string)$id,
-                ['employee_name' => $key->employee_name, 'email' => $key->email]
+                ['employee_name' => trim($key->first_name . ' ' . $key->last_name), 'email' => $key->email]
             );
 
             $key->delete();

@@ -27,7 +27,8 @@ class RegistrationKey extends Model
 
     protected $fillable = [
         'employee_id',
-        'employee_name',
+        'first_name',
+        'last_name',
         'email',
         'address',
         'phone',

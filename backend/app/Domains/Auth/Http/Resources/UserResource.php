@@ -25,7 +25,8 @@ class UserResource extends JsonResource
         return [
             'username' => $this->username,
             'employeeID' => $this->employeeID,
-            'name' => $this->employee->name ?? $this->username,
+            'first_name' => $this->employee->first_name ?? $this->username,
+            'last_name' => $this->employee->last_name ?? '',
             'email' => $this->employee->email ?? null,
             'email_verified_at' => $this->employee->security->email_verified_at ?? null,
             'is_verified' => $this->employee ? $this->employee->hasVerifiedEmail() : false,

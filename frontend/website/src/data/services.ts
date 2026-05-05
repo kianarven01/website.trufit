@@ -1,5 +1,9 @@
 export const services = [
   {
+    id: "pms",
+    name: "Preventive Maintenance Service (PMS)"
+  },
+  {
     id: "oil_change",
     name: "Oil Change"
   },

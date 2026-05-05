@@ -19,6 +19,8 @@ import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 import AppointmentsList from "./pages/internal/Appointment/Appointments";
 
 import JobOrder from "./pages/internal/Services/Job Order/JobOrder";
+import JobOrderForm from "./pages/internal/Services/Job Order/JobOrderForm";
+
 import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
 import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
 import ServiceCatalogForm from "./pages/internal/Services/Service Catalog/ServiceCatalogForm";

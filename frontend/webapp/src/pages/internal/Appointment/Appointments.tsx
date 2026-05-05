@@ -54,7 +54,7 @@ interface Appointment {
   appointmentCode: string;
   customerId: string;
   vehicleId: string;
-  service: string;
+  services: string [];
   customService?: string;
   datetime: string;
   status: AppointmentStatus;
@@ -106,7 +106,8 @@ const AppointmentsList: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
-  
+  const [isLoading, setIsLoading] = useState(true);
+
   type FilterStatus = AppointmentStatus | "all";
   const [filters, setFilters] = useState<{ status: FilterStatus }>({
     status: "all",
@@ -135,10 +136,18 @@ const AppointmentsList: React.FC = () => {
   /* ================= LOAD ================= */
 
   useEffect(() => {
-    setCustomers(getLS<Customer>(APPOINTMENT_CUSTOMER_KEY));
-    setVehicleModels(getLS<VehicleModel>(VEHICLE_MODEL_STORAGE_KEY));
-    setVehicles(getLS<Vehicle>(VEHICLE_STORAGE_KEY));
-    setAppointments(getLS<Appointment>(APPOINTMENT_KEY));
+    setIsLoading(true);
+
+    const loadData = () => {
+      setCustomers(getLS<Customer>(APPOINTMENT_CUSTOMER_KEY));
+      setVehicleModels(getLS<VehicleModel>(VEHICLE_MODEL_STORAGE_KEY));
+      setVehicles(getLS<Vehicle>(VEHICLE_STORAGE_KEY));
+      setAppointments(getLS<Appointment>(APPOINTMENT_KEY));
+
+      setIsLoading(false);
+    };
+
+    loadData();
   }, []);
 
   /* ================= MAP ================= */
@@ -168,6 +177,20 @@ const AppointmentsList: React.FC = () => {
     lastName: "",
     mobileNumber: "",
   };
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case "for approval":
+        return "pending";
+      case "confirmed":
+        return "received";
+      case "cancelled":
+        return "cancelled";
+      default:
+        return "outline";
+    }
+  };
+
 
   /* ================ FORMATTERS ================= */
 
@@ -209,6 +232,10 @@ const AppointmentsList: React.FC = () => {
     return `${hours}:${minutes} ${ampm}`;
   };
 
+  const formatServiceLabel = (service: string) => {
+    if (service === "Preventive Maintenance Service") return "PMS";
+    return service;
+  };
 
   /* ================= DATE FILTER ================= */
 
@@ -289,7 +316,7 @@ const AppointmentsList: React.FC = () => {
       make: vehicleModel?.make,
       model: vehicleModel?.model,
       plateNumber: vehicle?.plateNumber,
-      service: apt.service,
+      services: apt.services,
       notes: apt.notes,
       datetime: apt.datetime,
     };
@@ -335,7 +362,7 @@ const AppointmentsList: React.FC = () => {
       const firstName = normalize(customer.firstName);
       const lastName = normalize(customer.lastName);
       const fullName = normalize(`${customer.firstName} ${customer.lastName}`);
-      const service = normalize(a.service);
+      const services = normalize(a.services.join(" "));
 
         const terms = q.split(" ").filter(Boolean);
 
@@ -345,7 +372,7 @@ const AppointmentsList: React.FC = () => {
           fullName.includes(term) ||
           make.includes(term) ||
           model.includes(term) ||
-          service.includes(term)
+          services.includes(term)
         );
 
       return matchesStatus && matchesDate && matchesSearch;
@@ -531,7 +558,7 @@ const AppointmentsList: React.FC = () => {
       appointmentCode: generateAppointmentCode(appointments),
       customerId: customer.id,
       vehicleId: vehicle.id,
-      service: data.service,
+      services: data.services,
       customService: data.customService,
       datetime: data.datetime,
       status: "for approval",
@@ -568,7 +595,7 @@ const AppointmentsList: React.FC = () => {
               ...a,
               customerId: customer.id,
               vehicleId: vehicle.id,
-              service: data.service,
+              services: data.services,
               customServie: data.customService,
               datetime: data.datetime,
               notes: data.notes,
@@ -602,6 +629,35 @@ const AppointmentsList: React.FC = () => {
   
   /* ================= UI ================= */
 
+    const TableSkeleton = ({ rows = 8 }: { rows?: number }) => {
+    return (
+      <>
+        {Array.from({ length: rows }).map((_, i) => (
+          <TableRow key={i} className="animate-pulse">
+            <TableCell><div className="h-4 bg-muted rounded w-16" /></TableCell>
+            <TableCell>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-32" />
+                <div className="h-3 bg-muted rounded w-20" />
+              </div>
+            </TableCell>
+            <TableCell><div className="h-4 bg-muted rounded w-28" /></TableCell>
+            <TableCell><div className="h-4 bg-muted rounded w-20" /></TableCell>
+            <TableCell>
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded w-24" />
+                <div className="h-3 bg-muted rounded w-16" />
+              </div>
+            </TableCell>
+            <TableCell><div className="h-5 bg-muted rounded w-20" /></TableCell>
+          </TableRow>
+        ))}
+      </>
+    );
+  };
+
+
+
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
       <Breadcrumb>
@@ -625,9 +681,9 @@ const AppointmentsList: React.FC = () => {
         activeFilters={filters}
       />
 
-      <div className="grid lg:grid-cols-7 gap-x-4 overflow-hidden flex-1 min-h-0">
+      <div className="flex gap-x-4 overflow-hidden flex-1 min-h-0">
         {appointments.length > 0 ? (
-          <div className="flex-1 flex flex-col border rounded-xl overflow-hidden lg:col-span-5">
+          <div  className="flex-1 min-w-0 flex flex-col border rounded-xl overflow-hidden">
             <ScrollArea className="flex-1 px-3">
               <Table className="table-fixed w-full border-separate border-spacing-y-2 h-full">
                 <TableHeader>
@@ -642,8 +698,10 @@ const AppointmentsList: React.FC = () => {
                 </TableHeader>
 
                 <TableBody>
-                  {filtered.length > 0 ? (
-                    paginated.map((a, index) => {
+                  {isLoading ? (
+                    <TableSkeleton rows={8} />
+                  ) : filtered.length > 0 ? (
+                    paginated.map((a) => {
                       const customer = customerMap.get(a.customerId);
                       const vehicle = vehicleMap.get(a.vehicleId);
                       const vehicleModel = vehicle
@@ -656,9 +714,7 @@ const AppointmentsList: React.FC = () => {
                           onClick={() => handleRowClick(a)}
                           className="rounded-lg border bg-card shadow-sm hover:shadow-md"
                         >
-                          <TableCell>
-                            {a.appointmentCode}
-                          </TableCell>
+                          <TableCell>{a.appointmentCode}</TableCell>
 
                           <TableCell>
                             <div className="flex flex-col">
@@ -672,20 +728,43 @@ const AppointmentsList: React.FC = () => {
                           </TableCell>
 
                           <TableCell>
-                            {vehicleModel
-                              ? `${vehicleModel.make} ${vehicleModel.model}`
-                              : "-"}
+                            {vehicleModel ? `${vehicleModel.make} ${vehicleModel.model}` : "-"}
                           </TableCell>
 
                           <TableCell>
-                            {a.service}
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const services: string[] = a.services ?? [];
+
+                                const visible = services.slice(0, 2);
+                                const hasMore = services.length > 2;
+
+                                return (
+                                  <>
+                                    {visible.map((svc, idx) => (
+                                      <Badge key={idx} variant="outline" className="text-xs">
+                                        {formatServiceLabel(svc)}
+                                      </Badge>
+                                    ))}
+
+                                    {hasMore && (
+                                      <Badge variant="outline" className="text-xs">
+                                        ...
+                                      </Badge>
+                                    )}
+
+                                    {services.length === 0 && (
+                                      <span className="text-muted-foreground text-xs">-</span>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </TableCell>
 
                           <TableCell>
                             <div className="flex flex-col">
-                              <span>
-                                {formatDate(a.datetime)}
-                              </span>
+                              <span>{formatDate(a.datetime)}</span>
                               <span className="text-xs text-muted-foreground">
                                 {formatTime(a.datetime)}
                               </span>
@@ -693,7 +772,7 @@ const AppointmentsList: React.FC = () => {
                           </TableCell>
 
                           <TableCell>
-                            <Badge variant="outline">
+                            <Badge variant={getStatusVariant(a.status)}>
                               {a.status}
                             </Badge>
                           </TableCell>
@@ -705,9 +784,7 @@ const AppointmentsList: React.FC = () => {
                       <TableCell colSpan={6}>
                         <div className="py-16 flex flex-col items-center text-center">
                           <CalendarIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                          <p className="text-sm font-medium">
-                            No appointments found
-                          </p>
+                          <p className="text-sm font-medium">No appointments found</p>
                           <p className="text-xs text-muted-foreground">
                             Try adjusting your search or filters
                           </p>
@@ -732,8 +809,8 @@ const AppointmentsList: React.FC = () => {
             )}
           </div>        
         ) : (
-        <Card className="lg:col-span-5">
-          <CardContent className="py-16 flex flex-col items-center text-center">
+        <Card className="min-w-0 flex-1 flex flex-col border rounded-xl overflow-hidden h-[330px]">
+          <CardContent className="py-24 flex flex-col items-center text-center">
             <CalendarIcon className="h-6 w-6 mb-2 text-muted-foreground" />
             <p className="text-sm font-medium">
               No appointments available
@@ -744,15 +821,15 @@ const AppointmentsList: React.FC = () => {
           </CardContent>
         </Card>
         )}
-        <div className="flex-1 flex flex-col overflow-hidden lg:col-span-2">
+        <div className="w-[360px] flex-shrink-0 flex flex-col overflow-hidden">
           <Calendar 
             mode="single" 
             value={selectedDate ? new Date(selectedDate) : null}
             onSelect={handleDateSelect} 
             events={calendarEvents}
               statusColors={{
-              confirmed: "bg-blue-500",
-              "for approval": "bg-muted-foreground/50",
+              confirmed: "bg-blue-600",
+              "for approval": "bg-orange-400",
             }}
           />          
         </div>  
@@ -837,9 +914,9 @@ const AppointmentsList: React.FC = () => {
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-base font-medium">
-                          {selectedAppointment?.service === "Others"
+                          {selectedAppointment?.services?.includes("Others")
                             ? selectedAppointment?.customService
-                            : selectedAppointment?.service
+                            : selectedAppointment?.services?.join(", ") || "No services provided"
                           }
                         </p>
                         <p className="text-sm text-muted-foreground">

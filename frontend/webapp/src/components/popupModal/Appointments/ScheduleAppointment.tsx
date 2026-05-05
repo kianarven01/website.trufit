@@ -105,7 +105,7 @@ const combineDateTime = (date: Date, time: string) => {
       make: "",
       model: "",
       plateNumber: "",
-      service: "",
+      services: [] as string[],
       notes: "",
     });
 
@@ -193,7 +193,7 @@ const combineDateTime = (date: Date, time: string) => {
     make: "",
     model: "",
     plateNumber: "",
-    service: "",
+    services: [],
     notes: "",
   };
 
@@ -211,15 +211,17 @@ const combineDateTime = (date: Date, time: string) => {
       return;
     }
 
-    const isExistingService = serviceList.some(
-      s => normalize(s) === normalize(initialData.service || "")
-    );
+    const rawServices = initialData?.services ?? initialData?.service ?? [];
 
-    const isOther = !isExistingService && initialData.service;
+    const normalizedServices = Array.isArray(rawServices)
+      ? rawServices
+      : [rawServices].filter(Boolean);
 
-    setIsOtherService(!!isOther);
-    setCustomService(isOther ? initialData.service : "");
-
+      const isOther =
+        normalizedServices.length === 1 &&
+        !serviceList.some(
+          s => normalize(s) === normalize(normalizedServices[0])
+        );
 
     setForm({
       firstName: initialData.firstName || "",
@@ -229,9 +231,13 @@ const combineDateTime = (date: Date, time: string) => {
       make: initialData.make || "",
       model: initialData.model || "",
       plateNumber: initialData.plateNumber || "",
-      service: isOther ? "" : initialData.service || "",
+      services: isOther ? [] : normalizedServices,
       notes: initialData.notes || "",
     });
+
+    if (isOther) {
+      setCustomService(normalizedServices[0] ?? "");
+    }
 
     if (initialData.datetime) {
       const d = new Date(initialData.datetime);
@@ -390,7 +396,7 @@ const combineDateTime = (date: Date, time: string) => {
       make,
       model,
       plateNumber,
-      service,
+      services,
       notes,
     } = form;
 
@@ -405,8 +411,12 @@ const combineDateTime = (date: Date, time: string) => {
     ];
 
     fieldsToValidate.forEach((key) => {
-      const err = validateField(key, form[key as keyof typeof form]);
-      if (err) newErrors[key] = err;
+      const value = form[key as keyof typeof form];
+
+      if (typeof value === "string") {
+        const err = validateField(key, value);
+        if (err) newErrors[key] = err;
+      }
     });
 
     setErrors(newErrors);
@@ -423,10 +433,6 @@ const combineDateTime = (date: Date, time: string) => {
       return;
     }
 
-    if (isOtherService && !customService.trim()) {
-      toast.error("Please enter the specific service.");
-      return;
-    }
 
     const requiredFieldsValid =
       firstName &&
@@ -434,20 +440,23 @@ const combineDateTime = (date: Date, time: string) => {
       phone &&
       make &&
       model &&
-      (isOtherService ? customService.trim() : service);
+      (form.services.length > 0 || (isOtherService && customService.trim().length > 0));
 
     if (!requiredFieldsValid) {
       toast.error("Please complete all required fields.");
       return;
     }
 
-    const finalService = isOtherService
-      ? "Others"
-      : service;
+    let finalServices = [...form.services];
 
-    const customServiceValue = isOtherService
-      ? toTitleCase(customService)
-      : "";
+    if (isOtherService) {
+      if (!customService.trim()) {
+        toast.error("Please enter the specific service.");
+        return;
+      }
+
+      finalServices.push(toTitleCase(customService));
+    }
 
     onSaved?.({
       firstName,
@@ -457,8 +466,8 @@ const combineDateTime = (date: Date, time: string) => {
       make,
       model,
       plateNumber,
-      service: finalService,
-      customService: customServiceValue,
+      services: finalServices,
+      customService: "",
       notes,
       datetime,
     });
@@ -685,22 +694,65 @@ const combineDateTime = (date: Date, time: string) => {
                   <Label className="text-xs font-medium">Service</Label>
                   <Combobox
                     items={serviceOptions}
-                    value={isOtherService ? "__OTHER__" : form.service}
+                    value=""
                     onChange={(val) => {
+                      if (!val || !val.trim()) return;
+
+                      const isValidOption =
+                        val === "__OTHER__" ||
+                        serviceList.some(s => normalize(s) === normalize(val));
+
+                      if (!isValidOption) return;
+
                       if (val === "__OTHER__") {
                         setIsOtherService(true);
-                        setCustomService(prev=> prev || "");
-                        setForm(p => ({ ...p, service: "" }));
                         return;
                       }
 
-                      const formatted = toTitleCase(val);
+                      const formatted = toTitleCase(val.trim());
+
+                      const canonical =
+                        findCanonical(serviceList, formatted) || formatted;
 
                       setIsOtherService(false);
-                      setCustomService("");
-                      setForm(p => ({ ...p, service: formatted }));
+
+                      setForm(p => {
+                        const exists = p.services.some(
+                          s => normalize(s) === normalize(canonical)
+                        );
+                        if (exists) return p;
+
+                        return {
+                          ...p,
+                          services: Array.from(new Set([...p.services, canonical])),
+                        };
+                      });
                     }}
                   />
+                  {form.services.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {form.services.map((svc, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-muted rounded-md"
+                        >
+                          <span>{svc}</span>
+                          <button
+                            type="button"
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => {
+                              setForm(p => ({
+                                ...p,
+                                services: p.services.filter(s => s !== svc),
+                              }));
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}                  
                   {isOtherService && (
                     <div className="flex flex-col gap-1 mt-2">
                       <Label className="text-xs font-medium">Specific Service</Label>

@@ -43,6 +43,7 @@ interface Service {
   name: string;
   serviceCategoryId: string;
   description?: string;
+  duration?: number;
   pricingType: PricingType;
 }
 
@@ -60,9 +61,6 @@ interface ServicePricing {
   price: number;
 }
 
-/* ================= HELPERS ================= */
-const genId = () =>
-  crypto.randomUUID?.() ?? Math.random().toString(36).substring(2);
 
 /* ================= COMPONENT ================= */
 const ServiceCatalogForm: React.FC<Props> = ({ mode }) => {
@@ -73,6 +71,9 @@ const ServiceCatalogForm: React.FC<Props> = ({ mode }) => {
 const [categories, setCategories] = useState<ServiceCategory[]>([]);
 const [services, setServices] = useState<Service[]>([]);
 const [pricing, setPricing] = useState<ServicePricing[]>([]);
+const [durationInput, setDurationInput] = useState("00:00");
+const [durationFormatted, setDurationFormatted] = useState("");
+const [duration, setDuration] = useState<number>(0); // total minutes
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -94,6 +95,79 @@ const [editingTagValue, setEditingTagValue] = useState("");
 const [confirmOpen, setConfirmOpen] = useState(false);
 const [confirmType, setConfirmType] = useState<"size" | null>(null);
 const [targetId, setTargetId] = useState<string | null>(null);
+
+
+/* ================= HELPERS ================= */
+const genId = () =>
+  crypto.randomUUID?.() ?? Math.random().toString(36).substring(2);
+
+
+const handleDurationChange = (val: string) => {
+  // allow only digits + colon
+  if (!/^[0-9:]*$/.test(val)) return;
+
+  // prevent multiple colons
+  const parts = val.split(":");
+  if (parts.length > 2) return;
+
+  let hh = parts[0] ?? "";
+  let mm = parts[1] ?? "";
+
+  // limit lengths
+  if (hh.length > 2) hh = hh.slice(0, 2);
+  if (mm.length > 2) mm = mm.slice(0, 2);
+
+  let next = hh;
+
+  if (val.includes(":")) {
+    next += ":" + mm;
+  }
+
+  // auto-add colon when typing 2 digits in hours
+  if (!val.includes(":") && hh.length === 2) {
+    next = hh + ":";
+  }
+
+  setDurationInput(next);
+};
+
+const handleDurationBlur = () => {
+  let [hh = "0", mm = "0"] = durationInput.split(":");
+
+  let hours = parseInt(hh, 10) || 0;
+  let minutes = parseInt(mm, 10) || 0;
+
+  // enforce limits
+  if (hours < 0) hours = 0;
+  if (hours > 24) hours = 24;
+
+  if (minutes < 0) minutes = 0;
+  if (minutes > 59) minutes = 59;
+
+  const normalized = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+  setDurationInput(normalized);
+  setDuration(hours * 60 + minutes);
+
+  let text = "";
+
+  if (hours > 0) {
+    text += `${hours} hour${hours > 1 ? "s" : ""}`;
+  }
+
+  if (minutes > 0) {
+    if (text) text += " & ";
+    text += `${minutes} minute${minutes > 1 ? "s" : ""}`;
+  }
+
+  // fallback if both are 0
+  if (!text) {
+    text = "0 minutes";
+  }
+
+  setDurationFormatted(text);
+};
+
 
 /* ================= ADD/EDIT SIZE (INLINE ROW) ================= */
 const [isAddingSize, setIsAddingSize] = useState(false);
@@ -167,6 +241,31 @@ useEffect(() => {
     setCategoryName(category?.name || "");
 
     setDescription(s.description || "");
+
+    if (s.duration !== undefined) {
+      const hours = Math.floor(s.duration / 60);
+      const minutes = s.duration % 60;
+
+      const formatted = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+      setDurationInput(formatted);
+      setDuration(s.duration);
+
+      let text = "";
+
+      if (hours > 0) {
+        text += `${hours} hour${hours > 1 ? "s" : ""}`;
+      }
+
+      if (minutes > 0) {
+        if (text) text += " & ";
+        text += `${minutes} minute${minutes > 1 ? "s" : ""}`;
+      }
+
+      if (!text) text = "0 minutes";
+
+      setDurationFormatted(text);
+    }
+
     setPricingType(s.pricingType);
 
     const p = pricing.filter((x) => x.serviceId === id);
@@ -380,6 +479,8 @@ const handleDeleteSize = (id: string) => {
 const handleSubmit = () => {
   if (!name || !categoryName.trim()) {
     alert("Name and category required");
+
+    handleDurationBlur();    
     return;
   }
 
@@ -412,6 +513,7 @@ const handleSubmit = () => {
                 name,
                 serviceCategoryId: finalCategory.id,
                 description,
+                duration,
                 pricingType,
               }
             : s
@@ -423,6 +525,7 @@ const handleSubmit = () => {
             name,
             serviceCategoryId: finalCategory.id,
             description,
+            duration,
             pricingType,
           },
         ];
@@ -577,6 +680,22 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   rows={5} 
                   className="text-xs bg-background"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label>Estimated Duration</Label>
+
+                <Input
+                  className="text-xs bg-background"
+                  value={durationInput}
+                  onChange={(e) => handleDurationChange(e.target.value)}
+                  onBlur={handleDurationBlur}
+                />
+
+                {durationFormatted && (
+                  <p className="text-xs text-muted-foreground">
+                    {durationFormatted}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -945,15 +1064,15 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
         onOpenChange={setConfirmOpen}
         title= "Delete Vehicle Size"
         description={
-            <>
-              Are you sure you want to delete this vehicle size?
-              <br />
-              <br />
-              <span className="text-muted-foreground">
-                Note: This will permanently delete the vehicle size
-                (including all services that use it).
-              </span>
-            </>
+          <>
+            Are you sure you want to delete this vehicle size?
+            <br />
+            <br />
+            <span className="text-muted-foreground">
+              Note: This will permanently delete the vehicle size
+              (including all services that use it).
+            </span>
+          </>
         }
         confirmLabel="Delete"
         destructive

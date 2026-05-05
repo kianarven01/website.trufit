@@ -425,6 +425,11 @@ const handleSaveNewSize = () => {
 
 const handleCancelNewSize = () => {
   setIsAddingSize(false);
+  setNewSize({ name: "", vehicleTypes: [], price: 0 });
+
+  setVehicleTypeInput("");
+  setEditingTagIndex(null);
+  setEditingTagValue("");
 };
 
 
@@ -678,7 +683,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)} 
                   rows={5} 
-                  className="text-xs bg-background"
+                  className="text-xs bg-background max-h-[240px]"
                 />
               </div>
               <div className="space-y-1">
@@ -700,7 +705,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 h-full flex flex-col">
             <CardHeader>
               <div className="flex justify-between">
                 <div>
@@ -738,21 +743,19 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 flex flex-col flex-1 overflow-hidden">
 
               {/* TABLE */}
-              <div>
+              <div className="flex-1 min-h-0 max-h-[65vh]">
                 <div
                   className={cn(
-                    "border rounded-md",
-                    shouldScroll ? "max-h-[320px] overflow-hidden" : "overflow-visible"
+                    "border rounded-md h-full overflow-hidden",
                   )}
                 >
                   <ScrollArea
                     ref={scrollRef}
                     className={cn(
-                      shouldScroll ? "h-[270px]" : "h-auto",
-                      "px-2"
+                      "h-full max-h-full px-2"
                     )}
                   >
                     <Table className="table-fixed w-full border-separate border-spacing-y-2">

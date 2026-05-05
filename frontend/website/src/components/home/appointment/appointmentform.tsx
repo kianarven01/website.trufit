@@ -46,7 +46,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     lastName: "",
     email: "",
     phone: "",
-    date: "",
+    date: null,
     service: "",
     vehicleMake: "",
     vehicleModel: "",
@@ -120,7 +120,37 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   }
 
   const handleDateChange = (date: Date | null) => {
-    if (date) setForm({ ...form, date: date.toISOString() })
+    if (!date) {
+      setForm({ ...form, date: null })
+      return
+    }
+
+    const prev = form.date
+    const selected = new Date(date)
+
+    const isSameDay =
+      prev &&
+      new Date(prev).toDateString() === selected.toDateString()
+
+    // 👉 ONLY set default time if user changed the DAY
+    if (!isSameDay) {
+      const now = new Date()
+      const isToday =
+        selected.toDateString() === now.toDateString()
+
+      if (isToday) {
+        const nextInterval = Math.ceil(now.getMinutes() / 5) * 5
+        selected.setHours(now.getHours(), nextInterval, 0, 0)
+      } else {
+        selected.setHours(8, 0, 0, 0)
+      }
+    }
+
+    // 👉 if same day → user is changing time → KEEP it
+    setForm(prevState => ({
+      ...prevState,
+      date: selected
+    }))
   }
 
   const inputClass = `
@@ -167,7 +197,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         lastName: "",
         email: "",
         phone: "",
-        date: "",
+        date: null,
         service: "",
         vehicleMake: "",
         vehicleModel: "",
@@ -184,6 +214,22 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       setSending(false)
     }
   }
+
+  // 1. Helper to filter allowed times
+  const filterPassedTime = (time: Date) => {
+    const currentDate = new Date();
+    const selectedDate = new Date(time);
+
+    // If they picked today, hide times in the past
+    if (currentDate.toDateString() === selectedDate.toDateString()) {
+      return currentDate.getTime() < selectedDate.getTime();
+    }
+    return true;
+  };
+
+  // 2. Define the Business Hours (8:00 AM to 4:30 PM)
+  const minTime = new Date(new Date().setHours(8, 0, 0));
+  const maxTime = new Date(new Date().setHours(16, 30, 0));
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
@@ -227,13 +273,22 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       {/* DATE */}
       <div className="w-full relative">
         <DatePicker
-          selected={form.date ? new Date(form.date) : null}
+          selected={form.date}
           onChange={handleDateChange}
+          filterDate={(date) => date.getDay() !== 0}
+          focusSelectedMonth={false}
+          selectsStart
           showTimeSelect
+          timeIntervals={5}
+          minDate={new Date()}
+          minTime={minTime}
+          maxTime={maxTime}
+          filterTime={filterPassedTime}
           dateFormat="MMMM d, yyyy h:mm aa"
           placeholderText="Select date & time"
           customInput={<CustomDateInput />}
           wrapperClassName="w-full"
+          calendarClassName="modern-calendar"
         />
       </div>
 
@@ -254,6 +309,32 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         </select>
         <label className={labelClass}>Service Needed</label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
+      </div>
+
+      {/* OTHER SERVICE INPUT */}
+      <div className="relative md:col-span-2">
+        <input
+          type="text"
+          placeholder="Specify service"
+          value={otherService}
+          onChange={(e) => setOtherService(e.target.value)}
+          required={form.service === "other"}
+          disabled={form.service !== "other"}
+          className={`
+            peer w-full
+            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
+            border rounded-sm
+            px-4 pt-6 pb-2
+            focus:outline-none focus:ring-1 focus:ring-brand-red
+            transition duration-300
+          `}
+        />
+        <label className={`
+          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
+          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
+        `}>
+          Specify Service
+        </label>
       </div>
 
       {/* VEHICLE MAKE */}
@@ -321,32 +402,6 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         </select>
         <label className={labelClass}>Vehicle Year</label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
-      </div>
-
-      {/* OTHER SERVICE INPUT */}
-      <div className="relative md:col-span-2">
-        <input
-          type="text"
-          placeholder="Specify service"
-          value={otherService}
-          onChange={(e) => setOtherService(e.target.value)}
-          required={form.service === "other"}
-          disabled={form.service !== "other"}
-          className={`
-            peer w-full
-            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
-            border rounded-sm
-            px-4 pt-6 pb-2
-            focus:outline-none focus:ring-1 focus:ring-brand-red
-            transition duration-300
-          `}
-        />
-        <label className={`
-          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
-          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
-        `}>
-          Specify Service
-        </label>
       </div>
 
       {/* MESSAGE */}

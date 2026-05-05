@@ -48,11 +48,20 @@ export const metadata: Metadata = {
     siteName: "Trufit Auto Center",
     locale: "en_PH",
     type: "website",
+    images: [
+      {
+      url: "https://trufitautocenter.com/images/home-og.jpg",
+      width: 1200,
+      height:630,
+      alt: "Trufit Auto Center Workshop and Automotive Service Center",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trufit Auto Center | Quality Automotive Service",
     description: "Professional vehicle diagnostics and repair services.",
+    images: ["https://trufitautocenter.com/images/home-og.jpg"],
   },
 };
 

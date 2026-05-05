@@ -101,3 +101,121 @@ body {
   text-transform: uppercase;
   color: var(--brand-red);
 }
+
+/* =============================================
+   Custom Calendar Styles
+   ============================================= */
+
+.modern-calendar {
+  font-size: 0.8rem !important;
+}
+
+.react-datepicker {
+  display: flex !important;
+  width: max-content !important;
+  align-items: stretch !important;
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  font-weight: 600;
+}
+
+.react-datepicker__day {
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.react-datepicker__day:not(.react-datepicker__day--disabled):hover {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
+.react-datepicker__day--selected{
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
+.react-datepicker__day--keyboard-selected {
+  background-color: transparent !important;
+}
+
+.react-datepicker__day--today {
+  border: 1px solid #dc2626 !important;
+}
+
+.react-datepicker__day--disabled {
+  color: rgba(0, 0, 0, 0.5) !important;
+  cursor: not-allowed !important;
+}
+
+.react-datepicker__day--disabled:hover {
+  background-color: transparent !important;
+}
+
+.react-datepicker__time-container {
+  height: auto !important;
+  display: flex;
+  flex-direction: column;
+  width: 80px !important;
+}
+
+.react-datepicker__time-box {
+  height: 100% !important;
+  width: 80px !important;
+}
+
+.react-datepicker__time-list {
+  height: 100% !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+}
+
+.react-datepicker__time-list-item {
+  background-color: transparent !important;
+  transition: all 0.2s ease;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.react-datepicker__time-list-item:hover {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
+.react-datepicker__time-list-item--selected {
+  background-color: #dc2626 !important;
+  color: white !important;
+}
+
+.react-datepicker__time-list-item--disabled {
+  display: none !important;
+}
+
+.react-datepicker__month {
+  margin: 0.4rem !important;
+  height: 180px !important; /* Forces 5-week and 6-week months to occupy same space */
+}
+
+.react-datepicker__day-name,
+.react-datepicker__day {
+  width: 1.7rem !important;
+  line-height: 1.7rem !important;
+  margin: 0.1rem !important;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: black !important;
+}
+
+.react-datepicker__navigation:hover *::before {
+  border-color: #dc2626 !important;
+}
+
+@media (max-width: 400px) {
+  .modern-calendar {
+    margin-left: -20px;
+  }
+}

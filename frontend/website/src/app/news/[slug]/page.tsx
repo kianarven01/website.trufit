@@ -20,7 +20,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${article.title} | Trufit News`,
     description: article.excerpt,
+    alternates: {
+      canonical: `https://trufitautocenter.com/news/${slug}`,
+    },
+
     openGraph: {
+      title: article.title,
+      description: article.excerpt,
+      url: `https://trufitautocenter.com/news/${slug}`,
+      siteName: "Trufit Auto Center",
+      type: "article",
+      locale: "en_PH",
+      images: [
+        {
+          url: article.image,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
+    },
+    
+    twitter: {
+      card: "summary_large_image",
       title: article.title,
       description: article.excerpt,
       images: [article.image],

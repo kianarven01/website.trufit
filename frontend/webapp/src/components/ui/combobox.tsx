@@ -11,7 +11,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ComboboxItem = { label: string; value: string };
@@ -24,6 +24,7 @@ interface MakeComboboxProps {
   allowAdd?: boolean;
   addLabel?: string;
   onAdd?: (currentSearch: string) => void;
+  isLoading?: boolean;
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -34,6 +35,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   allowAdd,
   addLabel,
   onAdd,
+  isLoading,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -56,6 +58,10 @@ const Combobox: FC<MakeComboboxProps> = ({
   // Filter items based on search input
   const filteredItems = normalizedItems.filter((item) =>
     item.label.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const exactMatchExists = normalizedItems.some(
+    (item) => item.label.toLowerCase() === search.trim().toLowerCase()
   );
 
   const resolveValue = (input: string) => {
@@ -89,23 +95,28 @@ const Combobox: FC<MakeComboboxProps> = ({
               onChange(resolveValue(val));
               setOpen(true);
             }}
-            className="w-full pr-10"
+            disabled={isLoading}
+            className="w-full pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
           />
 
-          {search ? (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : (
-            <ChevronDown
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 cursor-pointer"
-              onClick={() => setOpen(true)}
-            />
-          )}
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground opacity-50" />
+            ) : search ? (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : (
+              <ChevronDown
+                className="h-4 w-4 opacity-50 cursor-pointer"
+                onClick={() => setOpen(true)}
+              />
+            )}
+          </div>
         </div>
       </PopoverTrigger>
 
@@ -148,8 +159,8 @@ const Combobox: FC<MakeComboboxProps> = ({
             {/* Add new item */}
             {allowAdd && (
               <>
-                {/* Always show add option when empty OR typing */}
-                {(filteredItems.length === 0 || search.trim() !== "") && (
+                {/* Always show add option when empty OR typing (unless exact match exists) */}
+                {(filteredItems.length === 0 || (search.trim() !== "" && !exactMatchExists)) && (
                   <div
                     onClick={handleAddClick}
                     className="flex cursor-pointer items-center gap-2 border-t px-2 py-2 text-sm text-primary font-medium hover:bg-accent"
@@ -160,7 +171,11 @@ const Combobox: FC<MakeComboboxProps> = ({
               </>
             )}
 
-            {filteredItems.length === 0 && !allowAdd && (
+            {isLoading ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Loading...
+              </div>
+            ) : filteredItems.length === 0 && !allowAdd && (
               <div className="p-2 text-center text-sm text-muted-foreground">
                 No results found.
               </div>

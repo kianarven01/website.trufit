@@ -59,17 +59,44 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   const [otherVehicleMake, setOtherVehicleMake] = useState("")
   const [sending, setSending] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
+  const [serviceOpen, setServiceOpen] = useState(false)
+  const [selectedServices, setSelectedServices] = useState<string[]>([])
 
   // Generate years from current year down to 1990
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
 
+  const toggleService = (id: string) => {
+    setSelectedServices(prev => {
+      const updated = prev.includes(id)
+        ? prev.filter(s => s !== id)
+        : [...prev, id]
+
+      // close dropdown when "other" is selected
+      if (id === "other" && !prev.includes("other")) {
+        setServiceOpen(false)
+      }
+
+      return updated
+    })
+  }
+
+  const removeService = (id: string) => {
+    setSelectedServices(prev => prev.filter(s => s !== id))
+  }
   // Common vehicle makes in the Philippines
   const commonMakes = [
     "Toyota", "Mitsubishi", "Nissan", "Honda", "Ford", 
     "Suzuki", "Isuzu", "Hyundai", "Kia", "Mazda", 
     "Chevrolet", "Subaru", "Geely", "MG", "Changan"
   ];
+
+  // auto clear other
+  useEffect(() => {
+    if (!selectedServices.includes("other")) {
+      setOtherService("")
+    }
+  }, [selectedServices])
 
   useEffect(() => {
     const handleClaim = (e: any) => {
@@ -164,16 +191,48 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     absolute left-4 top-2 text-white/60 text-[10px] uppercase font-semibold tracking-wider transition-all
     peer-focus:text-brand-red
   `
+  const [dateError, setDateError] = useState(false)
+  const [serviceError, setServiceError] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    let valid = true
+
+    if (!form.date) {
+      setDateError(true)
+      valid = false
+    }
+
+    if (selectedServices.length === 0) {
+      setServiceError(true)
+      valid = false
+    }
+
+    if (!valid) return
+
+    setDateError(false)
+    setServiceError(false)
     setShowTermsModal(true)
   }
 
   const handleConfirmSubmit = async () => {
     setShowTermsModal(false)
     setSending(true)
-    const finalService = form.service === "other" ? otherService : form.service
+    let finalService = ""
+
+    if (selectedServices.includes("other")) {
+      finalService = otherService || "Other"
+    } else if (selectedServices.length > 0) {
+      finalService = selectedServices
+        .map(id => services.find(s => s.id === id)?.name || id)
+        .join(", ")
+    } else {
+      finalService =
+        form.service === "other"
+          ? otherService
+          : services.find(s => s.id === form.service)?.name || form.service
+    }
     const finalVehicleMake = form.vehicleMake === "other" ? otherVehicleMake : form.vehicleMake
     
     try {
@@ -207,6 +266,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       })
       setOtherService("")
       setOtherVehicleMake("")
+      setSelectedServices([])
     } catch (error) {
       console.error(error)
       alert("Failed to send request. Please try again or call us directly.")
@@ -230,6 +290,37 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   // 2. Define the Business Hours (8:00 AM to 4:30 PM)
   const minTime = new Date(new Date().setHours(8, 0, 0));
   const maxTime = new Date(new Date().setHours(16, 30, 0));
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!serviceOpen) return
+
+      const target = e.target as HTMLElement
+
+      // close only if click is NOT inside dropdown or trigger
+      const isInsideDropdown =
+        target.closest(".service-dropdown")
+
+      if (!isInsideDropdown) {
+        setServiceOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [serviceOpen])
+
+  useEffect(() => {
+    if (selectedServices.length > 0) {
+      setServiceError(false)
+    }
+  }, [selectedServices])
+
+  useEffect(() => {
+    if (form.date) {
+      setDateError(false)
+    }
+  }, [form.date])
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
@@ -270,8 +361,116 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <label className={labelClass}>Phone</label>
       </div>
 
+      {/* SERVICE (MULTI SELECT) */}
+      <div className="relative service-dropdown md:col-span-2">
+        <div
+          className={`${inputClass} cursor-pointer`}
+          onClick={() => setServiceOpen(prev => !prev)}
+        >
+          <div className="flex flex-wrap gap-2 h-7 overflow-y-auto pr-2">
+            {selectedServices.length === 0 ? (
+              <span className="text-white/40">Select service(s)</span>
+            ) : selectedServices.includes("other") ? (
+              selectedServices
+                .filter(id => id === "other")
+                .map(id => (
+                  <span
+                    key={id}
+                    className="flex items-center gap-2 bg-white/10 px-2 py-1 text-xs rounded-sm"
+                  >
+                    Other
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeService(id)
+                      }}
+                      className="text-white/60 hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))
+            ) : (
+              selectedServices.map(id => {
+                const s = services.find(x => x.id === id)
+
+                return (
+                  <span
+                    key={id}
+                    className="flex items-center gap-2 bg-white/10 px-2 py-1 text-xs rounded-sm"
+                  >
+                    {s?.name}
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeService(id)
+                      }}
+                      className="text-white/60 hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        <label className={labelClass}>Service Needed</label>
+
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60" />
+
+        {serviceOpen && (
+          <div className="absolute z-50 mt-2 w-full bg-white border border-white/10 rounded-sm shadow-lg h-60 overflow-y-auto">
+            {[...services, { id: "other", name: "Other" }].map(s => (
+              <label
+                key={s.id}
+                className={`
+                  flex gap-2 px-4 py-2 text-sm cursor-pointer transition-colors
+                  ${
+                    selectedServices.includes("other") && s.id !== "other"
+                      ? "cursor-not-allowed pointer-events-none opacity-50"
+                      : "cursor-pointer hover:bg-brand-red hover:text-white"
+                  }
+                `}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedServices.includes(s.id)}
+                  onChange={() => toggleService(s.id)}
+                  disabled={
+                    selectedServices.includes("other") && s.id !== "other"
+                  }
+                  className={`
+                    w-4 h-4 transition-colors
+                    accent-brand-red
+
+                    ${
+                      selectedServices.includes("other") && s.id !== "other"
+                        ? "accent-gray-500 cursor-not-allowed"
+                        : "cursor-pointer"
+                    }
+                  `}
+                />
+                {s.name}
+              </label>
+            ))}
+          </div>
+        )}
+
+        {serviceError && (
+        <p className="text-red-500 text-xs mt-1">
+          Please select at least one service
+        </p>
+      )}
+      </div>
+
       {/* DATE */}
-      <div className="w-full relative">
+      <div className={`w-full relative`}>
         <DatePicker
           selected={form.date}
           onChange={handleDateChange}
@@ -290,48 +489,39 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           wrapperClassName="w-full"
           calendarClassName="modern-calendar"
         />
-      </div>
-
-      {/* SERVICE */}
-      <div className="relative">
-        <select
-          name="service"
-          value={form.service}
-          onChange={handleChange}
-          required
-          className={`${inputClass} appearance-none pr-10`}
-        >
-          <option value="" disabled hidden className="text-gray-900">Select a service</option>
-          {services.map((s) => (
-            <option key={s.id} value={s.id} className="text-gray-900">{s.name}</option>
-          ))}
-          <option value="other" className="text-gray-900">Other</option>
-        </select>
-        <label className={labelClass}>Service Needed</label>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
+        {dateError && (
+          <p className="text-red-500 text-xs mt-1">
+            Please select a date & time
+          </p>
+        )}
       </div>
 
       {/* OTHER SERVICE INPUT */}
-      <div className="relative md:col-span-2">
+      <div className="relative">
         <input
           type="text"
           placeholder="Specify service"
           value={otherService}
           onChange={(e) => setOtherService(e.target.value)}
-          required={form.service === "other"}
-          disabled={form.service !== "other"}
+          required={selectedServices.includes("other")}
+          disabled={!selectedServices.includes("other")}
           className={`
             peer w-full
-            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
+            ${!selectedServices.includes("other")
+              ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10"
+              : "bg-white/15 text-white border-white/30"}
             border rounded-sm
             px-4 pt-6 pb-2
             focus:outline-none focus:ring-1 focus:ring-brand-red
             transition duration-300
           `}
         />
+
         <label className={`
           absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
-          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
+          ${!selectedServices.includes("other")
+            ? "text-white/30"
+            : "text-white/60 peer-focus:text-brand-red"}
         `}>
           Specify Service
         </label>
@@ -381,12 +571,6 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         </label>
       </div>
 
-      {/* VEHICLE MODEL */}
-      <div className="relative">
-        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} className={inputClass} />
-        <label className={labelClass}>Vehicle Model</label>
-      </div>
-
       {/* VEHICLE YEAR */}
       <div className="relative">
         <select
@@ -402,6 +586,12 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         </select>
         <label className={labelClass}>Vehicle Year</label>
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
+      </div>
+
+      {/* VEHICLE MODEL */}
+      <div className="relative">
+        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} className={inputClass} />
+        <label className={labelClass}>Vehicle Model</label>
       </div>
 
       {/* MESSAGE */}

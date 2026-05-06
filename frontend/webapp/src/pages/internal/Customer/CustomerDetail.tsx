@@ -122,7 +122,7 @@ const CustomerDetail: React.FC = () => {
           plateNo: v.plate_number,
           engineNo: v.engine_number,
           vin: v.VIN,
-          registrationNo: v.registration_number || v['registration _number'],
+          registrationNo: v.registration_number || v['registration_number'],
           sellingDealer: v.selling_dealer,
           hasWarranty: false,
           year: v.year_model || v.vehicleVariant?.year || undefined,

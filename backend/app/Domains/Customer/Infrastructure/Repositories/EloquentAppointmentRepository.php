@@ -26,7 +26,7 @@ class EloquentAppointmentRepository implements AppointmentRepositoryInterface
     {
         $appointment = Appointment::findOrFail($id);
         $appointment->update($data);
-        return $appointment;
+        return $appointment->load(['customer', 'vehicle']);
     }
 
     public function delete(int $id): bool
@@ -38,7 +38,14 @@ class EloquentAppointmentRepository implements AppointmentRepositoryInterface
     public function getNextAppointmentCode(): string
     {
         $lastAppointment = Appointment::orderBy('id', 'desc')->first();
-        $nextId = $lastAppointment ? $lastAppointment->id + 1 : 1;
-        return 'APT-' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        if (!$lastAppointment) {
+            return 'APT-0001';
+        }
+
+        $lastCode = $lastAppointment->appointment_code;
+        $lastNumber = (int) str_replace('APT-', '', $lastCode);
+        $nextNumber = $lastNumber + 1;
+
+        return 'APT-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 }

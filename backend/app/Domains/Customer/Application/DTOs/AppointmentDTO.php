@@ -12,6 +12,7 @@ class AppointmentDTO
         public string $make,
         public string $model,
         public string $plateNumber,
+        public ?string $year,
         public string $datetime,
         public array $services,
         public ?string $notes,
@@ -21,14 +22,15 @@ class AppointmentDTO
     public static function fromRequest(\Illuminate\Http\Request $request): self
     {
         return new self(
-            firstName: $request->firstName,
-            lastName: $request->lastName,
-            phone: $request->phone,
+            firstName: $request->firstName ?? '',
+            lastName: $request->lastName ?? '',
+            phone: $request->phone ?? '',
             email: $request->email,
-            make: $request->make,
-            model: $request->model,
-            plateNumber: $request->plateNumber,
-            datetime: $request->datetime,
+            make: $request->make ?? '',
+            model: $request->model ?? '',
+            plateNumber: $request->plateNumber ?? '',
+            year: $request->year,
+            datetime: $request->datetime ?? '',
             services: $request->services ?? [],
             notes: $request->notes,
             status: $request->status ?? 'for approval'

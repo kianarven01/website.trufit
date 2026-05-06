@@ -22,7 +22,7 @@ class CustomerVehicle extends Model
         'engine_number',
         'VIN',
         'color',
-        'registration _number', 
+        'registration_number', 
         'year_model',
         'make',
         'model',

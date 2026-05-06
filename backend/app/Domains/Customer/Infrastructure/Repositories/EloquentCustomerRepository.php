@@ -56,7 +56,7 @@ class EloquentCustomerRepository implements CustomerRepositoryInterface
                     'engine_number' => $vehicleData['engineNo'] ?? $vehicleData['engine_number'] ?? '',
                     'VIN' => $vehicleData['vin'] ?? $vehicleData['VIN'] ?? '',
                     'color' => $vehicleData['color'] ?? '',
-                    'registration _number' => $vehicleData['registrationNo'] ?? $vehicleData['registration _number'] ?? '',
+                    'registration_number' => $vehicleData['registrationNo'] ?? $vehicleData['registration_number'] ?? '',
                     'year_model' => (string)($vehicleData['year'] ?? $vehicleData['year_model'] ?? ''),
                     'make' => $vehicleData['make'] ?? '',
                     'model' => $vehicleData['model'] ?? '',

@@ -84,8 +84,29 @@ const combineDateTime = (date: Date, time: string) => {
   const d = new Date(date);
   d.setHours(h, m, 0, 0);
 
-  return d.toISOString();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hour = String(d.getHours()).padStart(2, "0");
+  const minute = String(d.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hour}:${minute}:00`;
 };
+
+const SERVICE_LIST = [
+  "Preventive Maintenance Service (PMS)",
+  "Oil Change",
+  "Brake Service",
+  "Tire Service",
+  "Fuel System Service",
+  "Battery Service",
+  "Engine Tune-Up",
+  "Exhaust Repair",
+  "Transmission Service",
+  "Cooling System Maintenance",
+  "Suspension & Steering",
+  "Other"
+];
 
 /* ================= COMPONENT ================= */
   const ScheduleAppointment: React.FC<Props> = ({
@@ -102,10 +123,13 @@ const combineDateTime = (date: Date, time: string) => {
       email: "",
       make: "",
       model: "",
+      year: "",
       plateNumber: "",
       services: [] as string[],
       notes: "",
     });
+
+    const [isLoading, setIsLoading] = useState(false);
 
     const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -154,6 +178,7 @@ const combineDateTime = (date: Date, time: string) => {
     /* LOAD MODELS */
     useEffect(() => {
       const loadData = async () => {
+        setIsLoading(true);
         try {
           const [modelsRes, servicesRes] = await Promise.all([
             api.get('/products/vehicles'),
@@ -161,7 +186,6 @@ const combineDateTime = (date: Date, time: string) => {
           ]);
 
           if (modelsRes.data?.data) {
-            // Map the nested manufacturer into the make string for compat
             const flattened = modelsRes.data.data.map((m: any) => ({
               id: String(m.id),
               make: m.manufacturer?.name || "",
@@ -173,7 +197,6 @@ const combineDateTime = (date: Date, time: string) => {
           if (servicesRes.data?.data) {
             setServiceList(servicesRes.data.data.map((s: any) => s.name));
           } else {
-            // Fallback defaults if DB is empty
             const defaults = [
               "Preventive Maintenance Service",
               "Oil Change",
@@ -191,6 +214,8 @@ const combineDateTime = (date: Date, time: string) => {
           }
         } catch (error) {
           console.error("Failed to load reference data:", error);
+        } finally {
+          setIsLoading(false);
         }
       };
 
@@ -207,8 +232,9 @@ const combineDateTime = (date: Date, time: string) => {
     email: "",
     make: "",
     model: "",
+    year: "",
     plateNumber: "",
-    services: [],
+    services: [] as string[],
     notes: "",
   };
 
@@ -227,35 +253,39 @@ const combineDateTime = (date: Date, time: string) => {
     }
 
     const rawServices = initialData?.services ?? initialData?.service ?? [];
-
     const normalizedServices = Array.isArray(rawServices)
       ? rawServices
       : [rawServices].filter(Boolean);
 
-      const isOther =
-        normalizedServices.length === 1 &&
-        !serviceList.some(
-          s => normalize(s) === normalize(normalizedServices[0])
-        );
+    // Separate standard services from custom ones
+    const standardServices = normalizedServices.filter(s => SERVICE_LIST.includes(s) && s !== "Other");
+    const custom = normalizedServices.find(s => !SERVICE_LIST.includes(s));
 
     setForm({
-      firstName: initialData.firstName || "",
-      lastName: initialData.lastName || "",
-      phone: initialData.phone || "",
-      email: initialData.email || "",
-      make: initialData.make || "",
-      model: initialData.model || "",
-      plateNumber: initialData.plateNumber || "",
-      services: isOther ? [] : normalizedServices,
+      firstName: initialData.first_name || initialData.firstName || initialData.customer?.first_name || "",
+      lastName: initialData.last_name || initialData.lastName || initialData.customer?.last_name || "",
+      phone: initialData.phone || initialData.customer?.mobile_number || "",
+      email: initialData.email || initialData.customer?.email || "",
+      make: initialData.make || initialData.vehicle?.make || "",
+      model: initialData.model || initialData.vehicle?.model || "",
+      year: initialData.year || initialData.vehicle?.year_model || "",
+      plateNumber: initialData.plate_number || initialData.plateNumber || "",
+      services: standardServices,
       notes: initialData.notes || "",
     });
 
-    if (isOther) {
-      setCustomService(normalizedServices[0] ?? "");
+    if (custom) {
+      setIsOtherService(true);
+      setCustomService(custom);
+    } else {
+      const hasOther = normalizedServices.includes("Other");
+      setIsOtherService(hasOther);
+      setCustomService("");
     }
 
-    if (initialData.datetime) {
-      const d = new Date(initialData.datetime);
+    const dt = initialData.appointment_datetime || initialData.datetime;
+    if (dt) {
+      const d = new Date(dt);
       setSelectedDate(d);
 
       const hours = d.getHours();
@@ -265,6 +295,9 @@ const combineDateTime = (date: Date, time: string) => {
 
       setSelectedTime(`${formattedHour}:${minutes} ${ampm}`);
     }
+
+    setErrors({});
+    setTouched({});
   }, [open, initialData, serviceList]);
 
 
@@ -462,7 +495,7 @@ const combineDateTime = (date: Date, time: string) => {
       return;
     }
 
-    let finalServices = [...form.services];
+    let finalServices = Array.from(new Set(form.services.filter(s => s !== "Other")));
 
     if (isOtherService) {
       if (!customService.trim()) {
@@ -470,7 +503,10 @@ const combineDateTime = (date: Date, time: string) => {
         return;
       }
 
-      finalServices.push(toTitleCase(customService));
+      const formattedCustom = toTitleCase(customService);
+      if (!finalServices.includes(formattedCustom)) {
+        finalServices.push(formattedCustom);
+      }
     }
 
     onSaved?.({
@@ -480,6 +516,7 @@ const combineDateTime = (date: Date, time: string) => {
       email,
       make,
       model,
+      year: form.year,
       plateNumber,
       services: finalServices,
       customService: "",
@@ -502,8 +539,14 @@ const combineDateTime = (date: Date, time: string) => {
           </p>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh] bg-card">
-          <div className="px-6 py-4 space-y-5 bg-card">
+        <ScrollArea className="max-h-[65vh] bg-card relative">
+          {isLoading && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] transition-opacity">
+              <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium text-slate-600 animate-pulse">Loading technical data...</p>
+            </div>
+          )}
+          <div className={cn("px-6 py-4 space-y-5 bg-card", isLoading && "opacity-40 pointer-events-none")}>
 
             {/* CUSTOMER */}
             <div>
@@ -650,7 +693,7 @@ const combineDateTime = (date: Date, time: string) => {
                   />                
                 </div>
 
-                <div  className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1">
                   <Label className="text-xs font-medium">Model</Label>
                   <Combobox
                     items={modelOptions}
@@ -664,6 +707,18 @@ const combineDateTime = (date: Date, time: string) => {
                       setForm(p => ({ ...p, model: canonical }));
                     }}
                   />                  
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Year</Label>
+                  <Input
+                    value={form.year}
+                    
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      setForm(p => ({ ...p, year: val }));
+                    }}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -705,45 +760,40 @@ const combineDateTime = (date: Date, time: string) => {
 
               <div className="space-y-3">
 
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs font-medium">Service</Label>
-                  <Combobox
-                    items={serviceOptions}
-                    value=""
-                    onChange={(val) => {
-                      if (!val || !val.trim()) return;
+                <div className="flex flex-col gap-2">
+                  <Label className="text-xs font-medium text-red-500 uppercase">Service Needed</Label>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 border rounded-md p-3 bg-muted/20">
+                    {SERVICE_LIST.map((svc) => (
+                      <div key={svc} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`svc-${svc}`}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                          checked={form.services.includes(svc)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setForm(p => ({
+                              ...p,
+                              services: checked 
+                                ? [...p.services, svc]
+                                : p.services.filter(s => s !== svc)
+                            }));
+                            
+                            if (svc === "Other") {
+                              setIsOtherService(checked);
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`svc-${svc}`}
+                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {svc}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
 
-                      const isValidOption =
-                        val === "__OTHER__" ||
-                        serviceList.some(s => normalize(s) === normalize(val));
-
-                      if (!isValidOption) return;
-
-                      if (val === "__OTHER__") {
-                        setIsOtherService(true);
-                        return;
-                      }
-
-                      const formatted = toTitleCase(val.trim());
-
-                      const canonical =
-                        findCanonical(serviceList, formatted) || formatted;
-
-                      setIsOtherService(false);
-
-                      setForm(p => {
-                        const exists = p.services.some(
-                          s => normalize(s) === normalize(canonical)
-                        );
-                        if (exists) return p;
-
-                        return {
-                          ...p,
-                          services: Array.from(new Set([...p.services, canonical])),
-                        };
-                      });
-                    }}
-                  />
                   {form.services.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {form.services.map((svc, i) => (
@@ -874,8 +924,8 @@ const combineDateTime = (date: Date, time: string) => {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            {isEdit? "Update Appointment" : "Schedule Appointment"}
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? "Please wait..." : (isEdit ? "Update Appointment" : "Schedule Appointment")}
           </Button>
         </DialogFooter>
 

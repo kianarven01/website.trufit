@@ -101,7 +101,7 @@ const CustomersList: React.FC = () => {
                         plateNo: v.plate_number,
                         engineNo: v.engine_number,
                         vin: v.VIN,
-                        registrationNo: v['registration _number'],
+                        registrationNo: v['registration_number'],
                         sellingDealer: v.selling_dealer,
                         hasWarranty: false
                     });
@@ -432,7 +432,7 @@ const toolbarFilters = [
                  plateNo: v.plate_number,
                  engineNo: v.engine_number,
                  vin: v.VIN,
-                 registrationNo: v['registration _number'],
+                 registrationNo: v['registration_number'],
                  sellingDealer: v.selling_dealer,
                  hasWarranty: false
              }));

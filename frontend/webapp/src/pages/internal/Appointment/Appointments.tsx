@@ -26,22 +26,33 @@ type AppointmentStatus = "for approval" | "confirmed" | "cancelled" ;
 interface Appointment {
   id: number;
   appointment_code: string;
-  customerID: number;
-  plate_number: string;
+  customer_id?: number;
+  plate_number?: string;
   services: string[];
   appointment_datetime: string;
   status: AppointmentStatus;
   notes?: string;
-  customer: {
+  
+  // Lead Info (directly from table)
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  email?: string;
+  make?: string;
+  model?: string;
+  year?: string;
+
+  customer?: {
     first_name: string;
     last_name: string;
     mobile_number: string;
     email?: string;
   };
-  vehicle: {
+  vehicle?: {
     plate_number: string;
     make: string;
     model: string;
+    year_model: string;
   };
 }
 
@@ -80,7 +91,7 @@ const AppointmentsList: React.FC = () => {
   const [editingAppointmentId, setEditingAppointmentId] = useState<number | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
-  // const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
+  const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
 
      
   const handleRowClick = (apt: Appointment) => {
@@ -177,6 +188,17 @@ const AppointmentsList: React.FC = () => {
     return service;
   };
 
+  const formatForBackend = (val: string) => {
+    if (!val) return "";
+    const d = new Date(val);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hour = String(d.getHours()).padStart(2, "0");
+    const minute = String(d.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hour}:${minute}:00`;
+  };
+
   /* ================= DATE FILTER ================= */
 
   const toLocalDateString = (date: string | Date) => {
@@ -248,15 +270,16 @@ const AppointmentsList: React.FC = () => {
   const getEditableData = (apt: Appointment) => {
     return {
       id: apt.id,
-      firstName: apt.customer?.first_name ?? "",
-      lastName: apt.customer?.last_name ?? "",
-      phone: apt.customer?.mobile_number ?? "",
-      email: apt.customer?.email,
-      make: apt.vehicle?.make,
-      model: apt.vehicle?.model,
-      plateNumber: apt.vehicle?.plate_number,
-      services: apt.services,
-      notes: apt.notes,
+      firstName: apt.customer?.first_name || apt.first_name || "",
+      lastName: apt.customer?.last_name || apt.last_name || "",
+      phone: apt.customer?.mobile_number || apt.phone || "",
+      email: apt.customer?.email || apt.email || "",
+      make: apt.vehicle?.make || apt.make || "",
+      model: apt.vehicle?.model || apt.model || "",
+      year: apt.vehicle?.year_model || apt.year || "",
+      plateNumber: apt.plate_number || apt.vehicle?.plate_number || "",
+      services: apt.services || [],
+      notes: apt.notes || "",
       datetime: apt.appointment_datetime,
     };
   };  
@@ -267,14 +290,15 @@ const AppointmentsList: React.FC = () => {
       if (!apt) return;
       
       const payload = {
-        firstName: apt.customer.first_name,
-        lastName: apt.customer.last_name,
-        phone: apt.customer.mobile_number,
-        email: apt.customer.email,
-        make: apt.vehicle.make,
-        model: apt.vehicle.model,
-        plateNumber: apt.vehicle.plate_number,
-        datetime: apt.appointment_datetime,
+        firstName: apt.customer?.first_name || apt.first_name,
+        lastName: apt.customer?.last_name || apt.last_name,
+        phone: apt.customer?.mobile_number || apt.phone,
+        email: apt.customer?.email || apt.email,
+        make: apt.vehicle?.make || apt.make,
+        model: apt.vehicle?.model || apt.model,
+        year: apt.vehicle?.year_model || apt.year,
+        plateNumber: apt.plate_number || apt.vehicle?.plate_number,
+        datetime: formatForBackend(apt.appointment_datetime),
         services: apt.services,
         notes: apt.notes,
         status: status
@@ -303,8 +327,8 @@ const AppointmentsList: React.FC = () => {
       const customer = a.customer;
       const vehicle = a.vehicle;
 
-      const make = normalize(vehicle?.make || "");
-      const model = normalize(vehicle?.model || "");
+      const make = normalize(a.vehicle?.make || a.make || "");
+      const model = normalize(a.vehicle?.model || a.model || "");
 
       const matchesStatus =
         filters.status === "all" || a.status === filters.status;
@@ -474,15 +498,15 @@ const AppointmentsList: React.FC = () => {
         {appointments.length > 0 ? (
           <div  className="flex-1 min-w-0 flex flex-col border rounded-xl overflow-hidden">
             <ScrollArea className="flex-1 px-3">
-              <Table className="table-fixed w-full border-separate border-spacing-y-2 h-full">
+              <Table className="w-full border-separate border-spacing-y-2 h-full min-w-[800px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[10%]">No.</TableHead>
-                    <TableHead className="w-[20%]">Customer</TableHead>
-                    <TableHead className="w-[20%]">Vehicle</TableHead>
-                    <TableHead className="w-[18%]">Service</TableHead>
-                    <TableHead className="w-[17%]">Date & Time</TableHead>
-                    <TableHead className="w-[15%]">Status</TableHead>
+                    <TableHead className="w-[80px]">No.</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Service</TableHead>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead className="w-[120px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -501,17 +525,28 @@ const AppointmentsList: React.FC = () => {
 
                           <TableCell>
                             <div className="flex flex-col">
-                              <span>
-                                {a.customer?.first_name} {a.customer?.last_name}
+                              <span className="font-medium">
+                                {a.customer 
+                                  ? `${a.customer.first_name} ${a.customer.last_name}` 
+                                  : `${a.first_name} ${a.last_name}`}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {formatPhone(a.customer?.mobile_number)}
+                                {formatPhone(a.customer?.mobile_number || a.phone)}
                               </span>
                             </div>
                           </TableCell>
 
                           <TableCell>
-                            {a.vehicle ? `${a.vehicle.make} ${a.vehicle.model}` : "-"}
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {a.vehicle 
+                                  ? `${a.vehicle.year_model || a.year || ""} ${a.vehicle.make} ${a.vehicle.model}`.trim()
+                                  : a.make ? `${a.year || ""} ${a.make} ${a.model}`.trim() : "-"}
+                              </span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {a.plate_number}
+                              </span>
+                            </div>
                           </TableCell>
 
                           <TableCell>
@@ -661,16 +696,18 @@ const AppointmentsList: React.FC = () => {
                   <div className="grid gap-3 pl-6 border-l-2 border-slate-100">
                     <div>
                       <p className="text-sm font-semibold">
-                        {selectedAppointment?.customer?.first_name} {selectedAppointment?.customer?.last_name}
+                        {selectedAppointment?.customer 
+                          ? `${selectedAppointment.customer.first_name} ${selectedAppointment.customer.last_name}` 
+                          : `${selectedAppointment?.first_name} ${selectedAppointment?.last_name}`}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Phone className="w-3.5 h-3.5" />
-                      {formatPhone(selectedAppointment?.customer?.mobile_number) || "No phone number provided"}
+                      {formatPhone(selectedAppointment?.customer?.mobile_number || selectedAppointment?.phone) || "No phone number provided"}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Mail className="w-3.5 h-3.5" />
-                      {selectedAppointment?.customer?.email || "No email provided"}
+                      {selectedAppointment?.customer?.email || selectedAppointment?.email || "No email provided"}
                     </div>
                   </div>
                 </section>
@@ -686,14 +723,14 @@ const AppointmentsList: React.FC = () => {
                       <p className="text-[10px] uppercase font-medium text-slate-400">Model</p>
                       <p className="text-sm font-medium">
                         {selectedAppointment?.vehicle
-                          ? `${selectedAppointment.vehicle.make} ${selectedAppointment.vehicle.model}`
-                          : "No vehicle model provided"
+                          ? `${selectedAppointment.vehicle.year_model || selectedAppointment.year || ""} ${selectedAppointment.vehicle.make} ${selectedAppointment.vehicle.model}`.trim()
+                          : selectedAppointment?.make ? `${selectedAppointment.year || ""} ${selectedAppointment.make} ${selectedAppointment.model}`.trim() : "No vehicle model provided"
                         }
                       </p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <p className="text-[10px] uppercase font-medium text-slate-400">Plate Number</p>
-                      <p className="text-sm font-medium">{selectedAppointment?.vehicle?.plate_number || "Not provided"}</p>
+                      <p className="text-sm font-medium">{selectedAppointment?.plate_number || selectedAppointment?.vehicle?.plate_number || "Not provided"}</p>
                     </div>
                   </div>
                 </section>
@@ -749,6 +786,28 @@ const AppointmentsList: React.FC = () => {
                       Confirm Appointment
                     </Button>
 
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100"
+                        onClick={() => {
+                          setIsSheetOpen(false);
+                          setEditingAppointmentId(selectedAppointment?.id || null);
+                          setIsScheduleDialogOpen(true)
+                        }}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        className="bg-slate-50 hover:bg-slate-100"
+                        onClick={() => setIsReschedDialogOpen(true)}
+                      >
+                        Reschedule
+                      </Button>
+                    </div>
+
                     <Button
                       variant="outline"
                       className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"
@@ -762,15 +821,25 @@ const AppointmentsList: React.FC = () => {
                 {/* CONFIRMED */}
                 {selectedAppointment?.status === "confirmed" && (
                   <>
-                    <Button
-                      className="w-full bg-blue-600 hover:bg-blue-700 h-11"
-                      onClick={() => {
-                        setIsSheetOpen(false);
-                        setEditingAppointmentId(selectedAppointment?.id || null);
-                        setIsScheduleDialogOpen(true)}}
-                    >
-                      Edit Appointment
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700"
+                        onClick={() => {
+                          setIsSheetOpen(false);
+                          setEditingAppointmentId(selectedAppointment?.id || null);
+                          setIsScheduleDialogOpen(true)}}
+                      >
+                        Edit
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        className="bg-slate-50 hover:bg-slate-100"
+                        onClick={() => setIsReschedDialogOpen(true)}
+                      >
+                        Reschedule
+                      </Button>
+                    </div>
 
                     <Button
                       variant="outline"
@@ -785,13 +854,19 @@ const AppointmentsList: React.FC = () => {
                 {/* CANCELLED */}
                 {(selectedAppointment?.status === "cancelled") && (
                   <>
-                  <Button 
-                    variant="outline"
-                    className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"  
-                    onClick={() => setIsRemoveDialogOpen(true)}                
-                  >
-                    Remove
-                  </Button>
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700 h-11"
+                      onClick={() => setIsReschedDialogOpen(true)}
+                    >
+                      Reschedule
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="text-red-500 hover:text-red-600 border-red-200 hover:bg-red-50"  
+                      onClick={() => setIsRemoveDialogOpen(true)}                
+                    >
+                      Remove
+                    </Button>
                   </>
                 )}
 
@@ -876,25 +951,42 @@ const AppointmentsList: React.FC = () => {
 
       />
 
-      {/* Reschedule Appointment Dialog 
+      {/* Reschedule Appointment Dialog */}
       <ReschedAppointment
         open={isReschedDialogOpen}
         onOpenChange={setIsReschedDialogOpen}
-        appointment={selectedAppointment}
+        appointment={selectedAppointment as any}
         onSave={(updatedDateTime) => {
           if (!selectedAppointment) return;
+          
+          // Re-use updateAppointmentStatus logic to save the new time
+          const payload = {
+            firstName: selectedAppointment.customer?.first_name || selectedAppointment.first_name,
+            lastName: selectedAppointment.customer?.last_name || selectedAppointment.last_name,
+            phone: selectedAppointment.customer?.mobile_number || selectedAppointment.phone,
+            email: selectedAppointment.customer?.email || selectedAppointment.email,
+            make: selectedAppointment.vehicle?.make || selectedAppointment.make,
+            model: selectedAppointment.vehicle?.model || selectedAppointment.model,
+            year: selectedAppointment.vehicle?.year_model || selectedAppointment.year,
+            plateNumber: selectedAppointment.plate_number || selectedAppointment.vehicle?.plate_number || "",
+            datetime: formatForBackend(updatedDateTime),
+            services: selectedAppointment.services || [],
+            notes: selectedAppointment.notes || "",
+            status: "for approval" 
+          };
 
-          setAppointments((prev) =>
-            prev.map((a) =>
-              a.id === selectedAppointment.id
-                ? { ...a, datetime: updatedDateTime }
-                : a
-            )
-          );
-          toast.success("Appointment rescheduled successfully!");
+          api.put(`/appointments/${selectedAppointment.id}`, payload)
+            .then(res => {
+              if (res.data?.data) {
+                setAppointments(prev => prev.map(a => a.id === selectedAppointment.id ? res.data.data : a));
+                toast.success("Appointment rescheduled successfully!");
+                setIsReschedDialogOpen(false);
+                setIsSheetOpen(false);
+              }
+            })
+            .catch(() => toast.error("Failed to reschedule"));
         }}
       />
-      */}
 
     </div>
   );

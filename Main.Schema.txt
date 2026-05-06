@@ -81,14 +81,12 @@ CREATE TABLE Main.CustomerVehicles (
   color character varying NOT NULL,
   registration _number text NOT NULL,
   selling_dealer character varying NOT NULL,
-  variant_id bigint,
   year_model text,
   make character varying,
   model character varying,
   variant character varying,
   CONSTRAINT CustomerVehicles_pkey PRIMARY KEY (plate_number),
-  CONSTRAINT Vehicle_customerID_fkey FOREIGN KEY (customerID) REFERENCES Main.Customers(customer_id),
-  CONSTRAINT vehicle_variant_id_fkey FOREIGN KEY (variant_id) REFERENCES Main.VehicleVariants(id)
+  CONSTRAINT Vehicle_customerID_fkey FOREIGN KEY (customerID) REFERENCES Main.Customers(customer_id)
 );
 CREATE TABLE Main.Customers (
   customer_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,

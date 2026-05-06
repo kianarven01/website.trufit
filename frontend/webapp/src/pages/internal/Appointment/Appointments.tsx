@@ -14,75 +14,38 @@ import ScheduleAppointment from "@/components/popupModal/Appointments/ScheduleAp
 import ReschedAppointment from "@/components/popupModal/Appointments/ReschedAppointment";
 import { NotesPanel } from "@/components/ui/note-panel";
 import { toast } from "sonner";
+import api from "@/api/axios";
 
 import { Calendar as CalendarIcon } from "lucide-react";
 import { User, Car, ClipboardList, Phone, Mail, MessageSquare } from "lucide-react";
 
 
-/* ================= STORAGE ================= */
-const APPOINTMENT_CUSTOMER_KEY = "appointmentCustomers";
-const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
-const VEHICLE_STORAGE_KEY = "vehicles";
-const APPOINTMENT_SERVICE_KEY = "appointmentServices";
-const APPOINTMENT_KEY = "appointments";
-
 /* ================= TYPES ================= */
 type AppointmentStatus = "for approval" | "confirmed" | "cancelled" ;
 
-interface Customer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  mobileNumber: string;
-  email?: string;
-}
-
-interface VehicleModel {
-  id: string;
-  make: string;
-  model: string;
-}
-
-interface Vehicle {
-  id: string;
-  customerId: string;
-  vehicleModelId: string;
-  plateNumber?: string;
-}
-
 interface Appointment {
-  id: string;
-  appointmentCode: string;
-  customerId: string;
-  vehicleId: string;
-  services: string [];
-  customService?: string;
-  datetime: string;
+  id: number;
+  appointment_code: string;
+  customerID: number;
+  plate_number: string;
+  services: string[];
+  appointment_datetime: string;
   status: AppointmentStatus;
   notes?: string;
+  customer: {
+    first_name: string;
+    last_name: string;
+    mobile_number: string;
+    email?: string;
+  };
+  vehicle: {
+    plate_number: string;
+    make: string;
+    model: string;
+  };
 }
 
 /* ================= HELPERS ================= */
-const generateAppointmentCode = (appointments: Appointment[]) => {
-  const nums = appointments
-    .map(a => a.appointmentCode)
-    .filter(Boolean)
-    .map(code => parseInt(code.replace("APT-", ""), 10))
-    .filter(n => !isNaN(n));
-
-  const next = nums.length ? Math.max(...nums) + 1 : 1;
-
-  return `APT-${String(next).padStart(4, "0")}`;
-};
-
-const getLS = <T,>(key: string): T[] => {
-  return JSON.parse(localStorage.getItem(key) || "[]");
-};
-
-const setLS = (key: string, data: any) => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
 const normalizePhone = (val: string) => (val || "").replace(/\D/g, "").trim();
 const normalizeText = (val: string) => (val || "").toLowerCase().trim();
 
@@ -96,15 +59,11 @@ const normalizePlate = (val?: string) => {
     .trim();
 };
 
-const genId = () => crypto.randomUUID();
 
 
 /* ================= COMPONENT ================= */
 const AppointmentsList: React.FC = () => {
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +77,7 @@ const AppointmentsList: React.FC = () => {
     return localStorage.getItem("appointmentDateFilter");
   });
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-  const [editingAppointmentId, setEditingAppointmentId] = useState<string | null>(null);
+  const [editingAppointmentId, setEditingAppointmentId] = useState<number | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   // const [isReschedDialogOpen, setIsReschedDialogOpen] = useState(false);
@@ -136,48 +95,28 @@ const AppointmentsList: React.FC = () => {
 
   /* ================= LOAD ================= */
 
-  useEffect(() => {
+  const loadData = async () => {
     setIsLoading(true);
-
-    const loadData = () => {
-      setCustomers(getLS<Customer>(APPOINTMENT_CUSTOMER_KEY));
-      setVehicleModels(getLS<VehicleModel>(VEHICLE_MODEL_STORAGE_KEY));
-      setVehicles(getLS<Vehicle>(VEHICLE_STORAGE_KEY));
-      setAppointments(getLS<Appointment>(APPOINTMENT_KEY));
-
+    try {
+      const res = await api.get('/appointments');
+      if (res.data?.data) {
+        setAppointments(res.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to load appointments:", error);
+      toast.error("Failed to load appointments");
+    } finally {
       setIsLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
 
   /* ================= MAP ================= */
 
-  const customerMap = useMemo(() => {
-    const map = new Map<string, Customer>();
-    customers.forEach((c) => map.set(c.id, c));
-    return map;
-  }, [customers]);
 
-  const vehicleMap = useMemo(() => {
-    const map = new Map<string, Vehicle>();
-    vehicles.forEach((v) => map.set(v.id, v));
-    return map;
-  }, [vehicles]);
-
-  const vehicleModelMap = useMemo(() => {
-    const map = new Map<string, VehicleModel>();
-    vehicleModels.forEach((vm) => map.set(vm.id, vm));
-    return map;
-  }, [vehicleModels]);
-
-
-  const EMPTY_CUSTOMER: Customer = {
-    id: "",
-    firstName: "",
-    lastName: "",
-    mobileNumber: "",
-  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -277,7 +216,7 @@ const AppointmentsList: React.FC = () => {
       const status = a.status;
       if (!allowedStatuses.has(status)) return;
 
-      const dateKey = toLocalDateString(a.datetime);
+      const dateKey = toLocalDateString(a.appointment_datetime);
 
       if (!grouped.has(dateKey)) {
         grouped.set(dateKey, new Set());
@@ -307,36 +246,49 @@ const AppointmentsList: React.FC = () => {
   };
 
   const getEditableData = (apt: Appointment) => {
-    const customer = customerMap.get(apt.customerId);
-    const vehicle = vehicleMap.get(apt.vehicleId);
-    const vehicleModel = vehicle
-      ? vehicleModelMap.get(vehicle.vehicleModelId)
-      : null;
-
     return {
       id: apt.id,
-      firstName: customer?.firstName ?? "",
-      lastName: customer?.lastName ?? "",
-      phone: customer?.mobileNumber ?? "",
-      email: customer?.email,
-      make: vehicleModel?.make,
-      model: vehicleModel?.model,
-      plateNumber: vehicle?.plateNumber,
+      firstName: apt.customer?.first_name ?? "",
+      lastName: apt.customer?.last_name ?? "",
+      phone: apt.customer?.mobile_number ?? "",
+      email: apt.customer?.email,
+      make: apt.vehicle?.make,
+      model: apt.vehicle?.model,
+      plateNumber: apt.vehicle?.plate_number,
       services: apt.services,
       notes: apt.notes,
-      datetime: apt.datetime,
+      datetime: apt.appointment_datetime,
     };
   };  
 
-  const updateAppointmentStatus = (id: string, status: AppointmentStatus) => {
-    setAppointments((prev) => {
-      const updated = prev.map((a) =>
-        a.id === id ? { ...a, status } : a
-      );
-
-      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
-      return updated;
-    });
+  const updateAppointmentStatus = async (id: number, status: AppointmentStatus) => {
+    try {
+      const apt = appointments.find((a) => a.id === id);
+      if (!apt) return;
+      
+      const payload = {
+        firstName: apt.customer.first_name,
+        lastName: apt.customer.last_name,
+        phone: apt.customer.mobile_number,
+        email: apt.customer.email,
+        make: apt.vehicle.make,
+        model: apt.vehicle.model,
+        plateNumber: apt.vehicle.plate_number,
+        datetime: apt.appointment_datetime,
+        services: apt.services,
+        notes: apt.notes,
+        status: status
+      };
+      
+      const res = await api.put(`/appointments/${id}`, payload);
+      if (res.data?.data) {
+        setAppointments((prev) => prev.map((a) => (a.id === id ? res.data.data : a)));
+        toast.success("Status updated");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update status");
+    }
   };
 
 
@@ -348,43 +300,39 @@ const AppointmentsList: React.FC = () => {
     const q = normalize(search);
 
     return appointments.filter((a) => {
-      const customer = customerMap.get(a.customerId) ?? EMPTY_CUSTOMER;
-      const vehicle = vehicleMap.get(a.vehicleId);
-      const vehicleModel = vehicle?.vehicleModelId
-        ? vehicleModelMap.get(vehicle.vehicleModelId)
-        : null;
+      const customer = a.customer;
+      const vehicle = a.vehicle;
 
-      const make = normalize(vehicleModel?.make || "");
-      const model = normalize(vehicleModel?.model || "");
+      const make = normalize(vehicle?.make || "");
+      const model = normalize(vehicle?.model || "");
 
       const matchesStatus =
         filters.status === "all" || a.status === filters.status;
 
-
       const matchesDate =
-        !selectedDate || toLocalDateString(a.datetime) === selectedDate;
+        !selectedDate || toLocalDateString(a.appointment_datetime) === selectedDate;
 
       if (!q) return matchesStatus && matchesDate;
 
-      const firstName = normalize(customer.firstName);
-      const lastName = normalize(customer.lastName);
-      const fullName = normalize(`${customer.firstName} ${customer.lastName}`);
-      const services = normalize(a.services.join(" "));
+      const firstName = normalize(customer?.first_name || "");
+      const lastName = normalize(customer?.last_name || "");
+      const fullName = normalize(`${firstName} ${lastName}`);
+      const services = normalize(a.services?.join(" ") || "");
 
-        const terms = q.split(" ").filter(Boolean);
+      const terms = q.split(" ").filter(Boolean);
 
-        const matchesSearch = terms.every((term) =>
-          firstName.includes(term) ||
-          lastName.includes(term) ||
-          fullName.includes(term) ||
-          make.includes(term) ||
-          model.includes(term) ||
-          services.includes(term)
-        );
+      const matchesSearch = terms.every((term) =>
+        firstName.includes(term) ||
+        lastName.includes(term) ||
+        fullName.includes(term) ||
+        make.includes(term) ||
+        model.includes(term) ||
+        services.includes(term)
+      );
 
       return matchesStatus && matchesDate && matchesSearch;
     });
-  }, [appointments, customerMap, vehicleMap, vehicleModelMap, search, filters, selectedDate]);
+  }, [appointments, search, filters, selectedDate]);
 
 
   const paginated = paginate(filtered);
@@ -418,219 +366,53 @@ const AppointmentsList: React.FC = () => {
     setPage(1);
   }, [search, pageSize, selectedDate, filters]);
 
-  const selectedVehicle = selectedAppointment
-    ? vehicleMap.get(selectedAppointment.vehicleId)
-    : null;
-
-  const selectedVehicleModel = selectedVehicle
-    ? vehicleModelMap.get(selectedVehicle.vehicleModelId)
-    : null;
-
-  /* ================= SCHEDULE APPOINTMENT ================= */
-
-  /* Customer Upsert */
-  const upsertCustomer = (data: any, existingCustomerId?: string) => {
-    const customers = getLS<Customer>(APPOINTMENT_CUSTOMER_KEY);
-
-    // If editing, update directly by ID
-    if (existingCustomerId) {
-      const updated = customers.map(c =>
-        c.id === existingCustomerId
-          ? {
-              ...c,
-              firstName: data.firstName,
-              lastName: data.lastName,
-              mobileNumber: data.phone,
-              email: data.email,
-            }
-          : c
-      );
-
-      setLS(APPOINTMENT_CUSTOMER_KEY, updated);
-      setCustomers(updated);
-
-      return updated.find(c => c.id === existingCustomerId)!;
+  const handleCreateAppointment = async (data: any) => {
+    try {
+      const res = await api.post('/appointments', data);
+      if (res.data?.data) {
+        setAppointments(prev => [...prev, res.data.data]);
+        toast.success("Appointment created successfully!");
+        setEditingAppointmentId(null);
+        setIsScheduleDialogOpen(false);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create appointment.");
     }
-
-    // Create flow (no existing ID)
-    const existing = customers.find(
-      c =>
-        normalizePhone(c.mobileNumber) === normalizePhone(data.phone)
-    );
-
-    if (existing) return existing;
-
-    const newCustomer: Customer = {
-      id: genId(),
-      firstName: data.firstName,
-      lastName: data.lastName,
-      mobileNumber: data.phone,
-      email: data.email,
-    };
-
-    const updated = [...customers, newCustomer];
-    setLS(APPOINTMENT_CUSTOMER_KEY, updated);
-    setCustomers(updated);
-
-    return newCustomer;
-  };
-
-
-  /*  Vehicle Model Upsert */
-  const upsertVehicleModel = (data: any) => {
-    const models = getLS<VehicleModel>(VEHICLE_MODEL_STORAGE_KEY);
-
-    const existing = models.find(
-      v =>
-        normalizeText(v.make) === normalizeText(data.make) &&
-        normalizeText(v.model) === normalizeText(data.model)
-    );
-
-    if (existing) return existing;
-
-    const newModel: VehicleModel = {
-      id: genId(),
-      make: data.make,
-      model: data.model,
-    };
-
-    const updated = [...models, newModel];
-
-    setLS(VEHICLE_MODEL_STORAGE_KEY, updated);
-    setVehicleModels(updated);
-
-    return newModel;
-  };
-
-
-  /* Vehicle Upsert */
-  const upsertVehicle = (
-    customerId: string,
-    modelId: string,
-    data: any,
-    existingVehicleId?: string
-  ) => {
-    const vehicles = getLS<Vehicle>(VEHICLE_STORAGE_KEY);
-
-    // Editing → update directly
-    if (existingVehicleId) {
-      const updated = vehicles.map(v =>
-        v.id === existingVehicleId
-          ? {
-              ...v,
-              customerId,
-              vehicleModelId: modelId,
-              plateNumber: normalizePlate(data.plateNumber),
-            }
-          : v
-      );
-
-      setLS(VEHICLE_STORAGE_KEY, updated);
-      setVehicles(updated);
-
-      return updated.find(v => v.id === existingVehicleId)!;
-    }
-
-    // Create flow
-    const existing = vehicles.find(
-      v =>
-        normalizePlate(v.plateNumber) === normalizePlate(data.plateNumber)
-    );
-
-    if (existing) return existing;
-
-    const newVehicle: Vehicle = {
-      id: genId(),
-      customerId,
-      vehicleModelId: modelId,
-      plateNumber: normalizePlate(data.plateNumber),
-    };
-
-    const updated = [...vehicles, newVehicle];
-    setLS(VEHICLE_STORAGE_KEY, updated);
-    setVehicles(updated);
-
-    return newVehicle;
-  };
-
-
-  /*  Create Appointment */
-  const handleCreateAppointment = (data: any) => {
-    const customer = upsertCustomer(data);
-    const vehicleModel = upsertVehicleModel(data);
-    const vehicle = upsertVehicle(customer.id, vehicleModel.id, data);
-
-    const newAppointment: Appointment = {
-      id: genId(),
-      appointmentCode: generateAppointmentCode(appointments),
-      customerId: customer.id,
-      vehicleId: vehicle.id,
-      services: data.services,
-      customService: data.customService,
-      datetime: data.datetime,
-      status: "for approval",
-      notes: data.notes,
-    };
-
-    setAppointments((prev) => {
-      const updated = [...prev, newAppointment];
-      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
-      return updated;
-    });
-
-    setEditingAppointmentId(null);
-    setIsScheduleDialogOpen(false);
-
-    toast.success("Appointment created successfully!");
   };
     
 
   /* Update Appointment */
-  const handleUpdateAppointment = (data: any) => {
+  const handleUpdateAppointment = async (data: any) => {
     if (!editingAppointmentId) return;
 
-    const existingAppointment = appointments.find(a => a.id === editingAppointmentId);
-    if (!existingAppointment) return;
-    const customer = upsertCustomer(data, existingAppointment?.customerId);
-    const vehicleModel = upsertVehicleModel(data);
-    const vehicle = upsertVehicle(customer.id, vehicleModel.id, data, existingAppointment?.vehicleId);
-
-    setAppointments((prev) => {
-      const updated = prev.map((a) =>
-        a.id === editingAppointmentId
-          ? {
-              ...a,
-              customerId: customer.id,
-              vehicleId: vehicle.id,
-              services: data.services,
-              customServie: data.customService,
-              datetime: data.datetime,
-              notes: data.notes,
-            }
-          : a
-      );
-
-      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
-      return updated;
-    });
-
-    setEditingAppointmentId(null);
-    setIsScheduleDialogOpen(false);
-    setIsSheetOpen(false);
-
-    toast.success("Appointment updated!");
+    try {
+      const res = await api.put(`/appointments/${editingAppointmentId}`, data);
+      if (res.data?.data) {
+        setAppointments(prev => prev.map(a => a.id === editingAppointmentId ? res.data.data : a));
+        toast.success("Appointment updated!");
+        setEditingAppointmentId(null);
+        setIsScheduleDialogOpen(false);
+        setIsSheetOpen(false);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update appointment.");
+    }
   };
 
 
   /* Remove Appointment */
-  const removeAppointment = (id: string) => {
-    setAppointments((prev) => {
-      const updated = prev.filter((a) => a.id !== id);
-      localStorage.setItem(APPOINTMENT_KEY, JSON.stringify(updated));
-      return updated;
-    });
-
-    setIsSheetOpen(false);
+  const removeAppointment = async (id: number) => {
+    try {
+      await api.delete(`/appointments/${id}`);
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
+      toast.success("Appointment cancelled successfully.");
+      setIsSheetOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to cancel appointment.");
+    }
   };
 
   
@@ -709,33 +491,27 @@ const AppointmentsList: React.FC = () => {
                     <TableSkeleton rows={8} />
                   ) : filtered.length > 0 ? (
                     paginated.map((a) => {
-                      const customer = customerMap.get(a.customerId);
-                      const vehicle = vehicleMap.get(a.vehicleId);
-                      const vehicleModel = vehicle
-                        ? vehicleModelMap.get(vehicle.vehicleModelId)
-                        : null;
-
                       return (
                         <TableRow
                           key={a.id}
                           onClick={() => handleRowClick(a)}
-                          className="rounded-lg border bg-card shadow-sm hover:shadow-md"
+                          className="rounded-lg border bg-card shadow-sm hover:shadow-md cursor-pointer"
                         >
-                          <TableCell>{a.appointmentCode}</TableCell>
+                          <TableCell>{a.appointment_code}</TableCell>
 
                           <TableCell>
                             <div className="flex flex-col">
                               <span>
-                                {customer?.firstName} {customer?.lastName}
+                                {a.customer?.first_name} {a.customer?.last_name}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {formatPhone(customer?.mobileNumber)}
+                                {formatPhone(a.customer?.mobile_number)}
                               </span>
                             </div>
                           </TableCell>
 
                           <TableCell>
-                            {vehicleModel ? `${vehicleModel.make} ${vehicleModel.model}` : "-"}
+                            {a.vehicle ? `${a.vehicle.make} ${a.vehicle.model}` : "-"}
                           </TableCell>
 
                           <TableCell>
@@ -771,9 +547,9 @@ const AppointmentsList: React.FC = () => {
 
                           <TableCell>
                             <div className="flex flex-col">
-                              <span>{formatDate(a.datetime)}</span>
+                              <span>{formatDate(a.appointment_datetime)}</span>
                               <span className="text-xs text-muted-foreground">
-                                {formatTime(a.datetime)}
+                                {formatTime(a.appointment_datetime)}
                               </span>
                             </div>
                           </TableCell>
@@ -866,7 +642,7 @@ const AppointmentsList: React.FC = () => {
                     Appointment Detail
                   </SheetTitle>   
                   <span className="text-xs text-muted-foreground font-mono">
-                    {selectedAppointment?.appointmentCode}
+                    {selectedAppointment?.appointment_code}
                   </span>
                 </div>
               </SheetHeader>
@@ -885,16 +661,16 @@ const AppointmentsList: React.FC = () => {
                   <div className="grid gap-3 pl-6 border-l-2 border-slate-100">
                     <div>
                       <p className="text-sm font-semibold">
-                        {customerMap.get(selectedAppointment?.customerId || "")?.firstName} {customerMap.get(selectedAppointment?.customerId || "")?.lastName}
+                        {selectedAppointment?.customer?.first_name} {selectedAppointment?.customer?.last_name}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Phone className="w-3.5 h-3.5" />
-                      {formatPhone(customerMap.get(selectedAppointment?.customerId || "")?.mobileNumber) || "No phone number provided"}
+                      {formatPhone(selectedAppointment?.customer?.mobile_number) || "No phone number provided"}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Mail className="w-3.5 h-3.5" />
-                      {customerMap.get(selectedAppointment?.customerId || "")?.email || "No email provided"}
+                      {selectedAppointment?.customer?.email || "No email provided"}
                     </div>
                   </div>
                 </section>
@@ -909,15 +685,15 @@ const AppointmentsList: React.FC = () => {
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <p className="text-[10px] uppercase font-medium text-slate-400">Model</p>
                       <p className="text-sm font-medium">
-                        {selectedVehicleModel
-                          ? `${selectedVehicleModel.make} ${selectedVehicleModel.model}`
+                        {selectedAppointment?.vehicle
+                          ? `${selectedAppointment.vehicle.make} ${selectedAppointment.vehicle.model}`
                           : "No vehicle model provided"
                         }
                       </p>
                     </div>
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <p className="text-[10px] uppercase font-medium text-slate-400">Plate Number</p>
-                      <p className="text-sm font-medium">{selectedVehicle?.plateNumber || "Not provided"}</p>
+                      <p className="text-sm font-medium">{selectedAppointment?.vehicle?.plate_number || "Not provided"}</p>
                     </div>
                   </div>
                 </section>
@@ -932,13 +708,10 @@ const AppointmentsList: React.FC = () => {
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-base font-medium">
-                          {selectedAppointment?.services?.includes("Others")
-                            ? selectedAppointment?.customService
-                            : selectedAppointment?.services?.join(", ") || "No services provided"
-                          }
+                          {selectedAppointment?.services?.join(", ") || "No services provided"}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedAppointment && formatDate(selectedAppointment.datetime)} at {selectedAppointment && formatTime(selectedAppointment.datetime)}
+                          {selectedAppointment && formatDate(selectedAppointment.appointment_datetime)} at {selectedAppointment && formatTime(selectedAppointment.appointment_datetime)}
                         </p>
                       </div>
                     </div>

@@ -11,13 +11,11 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import Combobox from "@/components/ui/combobox";
 import { toast } from "sonner";
+import api from "@/api/axios";
 
 import { Calendar, TimePicker, generateTimeSlots } from "@/components/ui/date-time-picker";
 import { CalendarIcon, Clock } from "lucide-react";
 
-/* ================= STORAGE ================= */
-const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
-const APPOINTMENT_SERVICE_KEY = "appointmentServices";
 
 /* ================= TYPES ================= */
 
@@ -155,34 +153,51 @@ const combineDateTime = (date: Date, time: string) => {
 
     /* LOAD MODELS */
     useEffect(() => {
-      const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
-      setVehicleModels(safeParse(stored, []));
-    }, []);
+      const loadData = async () => {
+        try {
+          const [modelsRes, servicesRes] = await Promise.all([
+            api.get('/products/vehicles'),
+            api.get('/products/service-types')
+          ]);
 
-    useEffect(() => {
-      const stored = localStorage.getItem(APPOINTMENT_SERVICE_KEY);
+          if (modelsRes.data?.data) {
+            // Map the nested manufacturer into the make string for compat
+            const flattened = modelsRes.data.data.map((m: any) => ({
+              id: String(m.id),
+              make: m.manufacturer?.name || "",
+              model: m.model || ""
+            }));
+            setVehicleModels(flattened);
+          }
 
-      if (!stored) {
-        // default services if empty
-        const defaults = [
-          "Preventive Maintenance Service",
-          "Oil Change",
-          "Brake Service",
-          "Tire Service",
-          "Fuel System Service",
-          "Battery Service",
-          "Engine Tune-up",
-          "Exhaust Repair",
-          "Transmission Service",
-          "Cooling System Maintenance",
-          "Suspension & Steering"
-        ];
-        setServiceList(defaults);
-        localStorage.setItem(APPOINTMENT_SERVICE_KEY, JSON.stringify(defaults));
-      } else {
-        setServiceList(safeParse(stored, []));
+          if (servicesRes.data?.data) {
+            setServiceList(servicesRes.data.data.map((s: any) => s.name));
+          } else {
+            // Fallback defaults if DB is empty
+            const defaults = [
+              "Preventive Maintenance Service",
+              "Oil Change",
+              "Brake Service",
+              "Tire Service",
+              "Fuel System Service",
+              "Battery Service",
+              "Engine Tune-up",
+              "Exhaust Repair",
+              "Transmission Service",
+              "Cooling System Maintenance",
+              "Suspension & Steering"
+            ];
+            setServiceList(defaults);
+          }
+        } catch (error) {
+          console.error("Failed to load reference data:", error);
+        }
+      };
+
+      if (open) {
+        loadData();
       }
-    }, []);
+    }, [open]);
 
 
   const EMPTY_FORM = {

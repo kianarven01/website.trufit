@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Unit;
 use App\Domains\Product\Domain\Models\VehicleModel;
+use Illuminate\Support\Facades\DB;
 
 class ProductReferenceController extends Controller
 {
@@ -78,6 +79,14 @@ class ProductReferenceController extends Controller
                 'model' => $vehicleModel->model,
                 'variant' => $request->variant
             ]
+        ]);
+    }
+
+    public function serviceTypes()
+    {
+        $services = DB::table('Main.ServiceType')->get();
+        return response()->json([
+            'data' => $services
         ]);
     }
 }

@@ -56,7 +56,7 @@ type EnrichedVehicle = Vehicle & {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: (vehicles: Omit<Vehicle, "customerId">[]) => void;
+  onSaved?: (vehicles: Omit<EnrichedVehicle, "customerId">[]) => void;
   vehicleToEdit?: EnrichedVehicle | null;
 }
 
@@ -213,8 +213,8 @@ const AddCustomerVehicle: React.FC<Props> = ({
       return;
     }
 
-    const normalizedVehicles = validVehicles.map(v => {
-      let variant_id = null;
+    const normalizedVehicles: Omit<EnrichedVehicle, "customerId">[] = validVehicles.map(v => {
+      let vehicleModelId = "";
       const formattedMake = toTitleCase(v.make);
       const formattedModel = toTitleCase(v.model);
       const formattedVariant = toTitleCase(v.variant).trim() || "";
@@ -228,21 +228,22 @@ const AddCustomerVehicle: React.FC<Props> = ({
       );
       
       if (match) {
-         variant_id = match.id;
+         vehicleModelId = match.id;
       }
 
       return {
-        year: v.year,
+        id: v.id,
+        vehicleModelId,
+        year: Number(v.year),
         make: v.make,
         model: v.model,
         variant: v.variant,
-        variant_id: variant_id,
         color: v.color,
         plateNo: v.plateNo,
         engineNo: v.engineNo,
         vin: v.vin,
         registrationNo: v.registrationNo,
-        sellingDealer: v.sellingDealer
+        sellingDealer: v.sellingDealer,
       };
     });
 

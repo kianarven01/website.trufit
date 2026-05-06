@@ -5,6 +5,9 @@ namespace App\Domains\Customer\Domain\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Domains\Product\Domain\Models\VehicleVariant;
 
+/**
+ * @mixin \Illuminate\Database\Eloquent\Builder
+ */
 class CustomerVehicle extends Model
 {
     protected $table = 'Main.CustomerVehicles';
@@ -24,18 +27,11 @@ class CustomerVehicle extends Model
         'make',
         'model',
         'variant',
-        'selling_dealer',
-        'variant_id'
+        'selling_dealer'
     ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customerID', 'customer_id');
-    }
-
-    public function vehicleVariant()
-    {
-        // Requires VehicleVariant model to be created
-        return $this->belongsTo(VehicleVariant::class, 'variant_id', 'id');
     }
 }

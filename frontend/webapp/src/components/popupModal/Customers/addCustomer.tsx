@@ -113,6 +113,10 @@ const emptyVehicle = (): VehicleForm => ({
   /* ================= STATE ================= */
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [vehicles, setVehicles] = useState<VehicleForm[]>([emptyVehicle()]);
+  const [manufacturers, setManufacturers] = useState<{id: string, name: string}[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isLoadingManufacturers, setIsLoadingManufacturers] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -127,9 +131,9 @@ const emptyVehicle = (): VehicleForm => ({
     if (!open) return;
 
     const fetchModels = async () => {
+      setIsLoadingModels(true);
       try {
         const res = await api.get('/products/vehicles');
-        // Extract models from the backend response
         const models = res.data.data.flatMap((m: any) => {
           return m.variants.length > 0 ? m.variants.map((v: any) => ({
             id: v.id,
@@ -148,9 +152,25 @@ const emptyVehicle = (): VehicleForm => ({
         setVehicleModels(models);
       } catch (error) {
         console.error("Failed to load vehicle models:", error);
+      } finally {
+        setIsLoadingModels(false);
       }
     };
+
+    const fetchManufacturers = async () => {
+      setIsLoadingManufacturers(true);
+      try {
+        const res = await api.get('/products/manufacturers');
+        setManufacturers(res.data.data || []);
+      } catch (error) {
+        console.error("Failed to load manufacturers:", error);
+      } finally {
+        setIsLoadingManufacturers(false);
+      }
+    };
+
     fetchModels();
+    fetchManufacturers();
   }, [open]);
 
   /* ================= RESET ================= */
@@ -211,10 +231,11 @@ const emptyVehicle = (): VehicleForm => ({
     [vehicleModels]
   );
 
-  const makes = useMemo(
-    () => [...new Set(vehicleModels.map(v => v.make.trim()))],
-    [vehicleModels]
-  );
+  const makes = useMemo(() => {
+    const fromModels = vehicleModels.map(v => v.make.trim());
+    const fromManufacturers = manufacturers.map(m => m.name.trim());
+    return [...new Set([...fromModels, ...fromManufacturers].filter(Boolean))];
+  }, [vehicleModels, manufacturers]);
 
   const models = useCallback(
     (make: string) =>
@@ -278,6 +299,65 @@ const emptyVehicle = (): VehicleForm => ({
       v => !v._deleted && v.plateNo
     );
 
+    setIsSaving(true);
+
+    let hasNewVehicles = false;
+
+    const normalizedVehicles = validVehicles.map(v => {
+      const formattedMake = toTitleCase(v.make);
+      const formattedModel = toTitleCase(v.model);
+
+      let match = vehicleModels.find(
+        m =>
+          normalize(m.make) === normalize(formattedMake) &&
+          normalize(m.model) === normalize(formattedModel)
+      );
+      
+      if (!match) {
+         hasNewVehicles = true;
+      }
+
+      return {
+        id: v.id, // For keeping track
+        year: v.year,
+        make: v.make,
+        model: v.model,
+        variant: v.variant,
+        color: v.color,
+        plateNo: v.plateNo,
+        engineNo: v.engineNo,
+        vin: v.vin,
+        registrationNo: v.registrationNo,
+        sellingDealer: v.sellingDealer
+      };
+    });
+
+    if (hasNewVehicles) {
+      const confirmAdd = window.confirm("One or more vehicles are not in our database. Would you like to add them?");
+      if (!confirmAdd) {
+        setIsSaving(false);
+        return;
+      }
+
+      for (const nv of normalizedVehicles) {
+        const match = vehicleModels.find(m => normalize(m.make) === normalize(nv.make) && normalize(m.model) === normalize(nv.model));
+        if (!match) {
+          try {
+            await api.post('/products/vehicles/custom', {
+              make: nv.make,
+              model: nv.model
+            });
+            // We do not save or map variant_id, just ensure Make/Model are added to global DB.
+          } catch (error) {
+            console.error("Failed to add custom vehicle", error);
+            toast.error("Failed to add vehicle to database");
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+    }
+
     const payload = {
       first_name: firstName,
       last_name: lastName,
@@ -286,38 +366,7 @@ const emptyVehicle = (): VehicleForm => ({
       landline,
       email,
       business: businessPhone,
-      vehicles: validVehicles.map(v => {
-        let variant_id = null;
-        const formattedMake = toTitleCase(v.make);
-        const formattedModel = toTitleCase(v.model);
-        const formattedVariant = toTitleCase(v.variant).trim() || "";
-
-        let match = vehicleModels.find(
-          m =>
-            m.year === Number(v.year) &&
-            normalize(m.make) === normalize(formattedMake) &&
-            normalize(m.model) === normalize(formattedModel) &&
-            normalize(m.variant || "") === normalize(formattedVariant)
-        );
-        
-        if (match) {
-           variant_id = match.id;
-        }
-
-        return {
-          year: v.year,
-          make: v.make,
-          model: v.model,
-          variant: v.variant,
-          variant_id: variant_id,
-          color: v.color,
-          plateNo: v.plateNo,
-          engineNo: v.engineNo,
-          vin: v.vin,
-          registrationNo: v.registrationNo,
-          sellingDealer: v.sellingDealer
-        };
-      })
+      vehicles: normalizedVehicles
     };
 
     try {
@@ -335,6 +384,8 @@ const emptyVehicle = (): VehicleForm => ({
     } catch (error: any) {
       console.error(error);
       toast.error(error.response?.data?.message || "Failed to save customer");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -493,6 +544,7 @@ const emptyVehicle = (): VehicleForm => ({
                           }}
                           items={makes}
                           placeholder="Make"
+                          isLoading={isLoadingManufacturers || isLoadingModels}
                         />                        
                       </div>
 
@@ -508,6 +560,7 @@ const emptyVehicle = (): VehicleForm => ({
                           }}
                           items={models(v.make)}
                           placeholder="Model"
+                          isLoading={isLoadingModels}
                         />
                       </div>
                     </div>
@@ -525,6 +578,7 @@ const emptyVehicle = (): VehicleForm => ({
                           }}
                           items={variants(v.make, v.model)}
                           placeholder="Variant"
+                          isLoading={isLoadingModels}
                         />
                       </div>
 
@@ -595,12 +649,13 @@ const emptyVehicle = (): VehicleForm => ({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
+            disabled={isSaving}
           >
             Cancel
           </Button>
 
-          <Button onClick={handleSave}>
-            {isEdit ? "Update" : "Add Customer"}
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : isEdit ? "Update" : "Add Customer"}
           </Button>
         </DialogFooter>
       </DialogContent>

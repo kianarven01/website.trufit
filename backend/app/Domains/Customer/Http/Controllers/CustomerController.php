@@ -13,7 +13,7 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        $customers = Customer::with('vehicles.vehicleVariant.vehicleModel.manufacturer')->get();
+        $customers = Customer::with('vehicles')->get();
         return response()->json([
             'status' => 'success',
             'data' => $customers
@@ -22,7 +22,7 @@ class CustomerController extends Controller
 
     public function show($id)
     {
-        $customer = Customer::with('vehicles.vehicleVariant.vehicleModel.manufacturer')->find($id);
+        $customer = Customer::with('vehicles')->find($id);
         if (!$customer) {
             return response()->json(['status' => 'error', 'message' => 'Customer not found'], 404);
         }
@@ -60,7 +60,23 @@ class CustomerController extends Controller
 
             $vehiclesInput = $request->input('vehicles', []);
             if (!empty($vehiclesInput)) {
+                $processedPlates = [];
                 foreach ($vehiclesInput as $vehicleData) {
+                    $plate = $vehicleData['plateNo'] ?? '';
+                    if (in_array($plate, $processedPlates)) {
+                        continue; // Skip duplicates within the payload
+                    }
+                    $processedPlates[] = $plate;
+
+                    // Check if plate belongs to another customer
+                    $existing = CustomerVehicle::where('plate_number', $plate)->first();
+                    if ($existing) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => "Plate number {$plate} is already registered to another customer."
+                        ], 422);
+                    }
+
                     CustomerVehicle::create([
                         'customerID' => $customer->customer_id,
                         'plate_number' => $vehicleData['plateNo'] ?? '',
@@ -72,8 +88,7 @@ class CustomerController extends Controller
                         'make' => $vehicleData['make'] ?? '',
                         'model' => $vehicleData['model'] ?? '',
                         'variant' => $vehicleData['variant'] ?? '',
-                        'selling_dealer' => $vehicleData['sellingDealer'] ?? '',
-                        'variant_id' => $vehicleData['variant_id'] ?? null 
+                        'selling_dealer' => $vehicleData['sellingDealer'] ?? ''
                     ]);
                 }
             }
@@ -128,7 +143,23 @@ class CustomerController extends Controller
 
             $vehiclesInput = $request->input('vehicles', []);
             if (!empty($vehiclesInput)) {
+                $processedPlates = [];
                 foreach ($vehiclesInput as $vehicleData) {
+                    $plate = $vehicleData['plateNo'] ?? '';
+                    if (in_array($plate, $processedPlates)) {
+                        continue; // Skip duplicates within the payload
+                    }
+                    $processedPlates[] = $plate;
+
+                    // Check if plate belongs to another customer
+                    $existing = CustomerVehicle::where('plate_number', $plate)->first();
+                    if ($existing && (string)$existing->customerID !== (string)$id) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => "Plate number {$plate} is already registered to another customer."
+                        ], 422);
+                    }
+
                     CustomerVehicle::create([
                         'customerID' => $id,
                         'plate_number' => $vehicleData['plateNo'] ?? '',
@@ -140,8 +171,7 @@ class CustomerController extends Controller
                         'make' => $vehicleData['make'] ?? '',
                         'model' => $vehicleData['model'] ?? '',
                         'variant' => $vehicleData['variant'] ?? '',
-                        'selling_dealer' => $vehicleData['sellingDealer'] ?? '',
-                        'variant_id' => $vehicleData['variant_id'] ?? null 
+                        'selling_dealer' => $vehicleData['sellingDealer'] ?? ''
                     ]);
                 }
             }

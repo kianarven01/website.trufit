@@ -8,7 +8,7 @@ class CustomerDTO
         public string $first_name,
         public string $last_name,
         public string $mobile_number,
-        public string $address,
+        public ?string $address,
         public ?string $landline,
         public ?string $email,
         public ?string $business,
@@ -18,9 +18,9 @@ class CustomerDTO
     public static function fromRequest(\Illuminate\Http\Request $request): self
     {
         return new self(
-            first_name: $request->first_name,
-            last_name: $request->last_name,
-            mobile_number: $request->mobile_number,
+            first_name: $request->first_name ?? '',
+            last_name: $request->last_name ?? '',
+            mobile_number: $request->mobile_number ?? '',
             address: $request->address,
             landline: $request->landline,
             email: $request->email,

@@ -11,9 +11,7 @@ use App\Domains\Product\Domain\Models\VehicleVariant;
 class CustomerVehicle extends Model
 {
     protected $table = 'Main.CustomerVehicles';
-    protected $primaryKey = 'plate_number';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $primaryKey = 'id';
     public $timestamps = false;
 
     protected $fillable = [

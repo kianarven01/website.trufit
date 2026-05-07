@@ -123,4 +123,27 @@ class CustomerController extends Controller
             ], 500);
         }
     }
+    public function lookupVehicle($plateNumber)
+    {
+        try {
+            $vehicle = CustomerVehicle::with('customer')
+                ->where('plate_number', $plateNumber)
+                ->first();
+
+            if (!$vehicle) {
+                return response()->json(['status' => 'error', 'message' => 'Vehicle not found'], 404);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $vehicle
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Vehicle lookup failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to lookup vehicle: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

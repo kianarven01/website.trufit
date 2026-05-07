@@ -27,6 +27,7 @@ interface Appointment {
   id: number;
   appointment_code: string;
   customer_id?: number;
+  vehicle_id?: number;
   plate_number?: string;
   services: string[];
   appointment_datetime: string;
@@ -49,6 +50,7 @@ interface Appointment {
     email?: string;
   };
   vehicle?: {
+    id: number;
     plate_number: string;
     make: string;
     model: string;
@@ -281,6 +283,8 @@ const AppointmentsList: React.FC = () => {
       services: apt.services || [],
       notes: apt.notes || "",
       datetime: apt.appointment_datetime,
+      status: apt.status, // Pass the current status!
+      vehicle_id: apt.vehicle_id || apt.vehicle?.id, 
     };
   };  
 
@@ -297,7 +301,7 @@ const AppointmentsList: React.FC = () => {
         make: apt.vehicle?.make || apt.make,
         model: apt.vehicle?.model || apt.model,
         year: apt.vehicle?.year_model || apt.year,
-        plateNumber: apt.plate_number || apt.vehicle?.plate_number,
+        plateNumber: apt.plate_number || apt.vehicle?.plate_number || "",
         datetime: formatForBackend(apt.appointment_datetime),
         services: apt.services,
         notes: apt.notes,
@@ -972,7 +976,7 @@ const AppointmentsList: React.FC = () => {
             datetime: formatForBackend(updatedDateTime),
             services: selectedAppointment.services || [],
             notes: selectedAppointment.notes || "",
-            status: "for approval" 
+            status: selectedAppointment.status 
           };
 
           api.put(`/appointments/${selectedAppointment.id}`, payload)

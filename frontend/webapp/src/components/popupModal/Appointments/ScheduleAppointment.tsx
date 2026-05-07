@@ -130,6 +130,8 @@ const SERVICE_LIST = [
     });
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLookingUp, setIsLookingUp] = useState(false);
+    const [foundVehicle, setFoundVehicle] = useState<any>(null);
 
     const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -299,6 +301,52 @@ const SERVICE_LIST = [
     setErrors({});
     setTouched({});
   }, [open, initialData, serviceList]);
+
+
+    /* VEHICLE LOOKUP */
+    useEffect(() => {
+      const plate = form.plateNumber.replace(/[\s-]/g, "");
+      if (plate.length < 6 || isEdit) {
+        setFoundVehicle(null);
+        return;
+      }
+
+      const timer = setTimeout(async () => {
+        setIsLookingUp(true);
+        try {
+          const res = await api.get(`/customers/vehicles/lookup/${plate}`);
+          if (res.data?.data) {
+            setFoundVehicle(res.data.data);
+          } else {
+            setFoundVehicle(null);
+          }
+        } catch {
+          setFoundVehicle(null);
+        } finally {
+          setIsLookingUp(false);
+        }
+      }, 800);
+
+      return () => clearTimeout(timer);
+    }, [form.plateNumber, isEdit]);
+
+    const handleAutoFill = () => {
+      if (!foundVehicle) return;
+
+      setForm(p => ({
+        ...p,
+        make: foundVehicle.make || p.make,
+        model: foundVehicle.model || p.model,
+        year: foundVehicle.year_model || p.year,
+        firstName: foundVehicle.customer?.first_name || p.firstName,
+        lastName: foundVehicle.customer?.last_name || p.lastName,
+        phone: foundVehicle.customer?.mobile_number ? formatPhone(foundVehicle.customer.mobile_number) : p.phone,
+        email: foundVehicle.customer?.email || p.email,
+      }));
+
+      toast.success("Vehicle and customer info auto-filled!");
+      setFoundVehicle(null);
+    };
 
 
     /* OPTIONS */
@@ -522,6 +570,7 @@ const SERVICE_LIST = [
       customService: "",
       notes,
       datetime,
+      status: initialData?.status, // Preserve status during edit
     });
 
     onOpenChange(false);
@@ -748,6 +797,34 @@ const SERVICE_LIST = [
                   )}
                 </div>
               </div>
+
+              {/* LOOKUP RESULT */}
+              {isLookingUp && (
+                <div className="mt-2 text-xs text-blue-600 animate-pulse flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping" />
+                  Checking system for existing vehicle...
+                </div>
+              )}
+
+              {foundVehicle && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+                  <div className="flex flex-col">
+                    <p className="text-xs font-semibold text-blue-900">Vehicle Found in Records!</p>
+                    <p className="text-[10px] text-blue-700">
+                      {foundVehicle.year_model} {foundVehicle.make} {foundVehicle.model} 
+                      {foundVehicle.customer ? ` • Owner: ${foundVehicle.customer.first_name} ${foundVehicle.customer.last_name}` : ""}
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-[10px] border-blue-300 text-blue-700 hover:bg-blue-100"
+                    onClick={handleAutoFill}
+                  >
+                    Auto-fill Info
+                  </Button>
+                </div>
+              )}
             </div>
 
             <Separator />

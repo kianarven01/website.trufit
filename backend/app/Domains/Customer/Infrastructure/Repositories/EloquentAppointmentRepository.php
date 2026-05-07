@@ -26,7 +26,7 @@ class EloquentAppointmentRepository implements AppointmentRepositoryInterface
     {
         $appointment = Appointment::findOrFail($id);
         $appointment->update($data);
-        return $appointment->load(['customer', 'vehicle']);
+        return $appointment->fresh(['customer', 'vehicle']);
     }
 
     public function delete(int $id): bool

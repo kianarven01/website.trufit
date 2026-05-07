@@ -23,8 +23,19 @@ class UpdateAppointment
 
             $shouldPurge = false;
 
-            // If confirmed, create or link real records
-            if ($dto->status === 'confirmed') {
+            // 1. Handle Customer Sync
+            $customer = null;
+            if ($customerID) {
+                $customer = Customer::find($customerID);
+                if ($customer) {
+                    $customer->update([
+                        'first_name' => $dto->firstName,
+                        'last_name' => $dto->lastName,
+                        'email' => $dto->email,
+                        'mobile_number' => $dto->phone,
+                    ]);
+                }
+            } elseif ($dto->status === 'confirmed') {
                 $customer = Customer::firstOrCreate(
                     ['mobile_number' => $dto->phone],
                     [
@@ -34,32 +45,53 @@ class UpdateAppointment
                         'address' => '',
                     ]
                 );
-
-                // Sync customer info
+                // Sync in case info was different
                 $customer->update([
                     'first_name' => $dto->firstName,
                     'last_name' => $dto->lastName,
                     'email' => $dto->email,
                 ]);
+                $customerID = $customer->customer_id;
+            }
 
-                $vehicle = CustomerVehicle::firstOrCreate(
-                    ['plate_number' => $dto->plateNumber],
-                    [
-                        'customerID' => $customer->customer_id,
+            // 2. Handle Vehicle Sync
+            if ($dto->status === 'confirmed' || $appointment->vehicle_id) {
+                $vehicle = null;
+                $existingByPlate = CustomerVehicle::where('plate_number', $dto->plateNumber)->first();
+
+                if ($appointment->vehicle_id) {
+                    $vehicle = CustomerVehicle::find($appointment->vehicle_id);
+                    
+                    if ($existingByPlate && $existingByPlate->id !== $vehicle->id) {
+                        $vehicle = $existingByPlate;
+                    }
+
+                    $vehicle->update([
+                        'plate_number' => $dto->plateNumber,
+                        'customerID' => $customerID,
                         'make' => $dto->make,
                         'model' => $dto->model,
                         'year_model' => $dto->year ?? '',
-                        'variant' => '',
-                        'selling_dealer' => '',
-                        'engine_number' => '',
-                        'VIN' => '',
-                        'color' => '',
-                        'registration_number' => ''
-                    ]
-                );
-
-                $customerID = $customer->customer_id;
+                    ]);
+                } else {
+                    $vehicle = CustomerVehicle::updateOrCreate(
+                        ['plate_number' => $dto->plateNumber],
+                        [
+                            'customerID' => $customerID,
+                            'make' => $dto->make,
+                            'model' => $dto->model,
+                            'year_model' => $dto->year ?? '',
+                            'variant' => '',
+                            'selling_dealer' => '',
+                            'engine_number' => '',
+                            'VIN' => '',
+                            'color' => '',
+                            'registration_number' => ''
+                        ]
+                    );
+                }
                 $plate_number = $vehicle->plate_number;
+                $vehicle_id = $vehicle->id;
             } elseif ($dto->status === 'cancelled' && $customerID) {
                 // Check if this customer should be purged
                 if ($this->isCustomerSafeToPurge($customerID, $id)) {
@@ -67,11 +99,16 @@ class UpdateAppointment
                     // Unlink from customer relation but KEEP the plate number string
                     $customerID = null;
                 }
+            } else {
+                // Proactively link to existing vehicle if found
+                $existingVehicle = CustomerVehicle::where('plate_number', $dto->plateNumber)->first();
+                $vehicle_id = $existingVehicle?->id ?? $appointment->vehicle_id;
             }
 
             $result = $this->appointmentRepo->update($id, [
                 'customer_id' => $customerID,
-                'plate_number' => $plate_number ?? $dto->plateNumber,
+                'vehicle_id' => $vehicle_id,
+                'plate_number' => $dto->plateNumber ?: $plate_number ?: null,
                 
                 // Keep lead info updated too
                 'first_name' => $dto->firstName,

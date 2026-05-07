@@ -11,6 +11,7 @@ Route::prefix('customers')->group(function () {
     Route::post('/', [CustomerController::class, 'store']);
     Route::delete('/{id}', [CustomerController::class, 'destroy']);
     Route::delete('/{id}/vehicles/{plateNumber}', [CustomerController::class, 'destroyVehicle']);
+    Route::get('/vehicles/lookup/{plateNumber}', [CustomerController::class, 'lookupVehicle']);
 });
 
 Route::prefix('appointments')->group(function () {

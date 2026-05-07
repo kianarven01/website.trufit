@@ -32,7 +32,7 @@ class ScheduleAppointment
                     ]
                 );
 
-                $vehicle = CustomerVehicle::firstOrCreate(
+                $vehicle = CustomerVehicle::updateOrCreate(
                     ['plate_number' => $dto->plateNumber],
                     [
                         'customerID' => $customer->customer_id,
@@ -50,9 +50,14 @@ class ScheduleAppointment
 
                 $customerID = $customer->customer_id;
                 $plate_number = $vehicle->plate_number;
+                $vehicle_id = $vehicle->id;
             } else {
                 // For "for approval", just use the plate number from the DTO
                 $plate_number = $dto->plateNumber;
+
+                // Proactively link to existing vehicle if found
+                $existingVehicle = CustomerVehicle::where('plate_number', $dto->plateNumber)->first();
+                $vehicle_id = $existingVehicle?->id;
             }
 
             $appointmentCode = $this->appointmentRepo->getNextAppointmentCode();
@@ -60,7 +65,8 @@ class ScheduleAppointment
             return $this->appointmentRepo->create([
                 'appointment_code' => $appointmentCode,
                 'customer_id' => $customerID,
-                'plate_number' => $plate_number,
+                'vehicle_id' => $vehicle_id,
+                'plate_number' => $plate_number ?: null,
                 
                 // Lead Info (Always store these for reference)
                 'first_name' => $dto->firstName,

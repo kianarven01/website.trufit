@@ -11,6 +11,7 @@ class Appointment extends Model
     protected $fillable = [
         'appointment_code',
         'customer_id',
+        'vehicle_id',
         'plate_number',
         'first_name',
         'last_name',
@@ -37,6 +38,6 @@ class Appointment extends Model
 
     public function vehicle()
     {
-        return $this->belongsTo(CustomerVehicle::class, 'plate_number', 'plate_number');
+        return $this->belongsTo(CustomerVehicle::class, 'vehicle_id', 'id');
     }
 }

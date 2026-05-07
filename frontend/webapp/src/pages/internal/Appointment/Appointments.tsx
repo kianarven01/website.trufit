@@ -976,7 +976,7 @@ const AppointmentsList: React.FC = () => {
             datetime: formatForBackend(updatedDateTime),
             services: selectedAppointment.services || [],
             notes: selectedAppointment.notes || "",
-            status: selectedAppointment.status 
+            status: selectedAppointment.status === "cancelled" ? "for approval" : selectedAppointment.status 
           };
 
           api.put(`/appointments/${selectedAppointment.id}`, payload)

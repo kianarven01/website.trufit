@@ -15,6 +15,7 @@ import ReschedAppointment from "@/components/popupModal/Appointments/ReschedAppo
 import { NotesPanel } from "@/components/ui/note-panel";
 import { toast } from "sonner";
 import api from "@/api/axios";
+import { cn } from "@/lib/utils";
 
 import { Calendar as CalendarIcon } from "lucide-react";
 import { User, Car, ClipboardList, Phone, Mail, MessageSquare } from "lucide-react";
@@ -80,6 +81,7 @@ const AppointmentsList: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   type FilterStatus = AppointmentStatus | "all";
   const [filters, setFilters] = useState<{ status: FilterStatus }>({
@@ -289,6 +291,7 @@ const AppointmentsList: React.FC = () => {
   };  
 
   const updateAppointmentStatus = async (id: number, status: AppointmentStatus) => {
+    setIsActionLoading(true);
     try {
       const apt = appointments.find((a) => a.id === id);
       if (!apt) return;
@@ -316,6 +319,8 @@ const AppointmentsList: React.FC = () => {
     } catch (error) {
       console.error(error);
       toast.error("Failed to update status");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -395,6 +400,7 @@ const AppointmentsList: React.FC = () => {
   }, [search, pageSize, selectedDate, filters]);
 
   const handleCreateAppointment = async (data: any) => {
+    setIsActionLoading(true);
     try {
       const res = await api.post('/appointments', data);
       if (res.data?.data) {
@@ -406,6 +412,8 @@ const AppointmentsList: React.FC = () => {
     } catch (error) {
       console.error(error);
       toast.error("Failed to create appointment.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
     
@@ -414,6 +422,7 @@ const AppointmentsList: React.FC = () => {
   const handleUpdateAppointment = async (data: any) => {
     if (!editingAppointmentId) return;
 
+    setIsActionLoading(true);
     try {
       const res = await api.put(`/appointments/${editingAppointmentId}`, data);
       if (res.data?.data) {
@@ -426,12 +435,15 @@ const AppointmentsList: React.FC = () => {
     } catch (error) {
       console.error(error);
       toast.error("Failed to update appointment.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
 
   /* Remove Appointment */
   const removeAppointment = async (id: number) => {
+    setIsActionLoading(true);
     try {
       await api.delete(`/appointments/${id}`);
       setAppointments((prev) => prev.filter((a) => a.id !== id));
@@ -440,6 +452,8 @@ const AppointmentsList: React.FC = () => {
     } catch (error) {
       console.error(error);
       toast.error("Failed to cancel appointment.");
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -499,8 +513,16 @@ const AppointmentsList: React.FC = () => {
       />
 
       <div className="flex gap-x-4 overflow-hidden flex-1 min-h-0">
-        {appointments.length > 0 ? (
-          <div  className="flex-1 min-w-0 flex flex-col border rounded-xl overflow-hidden">
+        {(appointments.length > 0 || isLoading) ? (
+          <div  className={cn(
+            "flex-1 min-w-0 flex flex-col border rounded-xl overflow-hidden relative",
+            isActionLoading && "opacity-60 pointer-events-none"
+          )}>
+            {isActionLoading && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/40 backdrop-blur-[1px]">
+                <div className="w-8 h-8 border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+              </div>
+            )}
             <ScrollArea className="flex-1 px-3">
               <Table className="w-full border-separate border-spacing-y-2 h-full min-w-[800px]">
                 <TableHeader>
@@ -963,6 +985,7 @@ const AppointmentsList: React.FC = () => {
         onSave={(updatedDateTime) => {
           if (!selectedAppointment) return;
           
+          setIsActionLoading(true);
           // Re-use updateAppointmentStatus logic to save the new time
           const payload = {
             firstName: selectedAppointment.customer?.first_name || selectedAppointment.first_name,
@@ -988,7 +1011,8 @@ const AppointmentsList: React.FC = () => {
                 setIsSheetOpen(false);
               }
             })
-            .catch(() => toast.error("Failed to reschedule"));
+            .catch(() => toast.error("Failed to reschedule"))
+            .finally(() => setIsActionLoading(false));
         }}
       />
 

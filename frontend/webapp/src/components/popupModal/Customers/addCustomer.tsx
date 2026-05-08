@@ -68,18 +68,10 @@ const genId = () =>
 
 const normalize = (val: string) => val?.trim().toLowerCase();
 
-const toTitleCase = (str: string) =>
-  (str || "")
-    .toLowerCase()
-    .split(" ")
-    .filter(Boolean)
-    .map(word =>
-      word
-        .split("-")
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join("-")
-    )
-    .join(" ");
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str.trim().charAt(0).toUpperCase() + str.trim().slice(1);
+};
 
 const emptyVehicle = (): VehicleForm => ({
   id: genId(),

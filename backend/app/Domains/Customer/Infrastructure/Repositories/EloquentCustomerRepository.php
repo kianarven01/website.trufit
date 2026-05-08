@@ -64,9 +64,42 @@ class EloquentCustomerRepository implements CustomerRepositoryInterface
                     'selling_dealer' => $vehicleData['sellingDealer'] ?? $vehicleData['selling_dealer'] ?? ''
                 ]
             );
+
+            // Sync to Manufacturer/Model Catalog
+            $this->syncVehicleCatalog($vehicleData['make'] ?? '', $vehicleData['model'] ?? '');
         }
         
         // Remove vehicles that are no longer in the list for this customer
         $customer->vehicles()->whereNotIn('plate_number', $processedPlates)->delete();
+    }
+
+    private function syncVehicleCatalog(string $make, string $model)
+    {
+        $make = trim($make);
+        $model = trim($model);
+        if (empty($make) || empty($model)) return;
+
+        // Use case-insensitive lookup to prevent duplicates (Postgres ILIKE)
+        $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::where('name', 'ILIKE', $make)
+            ->where('type', 'Vehicle')
+            ->first();
+
+        if (!$manufacturer) {
+            $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::create([
+                'name' => ucfirst($make), 
+                'type' => 'Vehicle'
+            ]);
+        }
+
+        $vehicleModel = \App\Domains\Product\Domain\Models\VehicleModel::where('model', 'ILIKE', $model)
+            ->where('manufacturer_id', $manufacturer->id)
+            ->first();
+
+        if (!$vehicleModel) {
+            \App\Domains\Product\Domain\Models\VehicleModel::create([
+                'model' => ucfirst($model), 
+                'manufacturer_id' => $manufacturer->id
+            ]);
+        }
     }
 }

@@ -18,65 +18,77 @@ class UpdateAppointment
     {
         return DB::transaction(function () use ($id, $dto) {
             $appointment = $this->appointmentRepo->findById($id);
+
+            // Only validate date if it has been changed
+            if ($appointment->appointment_datetime->format('Y-m-d H:i') !== date('Y-m-d H:i', strtotime($dto->datetime))) {
+                $this->validateAppointmentDate($dto->datetime);
+            }
+
             $customerID = $appointment->customer_id;
             $plate_number = $appointment->plate_number;
 
             $shouldPurge = false;
 
-            // 1. Handle Customer Sync
-            $customer = null;
-            if ($customerID) {
-                $customer = Customer::find($customerID);
-                if ($customer) {
-                    $customer->update([
-                        'first_name' => $dto->firstName,
-                        'last_name' => $dto->lastName,
-                        'email' => $dto->email,
-                        'mobile_number' => $dto->phone,
-                    ]);
+            // 1. Handle Customer & Vehicle Sync (Owner-First Approach)
+            $vehicle_id = $appointment->vehicle_id;
+            $existingByPlate = CustomerVehicle::where('plate_number', $dto->plateNumber)->first();
+
+            if ($dto->status === 'confirmed' || $vehicle_id) {
+                // If the vehicle already exists and has an owner, we prioritize that owner
+                if ($existingByPlate && $existingByPlate->customerID) {
+                    $customerID = $existingByPlate->customerID;
+                } elseif (!$customerID) {
+                    // Otherwise, find/create customer by phone if not already linked
+                    $customer = Customer::firstOrCreate(
+                        ['mobile_number' => $dto->phone],
+                        [
+                            'first_name' => $dto->firstName,
+                            'last_name' => $dto->lastName,
+                            'email' => $dto->email,
+                            'address' => '',
+                        ]
+                    );
+                    $customerID = $customer->customer_id;
                 }
-            } elseif ($dto->status === 'confirmed') {
-                $customer = Customer::firstOrCreate(
-                    ['mobile_number' => $dto->phone],
-                    [
-                        'first_name' => $dto->firstName,
-                        'last_name' => $dto->lastName,
-                        'email' => $dto->email,
-                        'address' => '',
-                    ]
-                );
-                // Sync in case info was different
-                $customer->update([
-                    'first_name' => $dto->firstName,
-                    'last_name' => $dto->lastName,
-                    'email' => $dto->email,
-                ]);
-                $customerID = $customer->customer_id;
-            }
 
-            // 2. Handle Vehicle Sync
-            if ($dto->status === 'confirmed' || $appointment->vehicle_id) {
-                $vehicle = null;
-                $existingByPlate = CustomerVehicle::where('plate_number', $dto->plateNumber)->first();
-
-                if ($appointment->vehicle_id) {
-                    $vehicle = CustomerVehicle::find($appointment->vehicle_id);
+                // Now handle the Vehicle record itself
+                if ($vehicle_id) {
+                    $vehicle = CustomerVehicle::find($vehicle_id);
                     
+                    // If plate was changed to one that ALREADY exists
                     if ($existingByPlate && $existingByPlate->id !== $vehicle->id) {
                         $vehicle = $existingByPlate;
                     }
 
-                    $vehicle->update([
-                        'plate_number' => $dto->plateNumber,
-                        'customerID' => $customerID,
-                        'make' => $dto->make,
-                        'model' => $dto->model,
-                        'year_model' => $dto->year ?? '',
-                    ]);
+                    $isSafeToUpdate = $this->isVehicleSafeToUpdate($vehicle->id, $id);
+
+                    $updateData = [
+                        'customerID' => $vehicle->customerID ?: $customerID, // Only set if empty
+                    ];
+
+                    if ($isSafeToUpdate) {
+                        $updateData['make'] = $dto->make;
+                        $updateData['model'] = $dto->model;
+                        $updateData['year_model'] = $dto->year ?? $vehicle->year_model;
+
+                        if ($vehicle->plate_number !== $dto->plateNumber) {
+                            $updateData['plate_number'] = $dto->plateNumber;
+                        }
+                    }
+
+                    $vehicle->update($updateData);
+                    $vehicle_id = $vehicle->id;
+                    $plate_number = $vehicle->plate_number;
                 } else {
-                    $vehicle = CustomerVehicle::updateOrCreate(
-                        ['plate_number' => $dto->plateNumber],
-                        [
+                    // No vehicle linked yet, so we use the one found by plate or create new
+                    if ($existingByPlate) {
+                        $vehicle = $existingByPlate;
+                        if (!$vehicle->customerID) {
+                            $vehicle->update(['customerID' => $customerID]);
+                        }
+                    } else {
+                        $vehicle = CustomerVehicle::create([
+                            'plate_number' => $dto->plateNumber,
                             'customerID' => $customerID,
                             'make' => $dto->make,
                             'model' => $dto->model,
@@ -87,11 +99,13 @@ class UpdateAppointment
                             'VIN' => '',
                             'color' => '',
                             'registration_number' => ''
-                        ]
-                    );
+                        ]);
+                    }
+                    $vehicle_id = $vehicle->id;
+                    $plate_number = $vehicle->plate_number;
                 }
-                $plate_number = $vehicle->plate_number;
-                $vehicle_id = $vehicle->id;
+
+                $this->syncVehicleCatalog($dto->make, $dto->model);
             } elseif ($dto->status === 'cancelled' && $customerID) {
                 // Check if this customer should be purged
                 if ($this->isCustomerSafeToPurge($customerID, $id)) {
@@ -167,6 +181,83 @@ class UpdateAppointment
             DB::table('Main.Customers')->where('customer_id', $customerId)->delete();
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Failed to purge customer {$customerId}: " . $e->getMessage());
+        }
+    }
+
+    private function isVehicleSafeToUpdate(int $vehicleId, int $excludeAppointmentId): bool
+    {
+        // 1. Check for other appointments
+        $hasOtherAppointments = DB::table('Main.Appointments')
+            ->where('vehicle_id', $vehicleId)
+            ->where('id', '!=', $excludeAppointmentId)
+            ->exists();
+
+        if ($hasOtherAppointments) return false;
+
+        // 2. Check for Job Orders (Using the new vehicle_id column from migrations)
+        $hasJobOrders = DB::table('Main.JobOrder')
+            ->where('vehicle_id_new', $vehicleId)
+            ->exists();
+        if ($hasJobOrders) return false;
+
+        // 3. Check for Warranties
+        $hasWarranties = DB::table('Main.Warranties')
+            ->where('vehicle_id_new', $vehicleId)
+            ->exists();
+        if ($hasWarranties) return false;
+
+        // 4. Check for Estimates
+        $hasEstimates = DB::table('Main.Estimates')
+            ->where('vehicle_id', $vehicleId)
+            ->exists();
+        if ($hasEstimates) return false;
+
+        return true;
+    }
+
+    private function validateAppointmentDate(string $datetime)
+    {
+        $date = new \DateTime($datetime);
+        $now = new \DateTime();
+
+        // 1. Prevent Past Dates (5-minute grace period)
+        if ($date < $now->modify('-5 minutes')) {
+            throw new \Exception("Cannot schedule an appointment in the past.");
+        }
+
+        // 2. Prevent Sundays (0 = Sunday)
+        if ($date->format('w') === '0') {
+            throw new \Exception("The shop is closed on Sundays. Please choose another date.");
+        }
+    }
+
+    private function syncVehicleCatalog(string $make, string $model)
+    {
+        $make = trim($make);
+        $model = trim($model);
+        if (empty($make) || empty($model)) return;
+
+        // Use case-insensitive lookup to prevent duplicates (Postgres ILIKE)
+        $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::where('name', 'ILIKE', $make)
+            ->where('type', 'Vehicle')
+            ->first();
+
+        if (!$manufacturer) {
+            $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::create([
+                'name' => ucfirst($make), 
+                'type' => 'Vehicle'
+            ]);
+        }
+
+        $vehicleModel = \App\Domains\Product\Domain\Models\VehicleModel::where('model', 'ILIKE', $model)
+            ->where('manufacturer_id', $manufacturer->id)
+            ->first();
+
+        if (!$vehicleModel) {
+            \App\Domains\Product\Domain\Models\VehicleModel::create([
+                'model' => ucfirst($model), 
+                'manufacturer_id' => $manufacturer->id
+            ]);
         }
     }
 }

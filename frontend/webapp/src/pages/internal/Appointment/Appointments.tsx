@@ -552,12 +552,14 @@ const AppointmentsList: React.FC = () => {
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium">
-                                {a.customer 
-                                  ? `${a.customer.first_name} ${a.customer.last_name}` 
-                                  : `${a.first_name} ${a.last_name}`}
+                                {a.first_name 
+                                  ? `${a.first_name} ${a.last_name}`.trim()
+                                  : a.customer 
+                                    ? `${a.customer.first_name} ${a.customer.last_name}`
+                                    : "Unknown Customer"}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {formatPhone(a.customer?.mobile_number || a.phone)}
+                                {formatPhone(a.phone || a.customer?.mobile_number)}
                               </span>
                             </div>
                           </TableCell>
@@ -722,18 +724,20 @@ const AppointmentsList: React.FC = () => {
                   <div className="grid gap-3 pl-6 border-l-2 border-slate-100">
                     <div>
                       <p className="text-sm font-semibold">
-                        {selectedAppointment?.customer 
-                          ? `${selectedAppointment.customer.first_name} ${selectedAppointment.customer.last_name}` 
-                          : `${selectedAppointment?.first_name} ${selectedAppointment?.last_name}`}
+                        {selectedAppointment?.first_name 
+                          ? `${selectedAppointment.first_name} ${selectedAppointment.last_name}`.trim()
+                          : selectedAppointment?.customer 
+                            ? `${selectedAppointment.customer.first_name} ${selectedAppointment.customer.last_name}`
+                            : "Unknown Customer"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Phone className="w-3.5 h-3.5" />
-                      {formatPhone(selectedAppointment?.customer?.mobile_number || selectedAppointment?.phone) || "No phone number provided"}
+                      {formatPhone(selectedAppointment?.phone || selectedAppointment?.customer?.mobile_number) || "No phone number provided"}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Mail className="w-3.5 h-3.5" />
-                      {selectedAppointment?.customer?.email || selectedAppointment?.email || "No email provided"}
+                      {selectedAppointment?.email || selectedAppointment?.customer?.email || "No email provided"}
                     </div>
                   </div>
                 </section>

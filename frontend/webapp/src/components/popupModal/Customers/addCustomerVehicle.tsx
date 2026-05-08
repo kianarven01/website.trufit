@@ -82,18 +82,10 @@ const emptyVehicle = (): VehicleForm => ({
   sellingDealer: "",
 });
 
-const toTitleCase = (str: string) =>
-  (str || "")
-    .toLowerCase()
-    .split(" ")
-    .filter(Boolean)
-    .map(word =>
-      word
-        .split("-")
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join("-")
-    )
-    .join(" ");
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str.trim().charAt(0).toUpperCase() + str.trim().slice(1);
+};
 
 /* ================= COMPONENT ================= */
 const AddCustomerVehicle: React.FC<Props> = ({
@@ -393,7 +385,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
                   />
 
                   <Input placeholder="Color" value={v.color}
-                    onChange={(e) => updateVehicle(idx, "color", e.target.value)} />
+                    onChange={(e) => updateVehicle(idx, "color", toTitleCase(e.target.value))} />
 
                   <Input placeholder="Plate No" value={v.plateNo}
                     onChange={(e) => updateVehicle(idx, "plateNo", e.target.value)} />

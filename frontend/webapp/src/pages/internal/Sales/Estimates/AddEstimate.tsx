@@ -17,111 +17,154 @@ import AddCustomerVehicle from "@/components/popupModal/Customers/addCustomerVeh
 import { toast } from "sonner";
 import { Plus, Trash2, User, Car, Wrench, Box, Percent, Banknote, Calculator } from "lucide-react";
 
-interface Customer {
+/* ================= STORAGE ================= */
+const SERVICE_KEY = "services";
+const CATEGORY_KEY = "serviceCategories";
+const VEHICLE_SIZE_KEY = "vehicleSizes";
+const PRICING_KEY = "servicePricing";
+
+const STORAGE_KEY = "customers";
+const VEHICLE_STORAGE_KEY = "vehicles";
+const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+
+const PRODUCT_KEY = "products";
+const INVENTORY_KEY = "inventory";
+const ESTIMATE_KEY = "estimates";
+/* ================= TYPES ================= */
+
+interface VehicleModel {
   id: string;
-  name: string;
-  email: string;
-  address: string;
-  mobileNumber: string;
-  landline?: string;
-  businessPhone?: string;
+  year: number;
+  make: string;
+  model: string;
+  variant: string;
+  serviceClass: string;
 }
 
 interface Vehicle {
   id: string;
   customerId: string;
-  year: number;
-  make: string;
-  model: string;
-  variant: string;
+  vehicleModelId: string;
   color: string;
   plateNo: string;
   engineNo: string;
   vin: string;
   registrationNo: string;
   sellingDealer: string;
-  hasWarranty?: boolean;
-  mileage?: number;
 }
 
-interface ServiceType {
+interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  address: string;
+  mobileNumber: string;
+  landline?: string;
+  email?: string;
+  businessPhone?: string;
+}
+
+type PricingType = "fixed" | "hourly rate";
+
+interface Service {
   id: string;
   name: string;
-  category: string;
-  hourlyRate: number;
+  serviceCategoryId: string;
+  description?: string;
+  duration?: number;
+  pricingType: PricingType;
+}
+
+interface VehicleSize {
+  id: string;
+  name: string;           
+  abbreviation: string;
+  vehicleTypes: string[];
+}
+
+interface ServicePricing {
+  id: string;
+  serviceId: string;
+  vehicleSizeId: string;
+  price: number;
+}
+
+interface ServiceCategory {
+  id: string;
+  name: string;
 }
 
 interface Product {
   id: string;
+  image?: string;
   name: string;
   sku: string;
   price: number;
   unit: string;
-  currentStock: number;
+}
+
+interface Inventory {
+  id: string;
+  productId: string;
+  quantity_on_hand: number;
 }
 
 export interface Estimate {
   id: string;
   customer: Customer;
   vehicle: Vehicle;
+  mileage?: number;
   services: JOServiceLine[];
-  parts: SOPartLine[];
-  createdAt: string;
-  lastEdited?: string;
+  parts: EstimatePartLine[];
   status: "issued" | "approved";
   subtotalServices: number;
   subtotalParts: number;
-  serviceTax: number;
-  partsTax: number;  
   total: number;
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface JOServiceLine {
   id: string;
   ServiceTypeId: string;
-  name: string;
-  category: string;
-  hourlyRate: number;
-  hours: number | ""; 
   amount: number;
 }
 
 interface SOPartLine {
   id: string;
   ProductId: string;
-  name: string;
-  sku: string;
-  unit: string;
-  price: number;
   quantity: number | "";
   amount: number;
 }
 
 
-/* STORAGE */
-const STORAGE_KEY = "estimates";
+interface EstimateServiceLine extends JOServiceLine {
+  service: string;
+  category: string;
+  estimateDuration: string;
+  price: number;
+}
 
+interface EstimatePartLine extends SOPartLine {
+  name: string;
+  sku: string;
+  price: number;
+  unit: string;
+}
+                     
 
 const genLineId = () => crypto.randomUUID();
 
 const emptyJOLine = (): JOServiceLine => ({
   id: genLineId(),
   ServiceTypeId: "",
-  name: "",
-  category: "",
-  hourlyRate: 0,
-  hours: 1,
   amount: 0,
 });
 
 const emptySOLine = (): SOPartLine => ({
   id: genLineId(),
   ProductId: "",
-  name: "",
-  sku: "",
-  unit: "",
-  price: 0,
   quantity: 1,
   amount: 0,
 });
@@ -131,31 +174,34 @@ const AddEstimate: React.FC = () => {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-
+  const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
+  const [mileage, setMileage] = useState<number | "">("");
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   // Add Vehicle Modal
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
 
+
+
   const [date, setDate] = useState(new Date().toISOString());
   const [notes, setNotes] = useState("");
 
-  const [serviceTaxType, setServiceTaxType] = useState<"₱" | "%">("%");
-  const [serviceTaxValue, setServiceTaxValue] = useState(0);
-
-  const [partsTaxType, setPartsTaxType] = useState<"₱" | "%">("%");
-  const [partsTaxValue, setPartsTaxValue] = useState(0);
-
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [joLines, setJoLines] = useState<JOServiceLine[]>([emptyJOLine()]);
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
+  const [pricing, setPricing] = useState<ServicePricing[]>([]);
+  const [inventory, setInventory] = useState<Inventory[]>([]);
 
-  const [servicesCatalog, setServicesCatalog] = useState<ServiceType[]>([]);
+
+  const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
 
-  const servicesMap = useMemo<Record<string, ServiceType>>(() => {
+
+  const servicesMap = useMemo<Record<string, Service>>(() => {
     return Object.fromEntries(
       servicesCatalog.map(s => [s.id, s])
     );
@@ -177,7 +223,69 @@ const AddEstimate: React.FC = () => {
   const customerVehicles = vehicles.filter(v => v.customerId === selectedCustomer?.id);
 
 
+//========= HELPERS ==========//
+const getVehicleModel = (vehicle?: Vehicle | null) =>
+  vehicleModels.find(vm => vm.id === vehicle?.vehicleModelId);
+  
+const vm = useMemo(
+  () => getVehicleModel(selectedVehicle),
+  [selectedVehicle, vehicleModels]
+);  
 
+const categoryMap = useMemo<Record<string, ServiceCategory>>(
+  () =>
+    Object.fromEntries(
+      serviceCategories.map(c => [c.id, c])
+    ),
+  [serviceCategories]
+);
+
+const getService = (serviceId: string) =>
+  servicesMap[serviceId];
+
+const getServicePrice = (
+  serviceId: string,
+  vehicle?: Vehicle | null
+) => {
+  if (!vehicle) return 0;
+
+  const vehicleModel = vehicleModels.find(
+    vm => vm.id === vehicle.vehicleModelId
+  );
+
+  if (!vehicleModel) return 0;
+
+  // find matching vehicle size
+  const matchedVehicleSize = vehicleSizes.find(vs =>
+    vs.vehicleTypes?.includes(vehicleModel.serviceClass)
+  );
+
+  if (!matchedVehicleSize) return 0;
+
+  // find pricing for BOTH service + vehicle size
+  const matchedPricing = pricing.find(
+    p =>
+      p.serviceId === serviceId &&
+      p.vehicleSizeId === matchedVehicleSize.id
+  );
+
+  return matchedPricing?.price || 0;
+};
+
+const formatDuration = (minutes?: number) => {
+  if (!minutes) return "-";
+
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+
+  if (hrs && mins) return `${hrs}h ${mins}m`;
+  if (hrs) return `${hrs}h`;
+
+  return `${mins}m`;
+};
+
+
+//===============  ==================//  
   const handleAddCustomer = (search: string) => {
     setCustomerSearch(search); // optional prefill
     setCustomerModalOpen(true);
@@ -200,76 +308,180 @@ const AddEstimate: React.FC = () => {
   };
 
 
+  //=============== USE EFFECT ==================//
 
 useEffect(() => {
-  setCustomers([
-    {
-      id: "1",
-      name: "Juan Dela Cruz",
-      email: "juan@email.com",
-      address: "QC",
-      mobileNumber: "09123456789",
-      landline: "02-12345678",
-      businessPhone: "02-12345678",
-    },
-  ]);
+  const existingCustomers = localStorage.getItem(STORAGE_KEY);
+
+  // already seeded
+  if (existingCustomers) return;
+
+  // =========================================
+  // VEHICLE MODELS
+  // =========================================
+  const vehicleModels = Array.from({ length: 10 }, (_, i) => ({
+    id: `vm-${i + 1}`,
+    year: 2020 + (i % 5),
+    make: ["Toyota", "Honda", "Ford", "Mitsubishi", "Nissan"][i % 5],
+    model: `Model ${i + 1}`,
+    variant: `Variant ${i + 1}`,
+    serviceClass: ["SUV", "Sedan", "Pickup"][i % 3],
+  }));
+
+  // =========================================
+  // CUSTOMERS
+  // =========================================
+  const customers = Array.from({ length: 10 }, (_, i) => ({
+    id: `cust-${i + 1}`,
+    firstName: "Customer",
+    lastName: `${i + 1}`,
+    address: `Address ${i + 1}`,
+    mobileNumber: `0917000000${i}`,
+    landline: `054-881-10${i}`,
+    email: `customer${i + 1}@gmail.com`,
+    businessPhone: `054-900-10${i}`,
+  }));
+
+  // =========================================
+  // VEHICLES
+  // =========================================
+  const vehicles = customers.map((customer, i) => ({
+    id: `veh-${i + 1}`,
+    customerId: customer.id,
+    vehicleModelId: vehicleModels[i].id,
+    color: ["White", "Black", "Red", "Blue", "Gray"][i % 5],
+    plateNo: `ABC-${1000 + i}`,
+    engineNo: `ENG-${i + 1}`,
+    vin: `VIN-${i + 1}`,
+    registrationNo: `REG-${i + 1}`,
+    sellingDealer: `Dealer ${i + 1}`,
+    hasWarranty: i % 2 === 0,
+  }));
+
+  // =========================================
+  // PRODUCTS
+  // =========================================
+  const products = Array.from({ length: 10 }, (_, i) => ({
+    id: `prod-${i + 1}`,
+    image: "",
+    name: `Product ${i + 1}`,
+    sku: `SKU-${i + 1}`,
+    price: 100 + i * 50,
+    unit: "pc",
+  }));
+
+  // =========================================
+  // INVENTORY
+  // =========================================
+  const inventory = products.map((product, i) => ({
+    id: `inv-${i + 1}`,
+    productId: product.id,
+    quantity_on_hand: 10 + i * 5,
+  }));
+
+  // =========================================
+  // SAVE
+  // =========================================
+  localStorage.setItem(
+    VEHICLE_MODEL_STORAGE_KEY,
+    JSON.stringify(vehicleModels)
+  );
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(customers)
+  );
+
+  localStorage.setItem(
+    VEHICLE_STORAGE_KEY,
+    JSON.stringify(vehicles)
+  );
+
+  localStorage.setItem(
+    PRODUCT_KEY,
+    JSON.stringify(products)
+  );
+
+  localStorage.setItem(
+    INVENTORY_KEY,
+    JSON.stringify(inventory)
+  );
+
+  console.log("✅ Dummy data seeded successfully!");
 }, []);
 
 
   useEffect(() => {
-    // replace with API calls
-    setServicesCatalog([
-      { id: "1", name: "Oil Change", category: "Maintenance", hourlyRate: 1500 },
-      { id: "2", name: "Brake Cleaning", category: "Brake", hourlyRate: 1200 },
-      { id: "3", name: "Wheel Alignment", category: "Suspension", hourlyRate: 1800 },
-    ]);
+    try {
+      const storedCustomers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const storedVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
+      const storedServices = JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]");
+      const storedVehicleSizes = JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]");
+      const storedProducts = JSON.parse(localStorage.getItem(PRODUCT_KEY) || "[]");
+      const storedModels = JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
+      const storedInventory = JSON.parse(localStorage.getItem(INVENTORY_KEY) || "[]");
+      const storedPricing = JSON.parse(localStorage.getItem(PRICING_KEY) || "[]");
+      const storedCategories = JSON.parse( localStorage.getItem(CATEGORY_KEY) || "[]");
 
-    setPartsCatalog([
-      { id: "1", name: "Oil Filter", sku: "OF-100", price: 450, unit: "piece", currentStock: 10 },
-      { id: "2", name: "Air Filter", sku: "AF-220", price: 650, unit: "piece", currentStock: 5 },
-      { id: "3", name: "Brake Pad", sku: "BP-330", price: 2200, unit: "piece", currentStock: 3 },
-    ]);
+      setCustomers(Array.isArray(storedCustomers) ? storedCustomers : []);
+      setVehicles(Array.isArray(storedVehicles) ? storedVehicles : []);
+      setVehicleSizes( Array.isArray(storedVehicleSizes) ? storedVehicleSizes : []);
+      setServicesCatalog(Array.isArray(storedServices) ? storedServices : []);
+      setPartsCatalog(Array.isArray(storedProducts) ? storedProducts : []);
+      setVehicleModels(Array.isArray(storedModels) ? storedModels : []);
+      setInventory(Array.isArray(storedInventory) ? storedInventory : []);
+      setPricing(Array.isArray(storedPricing) ? storedPricing : []);
+      setServiceCategories( Array.isArray(storedCategories) ? storedCategories : []);
+
+    } catch (err) {
+      console.error("Failed to load localStorage data", err);
+    }
   }, []);
 
 
-  const updateJO = (idx: number, field: keyof JOServiceLine, value: any) => {
+  const updateJO = (
+    idx: number,
+    serviceId: string
+  ) => {
     setJoLines((prev) =>
       prev.map((l, i) => {
         if (i !== idx) return l;
 
-        let updated = { ...l, [field]: value };
+        const service = servicesMap[serviceId];
 
-        if (field === "ServiceTypeId") {
-          const found = servicesMap[value];
-
-          if (found) {
-            updated.name = found.name;
-            updated.category = found.category;
-            updated.hourlyRate = found.hourlyRate;
-            updated.amount = (updated.hours || 0) * found.hourlyRate;
-          } else {
-            updated.name = "";
-            updated.category = "";
-            updated.hourlyRate = 0;
-            updated.amount = 0;
-          }
+        if (!service) {
+          return {
+            ...l,
+            ServiceTypeId: serviceId,
+            amount: 0,
+          };
         }
 
-        if (field === "hours") {
-          const hours = value === "" ? 0 : Math.max(0, Number(value));
-          const found = servicesMap[updated.ServiceTypeId];
+        const rate = getServicePrice(
+          serviceId,
+          selectedVehicle
+        );
 
-          updated.hours = hours;
+        let amount = 0;
 
-          if (!found) {
-            updated.amount = 0;
-            return updated;
-          }
-
-          updated.amount = hours * found.hourlyRate;
+        // fixed pricing
+        if (service.pricingType === "fixed") {
+          amount = rate;
         }
 
-        return updated;
+        // hourly pricing
+        else {
+          const durationHours =
+            (service.duration || 0) / 60;
+
+          amount = rate * durationHours;
+        }
+
+        return {
+          ...l,
+          ServiceTypeId: serviceId,
+          amount,
+        };
       })
     );
   };
@@ -284,19 +496,7 @@ useEffect(() => {
         if (field === "ProductId") {
           const found = partsMap[value];
 
-          if (found) {
-            updated.name = found.name;
-            updated.sku = found.sku;
-            updated.unit = found.unit;
-            updated.price = found.price;
-            updated.amount = (updated.quantity || 0) * found.price;
-          } else {
-            updated.name = "";
-            updated.sku = "";
-            updated.unit = "";
-            updated.price = 0;
-            updated.amount = 0;
-          }
+          updated.amount = found ? (updated.quantity || 0) * found.price : 0;
         }
 
         if (field === "quantity") {
@@ -310,7 +510,10 @@ useEffect(() => {
             return updated;
           }
 
-          const safeQty = Math.min(qty, found.currentStock);
+          const stockEntry = inventory.find(i => i.productId === updated.ProductId);
+          const availableStock = stockEntry?.quantity_on_hand || 0;
+
+          const safeQty = Math.min(qty, availableStock);
           updated.amount = safeQty * found.price;
         }
 
@@ -324,51 +527,43 @@ useEffect(() => {
     const validJO = joLines.filter((l) => l.ServiceTypeId);
     const validSO = soLines.filter((l) => l.ProductId);
 
-    const totalServices = validJO.reduce((s, l) => s + l.amount, 0);
-    const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
+    const totalServices = validJO.reduce(
+      (s, l) => s + l.amount,
+      0
+    );
 
-    const serviceTax = serviceTaxType === "%" ? totalServices * ((serviceTaxValue || 0) / 100) : (serviceTaxValue || 0);
-    const partsTax = partsTaxType === "%" ? totalParts * ((partsTaxValue || 0) / 100) : (partsTaxValue || 0);
+    const totalParts = validSO.reduce(
+      (s, l) => s + l.amount,
+      0
+    );
 
-    const subtotal = totalServices + totalParts;
-    const totalTax = serviceTax + partsTax;
-    const total = subtotal + totalTax;
+    const estimatedMinutes = validJO.reduce(
+      (sum, l) => {
+        const service = servicesMap[l.ServiceTypeId];
 
-    return { totalServices, totalParts, subtotal, serviceTax, partsTax, totalTax, total, validJO, validSO };
-  }, [joLines, soLines, serviceTaxType, serviceTaxValue, partsTaxType, partsTaxValue]);
+        if (!service?.duration) return sum;
 
-  const toNumber = (val: string, max = Infinity) => {
-    const num = parseFloat(val);
-    if (isNaN(num)) return 0;
-    return Math.min(Math.max(0, num), max);
-  };
+        return sum + service.duration;
+      },
+      0
+    );
+
+    const total = totalServices + totalParts;
+
+    return {
+      totalServices,
+      totalParts,
+      total,
+      estimatedMinutes,
+      validJO,
+      validSO,
+    };
+  }, [joLines, soLines, servicesMap]);
+
 
   const peso = (n: number) =>
     `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const renderTaxControl = (type: "₱" | "%", setType: (t: "₱" | "%") => void, value: number, setValue: (v: number) => void) => (
-    <div className="flex items-center gap-2">
-      <div className="inline-flex rounded-md border border-border overflow-hidden">
-        <button type="button" onClick={() => setType("%")} className={`flex items-center gap-1 px-3 h-7 text-xs transition ${type === "%" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}>
-          <Percent className="h-3 w-3" />
-        </button>
-        <button type="button" onClick={() => setType("₱")} className={`flex items-center gap-1 px-3 h-7 text-xs border-l border-border transition ${type === "₱" ? "bg-primary text-primary-foreground" : "bg-background text-foreground"}`}>
-          <Banknote className="h-3 w-3" />
-        </button>
-      </div>
-      {type === "₱" ? (
-        <div className="relative">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₱</span>
-          <Input type="number" value={value || ""} onChange={e => setValue(toNumber(e.target.value))} className="w-24 h-7 pl-6 text-sm" />
-        </div>
-      ) : (
-        <div className="relative">
-          <Input type="number" value={value || ""} onChange={e => setValue(toNumber(e.target.value, type === "%" ? 100 : 100000))} className="w-24 h-7 pr-6 text-right text-sm" />
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
-        </div>
-      )}
-    </div>
-  );
 
 const saveEstimate = () => {
   if (!selectedCustomer || !selectedVehicle) {
@@ -394,24 +589,17 @@ const saveEstimate = () => {
     id: `EST-${crypto.randomUUID()}`,
     customer: selectedCustomer,
     vehicle: selectedVehicle,
+    mileage: mileage || 0,
     services: joLines
       .filter((l) => l.ServiceTypeId)
-      .map((l) => {
-        const found = servicesMap[l.ServiceTypeId];
-
-        return {
-          id: l.id,
-          ServiceTypeId: l.ServiceTypeId,
-          name: found?.name || "",
-          category: found?.category || "",
-          hourlyRate: found?.hourlyRate || 0,
-          hours: l.hours,
-          amount: l.amount,
-        };
-      }),
+      .map((l) => ({
+        id: l.id,
+        ServiceTypeId: l.ServiceTypeId,
+        amount: l.amount,
+      })),
     parts: soLines
-      .filter((l) => l.ProductId)
-      .map((l) => {
+      .filter(l => l.ProductId)
+      .map(l => {
         const found = partsMap[l.ProductId];
 
         return {
@@ -421,35 +609,42 @@ const saveEstimate = () => {
           sku: found?.sku || "",
           price: found?.price || 0,
           unit: found?.unit || "",
-          currentStock: found?.currentStock || 0,
           quantity: l.quantity,
           amount: l.amount,
         };
       }),
     createdAt: now,
-    lastEdited: now,
+    updatedAt: now,
     status: "issued",
     subtotalServices: totals.totalServices,
     subtotalParts: totals.totalParts,
-    serviceTax: totals.serviceTax,
-    partsTax: totals.partsTax,
     total: totals.total,
     notes: notes || undefined,
   };
+
+  if (mileage === "" || mileage === null || mileage === undefined || mileage <= 0) {
+    alert("Mileage is required.");
+    return;
+  }
 
   if (totals.validJO.length === 0 && totals.validSO.length === 0) {
     alert("Add at least one service or part.");
     return;
   }
 
-  if (totals.validJO.some(l => !l.hours || l.hours <= 0) || totals.validSO.some(l => !l.quantity || l.quantity <= 0)) {
+
+  if (
+    totals.validSO.some(
+      l => !l.quantity || l.quantity <= 0
+    )
+  ) {
     alert("Ensure all services/parts is not empty.");
     return;
 }
 
   let estimates: Estimate[] = [];
   try {
-    const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const existing = JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "[]");
     estimates = Array.isArray(existing) ? existing : [];
   } catch (err) {
     console.error("Invalid localStorage data", err);
@@ -457,7 +652,7 @@ const saveEstimate = () => {
   }
 
   estimates.push(newEstimate);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(estimates));
+  localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
 
   console.log("Estimate saved to localStorage:", newEstimate);
   alert("Estimate successfully created!");
@@ -465,7 +660,7 @@ const saveEstimate = () => {
 
 
   return (
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
+    <div className="w-full h-full pl-4 pr-3 pb-4 flex flex-col gap-4 overflow-y-auto">
       {/* BREADCRUMB */}
       <Breadcrumb>
         <BreadcrumbList>
@@ -483,202 +678,212 @@ const saveEstimate = () => {
       <DataToolbar variant="detail" title="Create New Estimate" />
 
       <div className="space-y-6">
-        <div className="rounded-lg border border-border bg-card p-6 flex flex-col lg:flex-row gap-6">
+        <div className="grid lg:grid-cols-2 gap-4">
           {/* CUSTOMER DETAILS */}
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2 text-blue-500">
-              <User className="size-5" />
-              <p className="font-semibold text-foreground">Customer Details</p>
-            </div>
-
-            <div className="space-y-2">
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Full Name</Label>
-                <Combobox
-                  value={selectedCustomer?.name || ""} 
-                  onChange={(val) => {
-                    const customer = customers.find(c => c.id === val) || null;
-
-                    setSelectedCustomer(customer);
-
-                    // Normalize vehicle selection
-                    if (!customer) {
-                      setSelectedVehicle(null);
-                      return;
-                    }
-
-                    const customerVehicles = vehicles.filter(v => v.customerId === customer.id);
-                    
-                    if (customerVehicles.length === 0) {
-                      setSelectedVehicle(null);
-                    } else if (customerVehicles.length === 1) {
-                      setSelectedVehicle(customerVehicles[0]);
-                    } else {
-                      setSelectedVehicle(null);
-                    }
-                  }}
-                  items={customers.map((c) => ({
-                    label: c.name,
-                    value: c.id,
-                  }))}
-                  placeholder="Select customer"
-                  allowAdd
-                  addLabel="customer"
-                  onAdd={handleAddCustomer}
-                />
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-blue-500">
+                <User className="size-5" />
+                <p className="font-semibold text-foreground">Customer Details</p>
               </div>
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Address</Label>
-                <Input
-                  value={selectedCustomer?.address || ""}
-                  readOnly
-                />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-y-2 gap-x-4">
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
                 <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Email Address</Label>
-                  <Input
-                    value={selectedCustomer?.email || ""}
-                    readOnly
+                  <Label className="text-muted-foreground font-normal text-xs">Full Name</Label>
+                  <Combobox
+                    value={selectedCustomer?.id || ""}
+                    onChange={(val) => {
+                      const customer = customers.find(c => c.id === val) || null;
+
+                      setSelectedCustomer(customer);
+
+                      if (!customer) {
+                        setSelectedVehicle(null);
+                        return;
+                      }
+
+                      const customerVehicles = vehicles.filter(v => v.customerId === customer.id);
+                      
+                      if (customerVehicles.length === 0) {
+                        setSelectedVehicle(null);
+                      } else if (customerVehicles.length === 1) {
+                        setSelectedVehicle(customerVehicles[0]);
+                      } else {
+                        setSelectedVehicle(null);
+                      }
+                    }}
+                    items={customers.map((c) => ({
+                      label: `${c.firstName} ${c.lastName}`,
+                      value: c.id,
+                    }))}
+                    placeholder="Select customer"
+                    allowAdd
+                    addLabel="customer"
+                    onAdd={handleAddCustomer}
                   />
                 </div>
                 <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Phone Number</Label>
+                  <Label className="text-muted-foreground font-normal text-xs">Address</Label>
                   <Input
-                    value={selectedCustomer?.mobileNumber || ""}
+                    value={selectedCustomer?.address || ""}
                     readOnly
                   />
                 </div>
-                <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Landline</Label>
-                  <Input
-                    value={selectedCustomer?.landline || ""}
-                    readOnly
-                  />
-                </div>
-                <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Business Number</Label>
-                  <Input
-                    value={selectedCustomer?.businessPhone || ""}
-                    readOnly
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SEPARATOR */}
-          <div className="hidden lg:block border-l border-border" />
-
-          {/* VEHICLE DETAILS */}
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2 text-blue-500">
-              <Car className="size-5" />
-              <p className="font-semibold text-foreground">Vehicle Details</p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
-              <div className="sm:col-span-2 grid lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2">
-                  <Label className="text-muted-foreground font-normal text-xs">
-                    Year / Make / Model
-                  </Label>
-
-                  {!selectedCustomer ? (
-                    <Input value="" placeholder="Select customer first" disabled />
-                  ) : customerVehicles.length === 1 ? (
+                <div className="grid sm:grid-cols-2 gap-y-2 gap-x-4">
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Email Address</Label>
                     <Input
-                      value={`${customerVehicles[0].year} ${customerVehicles[0].make} ${customerVehicles[0].model}`}
+                      value={selectedCustomer?.email || ""}
                       readOnly
                     />
-                  ) : (
-                    <Combobox
-                      value={selectedVehicle?.id || ""}
-                      onChange={(val) => {
-                        const vehicle =
-                          customerVehicles.find(v => v.id === val) || null;
-                        setSelectedVehicle(vehicle);
-                      }}
-                      items={customerVehicles.map(v => ({
-                        label: `${v.year} ${v.make} ${v.model}`,
-                        value: v.id,
-                      }))}
-                      placeholder={
-                        customerVehicles.length === 0
-                          ? "Select vehicle"
-                          : "Select vehicle"
-                      }
-                      allowAdd
-                      addLabel="vehicle"
-                      onAdd={() => {
-                        setVehicleModalOpen(true);
-                      }}
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Phone Number</Label>
+                    <Input
+                      value={selectedCustomer?.mobileNumber || ""}
+                      readOnly
                     />
-                  )}
-                </div>
-                <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
-                  <Input
-                    value={selectedVehicle?.variant || ""}
-                    readOnly
-                  />
-                </div>
-                <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Color</Label>
-                  <Input
-                    value={selectedVehicle?.color || ""}
-                    readOnly
-                  />
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Landline</Label>
+                    <Input
+                      value={selectedCustomer?.landline || ""}
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Business Number</Label>
+                    <Input
+                      value={selectedCustomer?.businessPhone || ""}
+                      readOnly
+                    />
+                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Plate No.</Label>
-                <Input
-                  value={selectedVehicle?.plateNo || ""}
-                  readOnly
-                />
-              </div>
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Engine No.</Label>
-                <Input
-                  value={selectedVehicle?.engineNo || ""}
-                  readOnly
-                />
-              </div>
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Chassis No. (VIN)</Label>
-                <Input
-                  value={selectedVehicle?.vin || ""}
-                  readOnly
-                />
-              </div>
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Registration No.</Label>
-                <Input
-                  value={selectedVehicle?.registrationNo || ""}
-                  readOnly
-                />
-              </div>
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Selling Dealer</Label>
-                <Input
-                  value={selectedVehicle?.sellingDealer || ""}
-                  readOnly
-                />
-              </div>
-              <div>
-                <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
-                <Input
-                  required
-                />
-              </div>
-            </div>
-          </div>
+          {/* VEHICLE DETAILS */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2 text-blue-500">
+                <Car className="size-5" />
+                <p className="font-semibold text-foreground">Vehicle Details</p>
+              </div>              
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+                <div className="sm:col-span-2 grid lg:grid-cols-4 gap-4">
+                  <div className="lg:col-span-2">
+                    <Label className="text-muted-foreground font-normal text-xs">
+                      Year / Make / Model
+                    </Label>
+
+                    {!selectedCustomer ? (
+                      <Input value="" placeholder="Select customer first" disabled />
+                    ) : customerVehicles.length === 1 ? (
+                      <Input
+                        value={vm ? `${vm.year} ${vm.make} ${vm.model}` : ""}
+                        readOnly
+                      />
+                    ) : (
+                      <Combobox
+                        value={selectedVehicle?.id || ""}
+                        onChange={(val) => {
+                          const vehicle =
+                            customerVehicles.find(v => v.id === val) || null;
+                          setSelectedVehicle(vehicle);
+                        }}
+                        items={customerVehicles.map(v => {
+                          const vm = vehicleModels.find(m => m.id === v.vehicleModelId);
+                          return {
+                            label: vm ? `${vm.year} ${vm.make} ${vm.model}` : "",
+                            value: v.id
+                          }
+                        })}
+                        placeholder={
+                          customerVehicles.length === 0
+                            ? "Select vehicle"
+                            : "Select vehicle"
+                        }
+                        allowAdd
+                        addLabel="vehicle"
+                        onAdd={() => {
+                          setVehicleModalOpen(true);
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
+                    <Input
+                      value={vm?.variant || ""}
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Color</Label>
+                    <Input
+                      value={selectedVehicle?.color || ""}
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Plate No.</Label>
+                  <Input
+                    value={selectedVehicle?.plateNo || ""}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Engine No.</Label>
+                  <Input
+                    value={selectedVehicle?.engineNo || ""}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Chassis No. (VIN)</Label>
+                  <Input
+                    value={selectedVehicle?.vin || ""}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Registration No.</Label>
+                  <Input
+                    value={selectedVehicle?.registrationNo || ""}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Selling Dealer</Label>
+                  <Input
+                    value={selectedVehicle?.sellingDealer || ""}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
+                  <Input
+                    type="number"
+                    value={mileage}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMileage(val === "" ? 0 : Number(val));
+                    }}
+                  />
+                </div>
+              </div>                
+            </CardContent>          
+          </Card>
         </div>
         
         {/* ESTIMATE DETAILS */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-6">
             {/* SERVICES */}
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
@@ -693,56 +898,95 @@ const saveEstimate = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs">Service</TableHead>
-                      <TableHead className="text-xs w-[20%]">Hourly Rate</TableHead>
-                      <TableHead className="text-xs w-[15%]">Hours</TableHead>
-                      <TableHead className="text-xs w-[20%]">Amount</TableHead>
+                      <TableHead className="text-xs w-[40%]">Service</TableHead>
+                      <TableHead className="text-xs ">Est. Duration</TableHead>
+                      <TableHead className="text-xs ">Rate</TableHead>
                       <TableHead className="text-xs w-[5%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {joLines.map((l, idx) => {
+                      const service = getService(l.ServiceTypeId);
+                      const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
+                    
                       return (
                         <TableRow key={l.id}>
                           <TableCell className="relative overflow-visible">
                             <Combobox
+                              showGroupSeparator
                               value={l.ServiceTypeId}
-                              onChange={(val) => updateJO(idx, "ServiceTypeId", val)}
-                              items={servicesCatalog.map((s) => ({
-                                label: `${s.name} - ₱${s.hourlyRate.toLocaleString()}`,
-                                value: s.id,
-                              }))}
+                              onChange={(val) => updateJO(idx, val)}
                               placeholder="Select service"
-                            />
-                          </TableCell>
-                          <TableCell>{peso(
-                            servicesMap[l.ServiceTypeId]?.hourlyRate || 0
-                          )}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={l.hours === 0 ? "0" : String(l.hours)}
-                              onFocus={(e) => {
-                                if (l.hours === 0) { updateJO(idx, "hours", ""); }
-                              }}
-                              onBlur={(e) => {
-                                const val = e.target.value;
+                              items={[...servicesCatalog]
+                                .sort((a, b) => {
+                                  const categoryA =
+                                    categoryMap[a.serviceCategoryId]?.name || "Uncategorized";
 
-                                if (val === "" || Number(val) === 0) { updateJO(idx, "hours", 0); }
-                              }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                // block negative sign
-                                if (val.includes("-")) return;
-                                updateJO(idx, "hours", val === "" ? "" : Number(val));
-                              }}
+                                  const categoryB =
+                                    categoryMap[b.serviceCategoryId]?.name || "Uncategorized";
+
+                                  // sort by category first
+                                  const categoryCompare = categoryA.localeCompare(categoryB);
+
+                                  if (categoryCompare !== 0) {
+                                    return categoryCompare;
+                                  }
+
+                                  // then sort items alphabetically inside category
+                                  return a.name.localeCompare(b.name);
+                                })
+                                  .map((s) => {
+                                  const price = getServicePrice(
+                                    s.id,
+                                    selectedVehicle
+                                  );
+
+                                  const category =
+                                    categoryMap[s.serviceCategoryId];
+
+                                  return {
+                                    label: s.name,
+                                    value: s.id,
+
+                                    group: category?.name || "Uncategorized",
+
+                                    description: [
+                                      formatDuration(s.duration),
+                                      `${peso(price)}`,
+                                      s.pricingType === "fixed"
+                                        ? "Fixed"
+                                        : "Hourly",
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" • "),
+                                  };
+                                })}
                             />
                           </TableCell>
-                          <TableCell>{peso(l.amount)}</TableCell>
+                          <TableCell>
+                            {formatDuration(service?.duration)}
+                          </TableCell>
+                          <TableCell >
+                            <div className="flex flex-col">
+                              <p>
+                                {service
+                                  ? service.pricingType === "fixed"
+                                    ? `${peso(rate)}`
+                                    : `${peso(rate)}`
+                                  : "-"}
+                              </p>
+                              <span className="text-[10px] text-muted-foreground">
+                                {service
+                                  ? service.pricingType === "fixed"
+                                    ? "Fixed"
+                                    : "hourly rate"
+                                  : ""}                                
+                              </span>
+                            </div>
+                          </TableCell>                          
                           <TableCell>
                             {joLines.length > 1 && (
-                              <Button size="icon" variant="ghost" onClick={() => removeJOLine(idx)}>
+                              <Button size="icon_xs" variant="ghost" onClick={() => removeJOLine(idx)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             )}
@@ -769,8 +1013,8 @@ const saveEstimate = () => {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs">Item Name</TableHead>
-                      <TableHead className="text-xs w-[15%]">Qty</TableHead>
                       <TableHead className="text-xs w-[20%]">Unit Price</TableHead>
+                      <TableHead className="text-xs w-[15%]">Qty</TableHead>
                       <TableHead className="text-xs w-[20%]">Amount</TableHead>
                       <TableHead className="text-xs w-[5%]"></TableHead>
                     </TableRow>
@@ -790,6 +1034,9 @@ const saveEstimate = () => {
                               placeholder="Select part"
                             />
                           </TableCell>
+                          <TableCell>{peso(
+                            partsMap[l.ProductId]?.price || 0
+                          )}</TableCell>                          
                           <TableCell>
                             <Input
                               type="number"
@@ -809,14 +1056,11 @@ const saveEstimate = () => {
                                 updateSO(idx, "quantity", val === "" ? "" : Number(val));
                               }}
                             />
-                          </TableCell>
-                          <TableCell>{peso(
-                            partsMap[l.ProductId]?.price || 0
-                          )}</TableCell> 
+                          </TableCell> 
                           <TableCell>{peso(l.amount)}</TableCell>
                           <TableCell>
                             {soLines.length > 1 && (
-                              <Button size="icon" variant="ghost" onClick={() => removeSOLine(idx)}>
+                              <Button size="icon_xs" variant="ghost" onClick={() => removeSOLine(idx)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             )}
@@ -839,23 +1083,25 @@ const saveEstimate = () => {
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
                   <div className="space-y-2.5">
-                    <div className="flex justify-between text-xs text-muted-foreground"><span>Services Subtotal</span><span>{peso(totals.totalServices)}</span></div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-medium text-blue-600 uppercase">Service Tax</span>
-                      {renderTaxControl(serviceTaxType, setServiceTaxType, serviceTaxValue, setServiceTaxValue)}
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Estimated Duration</span>
+                      <span>{formatDuration(totals.estimatedMinutes)}</span>
                     </div>
-                    <Separator className="my-2" />
-                    <div className="flex justify-between text-xs text-muted-foreground"><span>Parts Subtotal</span><span>{peso(totals.totalParts)}</span></div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-medium text-amber-600 uppercase">Parts Tax</span>
-                      {renderTaxControl(partsTaxType, setPartsTaxType, partsTaxValue, setPartsTaxValue)}
+                    <Separator/>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Services Subtotal</span>
+                      <span>{peso(totals.totalServices)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Parts Subtotal</span>
+                      <span>{peso(totals.totalParts)}</span>
                     </div>
                   </div>
 
                   <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
                     <div className="flex justify-between items-end text-primary">
                       <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-2xl font-black tracking-tight">{peso(totals.total)}</span>
+                      <span className="text-2xl font-bold tracking-wide">{peso(totals.total)}</span>
                     </div>
                   </div>
 
@@ -865,7 +1111,7 @@ const saveEstimate = () => {
                     value={notes} 
                       onChange={e => setNotes(e.target.value)} 
                       placeholder="Terms, warranty info, etc..." 
-                      rows={3} 
+                      rows={4} 
                       className="resize-none text-xs bg-background" 
                     />
                   </div>
@@ -878,6 +1124,7 @@ const saveEstimate = () => {
                       disabled= {
                         !selectedCustomer || 
                         !selectedVehicle ||
+                        !mileage ||
                         (totals.validJO.length === 0 && totals.validSO.length === 0) 
                       }
                     >
@@ -896,7 +1143,7 @@ const saveEstimate = () => {
               </Card>
               
               <p className="text-xs text-center text-muted-foreground px-4">
-                Creating an estimate will not affect inventory until it is converted to a Job Order.
+                Creating an estimate will not affect inventory until it has been approved by the customer.
               </p>
             </div>
           </div>

@@ -347,10 +347,13 @@ const AppointmentsList: React.FC = () => {
 
       if (!q) return matchesStatus && matchesDate;
 
-      const firstName = normalize(customer?.first_name || "");
-      const lastName = normalize(customer?.last_name || "");
+      const firstName = normalize(customer?.first_name || a.first_name || "");
+      const lastName = normalize(customer?.last_name || a.last_name || "");
       const fullName = normalize(`${firstName} ${lastName}`);
+      const plate = normalize(a.plate_number || vehicle?.plate_number || "");
       const services = normalize(a.services?.join(" ") || "");
+      const phone = normalize(a.phone || customer?.mobile_number || "");
+      const email = normalize(a.email || customer?.email || "");
 
       const terms = q.split(" ").filter(Boolean);
 
@@ -360,7 +363,10 @@ const AppointmentsList: React.FC = () => {
         fullName.includes(term) ||
         make.includes(term) ||
         model.includes(term) ||
-        services.includes(term)
+        plate.includes(term) ||
+        services.includes(term) ||
+        phone.includes(term) ||
+        email.includes(term)
       );
 
       return matchesStatus && matchesDate && matchesSearch;
@@ -503,18 +509,18 @@ const AppointmentsList: React.FC = () => {
         searchPlaceholder="Search appointments..."
         onSearch={setSearch}
         beforeAdd={
-          <div className="hidden md:flex items-center gap-4 text-[11px] font-medium text-muted-foreground mr-2 border-r pr-4">
+          <div className="flex items-center gap-6 text-[11px] font-medium text-muted-foreground px-4 py-1.5 bg-slate-50/50 rounded-full border border-slate-100">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-              Confirmed: <span className="text-foreground">{appointments.filter(a => a.status === 'confirmed').length}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]" />
+              Confirmed: <span className="text-foreground font-bold">{appointments.filter(a => a.status === 'confirmed').length}</span>
+            </div>
+            <div className="flex items-center gap-1.5 border-x px-6 border-slate-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(251,146,60,0.4)]" />
+              For Approval: <span className="text-foreground font-bold">{appointments.filter(a => a.status === 'for approval').length}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
-              For Approval: <span className="text-foreground">{appointments.filter(a => a.status === 'for approval').length}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-              Cancelled: <span className="text-foreground">{appointments.filter(a => a.status === 'cancelled').length}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
+              Cancelled: <span className="text-foreground font-bold">{appointments.filter(a => a.status === 'cancelled').length}</span>
             </div>
           </div>
         }
@@ -543,12 +549,12 @@ const AppointmentsList: React.FC = () => {
               <Table className="w-full border-separate border-spacing-y-2 h-full min-w-[800px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[80px]">No.</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Vehicle</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead className="w-[120px]">Status</TableHead>
+                    <TableHead className="w-[80px] text-center">No.</TableHead>
+                    <TableHead className="text-center">Customer</TableHead>
+                    <TableHead className="text-center">Vehicle</TableHead>
+                    <TableHead className="text-center">Service</TableHead>
+                    <TableHead className="text-center">Date & Time</TableHead>
+                    <TableHead className="w-[120px] text-center">Status</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -563,10 +569,10 @@ const AppointmentsList: React.FC = () => {
                           onClick={() => handleRowClick(a)}
                           className="rounded-lg border bg-card shadow-sm hover:shadow-md cursor-pointer"
                         >
-                          <TableCell>{a.appointment_code}</TableCell>
-
-                          <TableCell>
-                            <div className="flex flex-col">
+                          <TableCell className="text-center">{a.appointment_code}</TableCell>
+  
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center">
                               <span className="font-medium">
                                 {a.first_name 
                                   ? `${a.first_name} ${a.last_name}`.trim()
@@ -579,9 +585,9 @@ const AppointmentsList: React.FC = () => {
                               </span>
                             </div>
                           </TableCell>
-
-                          <TableCell>
-                            <div className="flex flex-col">
+  
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center">
                               <span className="font-medium">
                                 {a.vehicle 
                                   ? `${a.vehicle.year_model || a.year || ""} ${a.vehicle.make} ${a.vehicle.model}`.trim()
@@ -592,15 +598,15 @@ const AppointmentsList: React.FC = () => {
                               </span>
                             </div>
                           </TableCell>
-
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
+  
+                          <TableCell className="text-center">
+                            <div className="flex flex-wrap gap-1 justify-center">
                               {(() => {
                                 const services: string[] = a.services ?? [];
-
+  
                                 const visible = services.slice(0, 1);
                                 const hasMore = services.length > 1;
-
+  
                                 return (
                                   <>
                                     {visible.map((svc, idx) => (
@@ -608,13 +614,13 @@ const AppointmentsList: React.FC = () => {
                                         {formatServiceLabel(svc)}
                                       </Badge>
                                     ))}
-
+  
                                     {hasMore && (
                                       <Badge variant="outline" className="text-xs">
                                         ...
                                       </Badge>
                                     )}
-
+  
                                     {services.length === 0 && (
                                       <span className="text-muted-foreground text-xs">-</span>
                                     )}
@@ -623,17 +629,17 @@ const AppointmentsList: React.FC = () => {
                               })()}
                             </div>
                           </TableCell>
-
-                          <TableCell>
-                            <div className="flex flex-col">
+  
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center">
                               <span>{formatDate(a.appointment_datetime)}</span>
                               <span className="text-xs text-muted-foreground">
                                 {formatTime(a.appointment_datetime)}
                               </span>
                             </div>
                           </TableCell>
-
-                          <TableCell>
+  
+                          <TableCell className="text-center">
                             <Badge variant={getStatusVariant(a.status)}>
                               {a.status}
                             </Badge>

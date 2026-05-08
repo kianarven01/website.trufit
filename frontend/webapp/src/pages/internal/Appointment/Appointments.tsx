@@ -502,6 +502,22 @@ const AppointmentsList: React.FC = () => {
       <DataToolbar
         searchPlaceholder="Search appointments..."
         onSearch={setSearch}
+        beforeAdd={
+          <div className="hidden md:flex items-center gap-4 text-[11px] font-medium text-muted-foreground mr-2 border-r pr-4">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+              Confirmed: <span className="text-foreground">{appointments.filter(a => a.status === 'confirmed').length}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+              For Approval: <span className="text-foreground">{appointments.filter(a => a.status === 'for approval').length}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              Cancelled: <span className="text-foreground">{appointments.filter(a => a.status === 'cancelled').length}</span>
+            </div>
+          </div>
+        }
         onAdd={()=> {
           setEditingAppointmentId(null);
           setIsScheduleDialogOpen(true);

@@ -20,3 +20,8 @@ Route::prefix('appointments')->group(function () {
     Route::put('/{id}', [AppointmentController::class, 'update']);
     Route::delete('/{id}', [AppointmentController::class, 'destroy']);
 });
+
+Route::prefix('appointment-notes')->group(function () {
+    Route::get('/', [\App\Domains\Customer\Http\Controllers\AppointmentNoteController::class, 'index']);
+    Route::post('/', [\App\Domains\Customer\Http\Controllers\AppointmentNoteController::class, 'store']);
+});

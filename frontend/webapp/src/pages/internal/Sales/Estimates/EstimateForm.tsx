@@ -111,6 +111,7 @@ interface Inventory {
 
 export interface Estimate {
   id: string;
+  estimateNo: string;
   customer: Customer;
   vehicle: Vehicle;
   mileage?: number;
@@ -128,6 +129,8 @@ export interface Estimate {
 interface JOServiceLine {
   id: string;
   ServiceTypeId: string;
+  /** User-overridable rate; undefined = use catalog price */
+  manualRate?: number;
   amount: number;
 }
 
@@ -159,8 +162,13 @@ const genLineId = () => crypto.randomUUID();
 const emptyJOLine = (): JOServiceLine => ({
   id: genLineId(),
   ServiceTypeId: "",
+  manualRate: undefined,
   amount: 0,
 });
+
+/** Pad a 6-char hex segment for the human-readable code */
+const genEstimateNo = () =>
+  `EST-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 
 const emptySOLine = (): SOPartLine => ({
   id: genLineId(),
@@ -447,6 +455,8 @@ useEffect(() => {
           found.services.map(s => ({
             id: s.id,
             ServiceTypeId: s.ServiceTypeId,
+            // restore the saved manual rate so the input shows the right value
+            manualRate: s.price,
             amount: s.amount,
           }))
         );
@@ -498,49 +508,43 @@ useEffect(() => {
   }, []);
 
 
-  const updateJO = (
-    idx: number,
-    serviceId: string
-  ) => {
+  /** Change the selected service on a JO line; clears manual rate override */
+  const updateJO = (idx: number, serviceId: string) => {
     setJoLines((prev) =>
       prev.map((l, i) => {
         if (i !== idx) return l;
 
         const service = servicesMap[serviceId];
+        if (!service) return { ...l, ServiceTypeId: serviceId, manualRate: undefined, amount: 0 };
 
-        if (!service) {
-          return {
-            ...l,
-            ServiceTypeId: serviceId,
-            amount: 0,
-          };
-        }
+        const catalogRate = getServicePrice(serviceId, selectedVehicle);
+        const amount =
+          service.pricingType === "fixed"
+            ? catalogRate
+            : catalogRate * ((service.duration || 0) / 60);
 
-        const rate = getServicePrice(
-          serviceId,
-          selectedVehicle
-        );
+        return { ...l, ServiceTypeId: serviceId, manualRate: undefined, amount };
+      })
+    );
+  };
 
-        let amount = 0;
+  /** Override the rate (and recompute amount) for a JO line without changing the service */
+  const updateJORate = (idx: number, rawValue: string) => {
+    setJoLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
 
-        // fixed pricing
-        if (service.pricingType === "fixed") {
-          amount = rate;
-        }
+        const manualRate = rawValue === "" ? undefined : Math.max(0, Number(rawValue));
+        const service = servicesMap[l.ServiceTypeId];
+        const rate = manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
 
-        // hourly pricing
-        else {
-          const durationHours =
-            (service.duration || 0) / 60;
+        const amount = !service
+          ? 0
+          : service.pricingType === "fixed"
+          ? rate
+          : rate * ((service.duration || 0) / 60);
 
-          amount = rate * durationHours;
-        }
-
-        return {
-          ...l,
-          ServiceTypeId: serviceId,
-          amount,
-        };
+        return { ...l, manualRate, amount };
       })
     );
   };
@@ -674,7 +678,8 @@ const saveEstimate = () => {
     .map((l) => {
       const service = servicesMap[l.ServiceTypeId];
       const category = categoryMap[service?.serviceCategoryId || ""];
-      const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
+      // Use the user-overridden rate if set, otherwise fall back to catalog
+      const rate = l.manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
       return {
         id: l.id,
         ServiceTypeId: l.ServiceTypeId,
@@ -726,10 +731,13 @@ const saveEstimate = () => {
 
     localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
     toast.success("Estimate updated successfully!");
+    navigate(`/webapp/sales/estimates/${estimateId}`);
   } else {
     // ── Create: append new estimate ──────────────────────────────────────
+    const estimateNo = genEstimateNo();
     const newEstimate: Estimate = {
-      id: `EST-${crypto.randomUUID()}`,
+      id: crypto.randomUUID(),
+      estimateNo,
       customer: selectedCustomer,
       vehicle: selectedVehicle,
       mileage: mileage,
@@ -747,9 +755,8 @@ const saveEstimate = () => {
     estimates.push(newEstimate);
     localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
     toast.success("Estimate created successfully!");
+    navigate("/webapp/sales/estimates");
   }
-
-  navigate("/webapp/sales/estimates");
 };
 
 
@@ -761,6 +768,20 @@ const saveEstimate = () => {
           <BreadcrumbItem>
             <BreadcrumbLink onClick={() => navigate("/webapp/sales/estimates")}>Estimates</BreadcrumbLink>
           </BreadcrumbItem>
+          {mode === "edit" && estimateId && (() => {
+            const stored: Estimate[] = (() => { try { return JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "[]"); } catch { return []; } })();
+            const found = stored.find(e => e.id === estimateId);
+            return found ? (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink onClick={() => navigate(`/webapp/sales/estimates/${estimateId}`)}>
+                    {found.estimateNo || estimateId}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </>
+            ) : null;
+          })()}
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage>{mode === "edit" ? "Edit Estimate" : "New Estimate"}</BreadcrumbPage>
@@ -988,13 +1009,14 @@ const saveEstimate = () => {
                 </div>
                 <Button variant="outline" size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
               </div>
-              <div className="border border-border rounded-lg overflow-hidden">
+              <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs w-[40%]">Service</TableHead>
-                      <TableHead className="text-xs ">Est. Duration</TableHead>
-                      <TableHead className="text-xs ">Rate</TableHead>
+                      <TableHead className="text-xs w-[19%]">Est. Duration</TableHead>
+                      <TableHead className="text-xs w-[16%]">Rate (₱)</TableHead>
+                      <TableHead className="text-xs w-[20%]">Amount</TableHead>
                       <TableHead className="text-xs w-[5%]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1060,24 +1082,25 @@ const saveEstimate = () => {
                           <TableCell>
                             {formatDuration(service?.duration)}
                           </TableCell>
-                          <TableCell >
-                            <div className="flex flex-col">
-                              <p>
-                                {service
-                                  ? service.pricingType === "fixed"
-                                    ? `${peso(rate)}`
-                                    : `${peso(rate)}`
-                                  : "-"}
-                              </p>
+                          <TableCell>
+                            <div className="flex flex-col gap-0.5">
+                              <Input
+                                type="number"
+                                min={0}
+                                disabled={!service}
+                                value={l.manualRate !== undefined ? l.manualRate : (service ? rate : "")}
+                                placeholder={service ? String(rate) : "—"}
+                                onChange={(e) => updateJORate(idx, e.target.value)}
+                                className="h-7 text-xs"
+                              />
                               <span className="text-[10px] text-muted-foreground">
-                                {service
-                                  ? service.pricingType === "fixed"
-                                    ? "Fixed"
-                                    : "hourly rate"
-                                  : ""}                                
+                                {service ? (service.pricingType === "fixed" ? "Fixed" : "Per hr") : ""}
                               </span>
                             </div>
-                          </TableCell>                          
+                          </TableCell>
+                          <TableCell>
+                            {service ? peso(l.amount) : "—"}
+                          </TableCell>
                           <TableCell>
                             {joLines.length > 1 && (
                               <Button size="icon_xs" variant="ghost" onClick={() => removeJOLine(idx)}>

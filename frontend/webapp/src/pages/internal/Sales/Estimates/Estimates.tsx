@@ -30,6 +30,7 @@ import { ImageIcon } from "lucide-react";
 
 interface Estimate {
   id: string;
+  estimateNo?: string;
   customer?: any;
   vehicle?: any;
   services: any[];
@@ -171,8 +172,9 @@ const Estimates: React.FC = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Estimate ID</TableHead>
+                  <TableHead>Estimate No.</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Services</TableHead>
                   <TableHead>Parts</TableHead>
                   <TableHead>Total</TableHead>
@@ -195,12 +197,21 @@ const Estimates: React.FC = () => {
                           "cursor-pointer bg-card border rounded-lg hover:bg-accent/30"
                         )}
                       >
-                        <TableCell>{e.id}</TableCell>
+                        {/* EST-XXXXXX code; fall back to raw id for legacy records */}
+                        <TableCell className="font-mono font-semibold">
+                          {e.estimateNo || e.id}
+                        </TableCell>
 
                         <TableCell>
                           {e.createdAt
                             ? new Date(e.createdAt).toLocaleDateString()
                             : "-"}
+                        </TableCell>
+
+                        <TableCell>
+                          {e.customer
+                            ? `${e.customer.firstName ?? ""} ${e.customer.lastName ?? ""}`.trim() || "—"
+                            : "—"}
                         </TableCell>
 
                         <TableCell>{e.services.length}</TableCell>
@@ -224,7 +235,7 @@ const Estimates: React.FC = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">

@@ -308,7 +308,7 @@ const EstimateDetail: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate("/webapp/sales/estimates")}
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back

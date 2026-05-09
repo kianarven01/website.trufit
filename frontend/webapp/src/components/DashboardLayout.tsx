@@ -475,7 +475,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             Trufit Auto
           </h2>
           <p className="truncate text-xs text-sidebar-foreground/70 capitalize">
-            {user?.role} Panel
+            {user?.position || user?.role} Panel
           </p>
         </div>
       </div>
@@ -562,9 +562,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   type="button"
                   className="relative p-2.5 rounded-full text-foreground/70 hover:text-primary hover:bg-primary/5 transition-all outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0"
                 >
-                  <HugeiconsIcon icon={Notification03Icon} size={22} />
+                  <HugeiconsIcon icon={Notification03Icon} size={26} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-[#ff0000] ring-2 ring-background shadow-[0_0_8px_rgba(255,0,0,0.6)]" />
+                    <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-[#ff0000] ring-2 ring-background shadow-[0_0_8px_rgba(255,0,0,0.6)]" />
                   )}
                 </button>
               </DropdownMenuTrigger>
@@ -609,15 +609,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   type="button"
                   className="flex items-center gap-3 rounded-full px-1.5 py-1.5 hover:bg-accent transition-all group outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold text-lg">
                     {user?.username?.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left pr-2">
-                    <p className="text-[14px] font-bold text-foreground leading-tight">
+                    <p className="text-base font-bold text-foreground leading-tight">
                       {user?.username}
                     </p>
-                    <p className="text-[11px] text-muted-foreground/70 font-medium capitalize">
-                      {user?.role}
+                    <p className="text-xs text-muted-foreground/70 font-medium capitalize">
+                      {user?.position || user?.role}
                     </p>
                   </div>
                 </button>

@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsTrigger, TabsList, TabsContent } from "@/components/ui/tabs";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage, BreadcrumbLink, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Card, CardTitle, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import DataToolbar from "@/components/DataToolbar";
@@ -130,22 +129,6 @@ const SupplierDetails: React.FC = () => {
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/purchasing/suppliers")}> 
-              Suppliers
-            </BreadcrumbLink>    
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-          
-          <BreadcrumbItem>
-            <BreadcrumbPage>{supplier.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
       
     {/* TOOLBAR */}
     <DataToolbar

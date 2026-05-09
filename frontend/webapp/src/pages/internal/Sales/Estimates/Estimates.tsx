@@ -2,13 +2,6 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Badge } from "@/components/ui/badge";
 
@@ -140,14 +133,7 @@ const Estimates: React.FC = () => {
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
 
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>Estimates</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {/* Toolbar */}
 
       {/* Toolbar */}
       <DataToolbar

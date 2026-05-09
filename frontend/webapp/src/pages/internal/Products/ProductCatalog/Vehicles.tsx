@@ -5,15 +5,6 @@ import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle"
 import { Edit, Trash2, ChevronRight, Car } from "lucide-react"; 
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  BreadcrumbLink,
-} from "@/components/ui/breadcrumb";
-
 export interface Variant {
   id: string;
   vehicleId: string;
@@ -140,42 +131,7 @@ const VehiclesPage: React.FC = () => {
 
   return (
     <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              className="cursor-pointer"
-              onClick={() => navigate("/webapp/products/product-catalog")}
-            >
-              Product Catalog
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          {currentVehicle ? (
-            <>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  className="cursor-pointer"
-                  onClick={() => navigate("/webapp/products/product-catalog/vehicles")}
-                >
-                  Vehicles
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>
-                  {currentVehicle.makeName} - {currentVehicle.model}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </>
-          ) : (
-            <BreadcrumbItem>
-              <BreadcrumbPage>Vehicles</BreadcrumbPage>
-            </BreadcrumbItem>
-          )}
-        </BreadcrumbList>
-      </Breadcrumb>
+      {/* Toolbar */}
 
       {/* Toolbar */}
       <DataToolbar

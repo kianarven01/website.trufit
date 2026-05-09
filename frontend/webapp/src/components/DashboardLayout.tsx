@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -62,6 +62,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 interface NavItem {
   label: string;
@@ -285,6 +293,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const unreadCount = mockNotifications.filter((n) => n.unread).length;
 
+  // Breadcrumb generator
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const breadcrumbItems = pathSegments
+    .map((segment, index) => {
+      const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
+      
+      const findLabel = (items: NavItem[]): string | null => {
+        for (const item of items) {
+          if (item.path === path) return item.label;
+          if (item.children) {
+            const child = item.children.find(c => c.path === path);
+            if (child) return child.label;
+          }
+        }
+        return null;
+      };
+      
+      const mappedLabel = findLabel(navItems);
+      const label = mappedLabel || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+      
+      return { label, path };
+    })
+    .filter(item => item.label.toLowerCase() !== "webapp");
+
   /* ---- Unified Nav Item Render ---- */
   const renderNavItem = (item: NavItem) => {
     const active = item.path ? isActive(item.path) : false;
@@ -295,25 +327,32 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (collapsed && item.children) {
       return (
         <Popover key={item.label}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "flex h-12 w-full items-center px-6 rounded-xl transition-all outline-none focus:outline-none focus-visible:ring-0 ring-0",
-                groupActive
-                  ? "text-primary bg-sidebar-accent shadow-md"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <HugeiconsIcon icon={item.icon} size={22} className="shrink-0" />
-            </button>
-          </PopoverTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex h-12 w-full items-center px-6 rounded-xl transition-all outline-none focus:outline-none focus-visible:ring-0 ring-0",
+                    groupActive
+                      ? "text-primary bg-sidebar-accent shadow-md"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <HugeiconsIcon icon={item.icon} size={22} className="shrink-0" />
+                </button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-bold">
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
           <PopoverContent
             side="right"
             align="start"
             className="w-64 p-2 bg-sidebar border-sidebar-border z-50 shadow-2xl rounded-xl"
           >
-            <p className="px-4 py-3 text-[12px] font-black uppercase tracking-widest text-muted-foreground/50 border-b border-sidebar-border/50 mb-1">
+            <p className="px-4 py-3 text-[12px] font-black uppercase tracking-widest text-sidebar-foreground/70 border-b border-sidebar-border/50 mb-1">
               {item.label}
             </p>
             {item.children?.map((child) => (
@@ -475,7 +514,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             Trufit Auto
           </h2>
           <p className="truncate text-xs text-sidebar-foreground/70 capitalize">
-            {user?.role} Panel
+            {user?.position || user?.role} Panel
           </p>
         </div>
       </div>
@@ -553,6 +592,33 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               />
             </button>
 
+            {/* Breadcrumbs */}
+            <div className="hidden md:block ml-2">
+              <Breadcrumb>
+                <BreadcrumbList className="gap-1.5 sm:gap-2">
+                  {breadcrumbItems.map((item, idx) => (
+                    <React.Fragment key={item.path}>
+                      {idx > 0 && <BreadcrumbSeparator className="text-muted-foreground/30" />}
+                      <BreadcrumbItem>
+                        {idx === breadcrumbItems.length - 1 ? (
+                          <BreadcrumbPage className="text-[13px] font-semibold text-foreground/90">
+                            {item.label}
+                          </BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink 
+                            onClick={() => navigate(item.path)}
+                            className="text-[13px] text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+                          >
+                            {item.label}
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    </React.Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+
             <div className="flex-1" />
 
             {/* Notifications */}
@@ -562,9 +628,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   type="button"
                   className="relative p-2.5 rounded-full text-foreground/70 hover:text-primary hover:bg-primary/5 transition-all outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0"
                 >
-                  <HugeiconsIcon icon={Notification03Icon} size={22} />
+                  <HugeiconsIcon icon={Notification03Icon} size={26} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full bg-[#ff0000] ring-2 ring-background shadow-[0_0_8px_rgba(255,0,0,0.6)]" />
+                    <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-[#ff0000] ring-2 ring-background shadow-[0_0_8px_rgba(255,0,0,0.6)]" />
                   )}
                 </button>
               </DropdownMenuTrigger>
@@ -609,15 +675,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   type="button"
                   className="flex items-center gap-3 rounded-full px-1.5 py-1.5 hover:bg-accent transition-all group outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0"
                 >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold text-lg">
                     {user?.username?.charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left pr-2">
-                    <p className="text-[14px] font-bold text-foreground leading-tight">
+                    <p className="text-base font-bold text-foreground leading-tight">
                       {user?.username}
                     </p>
-                    <p className="text-[11px] text-muted-foreground/70 font-medium capitalize">
-                      {user?.role}
+                    <p className="text-xs text-muted-foreground/70 font-medium capitalize">
+                      {user?.position || user?.role}
                     </p>
                   </div>
                 </button>
@@ -651,7 +717,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex-1 overflow-hidden bg-background/50">
+          <main className="flex-1 overflow-hidden bg-background/50 pt-4">
             {children}
           </main>
         </div>

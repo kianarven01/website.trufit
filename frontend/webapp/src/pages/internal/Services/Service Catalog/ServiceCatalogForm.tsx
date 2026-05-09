@@ -406,13 +406,18 @@ const handleSaveNewSize = () => {
     id: genId(),
     name: newSize.name,
     abbreviation: generateAbbreviation(newSize.name),
-    vehicleTypes: newSize.vehicleTypes,
+    vehicleTypes: [...newSize.vehicleTypes],
   };
 
+  // ADD THE NEW ENTRY
   const updatedSizes = [...vehicleSizes, newEntry];
 
   setVehicleSizes(updatedSizes);
-  localStorage.setItem(VEHICLE_SIZE_KEY, JSON.stringify(updatedSizes));
+
+  localStorage.setItem(
+    VEHICLE_SIZE_KEY,
+    JSON.stringify(updatedSizes)
+  );
 
   /* attach pricing */
   setSizePricing((prev) => ({
@@ -421,6 +426,17 @@ const handleSaveNewSize = () => {
   }));
 
   setIsAddingSize(false);
+
+  // cleanup
+  setNewSize({
+    name: "",
+    vehicleTypes: [],
+    price: 0,
+  });
+
+  setVehicleTypeInput("");
+  setEditingTagIndex(null);
+  setEditingTagValue("");
 };
 
 const handleCancelNewSize = () => {
@@ -437,7 +453,7 @@ const handleEditSize = (vs: VehicleSize) => {
   setEditingSizeId(vs.id);
   setEditSize({
     name: vs.name,
-    vehicleTypes: vs.vehicleTypes,
+    vehicleTypes: [...vs.vehicleTypes],
     price: sizePricing[vs.id] ?? 0,
   });
 };

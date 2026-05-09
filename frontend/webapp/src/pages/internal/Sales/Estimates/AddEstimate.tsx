@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import DataToolbar from "@/components/DataToolbar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -114,7 +114,7 @@ export interface Estimate {
   customer: Customer;
   vehicle: Vehicle;
   mileage?: number;
-  services: JOServiceLine[];
+  services: EstimateServiceLine[];
   parts: EstimatePartLine[];
   status: "issued" | "approved";
   subtotalServices: number;
@@ -142,7 +142,7 @@ interface SOPartLine {
 interface EstimateServiceLine extends JOServiceLine {
   service: string;
   category: string;
-  estimateDuration: string;
+  estimateDuration: number;
   price: number;
 }
 
@@ -169,7 +169,12 @@ const emptySOLine = (): SOPartLine => ({
   amount: 0,
 });
 
-const AddEstimate: React.FC = () => {
+interface AddEstimateProps {
+  mode?: "create" | "edit";
+}
+
+const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
+  const { id: estimateId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -178,7 +183,7 @@ const AddEstimate: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
-  const [mileage, setMileage] = useState<number | "">("");
+  const [mileage, setMileage] = useState<number>(0);
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -187,7 +192,6 @@ const AddEstimate: React.FC = () => {
 
 
 
-  const [date, setDate] = useState(new Date().toISOString());
   const [notes, setNotes] = useState("");
 
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
@@ -219,7 +223,6 @@ const AddEstimate: React.FC = () => {
   const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
   const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
 
-  const getCustomerVehicles = (customerId: string) => vehicles.filter(v => v.customerId === customerId);
   const customerVehicles = vehicles.filter(v => v.customerId === selectedCustomer?.id);
 
 
@@ -249,15 +252,19 @@ const getServicePrice = (
 ) => {
   if (!vehicle) return 0;
 
-  const vehicleModel = vehicleModels.find(
-    vm => vm.id === vehicle.vehicleModelId
+  const selectedVehicleModel = vehicleModels.find(
+    m => m.id === vehicle.vehicleModelId
   );
 
-  if (!vehicleModel) return 0;
+  if (!selectedVehicleModel) return 0;
 
   // find matching vehicle size
   const matchedVehicleSize = vehicleSizes.find(vs =>
-    vs.vehicleTypes?.includes(vehicleModel.serviceClass)
+    vs.vehicleTypes?.some(
+      vt =>
+        vt.trim().toLowerCase() ===
+        (selectedVehicleModel.serviceClass ?? "").trim().toLowerCase()
+    )
   );
 
   if (!matchedVehicleSize) return 0;
@@ -295,8 +302,8 @@ const formatDuration = (minutes?: number) => {
     setCustomers((prev) => [...prev, newCustomer]);
     setSelectedCustomer(newCustomer);
 
-    // Vehicle selection
-    const relatedVehicles = getCustomerVehicles(newCustomer.id);
+    // Vehicle selection — use vehicles from state + possible new vehicle
+    const relatedVehicles = vehicles.filter(v => v.customerId === newCustomer.id);
 
     if (newCustomer.__lastAddedVehicle) {
       setSelectedVehicle(newCustomer.__lastAddedVehicle);
@@ -305,6 +312,12 @@ const formatDuration = (minutes?: number) => {
     } else {
       setSelectedVehicle(null); //if multiple vehicles, user must pick
     }
+  };
+
+  const handleVehicleSaved = (newVehicle: Vehicle) => {
+    setVehicles((prev) => [...prev, newVehicle]);
+    setSelectedVehicle(newVehicle);
+    setVehicleModalOpen(false);
   };
 
 
@@ -408,7 +421,53 @@ useEffect(() => {
   );
 
   console.log("✅ Dummy data seeded successfully!");
-}, []);
+}, []); // seed once
+
+  // ── Load existing estimate in edit mode ──────────────────────────────────
+  useEffect(() => {
+    if (mode !== "edit" || !estimateId) return;
+
+    try {
+      const stored: Estimate[] = JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "[]");
+      const found = stored.find(e => e.id === estimateId);
+
+      if (!found) {
+        toast.error("Estimate not found.");
+        navigate("/webapp/sales/estimates");
+        return;
+      }
+
+      setSelectedCustomer(found.customer);
+      setSelectedVehicle(found.vehicle);
+      setMileage(found.mileage ?? 0);
+      setNotes(found.notes ?? "");
+
+      if (found.services.length > 0) {
+        setJoLines(
+          found.services.map(s => ({
+            id: s.id,
+            ServiceTypeId: s.ServiceTypeId,
+            amount: s.amount,
+          }))
+        );
+      }
+
+      if (found.parts.length > 0) {
+        setSoLines(
+          found.parts.map(p => ({
+            id: p.id,
+            ProductId: p.ProductId,
+            quantity: p.quantity,
+            amount: p.amount,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to load estimate for editing", err);
+      toast.error("Failed to load estimate.");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, estimateId]);
 
 
   useEffect(() => {
@@ -503,17 +562,18 @@ useEffect(() => {
           const qty = value === "" ? 0 : Math.max(0, Number(value));
           const found = partsMap[updated.ProductId];
 
-          updated.quantity = qty;
-
           if (!found) {
+            updated.quantity = qty;
             updated.amount = 0;
             return updated;
           }
 
-          const stockEntry = inventory.find(i => i.productId === updated.ProductId);
+          const stockEntry = inventory.find(inv => inv.productId === updated.ProductId);
           const availableStock = stockEntry?.quantity_on_hand || 0;
 
+          // Clamp qty to available stock and store the CLAMPED value
           const safeQty = Math.min(qty, availableStock);
+          updated.quantity = safeQty;
           updated.amount = safeQty * found.price;
         }
 
@@ -566,81 +626,39 @@ useEffect(() => {
 
 
 const saveEstimate = () => {
+  // ── 1. Validate first, build object after ───────────────────────────────
   if (!selectedCustomer || !selectedVehicle) {
-    alert("Select customer and vehicle.");
+    toast.error("Please select a customer and vehicle.");
     return;
   }
 
-  // validate relationship via customerId
+  // Validate vehicle belongs to the selected customer
   const isValidVehicle = vehicles.some(
-    (v) =>
-      v.id === selectedVehicle.id &&
-      v.customerId === selectedCustomer.id
+    (v) => v.id === selectedVehicle.id && v.customerId === selectedCustomer.id
   );
 
   if (!isValidVehicle) {
-    alert("Invalid vehicle for selected customer.");
+    toast.error("The selected vehicle does not belong to this customer.");
     return;
   }
 
-  const now = new Date().toISOString();
-
-  const newEstimate: Estimate = {
-    id: `EST-${crypto.randomUUID()}`,
-    customer: selectedCustomer,
-    vehicle: selectedVehicle,
-    mileage: mileage || 0,
-    services: joLines
-      .filter((l) => l.ServiceTypeId)
-      .map((l) => ({
-        id: l.id,
-        ServiceTypeId: l.ServiceTypeId,
-        amount: l.amount,
-      })),
-    parts: soLines
-      .filter(l => l.ProductId)
-      .map(l => {
-        const found = partsMap[l.ProductId];
-
-        return {
-          id: l.id,
-          ProductId: l.ProductId,
-          name: found?.name || "",
-          sku: found?.sku || "",
-          price: found?.price || 0,
-          unit: found?.unit || "",
-          quantity: l.quantity,
-          amount: l.amount,
-        };
-      }),
-    createdAt: now,
-    updatedAt: now,
-    status: "issued",
-    subtotalServices: totals.totalServices,
-    subtotalParts: totals.totalParts,
-    total: totals.total,
-    notes: notes || undefined,
-  };
-
-  if (mileage === "" || mileage === null || mileage === undefined || mileage <= 0) {
-    alert("Mileage is required.");
+  if (mileage <= 0) {
+    toast.error("Mileage is required.");
     return;
   }
 
   if (totals.validJO.length === 0 && totals.validSO.length === 0) {
-    alert("Add at least one service or part.");
+    toast.error("Add at least one service or part.");
     return;
   }
 
-
-  if (
-    totals.validSO.some(
-      l => !l.quantity || l.quantity <= 0
-    )
-  ) {
-    alert("Ensure all services/parts is not empty.");
+  if (totals.validSO.some((l) => !l.quantity || l.quantity <= 0)) {
+    toast.error("All part lines must have a quantity greater than zero.");
     return;
-}
+  }
+
+  // ── 2. Build the estimate object ────────────────────────────────────────
+  const now = new Date().toISOString();
 
   let estimates: Estimate[] = [];
   try {
@@ -651,11 +669,87 @@ const saveEstimate = () => {
     estimates = [];
   }
 
-  estimates.push(newEstimate);
-  localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
+  const builtServices: EstimateServiceLine[] = joLines
+    .filter((l) => l.ServiceTypeId)
+    .map((l) => {
+      const service = servicesMap[l.ServiceTypeId];
+      const category = categoryMap[service?.serviceCategoryId || ""];
+      const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
+      return {
+        id: l.id,
+        ServiceTypeId: l.ServiceTypeId,
+        service: service?.name || "",
+        category: category?.name || "",
+        estimateDuration: service?.duration || 0,
+        price: rate,
+        amount: l.amount,
+      };
+    });
 
-  console.log("Estimate saved to localStorage:", newEstimate);
-  alert("Estimate successfully created!");
+  const builtParts: EstimatePartLine[] = soLines
+    .filter((l) => l.ProductId)
+    .map((l) => {
+      const found = partsMap[l.ProductId];
+      return {
+        id: l.id,
+        ProductId: l.ProductId,
+        name: found?.name || "",
+        sku: found?.sku || "",
+        price: found?.price || 0,
+        unit: found?.unit || "",
+        quantity: l.quantity,
+        amount: l.amount,
+      };
+    });
+
+  if (mode === "edit" && estimateId) {
+    // ── Edit: find & update existing estimate ────────────────────────────
+    const idx = estimates.findIndex((e) => e.id === estimateId);
+    if (idx === -1) {
+      toast.error("Estimate not found. It may have been deleted.");
+      return;
+    }
+
+    estimates[idx] = {
+      ...estimates[idx],
+      customer: selectedCustomer,
+      vehicle: selectedVehicle,
+      mileage: mileage,
+      services: builtServices,
+      parts: builtParts,
+      subtotalServices: totals.totalServices,
+      subtotalParts: totals.totalParts,
+      total: totals.total,
+      notes: notes || undefined,
+      updatedAt: now,
+    };
+
+    localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
+    toast.success("Estimate updated successfully!");
+  } else {
+    // ── Create: append new estimate ──────────────────────────────────────
+    const newEstimate: Estimate = {
+      id: `EST-${crypto.randomUUID()}`,
+      customer: selectedCustomer,
+      vehicle: selectedVehicle,
+      mileage: mileage,
+      services: builtServices,
+      parts: builtParts,
+      createdAt: now,
+      updatedAt: now,
+      status: "issued",
+      subtotalServices: totals.totalServices,
+      subtotalParts: totals.totalParts,
+      total: totals.total,
+      notes: notes || undefined,
+    };
+
+    estimates.push(newEstimate);
+    localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
+    toast.success("Estimate created successfully!");
+  }
+
+  navigate("/webapp/sales/estimates");
 };
 
 
@@ -665,17 +759,17 @@ const saveEstimate = () => {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(-1)}>Purchase Orders</BreadcrumbLink>
+            <BreadcrumbLink onClick={() => navigate("/webapp/sales/estimates")}>Estimates</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Add Estimate</BreadcrumbPage>
+            <BreadcrumbPage>{mode === "edit" ? "Edit Estimate" : "New Estimate"}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       {/* HEADER */}
-      <DataToolbar variant="detail" title="Create New Estimate" />
+      <DataToolbar variant="detail" title={mode === "edit" ? "Edit Estimate" : "Create New Estimate"} />
 
       <div className="space-y-6">
         <div className="grid lg:grid-cols-2 gap-4">
@@ -873,7 +967,7 @@ const saveEstimate = () => {
                     value={mileage}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setMileage(val === "" ? 0 : Number(val));
+                      setMileage(Number(val));
                     }}
                   />
                 </div>
@@ -933,7 +1027,7 @@ const saveEstimate = () => {
                                   }
 
                                   // then sort items alphabetically inside category
-                                  return a.name.localeCompare(b.name);
+                                  return (a.name || "").localeCompare(b.name || "");
                                 })
                                   .map((s) => {
                                   const price = getServicePrice(
@@ -1051,8 +1145,7 @@ const saveEstimate = () => {
                               }}
                               onChange={(e) => {
                                 const val = e.target.value;
-                                // block negative sign
-                                if (val.includes("-")) return;
+                                if (!/^\d*$/.test(val)) return;
                                 updateSO(idx, "quantity", val === "" ? "" : Number(val));
                               }}
                             />
@@ -1128,7 +1221,7 @@ const saveEstimate = () => {
                         (totals.validJO.length === 0 && totals.validSO.length === 0) 
                       }
                     >
-                      Issue Estimate
+                      {mode === "edit" ? "Save Changes" : "Issue Estimate"}
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -1149,8 +1242,6 @@ const saveEstimate = () => {
           </div>
         </div>
       </div>
-
-
     </div>
   );
 };

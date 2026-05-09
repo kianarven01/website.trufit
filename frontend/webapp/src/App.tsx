@@ -111,7 +111,8 @@ const App: React.FC = () => {
 
                 <Route path="estimates">
                   <Route index element={<Estimates />} />
-                  <Route path="new-estimate" element={<AddEstimate />} />
+                  <Route path="new-estimate" element={<AddEstimate mode="create" />} />
+                  <Route path=":id/edit" element={<AddEstimate mode="edit" />} />
                 </Route>
               </Route>
 

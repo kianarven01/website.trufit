@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Combobox from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import CurrencyInput from "@/components/ui/currencyInput";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -508,8 +509,26 @@ useEffect(() => {
   }, []);
 
 
-  /** Change the selected service on a JO line; clears manual rate override */
+  /** Change the selected service on a JO line; clears manual rate override.
+   *  Blocks selection if the service is already used on another line. */
   const updateJO = (idx: number, serviceId: string) => {
+    if (joLines[idx]?.ServiceTypeId === serviceId) return;
+
+    if (serviceId) {
+      const alreadyUsed = joLines.some(
+        (l, i) => i !== idx && l.ServiceTypeId === serviceId
+      );
+      if (alreadyUsed) {
+        const svc = servicesMap[serviceId];
+        toast.warning(`"${svc?.name ?? "Service"}" is already added.`);
+
+        if (!joLines[idx]?.ServiceTypeId) {
+          setJoLines((prev) => prev.filter((_, i) => i !== idx));
+        }
+        return;
+      }
+    }
+
     setJoLines((prev) =>
       prev.map((l, i) => {
         if (i !== idx) return l;
@@ -550,6 +569,31 @@ useEffect(() => {
   };
 
   const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
+    // Duplicate-part guard: if the chosen product already exists on another line, increment its qty instead
+    if (field === "ProductId" && value) {
+      const existingIdx = soLines.findIndex(
+        (l, i) => i !== idx && l.ProductId === value
+      );
+      if (existingIdx !== -1) {
+        const product = partsMap[value];
+        const productName = product?.name ?? "Part";
+        // Remove the current (empty/duplicate) line and bump the existing line's qty
+        setSoLines((prev) => {
+          const next = prev.filter((_, i) => i !== idx);
+          return next.map((l, i) => {
+            if (i !== existingIdx - (idx < existingIdx ? 1 : 0)) return l;
+            const newQty = (Number(l.quantity) || 0) + 1;
+            const stockEntry = inventory.find(inv => inv.productId === l.ProductId);
+            const availableStock = stockEntry?.quantity_on_hand ?? Infinity;
+            const safeQty = Math.min(newQty, availableStock);
+            return { ...l, quantity: safeQty, amount: safeQty * (product?.price ?? 0) };
+          });
+        });
+        toast.info(`"${productName}" is already added. Quantity increased.`);
+        return;
+      }
+    }
+
     setSoLines((prev) =>
       prev.map((l, i) => {
         if (i !== idx) return l;
@@ -558,7 +602,6 @@ useEffect(() => {
 
         if (field === "ProductId") {
           const found = partsMap[value];
-
           updated.amount = found ? (updated.quantity || 0) * found.price : 0;
         }
 
@@ -574,8 +617,6 @@ useEffect(() => {
 
           const stockEntry = inventory.find(inv => inv.productId === updated.ProductId);
           const availableStock = stockEntry?.quantity_on_hand || 0;
-
-          // Clamp qty to available stock and store the CLAMPED value
           const safeQty = Math.min(qty, availableStock);
           updated.quantity = safeQty;
           updated.amount = safeQty * found.price;
@@ -678,7 +719,6 @@ const saveEstimate = () => {
     .map((l) => {
       const service = servicesMap[l.ServiceTypeId];
       const category = categoryMap[service?.serviceCategoryId || ""];
-      // Use the user-overridden rate if set, otherwise fall back to catalog
       const rate = l.manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
       return {
         id: l.id,
@@ -985,11 +1025,11 @@ const saveEstimate = () => {
                   <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
                   <Input
                     type="number"
-                    value={mileage}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setMileage(Number(val));
-                    }}
+                    min={0}
+                    value={mileage === 0 ? "" : mileage}
+                    placeholder="0"
+                    onChange={(e) => setMileage(e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                    onBlur={(e) => { if (e.target.value === "") setMileage(0); }}
                   />
                 </div>
               </div>                
@@ -1007,113 +1047,119 @@ const saveEstimate = () => {
                   <Wrench className="size-5 text-blue-500"/>
                   <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>                
                 </div>
-                <Button variant="outline" size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
+                <Button size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs w-[40%]">Service</TableHead>
-                      <TableHead className="text-xs w-[19%]">Est. Duration</TableHead>
-                      <TableHead className="text-xs w-[16%]">Rate (₱)</TableHead>
-                      <TableHead className="text-xs w-[20%]">Amount</TableHead>
-                      <TableHead className="text-xs w-[5%]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {joLines.map((l, idx) => {
-                      const service = getService(l.ServiceTypeId);
-                      const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
-                    
-                      return (
-                        <TableRow key={l.id}>
-                          <TableCell className="relative overflow-visible">
-                            <Combobox
-                              showGroupSeparator
-                              value={l.ServiceTypeId}
-                              onChange={(val) => updateJO(idx, val)}
-                              placeholder="Select service"
-                              items={[...servicesCatalog]
-                                .sort((a, b) => {
-                                  const categoryA =
-                                    categoryMap[a.serviceCategoryId]?.name || "Uncategorized";
+                <div className="max-h-[420px] overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs w-[40%]">Service</TableHead>
+                        <TableHead className="text-xs w-[19%]">Est. Duration</TableHead>
+                        <TableHead className="text-xs w-[16%]">Rate (₱)</TableHead>
+                        <TableHead className="text-xs w-[20%]">Amount</TableHead>
+                        <TableHead className="text-xs w-[5%]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
 
-                                  const categoryB =
-                                    categoryMap[b.serviceCategoryId]?.name || "Uncategorized";
+                    <TableBody>
+                      {joLines.map((l, idx) => {
+                        const service = getService(l.ServiceTypeId);
+                        const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
 
-                                  // sort by category first
-                                  const categoryCompare = categoryA.localeCompare(categoryB);
+                        return (
+                          <TableRow key={l.id}>
+                            <TableCell className="relative overflow-visible">
+                              <Combobox
+                                showGroupSeparator
+                                value={l.ServiceTypeId}
+                                onChange={(val) => updateJO(idx, val)}
+                                placeholder="Select service"
+                                items={[...servicesCatalog]
+                                  .sort((a, b) => {
+                                    const categoryA =
+                                      categoryMap[a.serviceCategoryId]?.name || "Uncategorized";
 
-                                  if (categoryCompare !== 0) {
-                                    return categoryCompare;
-                                  }
+                                    const categoryB =
+                                      categoryMap[b.serviceCategoryId]?.name || "Uncategorized";
 
-                                  // then sort items alphabetically inside category
-                                  return (a.name || "").localeCompare(b.name || "");
-                                })
+                                    const categoryCompare =
+                                      categoryA.localeCompare(categoryB);
+
+                                    if (categoryCompare !== 0) {
+                                      return categoryCompare;
+                                    }
+
+                                    return (a.name || "").localeCompare(b.name || "");
+                                  })
                                   .map((s) => {
-                                  const price = getServicePrice(
-                                    s.id,
-                                    selectedVehicle
-                                  );
+                                    const price = getServicePrice(
+                                      s.id,
+                                      selectedVehicle
+                                    );
 
-                                  const category =
-                                    categoryMap[s.serviceCategoryId];
+                                    const category =
+                                      categoryMap[s.serviceCategoryId];
 
-                                  return {
-                                    label: s.name,
-                                    value: s.id,
+                                    return {
+                                      label: s.name,
+                                      value: s.id,
 
-                                    group: category?.name || "Uncategorized",
+                                      group: category?.name || "Uncategorized",
 
-                                    description: [
-                                      formatDuration(s.duration),
-                                      `${peso(price)}`,
-                                      s.pricingType === "fixed"
-                                        ? "Fixed"
-                                        : "Hourly",
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" • "),
-                                  };
-                                })}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {formatDuration(service?.duration)}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-0.5">
-                              <Input
-                                type="number"
-                                min={0}
-                                disabled={!service}
-                                value={l.manualRate !== undefined ? l.manualRate : (service ? rate : "")}
-                                placeholder={service ? String(rate) : "—"}
-                                onChange={(e) => updateJORate(idx, e.target.value)}
-                                className="h-7 text-xs"
+                                      description: [
+                                        formatDuration(s.duration),
+                                        `${peso(price)}`,
+                                        s.pricingType === "fixed"
+                                          ? "Fixed"
+                                          : "Hourly",
+                                      ]
+                                        .filter(Boolean)
+                                        .join(" • "),
+                                    };
+                                  })}
                               />
-                              <span className="text-[10px] text-muted-foreground">
-                                {service ? (service.pricingType === "fixed" ? "Fixed" : "Per hr") : ""}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {service ? peso(l.amount) : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {joLines.length > 1 && (
-                              <Button size="icon_xs" variant="ghost" onClick={() => removeJOLine(idx)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>          
+                            </TableCell>
+
+                            <TableCell>
+                              {formatDuration(service?.duration)}
+                            </TableCell>
+
+                            <TableCell>
+                              <div className="flex flex-col gap-0.5">
+                                <CurrencyInput
+                                  value={l.manualRate !== undefined ? l.manualRate : (service ? rate : 0)}
+                                  onChange={(newRate) => updateJORate(idx, String(newRate))}
+                                  className={!service ? "opacity-40 pointer-events-none" : ""}
+                                />
+                                <span className="text-[10px] text-muted-foreground">
+                                  {service ? (service.pricingType === "fixed" ? "Fixed" : "Per hr") : ""}
+                                </span>
+                              </div>
+                            </TableCell>
+
+                            <TableCell>
+                              {service ? peso(l.amount) : "—"}
+                            </TableCell>
+
+                            <TableCell>
+                              {joLines.length > 1 && (
+                                <Button
+                                  size="icon_xs"
+                                  variant="ghost"
+                                  onClick={() => removeJOLine(idx)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>         
             </div>
 
             {/* PARTS */}
@@ -1123,69 +1169,80 @@ const saveEstimate = () => {
                   <Box className="size-5 text-orange-500"/>
                   <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>                
                 </div>
-                <Button variant="outline" size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
+                <Button size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs">Item Name</TableHead>
-                      <TableHead className="text-xs w-[20%]">Unit Price</TableHead>
-                      <TableHead className="text-xs w-[15%]">Qty</TableHead>
-                      <TableHead className="text-xs w-[20%]">Amount</TableHead>
-                      <TableHead className="text-xs w-[5%]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {soLines.map((l, idx) => {
-                      return (
-                        <TableRow key={l.id}>
-                          <TableCell>
-                            <Combobox
-                              value={l.ProductId}
-                              onChange={(val) => updateSO(idx, "ProductId", val)}
-                              items={partsCatalog.map((p) => ({
-                                label: `${p.name} - SKU: ${p.sku}`,
-                                value: p.id,
-                              }))}
-                              placeholder="Select part"
-                            />
-                          </TableCell>
-                          <TableCell>{peso(
-                            partsMap[l.ProductId]?.price || 0
-                          )}</TableCell>                          
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min={0}
-                              value={l.quantity === 0 ? "0" : String(l.quantity)}
-                              onFocus={(e) => {
-                                if (l.quantity === 0) { updateSO(idx, "quantity", ""); }
-                              }}
-                              onBlur={(e) => {
-                                const val = e.target.value;
-                                if (val === "" || Number(val) === 0) { updateSO(idx, "quantity", 0); }
-                              }}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (!/^\d*$/.test(val)) return;
-                                updateSO(idx, "quantity", val === "" ? "" : Number(val));
-                              }}
-                            />
-                          </TableCell> 
-                          <TableCell>{peso(l.amount)}</TableCell>
-                          <TableCell>
-                            {soLines.length > 1 && (
-                              <Button size="icon_xs" variant="ghost" onClick={() => removeSOLine(idx)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <div className="max-h-[420px] overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs">Item Name</TableHead>
+                        <TableHead className="text-xs w-[20%]">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[15%]">Qty</TableHead>
+                        <TableHead className="text-xs w-[20%]">Amount</TableHead>
+                        <TableHead className="text-xs w-[5%]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {soLines.map((l, idx) => {
+                        return (
+                          <TableRow key={l.id}>
+                            <TableCell>
+                              <Combobox
+                                value={l.ProductId}
+                                onChange={(val) =>
+                                  updateSO(idx, "ProductId", val)
+                                }
+                                items={partsCatalog.map((p) => ({
+                                  label: `${p.name} - SKU: ${p.sku}`,
+                                  value: p.id,
+                                }))}
+                                placeholder="Select part"
+                              />
+                            </TableCell>
+
+                            <TableCell>
+                              {peso(partsMap[l.ProductId]?.price || 0)}
+                            </TableCell>
+
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={l.quantity === 0 || l.quantity === "" ? "" : String(l.quantity)}
+                                placeholder="0"
+                                onFocus={() => { if (!l.quantity) updateSO(idx, "quantity", ""); }}
+                                onBlur={(e) => { if (e.target.value === "") updateSO(idx, "quantity", 0); }}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (!/^\d*$/.test(val)) return;
+                                  updateSO(idx, "quantity", val === "" ? "" : Number(val));
+                                }}
+                              />
+                            </TableCell>
+
+                            <TableCell>
+                              {peso(l.amount)}
+                            </TableCell>
+
+                            <TableCell>
+                              {soLines.length > 1 && (
+                                <Button
+                                  size="icon_xs"
+                                  variant="ghost"
+                                  onClick={() => removeSOLine(idx)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             </div>
           </div>
@@ -1194,8 +1251,11 @@ const saveEstimate = () => {
           <div className="">
             <div className="sticky top-6 space-y-4">
               <Card className="shadow-lg border-primary/20">
-                <CardHeader className="bg-primary/5 py-4">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2"><Calculator className="h-4 w-4" /> Summary</CardTitle>
+                <CardHeader className="bg-primary/5 py-4 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2">
+                    <Calculator className="size-5 text-blue-900" />
+                    <h2 className="font-semibold text-foreground">Billing Summary</h2>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
                   <div className="space-y-2.5">

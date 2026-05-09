@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import CurrencyInput from "@/components/ui/currencyInput";
@@ -492,19 +491,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
     
-      {/* BREADCRUMB */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(-1)}>Service Catalog</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>New Service</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>    
-
+    
       <DataToolbar
         variant="detail"
         actions={

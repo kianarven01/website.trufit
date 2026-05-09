@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -62,6 +62,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 interface NavItem {
   label: string;
@@ -284,6 +292,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   const unreadCount = mockNotifications.filter((n) => n.unread).length;
+
+  // Breadcrumb generator
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const breadcrumbItems = pathSegments
+    .map((segment, index) => {
+      const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
+      
+      const findLabel = (items: NavItem[]): string | null => {
+        for (const item of items) {
+          if (item.path === path) return item.label;
+          if (item.children) {
+            const child = item.children.find(c => c.path === path);
+            if (child) return child.label;
+          }
+        }
+        return null;
+      };
+      
+      const mappedLabel = findLabel(navItems);
+      const label = mappedLabel || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+      
+      return { label, path };
+    })
+    .filter(item => item.label.toLowerCase() !== "webapp");
 
   /* ---- Unified Nav Item Render ---- */
   const renderNavItem = (item: NavItem) => {
@@ -559,6 +591,33 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 size={22}
               />
             </button>
+
+            {/* Breadcrumbs */}
+            <div className="hidden md:block ml-2">
+              <Breadcrumb>
+                <BreadcrumbList className="gap-1.5 sm:gap-2">
+                  {breadcrumbItems.map((item, idx) => (
+                    <React.Fragment key={item.path}>
+                      {idx > 0 && <BreadcrumbSeparator className="text-muted-foreground/30" />}
+                      <BreadcrumbItem>
+                        {idx === breadcrumbItems.length - 1 ? (
+                          <BreadcrumbPage className="text-[13px] font-semibold text-foreground/90">
+                            {item.label}
+                          </BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink 
+                            onClick={() => navigate(item.path)}
+                            className="text-[13px] text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+                          >
+                            {item.label}
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    </React.Fragment>
+                  ))}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
 
             <div className="flex-1" />
 

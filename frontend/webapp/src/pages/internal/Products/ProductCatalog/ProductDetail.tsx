@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 
@@ -119,95 +118,9 @@ const ProductDetail: React.FC = () => {
     );
   }
 
-  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
-  const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
-  const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
-
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate("/webapp/products/product-catalog")
-              }
-            >
-              Product Catalog
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          {vehicleSlug && (
-            <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  onClick={() =>
-                    navigate(
-                      `/webapp/products/product-catalog`
-                    )
-                  }
-                >
-                  {makeModel}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
-
-          {variantSlug && (
-            <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  onClick={() =>
-                    navigate(
-                      `/webapp/products/product-catalog/${vehicleSlug}`
-                    )
-                  }
-                >
-                  {variantName}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
-
-          {categorySlug && (
-            <>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  onClick={() =>
-                    navigate(
-                      `/webapp/products/product-catalog/${vehicleSlug}`
-                    )
-                  }
-                >
-                  {categoryName}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-            </>
-          )}
-
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate(
-                  `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products`
-                )
-              }
-            >
-              Products
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{product.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {/* Toolbar */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* LEFT SIDE */}

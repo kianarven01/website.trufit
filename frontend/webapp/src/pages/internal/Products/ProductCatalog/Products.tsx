@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from "@/components/ui/table";
@@ -131,59 +130,11 @@ const ProductsList: React.FC = () => {
   const paginated = paginate(filtered);
 
   /* ================= BREADCRUMB ================= */
-  const [make, model] = vehicleSlug
-    ? vehicleSlug
-        .split("-")
-        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    : ["", ""];
-
-  const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
   const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
       
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
-              Product Catalog
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
-              {`${make} ${model}`}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
-              {variantName}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}`)}>
-              {categoryName}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbPage>Products</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {/* Toolbar */}
       <DataToolbar
         searchPlaceholder={`Search ${categoryName} products...`}

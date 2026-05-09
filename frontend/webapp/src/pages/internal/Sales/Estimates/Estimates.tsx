@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,22 +52,25 @@ const STORAGE_KEY = "estimates";
 /* DUMMY DATA */
 const generateDummyEstimates = (): Estimate[] => {
   return Array.from({ length: 26 }, (_, i) => {
-    const services = Array.from(
+    const services: ServiceItem[] = Array.from(
       { length: Math.floor(Math.random() * 5) + 1 },
       (_, j) => ({
+        id: `svc-${i}-${j}`,
         name: `Service ${j + 1}`,
         category: "General",
-        price: Math.floor(Math.random() * 2000) + 500,
+        vehicleSize: "Sedan",
+        hourlyRate: Math.floor(Math.random() * 2000) + 500,
       })
     );
 
-    const parts = Array.from(
+    const parts: PartItem[] = Array.from(
       { length: Math.floor(Math.random() * 5) + 1 },
       (_, j) => {
         const qty = Math.floor(Math.random() * 5) + 1;
         const price = Math.floor(Math.random() * 1500) + 200;
 
         return {
+          id: `part-${i}-${j}`,
           name: `Part ${j + 1}`,
           sku: `SKU-${i}${j}`,
           currentStock: 10,
@@ -85,7 +82,7 @@ const generateDummyEstimates = (): Estimate[] => {
     );
 
     const total =
-      services.reduce((s, x) => s + x.price, 0) +
+      services.reduce((s, x) => s + x.hourlyRate, 0) +
       parts.reduce((s, x) => s + x.price * x.quantity, 0);
 
     return {
@@ -181,14 +178,7 @@ const Estimates: React.FC = () => {
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
 
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>Estimates</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {/* Toolbar */}
 
       {/* Toolbar */}
       <DataToolbar

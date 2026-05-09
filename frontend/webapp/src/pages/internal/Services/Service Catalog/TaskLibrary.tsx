@@ -12,12 +12,6 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
@@ -188,14 +182,7 @@ const TaskLibraryList: React.FC = () => {
         onConfirm={handleDelete}
       />
 
-      {/* BREADCRUMB */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>Task Library</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      {/* TOOLBAR */}
 
       {/* TOOLBAR */}
       <DataToolbar

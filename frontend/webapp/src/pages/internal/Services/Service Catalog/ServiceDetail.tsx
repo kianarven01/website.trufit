@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -119,20 +118,7 @@ if (!service) return null;
 return (
   <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
 
-    {/* BREADCRUMB */}
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink onClick={() => navigate(-1)}>
-            Service Catalog
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{service.name}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
+    {/* TOOLBAR (VIEW MODE ONLY) */}
 
     {/* TOOLBAR (VIEW MODE ONLY) */}
     <DataToolbar

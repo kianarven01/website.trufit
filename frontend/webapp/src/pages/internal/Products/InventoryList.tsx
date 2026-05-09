@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import DataToolbar from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -147,14 +141,7 @@ const generatePartNumber = () => {
     <DashboardLayout>
       <div className="flex flex-col gap-4 p-4 h-full w-full">
         
-        {/* breadcrumb */}
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>Inventory</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        {/* toolbar */}
 
         {/* toolbar */}
         <DataToolbar

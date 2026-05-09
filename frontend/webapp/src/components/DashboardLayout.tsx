@@ -717,7 +717,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex-1 overflow-hidden bg-background/50">
+          <main className="flex-1 overflow-hidden bg-background/50 pt-4">
             {children}
           </main>
         </div>

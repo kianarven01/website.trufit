@@ -18,7 +18,10 @@ import {
   Check,
   StickyNote,
   GripVertical,
+  Loader2,
 } from "lucide-react";
+import api from "@/api/axios";
+import { toast } from "sonner";
 
 export type ChecklistItem = { id: string; text: string; done: boolean };
 export type Note = {
@@ -32,24 +35,6 @@ export type Note = {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-function loadNotes(storageKey: string): Note[] {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return [];
-    return JSON.parse(raw) as Note[];
-  } catch {
-    return [];
-  }
-}
-
-function saveNotes(storageKey: string, notes: Note[]) {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(notes));
-  } catch {
-    /* ignore */
-  }
-}
-
 interface NotesPanelProps {
   storageKey?: string;
   title?: string;
@@ -61,20 +46,67 @@ export function NotesPanel({
   title = "Notes",
   className,
 }: NotesPanelProps) {
-  const [notes, setNotes] = useState<Note[]>(() => loadNotes(storageKey));
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    saveNotes(storageKey, notes);
-  }, [notes, storageKey]);
+  const loadedNotesRef = useRef<string>("[]");
 
-  // If storage key changes (e.g., switching appointments), reload.
+  // Load from API
   useEffect(() => {
-    setNotes(loadNotes(storageKey));
-    setEditingId(null);
-    setComposing(false);
+    const fetchNotes = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get(`/appointment-notes?key=${storageKey}`);
+        const data = res.data.data || [];
+        setNotes(data);
+        loadedNotesRef.current = JSON.stringify(data);
+      } catch (error) {
+        console.error("Failed to load notes:", error);
+        toast.error("Failed to load notes from server");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (storageKey) {
+      setNotes([]); // Clear old notes immediately
+      loadedNotesRef.current = "[]"; // Reset ref
+      fetchNotes();
+      setEditingId(null);
+      setComposing(false);
+    }
   }, [storageKey]);
+
+  // Debounced Save to API
+  useEffect(() => {
+    if (isLoading) return;
+
+    // Only save if notes have actually changed from what was loaded/saved
+    const currentJson = JSON.stringify(notes);
+    if (currentJson === loadedNotesRef.current) return;
+
+    const timer = setTimeout(async () => {
+      setIsSaving(true);
+      try {
+        await api.post("/appointment-notes", {
+          key: storageKey,
+          data: notes,
+        });
+        loadedNotesRef.current = currentJson; // Update ref after successful save
+        toast.success("Notes synced", { duration: 1000 });
+      } catch (error) {
+        console.error("Failed to save notes:", error);
+        toast.error("Failed to sync notes to server");
+      } finally {
+        setIsSaving(false);
+      }
+    }, 500); // 500ms debounce for snappier feel
+
+    return () => clearTimeout(timer);
+  }, [notes, storageKey, isLoading]);
 
 
   const addNote = (n: Omit<Note, "id" | "updatedAt">) => {
@@ -102,6 +134,12 @@ export function NotesPanel({
           <StickyNote className="h-4 w-4 text-primary" />
           <h3 className="font-semibold text-sm">{title}</h3>
           <span className="text-xs text-muted-foreground">({notes.length})</span>
+          {isSaving && (
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground animate-pulse ml-2">
+              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+              Saving...
+            </div>
+          )}
         </div>
         {!composing && (
           <Button size="sm" variant="outline" className="h-7 gap-1" onClick={() => setComposing(true)}>
@@ -123,38 +161,47 @@ export function NotesPanel({
             />
           )}
 
-          {notes.length === 0 && !composing && (
-            <div className="text-center text-xs text-muted-foreground py-10 border border-dashed rounded-md">
-              No notes yet. Click <span className="font-medium">Add</span> to create one.
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
+              <p className="text-xs text-muted-foreground">Loading notes...</p>
             </div>
-          )}
+          ) : (
+            <>
+              {notes.length === 0 && !composing && (
+                <div className="text-center text-xs text-muted-foreground py-10 border border-dashed rounded-md">
+                  No notes yet. Click <span className="font-medium">Add</span> to create one.
+                </div>
+              )}
 
-          {notes.map((note) =>
-            editingId === note.id ? (
-              <NoteEditor
-                key={note.id}
-                initial={note}
-                onCancel={() => setEditingId(null)}
-                onSave={(data) => {
-                  updateNote(note.id, data);
-                  setEditingId(null);
-                }}
-              />
-            ) : (
-              <NoteCard
-                key={note.id}
-                note={note}
-                onEdit={() => setEditingId(note.id)}
-                onDelete={() => removeNote(note.id)}
-                onToggleItem={(itemId) =>
-                  updateNote(note.id, {
-                    checklist: note.checklist.map((c) =>
-                      c.id === itemId ? { ...c, done: !c.done } : c,
-                    ),
-                  })
-                }
-              />
-            ),
+              {notes.map((note) =>
+                editingId === note.id ? (
+                  <NoteEditor
+                    key={note.id}
+                    initial={note}
+                    onCancel={() => setEditingId(null)}
+                    onSave={(data) => {
+                      updateNote(note.id, data);
+                      setEditingId(null);
+                    }}
+                  />
+                ) : (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    onEdit={() => setEditingId(note.id)}
+                    onDelete={() => removeNote(note.id)}
+                    onToggleItem={(itemId) =>
+                      updateNote(note.id, {
+                        checklist: note.checklist.map((c) =>
+                          c.id === itemId ? { ...c, done: !c.done } : c,
+                        ),
+                      })
+                    }
+                  />
+                ),
+              )}
+            </>
           )}
         </div>
       </ScrollArea>

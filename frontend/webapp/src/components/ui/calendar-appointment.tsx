@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface CalendarEvent {
   date: Date;
@@ -110,7 +111,7 @@ const Calendar: React.FC<CalendarProps> = ({
   }, []);
 
   const handleDateClick = (date: Date) => {
-    if (isDateDisabled?.(date)) return;
+    if (isDateDisabled?.(date) || date.getDay() === 0) return;
 
     if (mode === "single") {
       if (selectedDate && isSameDay(date, selectedDate)) {
@@ -217,14 +218,20 @@ const Calendar: React.FC<CalendarProps> = ({
           const day = prevMonthDays - firstDayOfMonth + i + 1;
           const date = new Date(year, month - 1, day);
 
+          const disabled = date.getDay() === 0;
+
           return (
             <button
               key={`prev-${i}`}
+              disabled={disabled}
               onClick={() => {
                 setCurrentDate(new Date(year, month - 1, 1));
                 handleDateClick(date);
               }}
-              className="h-9 w-9 mx-auto text-gray-300 text-sm hover:bg-gray-100 rounded-lg"
+              className={cn(
+                "h-9 w-9 mx-auto text-sm rounded-lg transition",
+                disabled ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:bg-gray-100"
+              )}
             >
               {day}
             </button>
@@ -242,7 +249,7 @@ const Calendar: React.FC<CalendarProps> = ({
               : isSameDay(date, range.start) || isSameDay(date, range.end);
 
           const inRange = isRangeSelected(date);
-          const disabled = isDateDisabled?.(date);
+          const disabled = isDateDisabled?.(date) || date.getDay() === 0;
           const dayEvents = getEventsForDate(date);
 
           return (
@@ -254,7 +261,7 @@ const Calendar: React.FC<CalendarProps> = ({
                   h-9 w-9 rounded-lg text-sm
                   ${selected ? "bg-indigo-600 text-white" : ""}
                   ${inRange ? "bg-indigo-100" : ""}
-                  ${disabled ? "opacity-30" : "hover:bg-indigo-50"}
+                  ${disabled ? "opacity-20 cursor-not-allowed" : "hover:bg-indigo-50"}
                 `}
               >
                 {day}
@@ -279,14 +286,20 @@ const Calendar: React.FC<CalendarProps> = ({
           const day = i + 1;
           const date = new Date(year, month + 1, day);
 
+          const disabled = date.getDay() === 0;
+
           return (
             <button
               key={`next-${i}`}
+              disabled={disabled}
               onClick={() => {
                 setCurrentDate(new Date(year, month + 1, 1));
                 handleDateClick(date);
               }}
-              className="h-9 w-9 mx-auto text-gray-300 text-sm hover:bg-gray-100 rounded-lg"
+              className={cn(
+                "h-9 w-9 mx-auto text-sm rounded-lg transition",
+                disabled ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:bg-gray-100"
+              )}
             >
               {day}
             </button>

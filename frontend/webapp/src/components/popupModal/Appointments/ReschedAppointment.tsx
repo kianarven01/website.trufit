@@ -16,10 +16,10 @@ import { Calendar as CalendarIcon, Clock } from "lucide-react";
 
 interface Appointment {
   id: string;
-  customerId: string;
-  vehicleId: string;
-  service: string;
-  datetime: string;
+  customer_id?: number;
+  plate_number?: string;
+  services?: string[];
+  appointment_datetime: string;
   status: string;
   notes?: string;
 }
@@ -55,7 +55,7 @@ const ReschedAppointment: React.FC<Props> = ({
   appointment,
   onSave,
 }) => {
-  const baseDate = appointment ? new Date(appointment.datetime) : null;
+  const baseDate = appointment ? new Date(appointment.appointment_datetime) : null;
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState("");
 
@@ -70,7 +70,7 @@ const ReschedAppointment: React.FC<Props> = ({
   useEffect(() => {
   if (!open || !appointment) return;
 
-  const d = new Date(appointment.datetime);
+  const d = new Date(appointment.appointment_datetime);
 
   const h = d.getHours();
   const m = d.getMinutes();

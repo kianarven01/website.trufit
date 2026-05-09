@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 
 import placeholder from "@/assets/temporary_bg.jpeg";
-import trufit_logo from "@/assets/trufit_logo.png";
+import trufit_logo from "@/assets/trufit_logo.webp";
 import { CheckCircle, Eye, EyeOff } from "lucide-react";
 
 const Register: React.FC = () => {

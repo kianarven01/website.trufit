@@ -295,25 +295,32 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (collapsed && item.children) {
       return (
         <Popover key={item.label}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "flex h-12 w-full items-center px-6 rounded-xl transition-all outline-none focus:outline-none focus-visible:ring-0 ring-0",
-                groupActive
-                  ? "text-primary bg-sidebar-accent shadow-md"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
-            >
-              <HugeiconsIcon icon={item.icon} size={22} className="shrink-0" />
-            </button>
-          </PopoverTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex h-12 w-full items-center px-6 rounded-xl transition-all outline-none focus:outline-none focus-visible:ring-0 ring-0",
+                    groupActive
+                      ? "text-primary bg-sidebar-accent shadow-md"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  <HugeiconsIcon icon={item.icon} size={22} className="shrink-0" />
+                </button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-bold">
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
           <PopoverContent
             side="right"
             align="start"
             className="w-64 p-2 bg-sidebar border-sidebar-border z-50 shadow-2xl rounded-xl"
           >
-            <p className="px-4 py-3 text-[12px] font-black uppercase tracking-widest text-muted-foreground/50 border-b border-sidebar-border/50 mb-1">
+            <p className="px-4 py-3 text-[12px] font-black uppercase tracking-widest text-sidebar-foreground/70 border-b border-sidebar-border/50 mb-1">
               {item.label}
             </p>
             {item.children?.map((child) => (

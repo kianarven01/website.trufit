@@ -61,7 +61,7 @@ class ProductController extends Controller
         return response()->json($data);
     }
 
-   public function store(
+    public function store(
         StoreProductRequest $request,
         CreateProduct $createProduct,
         ProductImageUploader $imageUploader
@@ -78,8 +78,13 @@ class ProductController extends Controller
             }
         }
 
-        $dto = CreateProductDTO::fromArray($validated);
-        $product = $createProduct->execute($dto);
+        $suppliers = $validated['suppliers'] ?? [];
+        unset($validated['suppliers']);
+
+        // Leave compatibility empty for now
+        unset($validated['car_variant_id'], $validated['compatibility_notes']);
+
+        $product = $createProduct->execute($validated, $suppliers);
 
         return response()->json([
             'message' => 'Product created successfully.',

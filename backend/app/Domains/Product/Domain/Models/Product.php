@@ -34,24 +34,16 @@ class Product extends Model
         'unit',
         'part_id',
         'manufacturer_id',
-        'car_variant_id',
     ];
 
     protected $casts = [
         'id' => 'string',
-        'category_id' => 'string',
-        'manufacturer_id' => 'string',
-        'unit' => 'string',
-        'part_id' => 'string',
-        'car_variant_id' => 'string',
+        'category_id' => 'integer',
+        'manufacturer_id' => 'integer',
+        'unit' => 'integer',
+        'part_id' => 'integer',
         'is_oem' => 'boolean',
     ];
-
-    /*
-    |--------------------------------------------------------------------------
-    | Relationships
-    |--------------------------------------------------------------------------
-    */
 
     public function category()
     {
@@ -86,9 +78,6 @@ class Product extends Model
         );
     }
 
-    /**
-     * Product ↔ Supplier (Many-to-Many via ProductSuppliers pivot)
-     */
     public function suppliers()
     {
         return $this->belongsToMany(

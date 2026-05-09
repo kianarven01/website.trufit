@@ -19,18 +19,20 @@ import CustomerDetail from "./pages/internal/Customer/CustomerDetail";
 import AppointmentsList from "./pages/internal/Appointment/Appointments";
 
 import JobOrder from "./pages/internal/Services/Job Order/JobOrder";
+import JobOrderForm from "./pages/internal/Services/Job Order/JobOrderForm";
+
 import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
 import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
 import ServiceCatalogForm from "./pages/internal/Services/Service Catalog/ServiceCatalogForm";
 import ServiceDetail from "./pages/internal/Services/Service Catalog/ServiceDetail";
-import JobOrderForm from "./pages/internal/Services/Job Order/JobOrderForm";
 
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
-import SalesOrderDetails from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";
+import SalesOrderDetail from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";
 
 import Estimates from "./pages/internal/Sales/Estimates/Estimates";
-import AddEstimate from "./pages/internal/Sales/Estimates/AddEstimate";
+import AddEstimate from "./pages/internal/Sales/Estimates/EstimateForm";
+import EstimateDetail from "./pages/internal/Sales/Estimates/EstimateDetail";
 
 import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
 import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";
@@ -107,12 +109,14 @@ const App: React.FC = () => {
               <Route path="sales">
                 <Route path="sales-orders">
                   <Route index element={<SalesOrder />} />
-                  <Route path=":id" element={<SalesOrderDetails />} />
+                  <Route path=":id" element={<SalesOrderDetail />} />
                 </Route>
 
                 <Route path="estimates">
                   <Route index element={<Estimates />} />
-                  <Route path="new-estimate" element={<AddEstimate />} />
+                  <Route path="new-estimate" element={<AddEstimate mode="create" />} />
+                  <Route path=":id/edit" element={<AddEstimate mode="edit" />} />
+                  <Route path=":id" element={<EstimateDetail />} />
                 </Route>
               </Route>
 

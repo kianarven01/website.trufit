@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
@@ -17,8 +18,7 @@ const SERVICE_KEY = "services";
 const CATEGORY_KEY = "serviceCategories";
 const VEHICLE_SIZE_KEY = "vehicleSizes";
 const PRICING_KEY = "servicePricing";
-const SERVICE_TASK_KEY = "serviceTasks";
-const TASK_LIBRARY_KEY = "taskLibrary";
+
 
 /* ================= TYPES ================= */
 interface Service {
@@ -26,6 +26,7 @@ interface Service {
   name: string;
   serviceCategoryId: string;
   description?: string;
+  duration?: number;
   pricingType: "fixed" | "hourly rate";
 }
 
@@ -47,17 +48,6 @@ interface ServicePricing {
   price: number;
 }
 
-interface ServiceTask {
-  id: string;
-  serviceId: string;
-  taskId: string;
-}
-
-interface TaskLibraryItem {
-  id: string;
-  name: string;
-  description?: string;
-}
 
 /* ================= COMPONENT ================= */
 const ServiceDetail: React.FC = () => {
@@ -68,8 +58,6 @@ const ServiceDetail: React.FC = () => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
   const [pricing, setPricing] = useState<ServicePricing[]>([]);
-  const [tasks, setTasks] = useState<ServiceTask[]>([]);
-  const [taskLibrary, setTaskLibrary] = useState<TaskLibraryItem[]>([]);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -81,8 +69,6 @@ useEffect(() => {
   setCategories(JSON.parse(localStorage.getItem(CATEGORY_KEY) || "[]"));
   setVehicleSizes(JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]"));
   setPricing(JSON.parse(localStorage.getItem(PRICING_KEY) || "[]"));
-  setTasks(JSON.parse(localStorage.getItem(SERVICE_TASK_KEY) || "[]"));
-  setTaskLibrary(JSON.parse(localStorage.getItem(TASK_LIBRARY_KEY) || "[]"));
 }, [id]);
 
 /* ================= DERIVED DATA ================= */
@@ -96,10 +82,28 @@ const servicePricing = useMemo(
   [pricing, id]
 );
 
-const serviceTasks = useMemo(
-  () => tasks.filter((t) => t.serviceId === id),
-  [tasks, id]
-);
+const durationFormatted = useMemo(() => {
+  if (service?.duration == null) return "—";
+
+  const hours = Math.floor(service.duration / 60);
+  const minutes = service.duration % 60;
+
+  let text = "";
+
+  if (hours > 0) {
+    text += `${hours} hour${hours > 1 ? "s" : ""}`;
+  }
+
+  if (minutes > 0) {
+    if (text) text += " & ";
+    text += `${minutes} minute${minutes > 1 ? "s" : ""}`;
+  }
+
+  if (!text) text = "0 minutes";
+
+  return text;
+}, [service]);
+
 
 /* ================= DELETE SERVICE ================= */
 const handleDeleteService = () => {
@@ -190,10 +194,18 @@ return (
                   value={service?.description || "—"} 
                   rows={5} 
                   readOnly
-                  
                   className="text-xs resize-none"
                 />
               </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Estimated Duration</Label>
+            <Input
+              value={durationFormatted} 
+              readOnly 
+              className="text-xs" 
+            />
           </div>
         </CardContent>
       </Card>
@@ -262,51 +274,6 @@ return (
         </CardContent>
       </Card>        
     </div>
-
-    {/* TASKS */}
-    <Card>
-      <CardHeader>
-        <CardTitle>Assigned Tasks</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Necessary tasks to involved to complete this service.
-        </p>
-      </CardHeader>
-
-      <CardContent>
-        {serviceTasks.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>#</TableHead>
-                <TableHead>Task</TableHead>
-                <TableHead>Description</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {serviceTasks.map((t, i) => {
-                const task = taskLibrary.find((x) => x.id === t.taskId);
-
-                return (
-                  <TableRow key={t.id}>
-                    <TableCell>{i + 1}</TableCell>
-                    <TableCell>{task?.name}</TableCell>
-                    <TableCell>{task?.description || "—"}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        ) : (    
-          <div className="flex-1 flex flex-col items-center justify-center text-center m-8">
-            <ClipboardList className="h-10 w-10 stroke-1 mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              No tasks have been assigned for this service.
-            </p>
-          </div>             
-        )}
-      </CardContent>
-    </Card>
 
     {/* DELETE CONFIRM */}
     <ConfirmDialog

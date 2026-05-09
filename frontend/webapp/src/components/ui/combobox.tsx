@@ -9,12 +9,18 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Check, ChevronDown, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ComboboxItem = { label: string; value: string };
+export type ComboboxItem = {
+  label: string;
+  value: string;
+  group?: string;
+  description?: string;
+};
 
 interface MakeComboboxProps {
   value: string;
@@ -24,6 +30,7 @@ interface MakeComboboxProps {
   allowAdd?: boolean;
   addLabel?: string;
   onAdd?: (currentSearch: string) => void;
+  showGroupSeparator?: boolean;
   isLoading?: boolean;
 }
 
@@ -35,6 +42,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   allowAdd,
   addLabel,
   onAdd,
+  showGroupSeparator = false,
   isLoading,
 }) => {
   const [open, setOpen] = useState(false);
@@ -128,33 +136,71 @@ const Combobox: FC<MakeComboboxProps> = ({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command className="border-none">
-          <CommandList className="max-h-[260px] overflow-y-auto">
-            {filteredItems.length > 0 && (
-              <CommandGroup>
-                {filteredItems.map((item) => {
-                  const isSelected = value?.trim().toLowerCase() === item.value?.trim().toLowerCase();
+          <CommandList className="max-h-[260px] p-1.5 overflow-y-auto">
+          {(() => {
+            const groupedItems = Object.entries(
+              filteredItems.reduce((acc, item) => {
+                const group = item.group || " ";
 
-                  return (
-                    <CommandItem
-                      key={item.value}
-                      value={item.label}
-                      onSelect={() => {
-                        onChange(item.value);
-                        setSearch(item.label);
-                        setOpen(false);
-                      }}
-                      className={cn(
-                        "flex cursor-pointer items-center justify-between px-2 py-1.5",
-                        isSelected ? "bg-accent text-accent-foreground" : ""
-                      )}
-                    >
-                      <span className="truncate">{item.label}</span>
-                      {isSelected && <Check className="h-4 w-4" />}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            )}
+                if (!acc[group]) {
+                  acc[group] = [];
+                }
+
+                acc[group].push(item);
+
+                return acc;
+              }, {} as Record<string, typeof filteredItems>)
+            );
+
+            return groupedItems.map(([group, items], index) => (
+              <div key={group}>
+                <CommandGroup heading={group}>
+                  {items.map((item) => {
+                    const isSelected =
+                      value?.trim().toLowerCase() ===
+                      item.value?.trim().toLowerCase();
+
+                    return (
+                      <CommandItem
+                        key={item.value}
+                        value={item.label}
+                        onSelect={() => {
+                          onChange(item.value);
+                          setSearch(item.label);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          "flex cursor-pointer items-start justify-between px-2 py-2",
+                          isSelected
+                            ? "bg-accent text-accent-foreground"
+                            : ""
+                        )}
+                      >
+                        <div className="flex flex-col">
+                          <span>{item.label}</span>
+
+                          {item.description && (
+                            <span className="text-xs text-muted-foreground">
+                              {item.description}
+                            </span>
+                          )}
+                        </div>
+
+                        {isSelected && (
+                          <Check className="h-4 w-4 shrink-0" />
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+
+                {showGroupSeparator &&
+                  index < groupedItems.length - 1 && (
+                    <CommandSeparator className="mt-1.5" />
+                  )}
+              </div>
+            ));
+          })()}
 
             {/* Add new item */}
             {allowAdd && (

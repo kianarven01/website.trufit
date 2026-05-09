@@ -360,7 +360,7 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
       estimateNo: estimate?.estimateNo || `EST-${Date.now()}`,
       date: estimate?.date || now,
       lastEdited: now, // FIXED
-      status: estimate?.status || "draft",
+      status: estimate?.status || "issued",
 
       services: joLines.map((l) => ({
         name: l.service,

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DataToolbar from "@/components/DataToolbar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 import Combobox from "@/components/ui/combobox";
@@ -802,32 +801,6 @@ const saveEstimate = () => {
 
   return (
     <div className="w-full h-full pl-4 pr-3 pb-4 flex flex-col gap-4 overflow-y-auto">
-      {/* BREADCRUMB */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/sales/estimates")}>Estimates</BreadcrumbLink>
-          </BreadcrumbItem>
-          {mode === "edit" && estimateId && (() => {
-            const stored: Estimate[] = (() => { try { return JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "[]"); } catch { return []; } })();
-            const found = stored.find(e => e.id === estimateId);
-            return found ? (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink onClick={() => navigate(`/webapp/sales/estimates/${estimateId}`)}>
-                    {found.estimateNo || estimateId}
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-              </>
-            ) : null;
-          })()}
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{mode === "edit" ? "Edit Estimate" : "New Estimate"}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
 
       {/* HEADER */}
       <DataToolbar variant="detail" title={mode === "edit" ? "Edit Estimate" : "Create New Estimate"} />

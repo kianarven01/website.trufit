@@ -28,6 +28,9 @@ Route::prefix('products')->group(function () {
     Route::get('/units', [ProductReferenceController::class, 'units']);
     Route::get('/suppliers', [SupplierController::class, 'index']);
     Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
+    Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);
+    Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
+    Route::get('/service-types', [ProductReferenceController::class, 'serviceTypes']);
 });
 /*
 |--------------------------------------------------------------------------

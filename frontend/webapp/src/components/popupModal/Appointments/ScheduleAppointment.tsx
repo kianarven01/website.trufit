@@ -11,13 +11,11 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import Combobox from "@/components/ui/combobox";
 import { toast } from "sonner";
+import api from "@/api/axios";
 
 import { Calendar, TimePicker, generateTimeSlots } from "@/components/ui/date-time-picker";
 import { CalendarIcon, Clock } from "lucide-react";
 
-/* ================= STORAGE ================= */
-const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
-const APPOINTMENT_SERVICE_KEY = "appointmentServices";
 
 /* ================= TYPES ================= */
 
@@ -48,18 +46,10 @@ const safeParse = <T,>(value: string | null, fallback: T): T => {
 
 const normalize = (val: string) => val?.trim().toLowerCase();
 
-const toTitleCase = (str: string) =>
-  (str || "")
-    .toLowerCase()
-    .split(" ")
-    .filter(Boolean)
-    .map(word =>
-      word
-        .split("-")
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join("-")
-    )
-    .join(" ");
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str.trim().charAt(0).toUpperCase() + str.trim().slice(1);
+};
 
 const findCanonical = (list: string[], input: string) => {
   const n = normalize(input);
@@ -86,8 +76,29 @@ const combineDateTime = (date: Date, time: string) => {
   const d = new Date(date);
   d.setHours(h, m, 0, 0);
 
-  return d.toISOString();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hour = String(d.getHours()).padStart(2, "0");
+  const minute = String(d.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hour}:${minute}:00`;
 };
+
+const SERVICE_LIST = [
+  "Preventive Maintenance Service (PMS)",
+  "Oil Change",
+  "Brake Service",
+  "Tire Service",
+  "Fuel System Service",
+  "Battery Service",
+  "Engine Tune-Up",
+  "Exhaust Repair",
+  "Transmission Service",
+  "Cooling System Maintenance",
+  "Suspension & Steering",
+  "Other"
+];
 
 /* ================= COMPONENT ================= */
   const ScheduleAppointment: React.FC<Props> = ({
@@ -104,10 +115,15 @@ const combineDateTime = (date: Date, time: string) => {
       email: "",
       make: "",
       model: "",
+      year: "",
       plateNumber: "",
       services: [] as string[],
       notes: "",
     });
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [isLookingUp, setIsLookingUp] = useState(false);
+    const [foundVehicle, setFoundVehicle] = useState<any>(null);
 
     const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -155,34 +171,52 @@ const combineDateTime = (date: Date, time: string) => {
 
     /* LOAD MODELS */
     useEffect(() => {
-      const stored = localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY);
-      setVehicleModels(safeParse(stored, []));
-    }, []);
+      const loadData = async () => {
+        setIsLoading(true);
+        try {
+          const [modelsRes, servicesRes] = await Promise.all([
+            api.get('/products/vehicles'),
+            api.get('/products/service-types')
+          ]);
 
-    useEffect(() => {
-      const stored = localStorage.getItem(APPOINTMENT_SERVICE_KEY);
+          if (modelsRes.data?.data) {
+            const flattened = modelsRes.data.data.map((m: any) => ({
+              id: String(m.id),
+              make: m.manufacturer?.name || "",
+              model: m.model || ""
+            }));
+            setVehicleModels(flattened);
+          }
 
-      if (!stored) {
-        // default services if empty
-        const defaults = [
-          "Preventive Maintenance Service",
-          "Oil Change",
-          "Brake Service",
-          "Tire Service",
-          "Fuel System Service",
-          "Battery Service",
-          "Engine Tune-up",
-          "Exhaust Repair",
-          "Transmission Service",
-          "Cooling System Maintenance",
-          "Suspension & Steering"
-        ];
-        setServiceList(defaults);
-        localStorage.setItem(APPOINTMENT_SERVICE_KEY, JSON.stringify(defaults));
-      } else {
-        setServiceList(safeParse(stored, []));
+          if (servicesRes.data?.data) {
+            setServiceList(servicesRes.data.data.map((s: any) => s.name));
+          } else {
+            const defaults = [
+              "Preventive Maintenance Service",
+              "Oil Change",
+              "Brake Service",
+              "Tire Service",
+              "Fuel System Service",
+              "Battery Service",
+              "Engine Tune-up",
+              "Exhaust Repair",
+              "Transmission Service",
+              "Cooling System Maintenance",
+              "Suspension & Steering"
+            ];
+            setServiceList(defaults);
+          }
+        } catch (error) {
+          console.error("Failed to load reference data:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      if (open) {
+        loadData();
       }
-    }, []);
+    }, [open]);
 
 
   const EMPTY_FORM = {
@@ -192,8 +226,9 @@ const combineDateTime = (date: Date, time: string) => {
     email: "",
     make: "",
     model: "",
+    year: "",
     plateNumber: "",
-    services: [],
+    services: [] as string[],
     notes: "",
   };
 
@@ -212,35 +247,39 @@ const combineDateTime = (date: Date, time: string) => {
     }
 
     const rawServices = initialData?.services ?? initialData?.service ?? [];
-
     const normalizedServices = Array.isArray(rawServices)
       ? rawServices
       : [rawServices].filter(Boolean);
 
-      const isOther =
-        normalizedServices.length === 1 &&
-        !serviceList.some(
-          s => normalize(s) === normalize(normalizedServices[0])
-        );
+    // Separate standard services from custom ones
+    const standardServices = normalizedServices.filter(s => SERVICE_LIST.includes(s) && s !== "Other");
+    const custom = normalizedServices.find(s => !SERVICE_LIST.includes(s));
 
     setForm({
-      firstName: initialData.firstName || "",
-      lastName: initialData.lastName || "",
-      phone: initialData.phone || "",
-      email: initialData.email || "",
-      make: initialData.make || "",
-      model: initialData.model || "",
-      plateNumber: initialData.plateNumber || "",
-      services: isOther ? [] : normalizedServices,
+      firstName: initialData.first_name || initialData.firstName || initialData.customer?.first_name || "",
+      lastName: initialData.last_name || initialData.lastName || initialData.customer?.last_name || "",
+      phone: initialData.phone || initialData.customer?.mobile_number || "",
+      email: initialData.email || initialData.customer?.email || "",
+      make: initialData.make || initialData.vehicle?.make || "",
+      model: initialData.model || initialData.vehicle?.model || "",
+      year: initialData.year || initialData.vehicle?.year_model || "",
+      plateNumber: initialData.plate_number || initialData.plateNumber || "",
+      services: standardServices,
       notes: initialData.notes || "",
     });
 
-    if (isOther) {
-      setCustomService(normalizedServices[0] ?? "");
+    if (custom) {
+      setIsOtherService(true);
+      setCustomService(custom);
+    } else {
+      const hasOther = normalizedServices.includes("Other");
+      setIsOtherService(hasOther);
+      setCustomService("");
     }
 
-    if (initialData.datetime) {
-      const d = new Date(initialData.datetime);
+    const dt = initialData.appointment_datetime || initialData.datetime;
+    if (dt) {
+      const d = new Date(dt);
       setSelectedDate(d);
 
       const hours = d.getHours();
@@ -250,7 +289,56 @@ const combineDateTime = (date: Date, time: string) => {
 
       setSelectedTime(`${formattedHour}:${minutes} ${ampm}`);
     }
+
+    setErrors({});
+    setTouched({});
   }, [open, initialData, serviceList]);
+
+
+    /* VEHICLE LOOKUP */
+    useEffect(() => {
+      const plate = form.plateNumber.replace(/[\s-]/g, "");
+      if (plate.length < 6 || isEdit) {
+        setFoundVehicle(null);
+        return;
+      }
+
+      const timer = setTimeout(async () => {
+        setIsLookingUp(true);
+        try {
+          const res = await api.get(`/customers/vehicles/lookup/${plate}`);
+          if (res.data?.data) {
+            setFoundVehicle(res.data.data);
+          } else {
+            setFoundVehicle(null);
+          }
+        } catch {
+          setFoundVehicle(null);
+        } finally {
+          setIsLookingUp(false);
+        }
+      }, 800);
+
+      return () => clearTimeout(timer);
+    }, [form.plateNumber, isEdit]);
+
+    const handleAutoFill = () => {
+      if (!foundVehicle) return;
+
+      setForm(p => ({
+        ...p,
+        make: foundVehicle.make || p.make,
+        model: foundVehicle.model || p.model,
+        year: foundVehicle.year_model || p.year,
+        firstName: foundVehicle.customer?.first_name || p.firstName,
+        lastName: foundVehicle.customer?.last_name || p.lastName,
+        phone: foundVehicle.customer?.mobile_number ? formatPhone(foundVehicle.customer.mobile_number) : p.phone,
+        email: foundVehicle.customer?.email || p.email,
+      }));
+
+      toast.success("Vehicle and customer info auto-filled!");
+      setFoundVehicle(null);
+    };
 
 
     /* OPTIONS */
@@ -447,7 +535,7 @@ const combineDateTime = (date: Date, time: string) => {
       return;
     }
 
-    let finalServices = [...form.services];
+    let finalServices = Array.from(new Set(form.services.filter(s => s !== "Other")));
 
     if (isOtherService) {
       if (!customService.trim()) {
@@ -455,7 +543,10 @@ const combineDateTime = (date: Date, time: string) => {
         return;
       }
 
-      finalServices.push(toTitleCase(customService));
+      const formattedCustom = toTitleCase(customService);
+      if (!finalServices.includes(formattedCustom)) {
+        finalServices.push(formattedCustom);
+      }
     }
 
     onSaved?.({
@@ -465,11 +556,13 @@ const combineDateTime = (date: Date, time: string) => {
       email,
       make,
       model,
+      year: form.year,
       plateNumber,
       services: finalServices,
       customService: "",
       notes,
       datetime,
+      status: initialData?.status, // Preserve status during edit
     });
 
     onOpenChange(false);
@@ -487,8 +580,14 @@ const combineDateTime = (date: Date, time: string) => {
           </p>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh] bg-card">
-          <div className="px-6 py-4 space-y-5 bg-card">
+        <ScrollArea className="max-h-[65vh] bg-card relative">
+          {isLoading && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] transition-opacity">
+              <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium text-slate-600 animate-pulse">Loading technical data...</p>
+            </div>
+          )}
+          <div className={cn("px-6 py-4 space-y-5 bg-card", isLoading && "opacity-40 pointer-events-none")}>
 
             {/* CUSTOMER */}
             <div>
@@ -635,7 +734,7 @@ const combineDateTime = (date: Date, time: string) => {
                   />                
                 </div>
 
-                <div  className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1">
                   <Label className="text-xs font-medium">Model</Label>
                   <Combobox
                     items={modelOptions}
@@ -649,6 +748,18 @@ const combineDateTime = (date: Date, time: string) => {
                       setForm(p => ({ ...p, model: canonical }));
                     }}
                   />                  
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Year</Label>
+                  <Input
+                    value={form.year}
+                    
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      setForm(p => ({ ...p, year: val }));
+                    }}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1">
@@ -678,6 +789,34 @@ const combineDateTime = (date: Date, time: string) => {
                   )}
                 </div>
               </div>
+
+              {/* LOOKUP RESULT */}
+              {isLookingUp && (
+                <div className="mt-2 text-xs text-blue-600 animate-pulse flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-ping" />
+                  Checking system for existing vehicle...
+                </div>
+              )}
+
+              {foundVehicle && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+                  <div className="flex flex-col">
+                    <p className="text-xs font-semibold text-blue-900">Vehicle Found in Records!</p>
+                    <p className="text-[10px] text-blue-700">
+                      {foundVehicle.year_model} {foundVehicle.make} {foundVehicle.model} 
+                      {foundVehicle.customer ? ` • Owner: ${foundVehicle.customer.first_name} ${foundVehicle.customer.last_name}` : ""}
+                    </p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-7 text-[10px] border-blue-300 text-blue-700 hover:bg-blue-100"
+                    onClick={handleAutoFill}
+                  >
+                    Auto-fill Info
+                  </Button>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -690,45 +829,40 @@ const combineDateTime = (date: Date, time: string) => {
 
               <div className="space-y-3">
 
-                <div className="flex flex-col gap-1">
-                  <Label className="text-xs font-medium">Service</Label>
-                  <Combobox
-                    items={serviceOptions}
-                    value=""
-                    onChange={(val) => {
-                      if (!val || !val.trim()) return;
+                <div className="flex flex-col gap-2">
+                  <Label className="text-xs font-medium text-red-500 uppercase">Service Needed</Label>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 border rounded-md p-3 bg-muted/20">
+                    {SERVICE_LIST.map((svc) => (
+                      <div key={svc} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`svc-${svc}`}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                          checked={form.services.includes(svc)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setForm(p => ({
+                              ...p,
+                              services: checked 
+                                ? [...p.services, svc]
+                                : p.services.filter(s => s !== svc)
+                            }));
+                            
+                            if (svc === "Other") {
+                              setIsOtherService(checked);
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`svc-${svc}`}
+                          className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {svc}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
 
-                      const isValidOption =
-                        val === "__OTHER__" ||
-                        serviceList.some(s => normalize(s) === normalize(val));
-
-                      if (!isValidOption) return;
-
-                      if (val === "__OTHER__") {
-                        setIsOtherService(true);
-                        return;
-                      }
-
-                      const formatted = toTitleCase(val.trim());
-
-                      const canonical =
-                        findCanonical(serviceList, formatted) || formatted;
-
-                      setIsOtherService(false);
-
-                      setForm(p => {
-                        const exists = p.services.some(
-                          s => normalize(s) === normalize(canonical)
-                        );
-                        if (exists) return p;
-
-                        return {
-                          ...p,
-                          services: Array.from(new Set([...p.services, canonical])),
-                        };
-                      });
-                    }}
-                  />
                   {form.services.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {form.services.map((svc, i) => (
@@ -859,8 +993,8 @@ const combineDateTime = (date: Date, time: string) => {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            {isEdit? "Update Appointment" : "Schedule Appointment"}
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? "Please wait..." : (isEdit ? "Update Appointment" : "Schedule Appointment")}
           </Button>
         </DialogFooter>
 

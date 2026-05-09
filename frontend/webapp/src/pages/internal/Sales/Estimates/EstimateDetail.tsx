@@ -1,50 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-
 import DataToolbar from "@/components/DataToolbar";
+import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
+import { toast } from "sonner";
 
-import {
-  ArrowLeft,
-  Car,
-  User,
-  Wrench,
-  Box,
-  Calculator,
-  Mail,
-  Phone,
-  MapPin,
-} from "lucide-react";
+
+import { ArrowLeft, Car, User, Wrench, Box, Mail, Phone, MapPin } from "lucide-react";
 
 /* ================= STORAGE ================= */
 
@@ -175,11 +143,10 @@ const EstimateDetail: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const [estimate, setEstimate] =
-    useState<Estimate | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [estimate, setEstimate] = useState<Estimate | null>(null);
 
-  const [vehicleModels, setVehicleModels] =
-    useState<VehicleModel[]>([]);
+  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
 
   /* ================= LOAD ================= */
 
@@ -244,6 +211,29 @@ const EstimateDetail: React.FC = () => {
       0
     );
   }, [services]);
+
+
+  /* ================= ACTIONS ================= */
+
+  const handleEditEstimate = () => {
+    navigate(`/webapp/sales/estimates/${estimate?.id}/edit`);
+  };
+
+  const handleRemoveEstimate = () => {
+    const estimates: Estimate[] = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) || "[]"
+    );
+
+    const updated = estimates.filter(
+      (e) => e.id !== estimate?.id
+    );
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    toast.success("Estimate deleted");
+
+    navigate("/webapp/sales/estimates");
+  };
 
   /* ================= EMPTY STATE ================= */
 
@@ -325,12 +315,14 @@ const EstimateDetail: React.FC = () => {
             </Button>
             <Button
               size="sm"
+              onClick={handleEditEstimate}
             >
               Edit Estimate
             </Button>
             <Button
               variant="destructive"
               size="sm"
+              onClick={() => setConfirmOpen(true)}
             >
               Remove Estimate
             </Button>
@@ -821,6 +813,27 @@ const EstimateDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Estimate"
+        description={
+          <>
+            Are you sure you want to delete this estimate?
+            <br />
+            <br />
+            <span className="text-muted-foreground">
+              This action cannot be undone.
+            </span>
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={handleRemoveEstimate}
+      />
+
     </div>
   );
 };

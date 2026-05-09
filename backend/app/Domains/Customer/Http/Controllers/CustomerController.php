@@ -4,16 +4,26 @@ namespace App\Domains\Customer\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Domains\Customer\Domain\Models\Customer;
+use App\Domains\Customer\Application\DTOs\CustomerDTO;
+use App\Domains\Customer\Application\UseCases\CreateCustomer;
+use App\Domains\Customer\Application\UseCases\UpdateCustomer;
+use App\Domains\Customer\Application\UseCases\DeleteCustomer;
+use App\Domains\Customer\Domain\Repositories\CustomerRepositoryInterface;
 use App\Domains\Customer\Domain\Models\CustomerVehicle;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
 {
+    public function __construct(
+        protected CustomerRepositoryInterface $customerRepo,
+        protected CreateCustomer $createCustomer,
+        protected UpdateCustomer $updateCustomer,
+        protected DeleteCustomer $deleteCustomer
+    ) {}
+
     public function index()
     {
-        $customers = Customer::with('vehicles.vehicleVariant.vehicleModel.manufacturer')->get();
+        $customers = $this->customerRepo->getAll();
         return response()->json([
             'status' => 'success',
             'data' => $customers
@@ -22,7 +32,7 @@ class CustomerController extends Controller
 
     public function show($id)
     {
-        $customer = Customer::with('vehicles.vehicleVariant.vehicleModel.manufacturer')->find($id);
+        $customer = $this->customerRepo->findById((int)$id);
         if (!$customer) {
             return response()->json(['status' => 'error', 'message' => 'Customer not found'], 404);
         }
@@ -34,59 +44,17 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'mobile_number' => 'required|string',
-            'address' => 'required|string',
-            'landline' => 'nullable|string',
-            'email' => 'nullable|email',
-            'business' => 'nullable|string',
-            'vehicles' => 'array'
-        ]);
+        $dto = CustomerDTO::fromRequest($request);
 
         try {
-            DB::beginTransaction();
-
-            $customer = Customer::create([
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'mobile_number' => $validated['mobile_number'],
-                'address' => $validated['address'],
-                'landline' => $validated['landline'],
-                'email' => $validated['email'],
-                'business' => $validated['business'],
-            ]);
-
-            $vehiclesInput = $request->input('vehicles', []);
-            if (!empty($vehiclesInput)) {
-                foreach ($vehiclesInput as $vehicleData) {
-                    CustomerVehicle::create([
-                        'customerID' => $customer->customer_id,
-                        'plate_number' => $vehicleData['plateNo'] ?? '',
-                        'engine_number' => $vehicleData['engineNo'] ?? '',
-                        'VIN' => $vehicleData['vin'] ?? '',
-                        'color' => $vehicleData['color'] ?? '',
-                        'registration _number' => $vehicleData['registrationNo'] ?? '',
-                        'year_model' => (string)($vehicleData['year'] ?? ''),
-                        'make' => $vehicleData['make'] ?? '',
-                        'model' => $vehicleData['model'] ?? '',
-                        'variant' => $vehicleData['variant'] ?? '',
-                        'selling_dealer' => $vehicleData['sellingDealer'] ?? '',
-                        'variant_id' => $vehicleData['variant_id'] ?? null 
-                    ]);
-                }
-            }
-
-            DB::commit();
+            $customer = $this->createCustomer->execute($dto);
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Customer created successfully',
-                'data' => $customer->load('vehicles')
+                'data' => $customer
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Customer creation failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
@@ -97,64 +65,17 @@ class CustomerController extends Controller
 
     public function update(Request $request, $id)
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
-            'mobile_number' => 'required|string',
-            'address' => 'required|string',
-            'landline' => 'nullable|string',
-            'email' => 'nullable|email',
-            'business' => 'nullable|string',
-            'vehicles' => 'array'
-        ]);
+        $dto = CustomerDTO::fromRequest($request);
 
         try {
-            DB::beginTransaction();
-
-            $customer = Customer::findOrFail($id);
-            $customer->update([
-                'first_name' => $validated['first_name'],
-                'last_name' => $validated['last_name'],
-                'mobile_number' => $validated['mobile_number'],
-                'address' => $validated['address'],
-                'landline' => $validated['landline'],
-                'email' => $validated['email'],
-                'business' => $validated['business'],
-            ]);
-
-            // Sync vehicles
-            // Remove existing vehicles first to replace with updated list
-            CustomerVehicle::where('customerID', $id)->delete();
-
-            $vehiclesInput = $request->input('vehicles', []);
-            if (!empty($vehiclesInput)) {
-                foreach ($vehiclesInput as $vehicleData) {
-                    CustomerVehicle::create([
-                        'customerID' => $id,
-                        'plate_number' => $vehicleData['plateNo'] ?? '',
-                        'engine_number' => $vehicleData['engineNo'] ?? '',
-                        'VIN' => $vehicleData['vin'] ?? '',
-                        'color' => $vehicleData['color'] ?? '',
-                        'registration _number' => $vehicleData['registrationNo'] ?? '',
-                        'year_model' => (string)($vehicleData['year'] ?? ''),
-                        'make' => $vehicleData['make'] ?? '',
-                        'model' => $vehicleData['model'] ?? '',
-                        'variant' => $vehicleData['variant'] ?? '',
-                        'selling_dealer' => $vehicleData['sellingDealer'] ?? '',
-                        'variant_id' => $vehicleData['variant_id'] ?? null 
-                    ]);
-                }
-            }
-
-            DB::commit();
+            $customer = $this->updateCustomer->execute((int)$id, $dto);
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Customer updated successfully',
-                'data' => $customer->load('vehicles')
+                'data' => $customer
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Customer update failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
@@ -166,23 +87,13 @@ class CustomerController extends Controller
     public function destroy($id)
     {
         try {
-            DB::beginTransaction();
-
-            $customer = Customer::findOrFail($id);
-
-            // Delete associated vehicles first (FK constraint)
-            CustomerVehicle::where('customerID', $id)->delete();
-
-            $customer->delete();
-
-            DB::commit();
+            $this->deleteCustomer->execute((int)$id);
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Customer removed successfully'
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
             Log::error('Customer deletion failed: ' . $e->getMessage());
             return response()->json([
                 'status' => 'error',
@@ -209,6 +120,29 @@ class CustomerController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to remove vehicle: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    public function lookupVehicle($plateNumber)
+    {
+        try {
+            $vehicle = CustomerVehicle::with('customer')
+                ->where('plate_number', $plateNumber)
+                ->first();
+
+            if (!$vehicle) {
+                return response()->json(['status' => 'error', 'message' => 'Vehicle not found'], 404);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $vehicle
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Vehicle lookup failed: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to lookup vehicle: ' . $e->getMessage()
             ], 500);
         }
     }

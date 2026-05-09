@@ -56,7 +56,7 @@ type EnrichedVehicle = Vehicle & {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved?: (vehicles: Omit<Vehicle, "customerId">[]) => void;
+  onSaved?: (vehicles: Omit<EnrichedVehicle, "customerId">[]) => void;
   vehicleToEdit?: EnrichedVehicle | null;
 }
 
@@ -82,18 +82,10 @@ const emptyVehicle = (): VehicleForm => ({
   sellingDealer: "",
 });
 
-const toTitleCase = (str: string) =>
-  (str || "")
-    .toLowerCase()
-    .split(" ")
-    .filter(Boolean)
-    .map(word =>
-      word
-        .split("-")
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join("-")
-    )
-    .join(" ");
+const toTitleCase = (str: string) => {
+  if (!str) return "";
+  return str.trim().charAt(0).toUpperCase() + str.trim().slice(1);
+};
 
 /* ================= COMPONENT ================= */
 const AddCustomerVehicle: React.FC<Props> = ({
@@ -104,12 +96,17 @@ const AddCustomerVehicle: React.FC<Props> = ({
 }) => {
   const [vehicles, setVehicles] = useState<VehicleForm[]>([emptyVehicle()]);
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
+  const [manufacturers, setManufacturers] = useState<{id: string, name: string}[]>([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isLoadingManufacturers, setIsLoadingManufacturers] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   /* ================= LOAD MODELS ================= */
   useEffect(() => {
     if (!open) return;
 
     const fetchModels = async () => {
+      setIsLoadingModels(true);
       try {
         const res = await api.get('/products/vehicles');
         const models = res.data.data.flatMap((m: any) => {
@@ -130,9 +127,25 @@ const AddCustomerVehicle: React.FC<Props> = ({
         setVehicleModels(models);
       } catch (error) {
         console.error("Failed to load vehicle models:", error);
+      } finally {
+        setIsLoadingModels(false);
       }
     };
+
+    const fetchManufacturers = async () => {
+      setIsLoadingManufacturers(true);
+      try {
+        const res = await api.get('/products/manufacturers');
+        setManufacturers(res.data.data || []);
+      } catch (error) {
+        console.error("Failed to load manufacturers:", error);
+      } finally {
+        setIsLoadingManufacturers(false);
+      }
+    };
+
     fetchModels();
+    fetchManufacturers();
   }, [open]);
 
   useEffect(() => {
@@ -174,8 +187,11 @@ const AddCustomerVehicle: React.FC<Props> = ({
     return list.find(item => normalize(item) === normalized);
   };
 
-  const makes = () =>
-    [...new Set(vehicleModels.map(v => v.make.trim()))];
+  const makes = () => {
+    const fromModels = vehicleModels.map(v => v.make.trim());
+    const fromManufacturers = manufacturers.map(m => m.name.trim());
+    return [...new Set([...fromModels, ...fromManufacturers].filter(Boolean))];
+  };
 
   const models = (make: string) =>
     [...new Set(
@@ -205,7 +221,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
     setVehicles(p => p.filter((_, i) => i !== idx));
 
   /* ================= SAVE ================= */
-  const handleSave = () => {
+  const handleSave = async () => {
     const validVehicles = vehicles.filter(v => v.plateNo);
 
     if (!validVehicles.length) {
@@ -213,43 +229,74 @@ const AddCustomerVehicle: React.FC<Props> = ({
       return;
     }
 
-    const normalizedVehicles = validVehicles.map(v => {
-      let variant_id = null;
+    setIsSaving(true);
+    let hasNewVehicles = false;
+    const normalizedVehicles: Omit<EnrichedVehicle, "customerId">[] = [];
+
+    for (const v of validVehicles) {
+      let vehicleModelId = "";
       const formattedMake = toTitleCase(v.make);
       const formattedModel = toTitleCase(v.model);
       const formattedVariant = toTitleCase(v.variant).trim() || "";
 
       let match = vehicleModels.find(
         m =>
-          m.year === Number(v.year) &&
           normalize(m.make) === normalize(formattedMake) &&
-          normalize(m.model) === normalize(formattedModel) &&
-          normalize(m.variant || "") === normalize(formattedVariant)
+          normalize(m.model) === normalize(formattedModel)
       );
-      
+
       if (match) {
-         variant_id = match.id;
+         vehicleModelId = match.id;
+      } else {
+         hasNewVehicles = true;
       }
 
-      return {
-        year: v.year,
+      normalizedVehicles.push({
+        id: v.id,
+        vehicleModelId,
+        year: Number(v.year),
         make: v.make,
         model: v.model,
         variant: v.variant,
-        variant_id: variant_id,
         color: v.color,
         plateNo: v.plateNo,
         engineNo: v.engineNo,
         vin: v.vin,
         registrationNo: v.registrationNo,
-        sellingDealer: v.sellingDealer
-      };
-    });
+        sellingDealer: v.sellingDealer,
+      });
+    }
+
+    if (hasNewVehicles) {
+      const confirmAdd = window.confirm("One or more vehicles are not in our database. Would you like to add them?");
+      if (!confirmAdd) {
+        setIsSaving(false);
+        return;
+      }
+
+      for (const nv of normalizedVehicles) {
+        if (!nv.vehicleModelId) {
+          try {
+            await api.post('/products/vehicles/custom', {
+              make: nv.make,
+              model: nv.model
+            });
+            nv.vehicleModelId = ""; // Important: We do not create VehicleVariants, so this remains empty.
+          } catch (error) {
+            console.error("Failed to add custom vehicle", error);
+            toast.error("Failed to add vehicle to database");
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+    }
 
     /* PASS TO PARENT */
     onSaved?.(normalizedVehicles);
 
     toast.success("Vehicle(s) added");
+    setIsSaving(false);
     onOpenChange(false);
   };
 
@@ -305,6 +352,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
                     }}
                     items={makes()}
                     placeholder="Make"
+                    isLoading={isLoadingManufacturers || isLoadingModels}
                   />
 
                   <Combobox
@@ -318,6 +366,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
                     }}
                     items={models(v.make)}
                     placeholder="Model"
+                    isLoading={isLoadingModels}
                   />
                 </div>
 
@@ -332,10 +381,11 @@ const AddCustomerVehicle: React.FC<Props> = ({
                     }}
                     items={variants(v.make, v.model)}
                     placeholder="Variant"
+                    isLoading={isLoadingModels}
                   />
 
                   <Input placeholder="Color" value={v.color}
-                    onChange={(e) => updateVehicle(idx, "color", e.target.value)} />
+                    onChange={(e) => updateVehicle(idx, "color", toTitleCase(e.target.value))} />
 
                   <Input placeholder="Plate No" value={v.plateNo}
                     onChange={(e) => updateVehicle(idx, "plateNo", e.target.value)} />
@@ -359,8 +409,10 @@ const AddCustomerVehicle: React.FC<Props> = ({
         </ScrollArea>
 
         <DialogFooter className="px-6 pb-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Save Vehicle</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Vehicle"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

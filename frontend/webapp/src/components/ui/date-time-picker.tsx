@@ -52,7 +52,7 @@ export const Calendar: React.FC<CalendarProps> = ({
     a.getDate() === b.getDate();
 
   const handleDateClick = (date: Date) => {
-    if (isPast(date)) return;
+    if (isPast(date) || date.getDay() === 0) return;
     onSelectDate(date);
     setCurrentDate(date);
     setOpenPicker(false);
@@ -156,12 +156,15 @@ export const Calendar: React.FC<CalendarProps> = ({
         {[...Array(firstDay)].map((_, i) => {
           const day = prevMonthDays - firstDay + i + 1;
           const date = createSafeDate(year, month - 1, day);
+          const disabled = isPast(date) || date.getDay() === 0;
           const selected = isSameDate(selectedDate, date);
 
           return (
             <button key={i}
+              disabled={disabled}
               onClick={() => handleDateClick(date)}
-              className={cn("h-7 w-7 text-xs rounded-md text-gray-300 hover:bg-gray-100",
+              className={cn("h-7 w-7 text-xs rounded-md",
+                disabled ? "text-gray-300" : "hover:bg-gray-100",
                 selected && "bg-indigo-600 text-white")}
             >
               {day}
@@ -172,7 +175,7 @@ export const Calendar: React.FC<CalendarProps> = ({
         {[...Array(daysInMonth)].map((_, i) => {
           const day = i + 1;
           const date = createSafeDate(year, month, day);
-          const disabled = isPast(date);
+          const disabled = isPast(date) || date.getDay() === 0;
           const selected = isSameDate(selectedDate, date);
 
           return (
@@ -191,12 +194,15 @@ export const Calendar: React.FC<CalendarProps> = ({
         {[...Array(remaining)].map((_, i) => {
           const day = i + 1;
           const date = createSafeDate(year, month + 1, day);
+          const disabled = isPast(date) || date.getDay() === 0;
           const selected = isSameDate(selectedDate, date);
 
           return (
             <button key={i}
+              disabled={disabled}
               onClick={() => handleDateClick(date)}
-              className={cn("h-7 w-7 text-xs rounded-md text-gray-300 hover:bg-gray-100",
+              className={cn("h-7 w-7 text-xs rounded-md",
+                disabled ? "text-gray-300" : "hover:bg-gray-100",
                 selected && "bg-indigo-600 text-card")}
             >
               {day}

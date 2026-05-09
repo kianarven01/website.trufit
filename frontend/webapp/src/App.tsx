@@ -30,7 +30,7 @@ import ServiceDetail from "./pages/internal/Services/Service Catalog/ServiceDeta
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
 
 import Estimates from "./pages/internal/Sales/Estimates/Estimates";
-import AddEstimate from "./pages/internal/Sales/Estimates/AddEstimate";
+import AddEstimate from "./pages/internal/Sales/Estimates/EstimateForm";
 
 import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
 import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";

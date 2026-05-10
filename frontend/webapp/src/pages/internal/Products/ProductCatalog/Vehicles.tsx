@@ -144,6 +144,7 @@ const VehiclesPage: React.FC = () => {
     try {
       const response = await api.post("/manufacturers", {
         name: name.trim(),
+        type: "vehicle",
       });
 
       const payload = response.data?.data ?? response.data;

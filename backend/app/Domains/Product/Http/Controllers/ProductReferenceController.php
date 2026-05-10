@@ -4,8 +4,8 @@ namespace App\Domains\Product\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Domains\Product\Domain\Models\Category;
-use App\Domains\Product\Domain\Models\UnitO;
-use App\Domains\Vehicle\Domain\Models\Manufacturers;
+use App\Domains\Product\Domain\Models\Unit;
+use App\Domains\Product\Domain\Models\Manufacturers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;

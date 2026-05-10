@@ -38,14 +38,14 @@ type VehicleApiRow = {
   image?: string | null;
   image_URL?: string | null;
   manufacturer?: string | null;
-  manufacturer_id?: string | null;
-  manufacturerId?: string | null;
-  make_id?: string | null;
-  makeId?: string | null;
+  manufacturer_id?: string | number | null;
+  manufacturerId?: string | number | null;
+  make_id?: string | number | null;
+  makeId?: string | number | null;
   make_name?: string | null;
   makeName?: string | null;
   Manufacturer?: {
-    id?: string;
+    id?: string | number;
     name?: string;
   } | null;
   variants_count?: number;
@@ -123,6 +123,7 @@ const VehiclesPage: React.FC = () => {
 
   const loadPageData = async () => {
     setLoading(true);
+
     try {
       await Promise.all([loadManufacturers(), loadVehicles()]);
     } catch (error) {
@@ -141,9 +142,24 @@ const VehiclesPage: React.FC = () => {
   const handleCreateManufacturer = async (
     name: string
   ): Promise<VehicleMakerOption | null> => {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) return null;
+
+    const existing = makers.find(
+      (maker) => maker.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existing) {
+      return {
+        id: existing.id,
+        name: existing.name,
+      };
+    }
+
     try {
       const response = await api.post("/manufacturers", {
-        name: name.trim(),
+        name: trimmedName,
         type: "vehicle",
       });
 
@@ -156,9 +172,13 @@ const VehiclesPage: React.FC = () => {
 
       setMakers((prev) => {
         const exists = prev.some(
-          (maker) => maker.id === created.id || maker.name === created.name
+          (maker) =>
+            maker.id === created.id ||
+            maker.name.toLowerCase() === created.name.toLowerCase()
         );
+
         if (exists) return prev;
+
         return [...prev, created].sort((a, b) => a.name.localeCompare(b.name));
       });
 
@@ -177,6 +197,7 @@ const VehiclesPage: React.FC = () => {
     imageFile?: File | null;
   }) => {
     const formData = new FormData();
+
     formData.append("manufacturer_id", vehicleData.makeId);
     formData.append("model", vehicleData.model);
 
@@ -201,12 +222,14 @@ const VehiclesPage: React.FC = () => {
     }
 
     await loadVehicles();
+    await loadManufacturers();
   };
 
   const handleDeleteVehicle = async (vehicle: Vehicle) => {
     const confirmed = window.confirm(
       `Delete ${vehicle.makeName} ${vehicle.model}?`
     );
+
     if (!confirmed) return;
 
     try {
@@ -276,7 +299,9 @@ const VehiclesPage: React.FC = () => {
 
       {loading ? (
         <div className="w-full flex items-center justify-center py-20 border rounded-xl">
-          <p className="text-muted-foreground font-medium">Loading vehicles...</p>
+          <p className="text-muted-foreground font-medium">
+            Loading vehicles...
+          </p>
         </div>
       ) : filteredVehicles.length === 0 ? (
         <div className="w-full flex items-center justify-center py-20 border-2 border-dashed rounded-xl">

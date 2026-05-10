@@ -23,6 +23,8 @@ export interface VehicleMakerOption {
   name: string;
 }
 
+type ManufacturerType = "vehicle" | "parts";
+
 interface VehicleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,8 +32,11 @@ interface VehicleModalProps {
   makerList: VehicleMakerOption[];
   onSaved: (vehicle: VehicleModalVehicle) => Promise<void> | void;
 
-  // add this prop from parent
-  onCreateManufacturer: (name: string) => Promise<VehicleMakerOption | null>;
+  // Vehicle page creates vehicle manufacturers automatically
+  onCreateManufacturer: (
+    name: string,
+    type: ManufacturerType
+  ) => Promise<VehicleMakerOption | null>;
 }
 
 const ADD_MANUFACTURER_OPTION = "+ Add manufacturer";
@@ -124,7 +129,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     try {
       setCreatingManufacturer(true);
 
-      const createdManufacturer = await onCreateManufacturer(trimmedName);
+      const createdManufacturer = await onCreateManufacturer(
+        trimmedName,
+        "vehicle"
+      );
 
       if (createdManufacturer) {
         setMakeName(createdManufacturer.name);

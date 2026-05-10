@@ -90,7 +90,8 @@ class ProductReferenceController extends Controller
     public function manufacturers(): JsonResponse
     {
         $manufacturers = Manufacturers::query()
-            ->select('id', 'name')
+            ->select('id', 'name', 'type')
+            ->where('type', 'parts')
             ->orderBy('name')
             ->get();
 

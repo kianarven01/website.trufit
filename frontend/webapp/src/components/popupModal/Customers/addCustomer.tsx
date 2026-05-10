@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
 } from "@/components/ui/dialog";
@@ -70,7 +71,7 @@ const normalize = (val: string) => val?.trim().toLowerCase();
 
 const toTitleCase = (str: string) => {
   if (!str) return "";
-  return str.trim().charAt(0).toUpperCase() + str.trim().slice(1);
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const emptyVehicle = (): VehicleForm => ({
@@ -282,14 +283,24 @@ const emptyVehicle = (): VehicleForm => ({
 
   /* ================= SAVE (API) ================= */
   const handleSave = async () => {
-    if (!firstName || !lastName || !mobileNumber) {
-      toast.error("Please fill in required fields.");
+    if (!firstName || !lastName || !mobileNumber || !address || !email) {
+      toast.error("Please fill in all required customer details.");
       return;
     }
 
-    const validVehicles = vehicles.filter(
-      v => !v._deleted && v.plateNo
-    );
+    const validVehicles = vehicles.filter(v => !v._deleted);
+    
+    if (validVehicles.length === 0) {
+        toast.error("Please add at least one vehicle.");
+        return;
+    }
+
+    for (const v of validVehicles) {
+        if (!v.year || !v.make || !v.model || !v.variant || !v.color || !v.plateNo || !v.engineNo || !v.vin || !v.registrationNo || !v.sellingDealer) {
+            toast.error("Please fill in all vehicle details.");
+            return;
+        }
+    }
 
     setIsSaving(true);
 
@@ -389,82 +400,95 @@ const emptyVehicle = (): VehicleForm => ({
           <DialogTitle>
             {isEdit ? "Edit Customer" : "New Customer"}
           </DialogTitle>
+          <p className="text-[13px] text-muted-foreground mt-1">
+            {isEdit ? "Update existing customer profile and vehicle records" : "Create a new customer profile and register their vehicles"}
+          </p>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh]">
-          <div className="px-6 pb-4 space-y-5 bg-card py-4">
+        <ScrollArea className="max-h-[65vh] relative">
+          {(isLoadingModels || isLoadingManufacturers) && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-[1px] transition-opacity">
+              <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading technical data...</p>
+            </div>
+          )}
+          <div className={cn("px-6 pb-4 space-y-5 bg-card py-4", (isLoadingModels || isLoadingManufacturers) && "opacity-40 pointer-events-none")}>
             {/* Customer Details */}
             <div>
               <p className="text-sm font-semibold mb-3">
-                Customer Details
+                Customer Information
               </p>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <Label className="text-xs">Full Name *</Label>
-                  <div className="flex gap-3">
-                    <Input
-                      className="bg-muted/30"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="First Name"
-                    />
-                    <Input
-                      className="bg-muted/30"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Last Name"
-                    />
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">First Name</Label>
+                  <Input
+                    className="bg-muted/30"
+                    value={firstName}
+                    onChange={(e) => setFirstName(toTitleCase(e.target.value))}
+                    placeholder=""
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Last Name</Label>
+                  <Input
+                    className="bg-muted/30"
+                    value={lastName}
+                    onChange={(e) => setLastName(toTitleCase(e.target.value))}
+                    placeholder=""
+                  />
                 </div>
 
-                <div className="col-span-2">
-                  <Label className="text-xs">Address</Label>
+                <div className="col-span-2 flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Home Address</Label>
                   <Input
                     className="bg-muted/30"
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Current Home Address"
+                    onChange={(e) => setAddress(toTitleCase(e.target.value))}
+                    placeholder=""
                   />
                 </div>
 
-                <div>
-                  <Label className="text-xs">Mobile *</Label>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Phone Number</Label>
                   <Input  
                     className="bg-muted/30"
                     value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value)}
-                    placeholder="09XXXXXXXXX"
+                    onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 11);
+                        setMobileNumber(val);
+                    }}
+                    placeholder=""
                   />
                 </div>
 
-                <div>
-                  <Label className="text-xs">Landline</Label>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Landline</Label>
                   <Input
                     className="bg-muted/30"
                     value={landline}
-                    onChange={(e) => setLandline(e.target.value)}
-                    placeholder="02XXXXXXX"
+                    onChange={(e) => setLandline(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    placeholder=""
                   />
                 </div>
 
-                <div>
-                  <Label className="text-xs">Email</Label>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Email Address</Label>
                   <Input
                     className="bg-muted/30"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@example.com"
+                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                    placeholder=""
                   />
                 </div>
 
-                <div>
-                  <Label className="text-xs">Business Number</Label>
+                <div className="flex flex-col gap-1">
+                  <Label className="text-xs font-medium">Business Number</Label>
                   <Input
                     className="bg-muted/30"
                     value={businessPhone}
-                    onChange={(e) => setBusinessPhone(e.target.value)}
-                    placeholder="Optional"
+                    onChange={(e) => setBusinessPhone(e.target.value.replace(/\D/g, ""))}
+                    placeholder=""
                   />
                 </div>
               </div>
@@ -475,10 +499,9 @@ const emptyVehicle = (): VehicleForm => ({
             {/* Vehicles */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold flex items-center gap-1.5">
-                  <Car className="h-4 w-4 text-muted-foreground" />
-                  Registered Vehicles
-                </p>
+              <p className="text-sm font-semibold mb-3">
+                Vehicle Information
+              </p>
 
                 <Button
                   variant="outline"
@@ -495,11 +518,10 @@ const emptyVehicle = (): VehicleForm => ({
                 {vehicles
                   .filter(v => !v._deleted)
                   .map((v, idx) => (
-                  <div key={v.id} className="rounded-lg border p-3 space-y-3  bg-card">
-
+                  <div key={v.id} className="rounded-lg border p-4 space-y-4 bg-card">
                     {/* Header */}
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">
+                      <span className="text-xs font-semibold text-primary">
                         Vehicle {idx + 1}
                       </span>
 
@@ -507,7 +529,7 @@ const emptyVehicle = (): VehicleForm => ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6"
+                          className="h-6 w-6 hover:bg-destructive/10 transition-colors"
                           onClick={() => removeVehicle(v.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -515,18 +537,19 @@ const emptyVehicle = (): VehicleForm => ({
                       )}
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-2">
-
-                      <div className="bg-muted/30">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Year</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="Year"
+                          placeholder=""
                           value={v.year}
-                          onChange={(e) => updateVehicle(v.id, "year", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "year", e.target.value.replace(/\D/g, "").slice(0, 4))}
                         />
                       </div>
 
-                      <div className="bg-muted/30">
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Make</Label>
                         <Combobox
                           value={v.make}
                           onChange={(val) => {
@@ -535,12 +558,13 @@ const emptyVehicle = (): VehicleForm => ({
                             updateVehicle(v.id, "variant", "");
                           }}
                           items={makes}
-                          placeholder="Make"
+                          placeholder=""
                           isLoading={isLoadingManufacturers || isLoadingModels}
                         />                        
                       </div>
 
-                      <div className="bg-muted/30">
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Model</Label>
                         <Combobox
                           value={v.model}
                           onChange={(val) => {
@@ -551,15 +575,15 @@ const emptyVehicle = (): VehicleForm => ({
                             updateVehicle(v.id, "variant", "");
                           }}
                           items={models(v.make)}
-                          placeholder="Model"
+                          placeholder=""
                           isLoading={isLoadingModels}
                         />
                       </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-2">
-
-                      <div className="bg-muted/30">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Variant</Label>
                         <Combobox
                           value={v.variant}
                           onChange={(val) => {
@@ -569,67 +593,71 @@ const emptyVehicle = (): VehicleForm => ({
                             updateVehicle(v.id, "variant", canonical || "");
                           }}
                           items={variants(v.make, v.model)}
-                          placeholder="Variant"
+                          placeholder=""
                           isLoading={isLoadingModels}
                         />
                       </div>
 
-                      <div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Color</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="Color"
+                          placeholder=""
                           value={v.color}
-                          onChange={(e) => updateVehicle(v.id, "color", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "color", toTitleCase(e.target.value))}
                         />                        
                       </div>
 
-                      <div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Plate Number</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="Plate No"
+                          placeholder=""
                           value={v.plateNo}
-                          onChange={(e) => updateVehicle(v.id, "plateNo", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "plateNo", e.target.value.toUpperCase().slice(0, 8))}
                         />                        
                       </div>
 
-                      <div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Engine Number</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="Engine No"
+                          placeholder=""
                           value={v.engineNo}
-                          onChange={(e) => updateVehicle(v.id, "engineNo", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "engineNo", e.target.value.toUpperCase().slice(0, 20))}
                         />                        
                       </div>
 
-                      <div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">VIN</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="VIN"
+                          placeholder=""
                           value={v.vin}
-                          onChange={(e) => updateVehicle(v.id, "vin", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "vin", e.target.value.toUpperCase().slice(0, 17))}
                         />                     
                       </div>
 
-                      <div>
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Registration Number</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="Registration No"
+                          placeholder=""
                           value={v.registrationNo}
-                          onChange={(e) => updateVehicle(v.id, "registrationNo", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "registrationNo", e.target.value.toUpperCase().slice(0, 15))}
                         />                       
                       </div>
  
-                      <div className="col-span-2">
+                      <div className="col-span-2 flex flex-col gap-1">
+                        <Label className="text-xs font-medium">Selling Dealer</Label>
                         <Input
                           className="bg-muted/30"
-                          placeholder="Selling Dealer"
+                          placeholder=""
                           value={v.sellingDealer}
-                          onChange={(e) => updateVehicle(v.id, "sellingDealer", e.target.value)}
+                          onChange={(e) => updateVehicle(v.id, "sellingDealer", toTitleCase(e.target.value))}
                         />                        
                       </div>
-
                     </div>
-
                   </div>
                 ))}
               </div>

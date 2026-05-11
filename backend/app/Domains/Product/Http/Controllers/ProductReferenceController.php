@@ -90,7 +90,7 @@ class ProductReferenceController extends Controller
     {
         $manufacturers = Manufacturers::query()
             ->select('id', 'name', 'type')
-            ->where('type', 'parts')
+            ->where('type', 'Part')
             ->orderBy('name')
             ->get();
 

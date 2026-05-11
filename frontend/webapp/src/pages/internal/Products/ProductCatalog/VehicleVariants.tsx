@@ -52,6 +52,8 @@ interface Vehicle {
   image?: string;
 }
 
+
+
 interface Variant {
   id: string;
   name: string;
@@ -70,10 +72,7 @@ interface PartCategory {
   code?: string;
 }
 
-type VehicleMakerOption = {
-  id: string;
-  name: string;
-};
+
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Engine: Settings,

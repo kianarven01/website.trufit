@@ -19,6 +19,7 @@ interface Customer {
   landline?: string;
   email?: string;
   businessPhone?: string;
+  origin?: string;
 }
 
 interface VehicleModel {
@@ -85,6 +86,7 @@ const CustomersList: React.FC = () => {
           landline: c.landline || "",
           email: c.email || "",
           businessPhone: c.business || "",
+          origin: c.origin || "appointment",
           vehicles: c.vehicles || []
         }));
         setCustomers(parsed);
@@ -335,9 +337,10 @@ const toolbarFilters = [
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[20%] text-center">Name</TableHead>
-                  <TableHead className="w-[40%] text-center">Address</TableHead>
-                  <TableHead className="w-[20%] text-center">Mobile</TableHead>
+                  <TableHead className="w-[30%] text-center">Address</TableHead>
+                  <TableHead className="w-[15%] text-center">Mobile</TableHead>
                   <TableHead className="w-[20%] text-center">Plate Number</TableHead>
+                  <TableHead className="w-[15%] text-center">Profile Status</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -375,11 +378,22 @@ const toolbarFilters = [
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-center">
+                        {c.origin === 'appointment' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                            Incomplete
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                            Complete
+                          </span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={5}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">
@@ -435,6 +449,7 @@ const toolbarFilters = [
             landline: newCustomer.landline || "",
             email: newCustomer.email || "",
             businessPhone: newCustomer.business || "",
+            origin: newCustomer.origin || "manual",
             vehicles: newCustomer.vehicles || []
           };
           setCustomers((prev) => [parsed, ...prev]);

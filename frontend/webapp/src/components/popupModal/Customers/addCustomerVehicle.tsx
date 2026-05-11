@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Plus, Trash2, Car } from "lucide-react";
 import { toast } from "sonner";
@@ -308,12 +309,18 @@ const AddCustomerVehicle: React.FC<Props> = ({
   /* ================= UI ================= */
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle>Add Vehicle</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh]">
+        <ScrollArea className="max-h-[65vh] relative">
+          {(isLoadingManufacturers || isLoadingModels) && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] transition-opacity">
+              <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
+              <p className="text-sm font-medium text-slate-600 animate-pulse">Loading vehicle data...</p>
+            </div>
+          )}
           <div className="px-6 pb-4 space-y-4">
 
             <div className="flex justify-between">
@@ -342,70 +349,89 @@ const AddCustomerVehicle: React.FC<Props> = ({
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-4">
-                  <Input
-                    placeholder="Year"
-                    value={v.year}
-                    onChange={(e) => updateVehicle(idx, "year", e.target.value)}
-                  />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Year</Label>
+                    <Input
+                      type="number"
+                      maxLength={4}
+                      value={v.year}
+                      onChange={(e) => updateVehicle(idx, "year", e.target.value)}
+                    />
+                  </div>
 
-                  <Combobox
-                    value={v.make}
-                    onChange={(val) => {
-                      updateVehicle(idx, "make", toTitleCase(val));
-                      updateVehicle(idx, "model", "");
-                      updateVehicle(idx, "variant", "");
-                    }}
-                    items={makes()}
-                    placeholder="Make"
-                    isLoading={isLoadingManufacturers || isLoadingModels}
-                  />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Make</Label>
+                    <Combobox
+                      value={v.make}
+                      onChange={(val) => {
+                        updateVehicle(idx, "make", toTitleCase(val));
+                        updateVehicle(idx, "model", "");
+                        updateVehicle(idx, "variant", "");
+                      }}
+                      items={makes()}
+                    />
+                  </div>
 
-                  <Combobox
-                    value={v.model}
-                    onChange={(val) => {
-                      const formatted = toTitleCase(val);
-                      const canonical = findCanonical(models(v.make), formatted) || formatted;
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Model</Label>
+                    <Combobox
+                      value={v.model}
+                      onChange={(val) => {
+                        const formatted = toTitleCase(val);
+                        const canonical = findCanonical(models(v.make), formatted) || formatted;
 
-                      updateVehicle(idx, "model", canonical);
-                      updateVehicle(idx, "variant", "");
-                    }}
-                    items={models(v.make)}
-                    placeholder="Model"
-                    isLoading={isLoadingModels}
-                  />
+                        updateVehicle(idx, "model", canonical);
+                        updateVehicle(idx, "variant", "");
+                      }}
+                      items={models(v.make)}
+                    />
+                  </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-2">
-                  <Combobox
-                    value={v.variant}
-                    onChange={(val) => {
-                      const formatted = toTitleCase(val);
-                      const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Variant</Label>
+                    <Combobox
+                      value={v.variant}
+                      onChange={(val) => {
+                        const formatted = toTitleCase(val);
+                        const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
 
-                      updateVehicle(idx, "variant", canonical || "");
-                    }}
-                    items={variants(v.make, v.model)}
-                    placeholder="Variant"
-                    isLoading={isLoadingModels}
-                  />
+                        updateVehicle(idx, "variant", canonical || "");
+                      }}
+                      items={variants(v.make, v.model)}
+                    />
+                  </div>
 
-                  <Input placeholder="Color" value={v.color}
-                    onChange={(e) => updateVehicle(idx, "color", toTitleCase(e.target.value))} />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Color</Label>
+                    <Input value={v.color} onChange={(e) => updateVehicle(idx, "color", toTitleCase(e.target.value))} />
+                  </div>
 
-                  <Input placeholder="Plate No" value={v.plateNo}
-                    onChange={(e) => updateVehicle(idx, "plateNo", e.target.value)} />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Plate Number</Label>
+                    <Input maxLength={15} value={v.plateNo} onChange={(e) => updateVehicle(idx, "plateNo", e.target.value.toUpperCase().replace(/\s+/g, ''))} />
+                  </div>
 
-                  <Input placeholder="Engine No" value={v.engineNo}
-                    onChange={(e) => updateVehicle(idx, "engineNo", e.target.value)} />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Engine Number</Label>
+                    <Input maxLength={30} value={v.engineNo} onChange={(e) => updateVehicle(idx, "engineNo", e.target.value.toUpperCase())} />
+                  </div>
 
-                  <Input placeholder="VIN" value={v.vin}
-                    onChange={(e) => updateVehicle(idx, "vin", e.target.value)} />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">VIN</Label>
+                    <Input maxLength={17} value={v.vin} onChange={(e) => updateVehicle(idx, "vin", e.target.value.toUpperCase())} />
+                  </div>
 
-                  <Input placeholder="Registration No" value={v.registrationNo}
-                    onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value)} />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Registration Number</Label>
+                    <Input maxLength={30} value={v.registrationNo} onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value.toUpperCase())} />
+                  </div>
 
-                  <Input className="col-span-2" placeholder="Selling Dealer" value={v.sellingDealer}
-                    onChange={(e) => updateVehicle(idx, "sellingDealer", e.target.value)} />
+                  <div className="col-span-2 flex flex-col gap-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Selling Dealer</Label>
+                    <Input value={v.sellingDealer} onChange={(e) => updateVehicle(idx, "sellingDealer", e.target.value)} />
+                  </div>
                 </div>
 
               </div>

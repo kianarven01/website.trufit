@@ -32,6 +32,7 @@ interface MakeComboboxProps {
   onAdd?: (currentSearch: string) => void;
   showGroupSeparator?: boolean;
   isLoading?: boolean;
+  disabled?: boolean;
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -44,6 +45,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   onAdd,
   showGroupSeparator = false,
   isLoading,
+  disabled,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -91,19 +93,20 @@ const Combobox: FC<MakeComboboxProps> = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={(val) => !disabled && setOpen(val)}>
       <PopoverTrigger asChild>
         <div className="relative w-full">
           <Input
             placeholder={placeholder || "Type or select..."}
             value={search}
             onChange={(e) => {
+              if (disabled) return;
               const val = e.target.value;
               setSearch(val);
               onChange(resolveValue(val));
               setOpen(true);
             }}
-            disabled={isLoading}
+            disabled={disabled || isLoading}
             className="w-full pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
           />
 

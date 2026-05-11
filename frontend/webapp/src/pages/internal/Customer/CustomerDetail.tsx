@@ -62,6 +62,7 @@ interface Customer {
   landline?: string;
   email?: string;
   businessPhone?: string;
+  origin?: string;
 }
 
 interface VehicleHistory {
@@ -141,6 +142,7 @@ const CustomerDetail: React.FC = () => {
           landline: c.landline || "",
           email: c.email || "",
           businessPhone: c.business || "",
+          origin: c.origin || "appointment",
           vehicles: mappedVehicles
         } as any);
 
@@ -155,6 +157,7 @@ const CustomerDetail: React.FC = () => {
           landline: c.landline || "",
           email: c.email || "",
           businessPhone: c.business || "",
+          origin: c.origin || "appointment",
           vehicles: []
         } as any);
       }
@@ -450,6 +453,20 @@ useEffect(() => {
 
       {/* Main content */}
       <div className="space-y-4">
+        {customerData.origin === 'appointment' && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-md shadow-sm flex items-center justify-between">
+            <div className="flex flex-col">
+              <p className="text-sm font-semibold text-amber-900 mb-1">Incomplete Profile</p>
+              <p className="text-xs text-amber-700 leading-tight">
+                This customer was created from an appointment and lacks required details. Please complete their information before processing Job Orders or adding records.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100 shrink-0" onClick={() => setOpenEdit(true)}>
+              Edit Profile
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           {/* CUSTOMER */}
           <Card>
@@ -457,6 +474,7 @@ useEffect(() => {
               <CardTitle className="text-lg">Customer Profile</CardTitle>
             </CardHeader>
             <CardContent className="space-y-5">
+
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Full Name</p>
                 <p className="text-sm">{fullName}</p>
@@ -685,7 +703,7 @@ useEffect(() => {
               <Button
                 size="xs"
                 variant="outline"
-                disabled={!selectedVehicle}
+                disabled={!selectedVehicle || customerData.origin === 'appointment'}
                 onClick={() => setOpenAddRecord(true)}
               >
                 <Plus className="w-4 h-4" />

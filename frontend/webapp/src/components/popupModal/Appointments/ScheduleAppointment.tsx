@@ -124,6 +124,7 @@ const SERVICE_LIST = [
     const [isLoading, setIsLoading] = useState(false);
     const [isLookingUp, setIsLookingUp] = useState(false);
     const [foundVehicle, setFoundVehicle] = useState<any>(null);
+    const [isAutofilled, setIsAutofilled] = useState(false);
 
     const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -243,6 +244,7 @@ const SERVICE_LIST = [
       setCustomService("");
       setErrors({});
       setTouched({});
+      setIsAutofilled(false);
       return;
     }
 
@@ -298,7 +300,7 @@ const SERVICE_LIST = [
     /* VEHICLE LOOKUP */
     useEffect(() => {
       const plate = form.plateNumber.replace(/[\s-]/g, "");
-      if (plate.length < 6 || isEdit) {
+      if (plate.length < 6 || isEdit || isAutofilled) {
         setFoundVehicle(null);
         return;
       }
@@ -320,7 +322,7 @@ const SERVICE_LIST = [
       }, 800);
 
       return () => clearTimeout(timer);
-    }, [form.plateNumber, isEdit]);
+    }, [form.plateNumber, isEdit, isAutofilled]);
 
     const handleAutoFill = () => {
       if (!foundVehicle) return;
@@ -338,6 +340,7 @@ const SERVICE_LIST = [
 
       toast.success("Vehicle and customer info auto-filled!");
       setFoundVehicle(null);
+      setIsAutofilled(true);
     };
 
 
@@ -464,6 +467,16 @@ const SERVICE_LIST = [
 
     /* ================= SAVE ================= */
   const handleSave = () => {
+    if (isLookingUp) {
+      toast.error("Please wait while we verify the plate number.");
+      return;
+    }
+
+    if (foundVehicle) {
+      toast.error("Plate number already exists. Please auto-fill the vehicle details or use a different plate.");
+      return;
+    }
+
     if (!selectedDate || !selectedTime) {
       toast.error("Please select date and time.");
       return;
@@ -724,6 +737,7 @@ const SERVICE_LIST = [
                   <Combobox
                     items={makeOptions}
                     value={form.make}
+                    disabled={isAutofilled}
                     onChange={(val) =>
                       setForm(p => ({
                         ...p,
@@ -739,6 +753,7 @@ const SERVICE_LIST = [
                   <Combobox
                     items={modelOptions}
                     value={form.model}
+                    disabled={isAutofilled}
                     onChange={(val) => {
                       const formatted = toTitleCase(val);
                       const canonical =
@@ -754,7 +769,7 @@ const SERVICE_LIST = [
                   <Label className="text-xs font-medium">Year</Label>
                   <Input
                     value={form.year}
-                    
+                    disabled={isAutofilled}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "").slice(0, 4);
                       setForm(p => ({ ...p, year: val }));
@@ -766,6 +781,7 @@ const SERVICE_LIST = [
                   <Label className="text-xs font-medium">Plate Number</Label>
                   <Input
                     value={form.plateNumber}
+                    disabled={isAutofilled}
                     onChange={(e) => {
                       setForm(p => ({
                         ...p,
@@ -787,6 +803,14 @@ const SERVICE_LIST = [
                   {touched.plateNumber && errors.plateNumber && (
                     <p className="text-xs text-red-500">{errors.plateNumber}</p>
                   )}
+                  {isAutofilled && (
+                    <button
+                      className="text-[10px] text-blue-600 underline text-left w-max"
+                      onClick={() => setIsAutofilled(false)}
+                    >
+                      Clear autofill to edit
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -799,22 +823,24 @@ const SERVICE_LIST = [
               )}
 
               {foundVehicle && (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-1">
-                  <div className="flex flex-col">
-                    <p className="text-xs font-semibold text-blue-900">Vehicle Found in Records!</p>
-                    <p className="text-[10px] text-blue-700">
-                      {foundVehicle.year_model} {foundVehicle.make} {foundVehicle.model} 
-                      {foundVehicle.customer ? ` • Owner: ${foundVehicle.customer.first_name} ${foundVehicle.customer.last_name}` : ""}
-                    </p>
+                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <p className="text-xs font-semibold text-amber-900">Warning: Plate Number Already Exists</p>
+                      <p className="text-[10px] text-amber-700 leading-tight">
+                        This plate is linked to a <strong>{foundVehicle.year_model} {foundVehicle.make} {foundVehicle.model}</strong>. 
+                        Please auto-fill to link this appointment, or enter a different plate number to avoid duplication.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-7 text-[10px] border-amber-300 text-amber-700 hover:bg-amber-100 shrink-0"
+                      onClick={handleAutoFill}
+                    >
+                      Auto-fill Info
+                    </Button>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 text-[10px] border-blue-300 text-blue-700 hover:bg-blue-100"
-                    onClick={handleAutoFill}
-                  >
-                    Auto-fill Info
-                  </Button>
                 </div>
               )}
             </div>

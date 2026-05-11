@@ -33,7 +33,6 @@ class ProductReferenceController extends Controller
         ]);
 
         $category = Category::create([
-            'id' => (string) Str::uuid(),
             'name' => $validated['name'],
             'code' => $validated['code'] ?? Str::upper(Str::slug($validated['name'], '_')),
         ]);

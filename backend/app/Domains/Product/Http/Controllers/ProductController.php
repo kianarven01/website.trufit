@@ -78,13 +78,13 @@ class ProductController extends Controller
             }
         }
 
-        $suppliers = $validated['suppliers'] ?? [];
-        unset($validated['suppliers']);
-
-        // Leave compatibility empty for now
+        // Compatibility is disabled for now.
+        // Keep suppliers inside $validated because CreateProductDTO needs them.
         unset($validated['car_variant_id'], $validated['compatibility_notes']);
 
-        $product = $createProduct->execute($validated, $suppliers);
+        $dto = CreateProductDTO::fromArray($validated);
+
+        $product = $createProduct->execute($dto);
 
         return response()->json([
             'message' => 'Product created successfully.',

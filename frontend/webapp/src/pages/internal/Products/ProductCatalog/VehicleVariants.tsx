@@ -12,7 +12,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Combobox from "@/components/ui/combobox";
 import { Badge } from "@/components/ui/badge";
-import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
+import {
+  VehicleModal,
+  VehicleMakerOption,
+} from "@/components/popupModal/ProductCatalog/addVehicle";
 
 import {
   Car,
@@ -66,6 +69,11 @@ interface PartCategory {
   parts: number;
   code?: string;
 }
+
+type VehicleMakerOption = {
+  id: string;
+  name: string;
+};
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Engine: Settings,
@@ -291,6 +299,56 @@ const VehicleVariantsPage: React.FC = () => {
     void loadPageData();
   }, [vehicleSlug]);
 
+  const handleCreateManufacturer = async (
+    name: string
+  ): Promise<VehicleMakerOption | null> => {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) return null;
+
+    const existing = makers.find(
+      (maker) => maker.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existing) {
+      return {
+        id: existing.id,
+        name: existing.name,
+      };
+    }
+
+    try {
+      const response = await api.post("/manufacturers", {
+        name: trimmedName,
+        type: "vehicle",
+      });
+
+      const payload = response.data?.data ?? response.data;
+
+      const created: VehicleMakerOption = {
+        id: String(payload.id),
+        name: String(payload.name),
+      };
+
+      setMakers((prev) => {
+        const exists = prev.some(
+          (maker) =>
+            maker.id === created.id ||
+            maker.name.toLowerCase() === created.name.toLowerCase()
+        );
+
+        if (exists) return prev;
+
+        return [...prev, created].sort((a, b) => a.name.localeCompare(b.name));
+      });
+
+      return created;
+    } catch (error) {
+      console.error("Failed to create manufacturer:", error);
+      return null;
+    }
+  };
+  
   const handleSaveVehicle = async (vehicleData: {
     id?: string;
     makeId: string;
@@ -804,6 +862,7 @@ const VehicleVariantsPage: React.FC = () => {
         }
         makerList={makers}
         onSaved={handleSaveVehicle}
+        onCreateManufacturer={handleCreateManufacturer}
       />
 
       <AddVehicleVariant

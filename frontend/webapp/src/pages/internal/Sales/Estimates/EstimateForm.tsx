@@ -192,13 +192,6 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
   const [mileage, setMileage] = useState<number>(0);
-  // Add Customer Modal
-  const [customerModalOpen, setCustomerModalOpen] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState("");
-  // Add Vehicle Modal
-  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
-
-
 
   const [notes, setNotes] = useState("");
 
@@ -300,42 +293,20 @@ const formatDuration = (minutes?: number) => {
 };
 
 
-//===============  ==================//  
-  const handleAddCustomer = (search: string) => {
-    setCustomerSearch(search); // optional prefill
-    setCustomerModalOpen(true);
-  };
-
-  const handleCustomerSaved = (newCustomer: Customer & { __lastAddedVehicle?: Vehicle }) => {
-    setCustomers((prev) => [...prev, newCustomer]);
-    setSelectedCustomer(newCustomer);
-
-    // Vehicle selection — use vehicles from state + possible new vehicle
-    const relatedVehicles = vehicles.filter(v => v.customerId === newCustomer.id);
-
-    if (newCustomer.__lastAddedVehicle) {
-      setSelectedVehicle(newCustomer.__lastAddedVehicle);
-    } else if (relatedVehicles.length === 1) {
-      setSelectedVehicle(relatedVehicles[0]);
-    } else {
-      setSelectedVehicle(null); //if multiple vehicles, user must pick
-    }
-  };
-
-  const handleVehicleSaved = (newVehicle: Vehicle) => {
-    setVehicles((prev) => [...prev, newVehicle]);
-    setSelectedVehicle(newVehicle);
-    setVehicleModalOpen(false);
-  };
-
-
   //=============== USE EFFECT ==================//
 
 useEffect(() => {
-  const existingCustomers = localStorage.getItem(STORAGE_KEY);
+  const existingCustomers = JSON.parse(
+    localStorage.getItem(STORAGE_KEY) || "[]"
+  );
 
   // already seeded
-  if (existingCustomers) return;
+  if (
+    Array.isArray(existingCustomers) &&
+    existingCustomers.length > 0
+  ) {
+    return;
+  }
 
   // =========================================
   // VEHICLE MODELS
@@ -403,31 +374,11 @@ useEffect(() => {
   // =========================================
   // SAVE
   // =========================================
-  localStorage.setItem(
-    VEHICLE_MODEL_STORAGE_KEY,
-    JSON.stringify(vehicleModels)
-  );
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(customers)
-  );
-
-  localStorage.setItem(
-    VEHICLE_STORAGE_KEY,
-    JSON.stringify(vehicles)
-  );
-
-  localStorage.setItem(
-    PRODUCT_KEY,
-    JSON.stringify(products)
-  );
-
-  localStorage.setItem(
-    INVENTORY_KEY,
-    JSON.stringify(inventory)
-  );
-
+  localStorage.setItem(VEHICLE_MODEL_STORAGE_KEY, JSON.stringify(vehicleModels));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
+  localStorage.setItem(VEHICLE_STORAGE_KEY, JSON.stringify(vehicles));
+  localStorage.setItem(PRODUCT_KEY, JSON.stringify(products));
+  localStorage.setItem(INVENTORY_KEY,JSON.stringify(inventory));
   console.log("✅ Dummy data seeded successfully!");
 }, []); // seed once
 
@@ -631,25 +582,15 @@ useEffect(() => {
     const validJO = joLines.filter((l) => l.ServiceTypeId);
     const validSO = soLines.filter((l) => l.ProductId);
 
-    const totalServices = validJO.reduce(
-      (s, l) => s + l.amount,
-      0
-    );
-
-    const totalParts = validSO.reduce(
-      (s, l) => s + l.amount,
-      0
-    );
+    const totalServices = validJO.reduce((s, l) => s + l.amount, 0);
+    const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
 
     const estimatedMinutes = validJO.reduce(
       (sum, l) => {
         const service = servicesMap[l.ServiceTypeId];
-
         if (!service?.duration) return sum;
-
         return sum + service.duration;
-      },
-      0
+      }, 0
     );
 
     const total = totalServices + totalParts;
@@ -846,9 +787,6 @@ const saveEstimate = () => {
                       value: c.id,
                     }))}
                     placeholder="Select customer"
-                    allowAdd
-                    addLabel="customer"
-                    onAdd={handleAddCustomer}
                   />
                 </div>
                 <div>
@@ -935,11 +873,6 @@ const saveEstimate = () => {
                             ? "Select vehicle"
                             : "Select vehicle"
                         }
-                        allowAdd
-                        addLabel="vehicle"
-                        onAdd={() => {
-                          setVehicleModalOpen(true);
-                        }}
                       />
                     )}
                   </div>
@@ -1111,9 +1044,7 @@ const saveEstimate = () => {
                               </div>
                             </TableCell>
 
-                            <TableCell>
-                              {service ? peso(l.amount) : "—"}
-                            </TableCell>
+                            <TableCell>{service ? peso(l.amount) : "—"}</TableCell>
 
                             <TableCell>
                               {joLines.length > 1 && (
@@ -1175,9 +1106,7 @@ const saveEstimate = () => {
                               />
                             </TableCell>
 
-                            <TableCell>
-                              {peso(partsMap[l.ProductId]?.price || 0)}
-                            </TableCell>
+                            <TableCell>{peso(partsMap[l.ProductId]?.price || 0)}</TableCell>
 
                             <TableCell>
                               <Input
@@ -1195,9 +1124,7 @@ const saveEstimate = () => {
                               />
                             </TableCell>
 
-                            <TableCell>
-                              {peso(l.amount)}
-                            </TableCell>
+                            <TableCell>{peso(l.amount)}</TableCell>
 
                             <TableCell>
                               {soLines.length > 1 && (

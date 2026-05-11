@@ -60,7 +60,7 @@ interface SalesOrder {
   updatedAt: string;
 }
 
-const STORAGE_KEY = "sales_orders";
+const STORAGE_KEY = "salesOrders";
 
 /* DUMMY */
 const generateDummySalesOrders = (): SalesOrder[] => {
@@ -155,24 +155,25 @@ const SalesOrderList: React.FC = () => {
       <DataToolbar
         searchPlaceholder="Search sales orders..."
         onSearch={setSearch}
-        onAdd={() => navigate("/webapp/sales/sales-orders/create")}
+        onAdd={() => navigate("/webapp/sales/sales-orders/new-sales-order")}
         addLabel="Create Order"
       />
 
+      {/* TABLE */}
       {orders.length > 0 ? (
-        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
+        <div className="flex-1 flex flex-col border rounded-xl overflow-hidden">
 
-          {/* Scrollable Table */}
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 px-3">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
                   <TableHead>SO #</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Plate No.</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -189,26 +190,75 @@ const SalesOrderList: React.FC = () => {
                           navigate(`/webapp/sales/sales-orders/${o.id}`)
                         }
                         className={cn(
-                          "cursor-pointer rounded-lg border shadow-sm hover:bg-accent/30"
+                          "cursor-pointer bg-card border rounded-lg hover:bg-accent/30"
                         )}
                       >
-                        <TableCell>{o.id}</TableCell>
-                        <TableCell>{o.customer.name}</TableCell>
-                        <TableCell>{o.vehicle.plateNo}</TableCell>
-                        <TableCell>{o.products.length}</TableCell>
-                        <TableCell>₱ {total.toLocaleString()}</TableCell>
+                        <TableCell className="font-medium">
+                          {o.id}
+                        </TableCell>
+
                         <TableCell>
-                          <Badge>{o.status}</Badge>
+                          {o.createdAt
+                            ? new Date(o.createdAt).toLocaleDateString()
+                            : "-"}
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {o.customer.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {o.customer.mobile}
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          {o.vehicle.plateNo}
+                        </TableCell>
+
+                        {/* ITEMS */}
+                        <TableCell>
+                          {o.products.length}
+                        </TableCell>
+
+                        {/* TOTAL */}
+                        <TableCell>
+                          ₱ {total.toLocaleString()}
+                        </TableCell>
+
+                        {/* STATUS */}
+                        <TableCell className="text-center">
+                          <Badge
+                            variant={
+                              o.status === "paid"
+                                ? "approved"
+                                : o.status === "partial"
+                                ? "received"
+                                : "secondary"
+                            }
+                            className="w-24 justify-center capitalize"
+                          >
+                            {o.status}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     );
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6}>
-                      <div className="py-16 text-center">
-                        <ImageIcon className="mx-auto mb-2" />
-                        No sales orders found
+                    <TableCell colSpan={7}>
+                      <div className="py-16 flex flex-col items-center text-center">
+                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+
+                        <p className="text-sm font-medium">
+                          No sales orders found
+                        </p>
+
+                        <p className="text-xs text-muted-foreground">
+                          Try adjusting your filters
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -217,9 +267,9 @@ const SalesOrderList: React.FC = () => {
             </Table>
           </ScrollArea>
 
-          {/* Pagination */}
+          {/* PAGINATION */}
           {filtered.length > 25 && (
-            <div className="border-t bg-background">
+            <div className="border-t mx-3">
               <Pagination
                 totalItems={filtered.length}
                 page={page}
@@ -232,9 +282,16 @@ const SalesOrderList: React.FC = () => {
         </div>
       ) : (
         <Card>
-          <CardContent className="py-16 text-center">
-            <ImageIcon className="mx-auto mb-2" />
-            No sales orders available
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+
+            <p className="text-sm font-medium">
+              No sales order records available
+            </p>
+
+            <p className="text-xs text-muted-foreground">
+              Create a sales order to get started
+            </p>
           </CardContent>
         </Card>
       )}

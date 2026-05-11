@@ -64,7 +64,7 @@ interface SalesOrder {
   notes?: string;
 }
 
-const STORAGE_KEY = "sales_orders";
+const STORAGE_KEY = "salesOrders";
 
 const SalesOrderDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

@@ -474,7 +474,29 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <DatePicker
           selected={form.date}
           onChange={handleDateChange}
-          filterDate={(date) => date.getDay() !== 0}
+          filterDate={(date) => {
+            // disable Sundays
+            if (date.getDay() === 0) return false
+
+            const now = new Date()
+
+            // if selected date is today
+            const isToday =
+              date.toDateString() === now.toDateString()
+
+            if (isToday) {
+              // business closing time today (4:30 PM)
+              const closingTime = new Date()
+              closingTime.setHours(16, 30, 0, 0)
+
+              // if current time is already past 4:30 PM
+              if (now >= closingTime) {
+                return false
+              }
+            }
+
+            return true
+          }}
           focusSelectedMonth={false}
           selectsStart
           showTimeSelect

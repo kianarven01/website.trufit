@@ -75,6 +75,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   );
 
   const resolveValue = (input: string) => {
+    if (input.endsWith(" ")) return input;
     const match = normalizedItems.find(
       i => i.value.trim().toLowerCase() === input.trim().toLowerCase()
     );

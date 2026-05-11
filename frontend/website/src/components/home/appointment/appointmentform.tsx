@@ -131,6 +131,14 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     };
   }, []);
 
+  const capitalize = (str: string) =>
+    str.replace(/\b\w/g, (c) => c.toUpperCase())
+
+  const sentenceCase = (str: string) =>
+  str
+    .toLowerCase()
+    .replace(/(^\s*\w|[.!?]\s*\w)/g, (c) => c.toUpperCase())
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value })
@@ -340,13 +348,21 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
       {/* FIRST NAME */}
       <div className="relative">
-        <input type="text" name="firstName" placeholder="" value={form.firstName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="firstName" placeholder="" value={form.firstName} onChange={handleChange} required 
+        onBlur={(e) =>
+          setForm({ ...form, firstName: capitalize(e.target.value) })
+        }
+        className={inputClass} />
         <label className={labelClass}>First Name</label>
       </div>
 
       {/* LAST NAME */}
       <div className="relative">
-        <input type="text" name="lastName" placeholder="" value={form.lastName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="lastName" placeholder="" value={form.lastName} onChange={handleChange} required 
+        onBlur={(e) =>
+          setForm({ ...form, lastName: capitalize(e.target.value) })
+        }
+        className={inputClass} />
         <label className={labelClass}>Last Name</label>
       </div>
 
@@ -528,6 +544,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           onChange={(e) => setOtherService(e.target.value)}
           required={selectedServices.includes("other")}
           disabled={!selectedServices.includes("other")}
+          onBlur={(e) => setOtherService(capitalize(e.target.value))}
           className={`
             peer w-full
             ${!selectedServices.includes("other")
@@ -577,6 +594,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           onChange={(e) => setOtherVehicleMake(e.target.value)}
           required={form.vehicleMake === "other"}
           disabled={form.vehicleMake !== "other"}
+          onBlur={(e) => setOtherVehicleMake(capitalize(e.target.value))}
           className={`
             peer w-full
             ${form.vehicleMake !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
@@ -613,7 +631,11 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
       {/* VEHICLE MODEL */}
       <div className="relative">
-        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} className={inputClass} />
+        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} 
+        onBlur={(e) =>
+          setForm({ ...form, vehicleModel: capitalize(e.target.value) })
+        }
+        className={inputClass} />
         <label className={labelClass}>Vehicle Model</label>
       </div>
 
@@ -624,6 +646,9 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           placeholder="Your message"
           value={form.message}
           onChange={handleChange}
+          onBlur={(e) =>
+            setForm({ ...form, message: sentenceCase(e.target.value) })
+          }
           className={`${inputClass} resize-none h-24`}
         />
         <label className={labelClass}>Additional Message</label>

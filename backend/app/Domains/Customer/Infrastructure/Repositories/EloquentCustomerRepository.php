@@ -39,31 +39,48 @@ class EloquentCustomerRepository implements CustomerRepositoryInterface
 
     public function syncVehicles(Customer $customer, array $vehicles)
     {
-        // For simplicity, we'll clear and recreate or update
-        // The controller had logic to check if plate belongs to others
-        // We'll move that to a UseCase, but repository handles the persistence
-        
         $processedPlates = [];
         foreach ($vehicles as $vehicleData) {
             $plate = $vehicleData['plateNo'] ?? $vehicleData['plate_number'] ?? '';
+            $oldPlate = $vehicleData['oldPlateNo'] ?? $vehicleData['old_plate_number'] ?? null;
             if (!$plate || in_array($plate, $processedPlates)) continue;
             $processedPlates[] = $plate;
 
-            CustomerVehicle::updateOrCreate(
-                ['plate_number' => $plate],
-                [
-                    'customerID' => $customer->customer_id,
-                    'engine_number' => $vehicleData['engineNo'] ?? $vehicleData['engine_number'] ?? '',
-                    'VIN' => $vehicleData['vin'] ?? $vehicleData['VIN'] ?? '',
-                    'color' => $vehicleData['color'] ?? '',
-                    'registration_number' => $vehicleData['registrationNo'] ?? $vehicleData['registration_number'] ?? '',
-                    'year_model' => (string)($vehicleData['year'] ?? $vehicleData['year_model'] ?? ''),
-                    'make' => $vehicleData['make'] ?? '',
-                    'model' => $vehicleData['model'] ?? '',
-                    'variant' => $vehicleData['variant'] ?? '',
-                    'selling_dealer' => $vehicleData['sellingDealer'] ?? $vehicleData['selling_dealer'] ?? ''
-                ]
-            );
+            $updateData = [
+                'customerID' => $customer->customer_id,
+                'engine_number' => $vehicleData['engineNo'] ?? $vehicleData['engine_number'] ?? '',
+                'VIN' => $vehicleData['vin'] ?? $vehicleData['VIN'] ?? '',
+                'color' => $vehicleData['color'] ?? '',
+                'registration_number' => $vehicleData['registrationNo'] ?? $vehicleData['registration_number'] ?? '',
+                'year_model' => (string)($vehicleData['year'] ?? $vehicleData['year_model'] ?? ''),
+                'make' => $vehicleData['make'] ?? '',
+                'model' => $vehicleData['model'] ?? '',
+                'variant' => $vehicleData['variant'] ?? '',
+                'selling_dealer' => $vehicleData['sellingDealer'] ?? $vehicleData['selling_dealer'] ?? ''
+            ];
+
+            // If plate was changed, find by old plate and update (including new plate)
+            if ($oldPlate && $oldPlate !== $plate) {
+                $existingByOldPlate = CustomerVehicle::where('plate_number', $oldPlate)
+                    ->where('customerID', $customer->customer_id)
+                    ->first();
+
+                if ($existingByOldPlate) {
+                    $updateData['plate_number'] = $plate;
+                    $existingByOldPlate->update($updateData);
+                } else {
+                    // Fallback: create or update by new plate
+                    CustomerVehicle::updateOrCreate(
+                        ['plate_number' => $plate],
+                        $updateData
+                    );
+                }
+            } else {
+                CustomerVehicle::updateOrCreate(
+                    ['plate_number' => $plate],
+                    $updateData
+                );
+            }
 
             // Sync to Manufacturer/Model Catalog
             $this->syncVehicleCatalog($vehicleData['make'] ?? '', $vehicleData['model'] ?? '');

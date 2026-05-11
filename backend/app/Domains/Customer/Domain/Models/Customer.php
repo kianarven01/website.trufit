@@ -17,11 +17,17 @@ class Customer extends Model
         'mobile_number',
         'landline',
         'email',
-        'business'
+        'business',
+        'origin'
     ];
 
     public function vehicles()
     {
         return $this->hasMany(CustomerVehicle::class, 'customerID', 'customer_id');
+    }
+
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class, 'customer_id', 'customer_id');
     }
 }

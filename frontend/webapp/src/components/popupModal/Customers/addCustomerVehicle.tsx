@@ -43,6 +43,7 @@ interface VehicleForm {
   vin: string;
   registrationNo: string;
   sellingDealer: string;
+  _originalPlateNo?: string;
 }
 
 
@@ -166,6 +167,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
           vin: vehicleToEdit.vin || "",
           registrationNo: vehicleToEdit.registrationNo || "",
           sellingDealer: vehicleToEdit.sellingDealer || "",
+          _originalPlateNo: vehicleToEdit.plateNo || "",
         },
       ]);
     } else {
@@ -264,6 +266,9 @@ const AddCustomerVehicle: React.FC<Props> = ({
         vin: v.vin,
         registrationNo: v.registrationNo,
         sellingDealer: v.sellingDealer,
+        ...(vehicleToEdit && v._originalPlateNo && v._originalPlateNo !== v.plateNo
+          ? { oldPlateNo: v._originalPlateNo } as any
+          : {}),
       });
     }
 

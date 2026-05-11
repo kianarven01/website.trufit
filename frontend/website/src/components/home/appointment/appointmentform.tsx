@@ -6,6 +6,7 @@ import { Appointment } from "@/types/appointment"
 import DatePicker from "react-datepicker"
 import { Calendar, ChevronDown, X } from "lucide-react"
 import "react-datepicker/dist/react-datepicker.css"
+import { toast } from "sonner"
 
 // --- custom date input ---
 const CustomDateInput = forwardRef<HTMLInputElement, { value?: string; onClick?: () => void; placeholder?: string }>(({ value, onClick, placeholder }, ref) => (
@@ -248,7 +249,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         throw new Error("Failed to send appointment request")
       }
 
-      alert("Appointment request sent successfully! We'll contact you soon.")
+      toast.success("Appointment request sent successfully! We'll contact you soon.")
 
       window.dispatchEvent(new Event("appointmentSuccess")) // ✨ close modal
       setForm({
@@ -269,7 +270,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       setSelectedServices([])
     } catch (error) {
       console.error(error)
-      alert("Failed to send request. Please try again or call us directly.")
+      toast.error("Failed to send request. Please try again or call us directly.")
     } finally {
       setSending(false)
     }

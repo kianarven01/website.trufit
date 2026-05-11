@@ -6,6 +6,7 @@ import Footer from "@/components/layout/footer/footer";
 import ScrollToTopButton from "@/components/ui/scrolltotopbutton";
 import PromoPopup from "@/components/ui/promopopup";
 import GlobalModals from "@/components/global/GlobalModals";
+import { Toaster } from "sonner";
 
 import "@/styles/globals.css";
 
@@ -202,6 +203,7 @@ export default function RootLayout({
         {/* scroll-to-top button */}
         <ScrollToTopButton />
         <GlobalModals />
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

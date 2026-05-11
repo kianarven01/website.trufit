@@ -17,6 +17,7 @@ import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Save, MoreHorizontal, Clock, Tag, Pencil, Trash2, Check, X } from "lucide-react";
+import api from "@/api/axios";
 
 /* ================= STORAGE ================= */
 const CATEGORY_KEY = "serviceCategories";
@@ -70,11 +71,10 @@ const ServiceCatalogForm: React.FC<Props> = ({ mode }) => {
 const [categories, setCategories] = useState<ServiceCategory[]>([]);
 const [services, setServices] = useState<Service[]>([]);
 const [pricing, setPricing] = useState<ServicePricing[]>([]);
-const [durationInput, setDurationInput] = useState("00:00");
-const [durationFormatted, setDurationFormatted] = useState("");
 const [duration, setDuration] = useState<number>(0); // total minutes
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+const [isLoading, setIsLoading] = useState(false);
 
 const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -101,71 +101,8 @@ const genId = () =>
   crypto.randomUUID?.() ?? Math.random().toString(36).substring(2);
 
 
-const handleDurationChange = (val: string) => {
-  // allow only digits + colon
-  if (!/^[0-9:]*$/.test(val)) return;
-
-  // prevent multiple colons
-  const parts = val.split(":");
-  if (parts.length > 2) return;
-
-  let hh = parts[0] ?? "";
-  let mm = parts[1] ?? "";
-
-  // limit lengths
-  if (hh.length > 2) hh = hh.slice(0, 2);
-  if (mm.length > 2) mm = mm.slice(0, 2);
-
-  let next = hh;
-
-  if (val.includes(":")) {
-    next += ":" + mm;
-  }
-
-  // auto-add colon when typing 2 digits in hours
-  if (!val.includes(":") && hh.length === 2) {
-    next = hh + ":";
-  }
-
-  setDurationInput(next);
-};
-
-const handleDurationBlur = () => {
-  let [hh = "0", mm = "0"] = durationInput.split(":");
-
-  let hours = parseInt(hh, 10) || 0;
-  let minutes = parseInt(mm, 10) || 0;
-
-  // enforce limits
-  if (hours < 0) hours = 0;
-  if (hours > 24) hours = 24;
-
-  if (minutes < 0) minutes = 0;
-  if (minutes > 59) minutes = 59;
-
-  const normalized = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-
-  setDurationInput(normalized);
-  setDuration(hours * 60 + minutes);
-
-  let text = "";
-
-  if (hours > 0) {
-    text += `${hours} hour${hours > 1 ? "s" : ""}`;
-  }
-
-  if (minutes > 0) {
-    if (text) text += " & ";
-    text += `${minutes} minute${minutes > 1 ? "s" : ""}`;
-  }
-
-  // fallback if both are 0
-  if (!text) {
-    text = "0 minutes";
-  }
-
-  setDurationFormatted(text);
-};
+/* ================= DURATION ================= */
+// Using separate Hour/Min inputs now
 
 
 /* ================= ADD/EDIT SIZE (INLINE ROW) ================= */
@@ -187,93 +124,58 @@ const [editSize, setEditSize] = useState({
 
 /* ================= LOAD ================= */
 useEffect(() => {
-  setCategories(JSON.parse(localStorage.getItem(CATEGORY_KEY) || "[]"));
-  setServices(JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]"));
-  setPricing(JSON.parse(localStorage.getItem(PRICING_KEY) || "[]"));
-  setVehicleSizes(JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]"));
-}, []);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      // Fetch categories
+      const catRes = await api.get('/products/categories');
+      setCategories(catRes.data.data);
 
+      if (mode === "edit" && id) {
+        const res = await api.get(`/products/service-types/${id}`);
+        const s = res.data.data;
+        setName(s.name);
+        setCategoryId(s.category_id);
+        setCategoryName(s.category || "");
+        setDescription(s.description || "");
+        setPricingType(s.pricing_type || "fixed");
+        setDuration(s.duration || 0);
 
-useEffect(() => {
-  const handleClickOutside = (e: MouseEvent) => {
-    if (!menuRef.current) return;
+        // Rebuild vehicleSizes and sizePricing from backend pricings
+        if (s.pricings && s.pricings.length > 0) {
+          const sizes: VehicleSize[] = [];
+          const priceMap: Record<string, number> = {};
 
-    if (!menuRef.current.contains(e.target as Node)) {
-      setOpenMenuId(null);
+          s.pricings.forEach((p: any) => {
+            const sizeId = genId();
+            sizes.push({
+              id: sizeId,
+              name: p.vehicle_size_name,
+              abbreviation: (p.vehicle_size_name || "").slice(0, 3).toUpperCase(),
+              vehicleTypes: p.vehicle_types || [],
+            });
+            priceMap[sizeId] = parseFloat(p.price) || 0;
+          });
+
+          setVehicleSizes(sizes);
+          setSizePricing(priceMap);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load form data", err);
+    } finally {
+      setIsLoading(false);
     }
   };
+  fetchData();
+}, [mode, id]);
 
-  document.addEventListener("mousedown", handleClickOutside);
+/* ================= CAPITALIZATION ================= */
+const capitalize = (val: string) => {
+  if (!val) return "";
+  return val.charAt(0).toUpperCase() + val.slice(1);
+};
 
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
-
-useEffect(() => {
-  if (isAddingSize && scrollRef.current) {
-    setTimeout(() => {
-      const viewport = scrollRef.current?.querySelector("[data-radix-scroll-area-viewport]");
-      if (viewport) {
-        viewport.scrollTo({
-          top: viewport.scrollHeight,
-          behavior: "smooth",
-        });
-      }
-    }, 50);
-  }
-}, [isAddingSize]);
-
-
-/* ================= EDIT LOAD ================= */
-useEffect(() => {
-  if (mode === "edit" && id) {
-    const s = services.find((x) => x.id === id);
-    if (!s) return;
-
-    setName(s.name);
-    setCategoryId(s.serviceCategoryId);
-
-    const category = categories.find(
-      (c) => c.id === s.serviceCategoryId
-    );
-    setCategoryName(category?.name || "");
-
-    setDescription(s.description || "");
-
-    if (s.duration !== undefined) {
-      const hours = Math.floor(s.duration / 60);
-      const minutes = s.duration % 60;
-
-      const formatted = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-      setDurationInput(formatted);
-      setDuration(s.duration);
-
-      let text = "";
-
-      if (hours > 0) {
-        text += `${hours} hour${hours > 1 ? "s" : ""}`;
-      }
-
-      if (minutes > 0) {
-        if (text) text += " & ";
-        text += `${minutes} minute${minutes > 1 ? "s" : ""}`;
-      }
-
-      if (!text) text = "0 minutes";
-
-      setDurationFormatted(text);
-    }
-
-    setPricingType(s.pricingType);
-
-    const p = pricing.filter((x) => x.serviceId === id);
-    const map: Record<string, number> = {};
-    p.forEach((x) => (map[x.vehicleSizeId] = x.price));
-    setSizePricing(map);
-
-  }
-}, [mode, id, services, pricing]);
 
 /* ================= CATEGORIES ================= */
 
@@ -290,12 +192,6 @@ const normalizeCategory = (input: string) => {
     .join(" ");
 };
 
-const findExistingCategory = (list: ServiceCategory[], name: string) => {
-  return list.find(
-    c => c.name.trim().toLowerCase() === name.trim().toLowerCase()
-  );
-};
-
 const categoryOptions = useMemo(() => {
   return categories.map((c) => ({
     label: c.name,
@@ -305,21 +201,6 @@ const categoryOptions = useMemo(() => {
 
 
 /* ================= VEHICLE SIZE ================= */
-const toArray = (val: string) =>
-  val.split(",").map(v => v.trim()).filter(Boolean);
-
-const handleAddRow = () => {
-  setIsAddingSize(true);
-  setNewSize({ name: "", vehicleTypes: [], price: 0 });
-};
-
-const generateAbbreviation = (name: string) => {
-  return name
-    .split(" ")
-    .map(w => w[0]?.toUpperCase())
-    .join("");
-};
-
 const handleAddVehicleType = (value: string, isEdit = false) => {
   const trimmed = value.trim();
   if (!trimmed) return;
@@ -359,221 +240,137 @@ const removeVehicleType = (value: string, isEdit = false) => {
   }
 };
 
+/* ================= TAG EDITING ================= */
 const startEditTag = (index: number, value: string) => {
   setEditingTagIndex(index);
   setEditingTagValue(value);
 };
 
-const saveEditTag = (isEdit = false) => {
+const saveEditTag = (isEdit: boolean) => {
   if (editingTagIndex === null) return;
 
   const trimmed = editingTagValue.trim();
-  if (!trimmed) return;
-
-  if (isEdit) {
-    setEditSize((prev) => {
-      const updated = [...prev.vehicleTypes];
-      updated[editingTagIndex] = trimmed;
-      return { ...prev, vehicleTypes: updated };
-    });
-  } else {
-    setNewSize((prev) => {
-      const updated = [...prev.vehicleTypes];
-      updated[editingTagIndex] = trimmed;
-      return { ...prev, vehicleTypes: updated };
-    });
+  if (trimmed) {
+    if (isEdit) {
+      setEditSize((prev) => {
+        const next = [...prev.vehicleTypes];
+        next[editingTagIndex] = trimmed;
+        return { ...prev, vehicleTypes: next };
+      });
+    } else {
+      setNewSize((prev) => {
+        const next = [...prev.vehicleTypes];
+        next[editingTagIndex] = trimmed;
+        return { ...prev, vehicleTypes: next };
+      });
+    }
   }
 
   setEditingTagIndex(null);
   setEditingTagValue("");
 };
 
-const handleSaveNewSize = () => {
-  if (!newSize.name.trim()) return;
-
-  /* prevent duplicates */
-  if (
-    vehicleSizes.some(
-      (v) => v.name.trim().toLowerCase() === newSize.name.trim().toLowerCase()
-    )
-  ) {
-    alert("Size already exists");
-    return;
-  }
-
-  const newEntry: VehicleSize = {
-    id: genId(),
-    name: newSize.name,
-    abbreviation: generateAbbreviation(newSize.name),
-    vehicleTypes: [...newSize.vehicleTypes],
-  };
-
-  // ADD THE NEW ENTRY
-  const updatedSizes = [...vehicleSizes, newEntry];
-
-  setVehicleSizes(updatedSizes);
-
-  localStorage.setItem(
-    VEHICLE_SIZE_KEY,
-    JSON.stringify(updatedSizes)
-  );
-
-  /* attach pricing */
-  setSizePricing((prev) => ({
-    ...prev,
-    [newEntry.id]: newSize.price || 0,
-  }));
-
-  setIsAddingSize(false);
-
-  // cleanup
-  setNewSize({
-    name: "",
-    vehicleTypes: [],
-    price: 0,
-  });
-
-  setVehicleTypeInput("");
-  setEditingTagIndex(null);
-  setEditingTagValue("");
-};
-
-const handleCancelNewSize = () => {
-  setIsAddingSize(false);
-  setNewSize({ name: "", vehicleTypes: [], price: 0 });
-
-  setVehicleTypeInput("");
-  setEditingTagIndex(null);
-  setEditingTagValue("");
-};
-
-
+/* ================= SIZE ROW HANDLERS ================= */
 const handleEditSize = (vs: VehicleSize) => {
   setEditingSizeId(vs.id);
   setEditSize({
     name: vs.name,
     vehicleTypes: [...vs.vehicleTypes],
-    price: sizePricing[vs.id] ?? 0,
+    price: sizePricing[vs.id] || 0,
   });
 };
 
 const handleSaveEditSize = () => {
   if (!editingSizeId) return;
 
-  const updatedSizes = vehicleSizes.map((vs) =>
-    vs.id === editingSizeId
-      ? { ...vs, name: editSize.name,  abbreviation: generateAbbreviation(editSize.name), vehicleTypes: editSize.vehicleTypes }
-      : vs
+  setVehicleSizes((prev) =>
+    prev.map((vs) =>
+      vs.id === editingSizeId
+        ? {
+            ...vs,
+            name: editSize.name,
+            vehicleTypes: [...editSize.vehicleTypes],
+          }
+        : vs
+    )
   );
-
-  setVehicleSizes(updatedSizes);
-  localStorage.setItem(VEHICLE_SIZE_KEY, JSON.stringify(updatedSizes));
 
   setSizePricing((prev) => ({
     ...prev,
-    [editingSizeId]: editSize.price || 0,
+    [editingSizeId]: editSize.price,
   }));
 
   setEditingSizeId(null);
+  toast.success("Size pricing updated");
 };
 
 const handleCancelEditSize = () => {
   setEditingSizeId(null);
 };
 
-const handleDeleteSize = (id: string) => {
-
-  const updatedSizes = vehicleSizes.filter((vs) => vs.id !== id);
-  setVehicleSizes(updatedSizes);
-  localStorage.setItem(VEHICLE_SIZE_KEY, JSON.stringify(updatedSizes));
-
-  setSizePricing((prev) => {
-    const copy = { ...prev };
-    delete copy[id];
-    return copy;
-  });
+const handleAddRow = () => {
+  setIsAddingSize(true);
+  setNewSize({ name: "", vehicleTypes: [], price: 0 });
 };
 
-
-/* ================= SAVE ================= */
-const handleSubmit = () => {
-  if (!name || !categoryName.trim()) {
-    alert("Name and category required");
-
-    handleDurationBlur();    
+const handleSaveNewSize = () => {
+  if (!newSize.name) {
+    toast.error("Size name required");
     return;
   }
 
-  const serviceId = mode === "edit" && id ? id : genId();
+  const id = genId();
+  const vs: VehicleSize = {
+    id,
+    name: newSize.name,
+    abbreviation: newSize.name.slice(0, 3).toUpperCase(),
+    vehicleTypes: [...newSize.vehicleTypes],
+  };
 
-    const normalizedInput = normalizeCategory(categoryName);
+  setVehicleSizes((prev) => [...prev, vs]);
+  setSizePricing((prev) => ({ ...prev, [id]: newSize.price }));
+  setIsAddingSize(false);
+  toast.success("Vehicle size added");
+};
 
-  let finalCategory = categories.find(
-    (c) => c.name.toLowerCase() === normalizedInput.toLowerCase()
-  );
+const handleCancelAddSize = () => {
+  setIsAddingSize(false);
+};
 
-  let updatedCategories = [...categories];
-
-  if (!finalCategory) {
-    finalCategory = {
-      id: genId(),
-      name: normalizedInput,
-    };
-
-    updatedCategories.push(finalCategory);
+/* ================= SAVE ================= */
+const handleSubmit = async () => {
+  if (!name || !categoryName.trim()) {
+    toast.error("Name and category required");
+    return;
   }
 
-  /* -------- SERVICES -------- */
-  const updatedServices =
-    mode === "edit"
-      ? services.map((s) =>
-          s.id === serviceId
-            ? {
-                ...s,
-                name,
-                serviceCategoryId: finalCategory.id,
-                description,
-                duration,
-                pricingType,
-              }
-            : s
-        )
-      : [
-          ...services,
-          {
-            id: serviceId,
-            name,
-            serviceCategoryId: finalCategory.id,
-            description,
-            duration,
-            pricingType,
-          },
-        ];
+  const payload = {
+    name,
+    category_name: categoryName,
+    description,
+    duration,
+    pricing_type: pricingType,
+    pricing: vehicleSizes.map(vs => ({
+      vehicle_size_id: vs.id,
+      vehicle_size_name: vs.name,
+      vehicle_types: vs.vehicleTypes,
+      price: sizePricing[vs.id] || 0
+    }))
+  };
 
-  /* -------- PRICING (SAFE MERGE) -------- */
-  const filteredPricing = pricing.filter(
-    (p) => p.serviceId !== serviceId
-  );
-
-  const newPricing: ServicePricing[] = vehicleSizes.map((vs) => ({
-    id: genId(),
-    serviceId,
-    vehicleSizeId: vs.id,
-    price: sizePricing[vs.id] || 0,
-  }));
-
-
-  /* -------- SAVE -------- */
-  localStorage.setItem(SERVICE_KEY, JSON.stringify(updatedServices));
-  localStorage.setItem(CATEGORY_KEY, JSON.stringify(updatedCategories));
-  localStorage.setItem(
-    PRICING_KEY,
-    JSON.stringify([...filteredPricing, ...newPricing])
-  );
-  
-  toast.success("Service saved");
-
-  navigate(-1);
+  try {
+    if (mode === "edit") {
+      await api.put(`/products/service-types/${id}`, payload);
+      toast.success("Service updated");
+    } else {
+      await api.post('/products/service-types', payload);
+      toast.success("Service created");
+    }
+    navigate(-1);
+  } catch (err) {
+    console.error("Failed to save service", err);
+    toast.error("Failed to save service");
+  }
 };
 
   /* ================= SCROLLING ================= */
@@ -613,6 +410,17 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
 
 
   /* ================= UI ================= */
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium text-muted-foreground animate-pulse">
+          Loading form details...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
     
@@ -665,7 +473,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   className="text-xs bg-background"
                   placeholder="Service Name" 
                   value={name} 
-                  onChange={(e) => setName(e.target.value)} 
+                  onChange={(e) => setName(capitalize(e.target.value))} 
                 />              
               </div>
               <div>
@@ -674,7 +482,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   <Combobox
                     items={categoryOptions}
                     value={categoryName}
-                    onChange={setCategoryName}
+                    onChange={(val) => setCategoryName(capitalize(val))}
                     placeholder="Select or type category"
                   />                  
                 </div>
@@ -691,19 +499,41 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
               </div>
               <div className="space-y-1">
                 <Label>Estimated Duration</Label>
-
-                <Input
-                  className="text-xs bg-background"
-                  value={durationInput}
-                  onChange={(e) => handleDurationChange(e.target.value)}
-                  onBlur={handleDurationBlur}
-                />
-
-                {durationFormatted && (
-                  <p className="text-xs text-muted-foreground">
-                    {durationFormatted}
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        className="text-xs bg-background pr-8"
+                        value={Math.floor(duration / 60)}
+                        onChange={(e) => {
+                          const h = parseInt(e.target.value) || 0;
+                          const m = duration % 60;
+                          setDuration(h * 60 + m);
+                        }}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none uppercase font-bold">hr</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="59"
+                        className="text-xs bg-background pr-10"
+                        value={duration % 60}
+                        onChange={(e) => {
+                          const m = parseInt(e.target.value) || 0;
+                          const h = Math.floor(duration / 60);
+                          setDuration(h * 60 + (m > 59 ? 59 : m));
+                        }}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none uppercase font-bold">min</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -968,11 +798,11 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                                           className="text-sm px-2 py-2 border rounded-md"
                                           value={editingTagValue}
                                           onChange={(e) => setEditingTagValue(e.target.value)}
-                                          onBlur={() => saveEditTag()}
+                                          onBlur={() => saveEditTag(false)}
                                           onKeyDown={(e) => {
                                             if (e.key === "Enter") {
                                               e.preventDefault();
-                                              saveEditTag();
+                                              saveEditTag(false);
                                             }
                                           }}
                                         />
@@ -1033,7 +863,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                               <Button size="icon_xs" onClick={handleSaveNewSize}>
                                 <Check className="w-4 h-4" />
                               </Button>
-                              <Button size="icon_xs" variant="ghost" onClick={handleCancelNewSize}>
+                              <Button size="icon_xs" variant="ghost" onClick={handleCancelAddSize}>
                                 <X className="w-4 h-4" />
                               </Button>
                             </TableCell>

@@ -131,7 +131,7 @@ CREATE TABLE Main.Customers (
   business character varying,
   first_name character varying,
   last_name character varying,
-  origin character varying DEFAULT 'appointment'::character varying,
+  origin character varying NOT NULL DEFAULT 'appointment'::character varying,
   CONSTRAINT Customers_pkey PRIMARY KEY (customer_id)
 );
 CREATE TABLE Main.EmployeeSecurity (

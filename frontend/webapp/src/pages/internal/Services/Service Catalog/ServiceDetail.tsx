@@ -11,6 +11,7 @@ import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
 import { ArrowLeft, Pencil, XCircle, BanknoteX, ClipboardList, Tag, Clock } from "lucide-react";
+import api from "@/api/axios";
 
 /* ================= STORAGE ================= */
 const SERVICE_KEY = "services";
@@ -23,6 +24,7 @@ const PRICING_KEY = "servicePricing";
 interface Service {
   id: string;
   name: string;
+  category?: string;
   serviceCategoryId: string;
   description?: string;
   duration?: number;
@@ -44,6 +46,7 @@ interface ServicePricing {
   id: string;
   serviceId: string;
   vehicleSizeId: string;
+  vehicleTypes?: string[];
   price: number;
 }
 
@@ -57,28 +60,71 @@ const ServiceDetail: React.FC = () => {
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
   const [pricing, setPricing] = useState<ServicePricing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
 /* ================= LOAD ================= */
 useEffect(() => {
-  const services: Service[] = JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]");
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get(`/products/service-types/${id}`);
+      const s = res.data.data;
+      setService({
+        ...s,
+        serviceCategoryId: s.category // Mapping text category to serviceCategoryId for UI consistency
+      });
+      
+      // Dynamic Breadcrumb
+      sessionStorage.setItem(`breadcrumb-/webapp/services/service-catalog/${id}`, s.name);
+      window.dispatchEvent(new Event('breadcrumb-update'));
 
-  setService(services.find((s) => s.id === id) || null);
-  setCategories(JSON.parse(localStorage.getItem(CATEGORY_KEY) || "[]"));
-  setVehicleSizes(JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]"));
-  setPricing(JSON.parse(localStorage.getItem(PRICING_KEY) || "[]"));
+      // Fetch categories for mapping
+      const catRes = await api.get('/products/categories');
+      setCategories(catRes.data.data);
+      
+      // Set pricing from backend if available
+      if (s.pricings) {
+        setPricing(s.pricings.map((p: any) => ({
+          id: p.id,
+          serviceId: s.id,
+          vehicleSizeId: p.vehicle_size_name,
+          vehicleTypes: p.vehicle_types || [],
+          price: p.price
+        })));
+      }
+
+    } catch (err) {
+      console.error("Failed to load service detail", err);
+      toast.error("Failed to load service detail");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchData();
 }, [id]);
 
+/* ================= DELETE SERVICE ================= */
+const handleDeleteService = async () => {
+  try {
+    await api.delete(`/products/service-types/${id}`);
+    toast.success("Service deleted");
+    navigate(-1);
+  } catch (err) {
+    console.error("Failed to delete service", err);
+    toast.error("Failed to delete service");
+  }
+};
+
 /* ================= DERIVED DATA ================= */
-const category = useMemo(
-  () => categories.find((c) => c.id === service?.serviceCategoryId),
-  [categories, service]
-);
+const categoryName = useMemo(() => {
+  return service?.category || "—";
+}, [service]);
 
 const servicePricing = useMemo(
-  () => pricing.filter((p) => p.serviceId === id),
-  [pricing, id]
+  () => pricing,
+  [pricing]
 );
 
 const durationFormatted = useMemo(() => {
@@ -103,20 +149,18 @@ const durationFormatted = useMemo(() => {
   return text;
 }, [service]);
 
-
-/* ================= DELETE SERVICE ================= */
-const handleDeleteService = () => {
-  const services: Service[] = JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]");
-
-  const updated = services.filter((s) => s.id !== id);
-
-  localStorage.setItem(SERVICE_KEY, JSON.stringify(updated));
-
-  toast.success("Service deleted");
-  navigate(-1);
-};
-
 /* ================= UI ================= */
+if (isLoading) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center py-20">
+      <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+      <p className="text-sm font-medium text-muted-foreground animate-pulse">
+        Loading service details...
+      </p>
+    </div>
+  );
+}
+
 if (!service) return null;
 
 return (
@@ -170,7 +214,7 @@ return (
 
           <div className="space-y-1">
             <Label>Category</Label>
-            <p className="text-sm">{category?.name || "—"}</p>
+            <p className="text-sm">{categoryName}</p>
           </div>
 
           <div className="space-y-2">
@@ -228,22 +272,28 @@ return (
               <TableHeader>
                 <TableRow>
                   <TableHead>Size</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead>Vehicle Type</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {servicePricing.map((p) => {
-                  const size = vehicleSizes.find((v) => v.id === p.vehicleSizeId);
-
+                {servicePricing.map((p, i) => {
                   return (
-                    <TableRow key={p.id}>
+                    <TableRow key={p.id || i}>
                       <TableCell>
-                        <Badge variant="outline">{size?.name}</Badge>
+                        <Badge variant="outline">{p.vehicleSizeId}</Badge>
                       </TableCell>
-                      <TableCell>{size?.description || "—"}</TableCell>
-                      <TableCell className="text-right">{p.price}</TableCell>
+                      <TableCell>
+                        {p.vehicleTypes && p.vehicleTypes.length > 0 ? (
+                          <span className="text-sm text-muted-foreground">
+                            {p.vehicleTypes.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">{Number(p.price).toFixed(2)}</TableCell>
                     </TableRow>
                   );
                 })}

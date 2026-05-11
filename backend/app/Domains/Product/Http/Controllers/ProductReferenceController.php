@@ -84,9 +84,110 @@ class ProductReferenceController extends Controller
 
     public function serviceTypes()
     {
-        $services = DB::table('Main.ServiceType')->get();
+        $services = \App\Domains\Product\Domain\Models\ServiceType::all();
         return response()->json([
             'data' => $services
         ]);
+    }
+
+    public function showServiceType($id)
+    {
+        $service = \App\Domains\Product\Domain\Models\ServiceType::with('pricings')->find($id);
+        if (!$service) {
+            return response()->json(['message' => 'Service not found'], 404);
+        }
+        return response()->json(['data' => $service]);
+    }
+
+    public function storeServiceType(\Illuminate\Http\Request $request)
+    {
+        $data = $request->validate([
+            'name' => 'required|string',
+            'category_name' => 'required|string',
+            'description' => 'nullable|string',
+            'duration' => 'nullable|integer',
+            'pricing_type' => 'nullable|string',
+            'price' => 'nullable|numeric',
+            'pricing' => 'nullable|array'
+        ]);
+
+        $service = \App\Domains\Product\Domain\Models\ServiceType::create([
+            'name' => ucfirst($data['name']),
+            'category' => ucfirst($data['category_name']),
+            'description' => $data['description'] ?? '',
+            'duration' => $data['duration'] ?? 0,
+            'pricing_type' => $data['pricing_type'] ?? 'fixed',
+            'price' => $data['price'] ?? 0
+        ]);
+
+        if (isset($data['pricing']) && is_array($data['pricing'])) {
+            foreach ($data['pricing'] as $p) {
+                \App\Domains\Product\Domain\Models\ServicePricing::create([
+                    'service_type_id' => $service->id,
+                    'vehicle_size_name' => $p['vehicle_size_name'] ?? ($p['vehicle_size_id'] ?? 'Default'),
+                    'vehicle_types' => $p['vehicle_types'] ?? [],
+                    'price' => $p['price'] ?? 0
+                ]);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Service created successfully',
+            'data' => $service->load('pricings')
+        ]);
+    }
+
+    public function updateServiceType(\Illuminate\Http\Request $request, $id)
+    {
+        $service = \App\Domains\Product\Domain\Models\ServiceType::find($id);
+        if (!$service) {
+            return response()->json(['message' => 'Service not found'], 404);
+        }
+
+        $data = $request->validate([
+            'name' => 'required|string',
+            'category_name' => 'required|string',
+            'description' => 'nullable|string',
+            'duration' => 'nullable|integer',
+            'pricing_type' => 'nullable|string',
+            'price' => 'nullable|numeric',
+            'pricing' => 'nullable|array'
+        ]);
+
+        $service->update([
+            'name' => ucfirst($data['name']),
+            'category' => ucfirst($data['category_name']),
+            'description' => $data['description'] ?? $service->description,
+            'duration' => $data['duration'] ?? $service->duration,
+            'pricing_type' => $data['pricing_type'] ?? $service->pricing_type,
+            'price' => $data['price'] ?? $service->price
+        ]);
+
+        if (isset($data['pricing']) && is_array($data['pricing'])) {
+            $service->pricings()->delete();
+            foreach ($data['pricing'] as $p) {
+                \App\Domains\Product\Domain\Models\ServicePricing::create([
+                    'service_type_id' => $service->id,
+                    'vehicle_size_name' => $p['vehicle_size_name'] ?? ($p['vehicle_size_id'] ?? 'Default'),
+                    'vehicle_types' => $p['vehicle_types'] ?? [],
+                    'price' => $p['price'] ?? 0
+                ]);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Service updated successfully',
+            'data' => $service->load('pricings')
+        ]);
+    }
+
+    public function destroyServiceType($id)
+    {
+        $service = \App\Domains\Product\Domain\Models\ServiceType::find($id);
+        if (!$service) {
+            return response()->json(['message' => 'Service not found'], 404);
+        }
+        $service->delete();
+        return response()->json(['message' => 'Service deleted successfully']);
     }
 }

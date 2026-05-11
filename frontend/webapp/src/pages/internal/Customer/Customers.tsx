@@ -50,6 +50,7 @@ const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
 
 const CustomersList: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ const CustomersList: React.FC = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
+        setIsLoading(true);
         const res = await api.get('/customers');
         const parsed = res.data.data.map((c: any) => ({
           id: c.customer_id?.toString() || "",
@@ -110,6 +112,8 @@ const CustomersList: React.FC = () => {
         setVehicles(allVehicles);
       } catch (err) {
         console.error("Failed to load customers", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchCustomers();
@@ -314,17 +318,26 @@ const toolbarFilters = [
         activeFilters={filters}
       />
 
-      {customers.length > 0 ? (
+      {isLoading ? (
+        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden bg-card/50">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading customers...
+            </p>
+          </div>
+        </div>
+      ) : customers.length > 0 ? (
         <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
 
           <ScrollArea className="flex-1">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-1/4">Name</TableHead>
-                  <TableHead className="w-1/4">Address</TableHead>
-                  <TableHead className="w-1/5">Mobile</TableHead>
-                  <TableHead className="w-1/5">Landline</TableHead>
+                  <TableHead className="w-[20%] text-center">Name</TableHead>
+                  <TableHead className="w-[40%] text-center">Address</TableHead>
+                  <TableHead className="w-[20%] text-center">Mobile</TableHead>
+                  <TableHead className="w-[20%] text-center">Plate Number</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -339,22 +352,34 @@ const toolbarFilters = [
                         "hover:bg-accent/30"
                       )}
                     >
-                      <TableCell className="py-0.5">
-                        <div className="flex flex-col">
-                          <p className="font-medium">{getFullName(c)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {c.email || "—" }
+                      <TableCell className="py-2 text-center">
+                        <div className="flex flex-col items-center">
+                          <p className="font-semibold text-foreground">{getFullName(c)}</p>
+                          <p className="text-[10px] tracking-wider text-muted-foreground font-medium">
+                            {c.email || "No Email" }
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell>{c.address}</TableCell>
-                      <TableCell>{c.mobileNumber}</TableCell>
-                      <TableCell>{c.landline || "—"}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{c.address}</TableCell>
+                      <TableCell className="text-center font-medium">{c.mobileNumber}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {(vehiclesByCustomer.get(c.id) || []).length > 0 ? (
+                            (vehiclesByCustomer.get(c.id) || []).map((v) => (
+                              <span key={v.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                                {v.plateNo}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={4}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">

@@ -22,7 +22,6 @@ import {
 import { Plus, Trash2, FileCheck, Percent, Banknote } from "lucide-react";
 import { FinalizeEstimate } from "./FinalizeModal";
 
-
 interface ServiceItem {
   name: string;
   category: string;
@@ -45,7 +44,7 @@ export interface Estimate {
   parts: PartItem[];
   date: string;
   lastEdited?: string;
-  status: "issued"| "approved";
+  status: "issued" | "approved";
 }
 
 interface JOServiceLine {
@@ -102,7 +101,6 @@ const emptySOLine = (): SOPartLine => ({
   amount: 0,
 });
 
-
 export const QuotationModal: React.FC<Props> = ({
   open,
   onOpenChange,
@@ -126,19 +124,29 @@ export const QuotationModal: React.FC<Props> = ({
   const [servicesCatalog, setServicesCatalog] = useState<ServiceCatalog[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<PartCatalog[]>([]);
 
-  const [serviceSuggestIdx, setServiceSuggestIdx] = useState<number | null>(null);
+  const [serviceSuggestIdx, setServiceSuggestIdx] = useState<number | null>(
+    null,
+  );
   const [partSuggestIdx, setPartSuggestIdx] = useState<number | null>(null);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-const [activeServiceIndex, setActiveServiceIndex] = useState<number>(-1);
-const [activePartIndex, setActivePartIndex] = useState<number>(-1);
+  const [activeServiceIndex, setActiveServiceIndex] = useState<number>(-1);
+  const [activePartIndex, setActivePartIndex] = useState<number>(-1);
 
-const [serviceDropdownPos, setServiceDropdownPos] = useState<{top:number,left:number,width:number}|null>(null);
-const [partDropdownPos, setPartDropdownPos] = useState<{top:number,left:number,width:number}|null>(null);
+  const [serviceDropdownPos, setServiceDropdownPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const [partDropdownPos, setPartDropdownPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
-const serviceInputRefs = useRef<Array<HTMLInputElement | null>>([]);
-const partInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const serviceInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const partInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     // replace with API
@@ -168,7 +176,7 @@ const partInputRefs = useRef<Array<HTMLInputElement | null>>([]);
           service: s.name,
           category: s.category,
           amount: s.price,
-        }))
+        })),
       );
 
       setSoLines(
@@ -179,7 +187,7 @@ const partInputRefs = useRef<Array<HTMLInputElement | null>>([]);
           quantity: p.quantity || 1,
           unitPrice: p.price,
           amount: p.price * (p.quantity || 1),
-        }))
+        })),
       );
     } else {
       setJoLines([emptyJOLine()]);
@@ -193,69 +201,66 @@ const partInputRefs = useRef<Array<HTMLInputElement | null>>([]);
     setPartsTaxValue(0);
   }, [open, estimate]);
 
+  const updateJO = (idx: number, field: keyof JOServiceLine, value: any) => {
+    setJoLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
 
-const updateJO = (idx: number, field: keyof JOServiceLine, value: any) => {
-  setJoLines((prev) =>
-    prev.map((l, i) => {
-      if (i !== idx) return l;
+        const updated = { ...l, [field]: value };
 
-      const updated = { ...l, [field]: value };
+        if (field === "service") {
+          if (!value) {
+            updated.category = "";
+            updated.amount = 0;
+            return updated;
+          }
 
-      if (field === "service") {
-        if (!value) {
-          updated.category = "";
-          updated.amount = 0;
-          return updated;
+          const found = servicesCatalog.find(
+            (s) => s.name.toLowerCase() === value.toLowerCase(),
+          );
+
+          if (found) {
+            updated.category = found.category;
+            updated.amount = found.price;
+          }
         }
 
-        const found = servicesCatalog.find(
-          (s) => s.name.toLowerCase() === value.toLowerCase()
-        );
+        return updated;
+      }),
+    );
+  };
 
-        if (found) {
-          updated.category = found.category;
-          updated.amount = found.price;
-        }
-      }
+  const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
+    setSoLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
 
-      return updated;
-    })
-  );
-};
+        const updated = { ...l, [field]: value };
 
+        if (field === "itemName") {
+          if (!value) {
+            updated.partNo = "";
+            updated.unitPrice = 0;
+            updated.amount = 0;
+            return updated;
+          }
 
-const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
-  setSoLines((prev) =>
-    prev.map((l, i) => {
-      if (i !== idx) return l;
+          const found = partsCatalog.find(
+            (p) => p.name.toLowerCase() === value.toLowerCase(),
+          );
 
-      const updated = { ...l, [field]: value };
-
-      if (field === "itemName") {
-
-        if (!value) {
-          updated.partNo = "";
-          updated.unitPrice = 0;
-          updated.amount = 0;
-          return updated;
+          if (found) {
+            updated.partNo = found.sku;
+            updated.unitPrice = found.price;
+          }
         }
 
-        const found = partsCatalog.find(
-          (p) => p.name.toLowerCase() === value.toLowerCase()
-        );
+        updated.amount = updated.quantity * updated.unitPrice;
 
-        if (found) {
-          updated.partNo = found.sku;
-          updated.unitPrice = found.price;
-        }
-      }
-
-      updated.amount = updated.quantity * updated.unitPrice;
-
-      return updated;
-    })
-  );
-};
+        return updated;
+      }),
+    );
+  };
 
   const addJOLine = () => setJoLines((p) => [...p, emptyJOLine()]);
   const removeJOLine = (i: number) =>
@@ -280,9 +285,7 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
         : serviceTaxValue;
 
     const partsTax =
-      partsTaxType === "%"
-        ? totalParts * (partsTaxValue / 100)
-        : partsTaxValue;
+      partsTaxType === "%" ? totalParts * (partsTaxValue / 100) : partsTaxValue;
 
     const subtotal = totalServices + totalParts;
     const totalTax = serviceTax + partsTax;
@@ -314,39 +317,36 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
       maximumFractionDigits: 2,
     })}`;
 
-  const renderTaxInput = (value: number, onChange: (v: number) => void, type: "₱" | "%") =>
+  const renderTaxInput = (
+    value: number,
+    onChange: (v: number) => void,
+    type: "₱" | "%",
+  ) =>
     type === "₱" ? (
       <div className="relative">
-        <span 
-        className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500"
-      >
-        ₱
-      </span>
-        <Input 
-          type="number" 
-          value={value} 
-          onChange={(e) => 
-          onChange(Number(e.target.value))} 
-          className="w-24 h-7 pl-6" 
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+          ₱
+        </span>
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-24 h-7 pl-6"
         />
       </div>
     ) : (
       <div className="relative">
-        <Input 
-          type="number" 
-          value={value} 
-          onChange={(e) => 
-          onChange(Number(e.target.value))} 
-          className="w-24 h-7 pr-6 text-right" 
-          />
-        <span 
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500"
-        >
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-24 h-7 pr-6 text-right"
+        />
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
           %
         </span>
       </div>
     );
-
 
   /* --------- SAVE --------- */
 
@@ -359,7 +359,7 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
       id: estimate?.id || `EST-${Date.now()}`,
       estimateNo: estimate?.estimateNo || `EST-${Date.now()}`,
       date: estimate?.date || now,
-      lastEdited: now, // FIXED
+      lastEdited: now,
       status: estimate?.status || "issued",
 
       services: joLines.map((l) => ({
@@ -383,16 +383,16 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
   };
 
   const calculateDropdown = (el: HTMLInputElement | null) => {
-  if (!el) return null;
+    if (!el) return null;
 
-  const rect = el.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
 
-  return {
-    top: rect.bottom + window.scrollY + 4,
-    left: rect.left + window.scrollX,
-    width: rect.width,
+    return {
+      top: rect.bottom + window.scrollY + 4,
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    };
   };
-};
 
   return (
     <>
@@ -412,8 +412,13 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold">Services</p>
-                  <Button variant="outline" size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs">
-                    <Plus className="h-3 w-3" /> 
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addJOLine}
+                    className="h-7 gap-1 text-xs"
+                  >
+                    <Plus className="h-3 w-3" />
                     Add Service
                   </Button>
                 </div>
@@ -433,64 +438,74 @@ const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
                         const filtered = servicesCatalog.filter((s) =>
                           s.name
                             .toLowerCase()
-                            .includes(l.service.toLowerCase())
+                            .includes(l.service.toLowerCase()),
                         );
 
                         return (
                           <TableRow key={l.id}>
                             <TableCell className="relative overflow-visible">
-<Input
-  ref={(el) => {serviceInputRefs.current[idx] = el}}
-  value={l.service}
-  onFocus={() => {
-    setServiceSuggestIdx(idx);
-    setActiveServiceIndex(-1);
+                              <Input
+                                ref={(el) => {
+                                  serviceInputRefs.current[idx] = el;
+                                }}
+                                value={l.service}
+                                onFocus={() => {
+                                  setServiceSuggestIdx(idx);
+                                  setActiveServiceIndex(-1);
 
-setServiceDropdownPos(
-  calculateDropdown(serviceInputRefs.current[idx])
-);
-  }}
-  onChange={(e) => {
-    updateJO(idx, "service", e.target.value);
-    setServiceSuggestIdx(idx);
+                                  setServiceDropdownPos(
+                                    calculateDropdown(
+                                      serviceInputRefs.current[idx],
+                                    ),
+                                  );
+                                }}
+                                onChange={(e) => {
+                                  updateJO(idx, "service", e.target.value);
+                                  setServiceSuggestIdx(idx);
 
-    setServiceDropdownPos(
-      calculateDropdown(serviceInputRefs.current[idx])
-    );
-  }}
-/>
+                                  setServiceDropdownPos(
+                                    calculateDropdown(
+                                      serviceInputRefs.current[idx],
+                                    ),
+                                  );
+                                }}
+                              />
 
-{serviceSuggestIdx === idx && filtered.length > 0 && serviceDropdownPos && (
-  <div
-    style={{
-      position: "fixed",
-      top: serviceDropdownPos.top,
-      left: serviceDropdownPos.left,
-      width: serviceDropdownPos.width,
-      zIndex: 50,
-    }}
-    className="border rounded-md bg-white shadow-xl max-h-60 overflow-y-auto"
-  >
-    {filtered.map((s, i) => (
-      <div
-        key={s.name}
-        className={`px-3 py-2 text-sm flex justify-between cursor-pointer ${
-          i === activeServiceIndex ? "bg-muted" : "hover:bg-muted"
-        }`}
-        onClick={() => {
-          updateJO(idx, "service", s.name);
-          setServiceSuggestIdx(null);
-          setServiceDropdownPos(null);
-        }}
-      >
-        <span>{s.name}</span>
-        <span className="text-xs text-muted-foreground">
-          ₱{s.price.toLocaleString()}
-        </span>
-      </div>
-    ))}
-  </div>
-)}
+                              {serviceSuggestIdx === idx &&
+                                filtered.length > 0 &&
+                                serviceDropdownPos && (
+                                  <div
+                                    style={{
+                                      position: "fixed",
+                                      top: serviceDropdownPos.top,
+                                      left: serviceDropdownPos.left,
+                                      width: serviceDropdownPos.width,
+                                      zIndex: 50,
+                                    }}
+                                    className="border rounded-md bg-white shadow-xl max-h-60 overflow-y-auto"
+                                  >
+                                    {filtered.map((s, i) => (
+                                      <div
+                                        key={s.name}
+                                        className={`px-3 py-2 text-sm flex justify-between cursor-pointer ${
+                                          i === activeServiceIndex
+                                            ? "bg-muted"
+                                            : "hover:bg-muted"
+                                        }`}
+                                        onClick={() => {
+                                          updateJO(idx, "service", s.name);
+                                          setServiceSuggestIdx(null);
+                                          setServiceDropdownPos(null);
+                                        }}
+                                      >
+                                        <span>{s.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ₱{s.price.toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                             </TableCell>
 
                             <TableCell>{l.category}</TableCell>
@@ -514,33 +529,39 @@ setServiceDropdownPos(
                   </Table>
                 </div>
 
-
                 <div className="flex items-center justify-end gap-3 mt-2 text-sm">
                   <div className="flex border rounded-md overflow-hidden">
-                    <button 
-                      type="button" 
-                      onClick={() => 
-                      setServiceTaxType("%")} 
+                    <button
+                      type="button"
+                      onClick={() => setServiceTaxType("%")}
                       className={`flex items-center gap-1 px-3 h-7 text-xs transition 
-                      ${serviceTaxType === "%" ? 
-                        "bg-primary text-white" : "bg-background"}`}
+                      ${
+                        serviceTaxType === "%"
+                          ? "bg-primary text-white"
+                          : "bg-background"
+                      }`}
                     >
                       <Percent className="h-3 w-3" />
                     </button>
 
-                    <button 
-                      type="button" 
-                      onClick={() => 
-                      setServiceTaxType("₱")} 
+                    <button
+                      type="button"
+                      onClick={() => setServiceTaxType("₱")}
                       className={`flex items-center gap-1 px-3 h-7 text-xs border-l transition 
-                      ${serviceTaxType === "₱" ? 
-                        "bg-primary text-white" : "bg-background"}`}
+                      ${
+                        serviceTaxType === "₱"
+                          ? "bg-primary text-white"
+                          : "bg-background"
+                      }`}
                     >
                       <Banknote className="h-3 w-3" />
                     </button>
-
                   </div>
-                  {renderTaxInput(serviceTaxValue, setServiceTaxValue, serviceTaxType)}
+                  {renderTaxInput(
+                    serviceTaxValue,
+                    setServiceTaxValue,
+                    serviceTaxType,
+                  )}
                 </div>
               </div>
 
@@ -550,7 +571,12 @@ setServiceDropdownPos(
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold">Parts</p>
-                  <Button variant="outline" size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addSOLine}
+                    className="h-7 gap-1 text-xs"
+                  >
                     <Plus className="h-3 w-3" /> Add Part
                   </Button>
                 </div>
@@ -572,70 +598,80 @@ setServiceDropdownPos(
                         const filtered = partsCatalog.filter((p) =>
                           p.name
                             .toLowerCase()
-                            .includes(l.itemName.toLowerCase())
+                            .includes(l.itemName.toLowerCase()),
                         );
 
                         return (
                           <TableRow key={l.id}>
                             <TableCell className="relative overflow-visible">
- <Input
-  ref={(el) => {partInputRefs.current[idx] = el}}
-  value={l.itemName}
-  onFocus={() => {
-    setPartSuggestIdx(idx);
-    setActivePartIndex(-1);
+                              <Input
+                                ref={(el) => {
+                                  partInputRefs.current[idx] = el;
+                                }}
+                                value={l.itemName}
+                                onFocus={() => {
+                                  setPartSuggestIdx(idx);
+                                  setActivePartIndex(-1);
 
- setPartDropdownPos(
-  calculateDropdown(partInputRefs.current[idx])
-);
-  }}
-  onChange={(e) => {
-    updateSO(idx, "itemName", e.target.value);
-    setPartSuggestIdx(idx);
+                                  setPartDropdownPos(
+                                    calculateDropdown(
+                                      partInputRefs.current[idx],
+                                    ),
+                                  );
+                                }}
+                                onChange={(e) => {
+                                  updateSO(idx, "itemName", e.target.value);
+                                  setPartSuggestIdx(idx);
 
-    setPartDropdownPos(
-      calculateDropdown(partInputRefs.current[idx])
-    );
-  }}
-/>
+                                  setPartDropdownPos(
+                                    calculateDropdown(
+                                      partInputRefs.current[idx],
+                                    ),
+                                  );
+                                }}
+                              />
 
-{partSuggestIdx === idx && filtered.length > 0 && partDropdownPos && (
-  <div
-    style={{
-      position: "fixed",
-      top: partDropdownPos.top,
-      left: partDropdownPos.left,
-      width: partDropdownPos.width,
-      zIndex: 50,
-    }}
-    className="border rounded-md bg-white shadow-xl max-h-60 overflow-y-auto"
-  >
-    {filtered.map((p, i) => (
-      <div
-        key={p.name}
-        className={`px-3 py-2 text-sm flex justify-between cursor-pointer ${
-          i === activePartIndex ? "bg-muted" : "hover:bg-muted"
-        }`}
-      onClick={() => {
-        updateSO(idx, "itemName", p.name);
-        setPartSuggestIdx(null);
-        setPartDropdownPos(null);
-      }}
-      >
-        <div>
-          <div>{p.name}</div>
-          <div className="text-xs text-muted-foreground">
-            SKU: {p.sku}
-          </div>
-        </div>
+                              {partSuggestIdx === idx &&
+                                filtered.length > 0 &&
+                                partDropdownPos && (
+                                  <div
+                                    style={{
+                                      position: "fixed",
+                                      top: partDropdownPos.top,
+                                      left: partDropdownPos.left,
+                                      width: partDropdownPos.width,
+                                      zIndex: 50,
+                                    }}
+                                    className="border rounded-md bg-white shadow-xl max-h-60 overflow-y-auto"
+                                  >
+                                    {filtered.map((p, i) => (
+                                      <div
+                                        key={p.name}
+                                        className={`px-3 py-2 text-sm flex justify-between cursor-pointer ${
+                                          i === activePartIndex
+                                            ? "bg-muted"
+                                            : "hover:bg-muted"
+                                        }`}
+                                        onClick={() => {
+                                          updateSO(idx, "itemName", p.name);
+                                          setPartSuggestIdx(null);
+                                          setPartDropdownPos(null);
+                                        }}
+                                      >
+                                        <div>
+                                          <div>{p.name}</div>
+                                          <div className="text-xs text-muted-foreground">
+                                            SKU: {p.sku}
+                                          </div>
+                                        </div>
 
-        <span className="text-xs text-muted-foreground">
-          ₱{p.price.toLocaleString()}
-        </span>
-      </div>
-    ))}
-  </div>
-)}
+                                        <span className="text-xs text-muted-foreground">
+                                          ₱{p.price.toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                             </TableCell>
 
                             <TableCell>{l.partNo}</TableCell>
@@ -648,7 +684,7 @@ setServiceDropdownPos(
                                   updateSO(
                                     idx,
                                     "quantity",
-                                    Number(e.target.value)
+                                    Number(e.target.value),
                                   )
                                 }
                                 className="w-16"
@@ -678,30 +714,37 @@ setServiceDropdownPos(
 
                 <div className="flex items-center justify-end gap-3 mt-2 text-sm">
                   <div className="flex border rounded-md overflow-hidden">
-                    <button 
-                      type="button" 
-                      onClick={() => 
-                      setPartsTaxType("%")} 
+                    <button
+                      type="button"
+                      onClick={() => setPartsTaxType("%")}
                       className={`flex items-center gap-1 px-3 h-7 text-xs transition 
-                      ${partsTaxType === "%" ? 
-                        "bg-primary text-white" : "bg-background"}`}
+                      ${
+                        partsTaxType === "%"
+                          ? "bg-primary text-white"
+                          : "bg-background"
+                      }`}
                     >
                       <Percent className="h-3 w-3" />
                     </button>
 
-                    <button 
-                      type="button" 
-                      onClick={() => 
-                      setPartsTaxType("₱")} 
+                    <button
+                      type="button"
+                      onClick={() => setPartsTaxType("₱")}
                       className={`flex items-center gap-1 px-3 h-7 text-xs border-l transition 
-                      ${partsTaxType === "₱" ? 
-                        "bg-primary text-white" : "bg-background"}`}
+                      ${
+                        partsTaxType === "₱"
+                          ? "bg-primary text-white"
+                          : "bg-background"
+                      }`}
                     >
                       <Banknote className="h-3 w-3" />
                     </button>
-                    
                   </div>
-                  {renderTaxInput(partsTaxValue, setPartsTaxValue, partsTaxType)}
+                  {renderTaxInput(
+                    partsTaxValue,
+                    setPartsTaxValue,
+                    partsTaxType,
+                  )}
                 </div>
               </div>
 
@@ -726,7 +769,10 @@ setServiceDropdownPos(
 
               <div>
                 <Label className="text-xs">Notes</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <Input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
               </div>
             </div>
           </ScrollArea>

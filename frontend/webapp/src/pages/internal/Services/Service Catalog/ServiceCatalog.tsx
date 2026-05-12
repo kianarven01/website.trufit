@@ -157,10 +157,10 @@ const ServiceCatalogList: React.FC = () => {
           <Table className="table-fixed w-full border-separate border-spacing-y-2">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-1/4">Service</TableHead>
-                <TableHead className="w-1/4">Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-[15%]">Pricing</TableHead>
+                <TableHead className="w-1/4 text-center">Service</TableHead>
+                <TableHead className="w-1/4 text-center">Category</TableHead>
+                <TableHead className="text-center">Description</TableHead>
+                <TableHead className="w-[15%] text-center">Pricing</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -196,10 +196,10 @@ const ServiceCatalogList: React.FC = () => {
                       onClick={() => navigate(`/webapp/services/service-catalog/${s.id}`)}
                       className="rounded-lg border bg-card shadow-sm hover:shadow-md cursor-pointer"
                     >
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>{category?.name || s.category || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground truncate">{s.description}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-medium text-center">{s.name}</TableCell>
+                      <TableCell className="text-center">{category?.name || s.category || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground truncate text-center">{s.description}</TableCell>
+                      <TableCell className="text-center">
                         <Badge variant="outline">
                           {s.pricingType === "hourly rate" ? "Hourly Rate" : "Fixed Price"}
                         </Badge>

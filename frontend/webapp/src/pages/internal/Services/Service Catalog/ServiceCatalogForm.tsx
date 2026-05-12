@@ -75,6 +75,7 @@ const [duration, setDuration] = useState<number>(0); // total minutes
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 const [isLoading, setIsLoading] = useState(false);
+const [isSaving, setIsSaving] = useState(false);
 
 const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -173,7 +174,10 @@ useEffect(() => {
 /* ================= CAPITALIZATION ================= */
 const capitalize = (val: string) => {
   if (!val) return "";
-  return val.charAt(0).toUpperCase() + val.slice(1);
+  return val
+    .split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 
@@ -359,6 +363,7 @@ const handleSubmit = async () => {
   };
 
   try {
+    setIsSaving(true);
     if (mode === "edit") {
       await api.put(`/products/service-types/${id}`, payload);
       toast.success("Service updated");
@@ -370,6 +375,8 @@ const handleSubmit = async () => {
   } catch (err) {
     console.error("Failed to save service", err);
     toast.error("Failed to save service");
+  } finally {
+    setIsSaving(false);
   }
 };
 
@@ -449,9 +456,16 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                 <Button
                   size="sm"
                   onClick={handleSubmit}
+                  disabled={isSaving}
                 >
-                  <Save className="w-4 h-4 mr-1" />
-                  {mode === "edit" ? "Update Service" : "Create Service"}
+                  {isSaving ? (
+                    <div className="w-4 h-4 mr-1 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-1" />
+                  )}
+                  {isSaving
+                    ? (mode === "edit" ? "Updating..." : "Creating...")
+                    : (mode === "edit" ? "Update Service" : "Create Service")}
                 </Button>
               </div>              
             </div>
@@ -505,15 +519,16 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                       <Input
                         type="number"
                         min="0"
-                        className="text-xs bg-background pr-8"
-                        value={Math.floor(duration / 60)}
+                        className="text-xs bg-background pr-10"
+                        value={Math.floor(duration / 60) || ""}
+                        placeholder="0"
                         onChange={(e) => {
                           const h = parseInt(e.target.value) || 0;
                           const m = duration % 60;
                           setDuration(h * 60 + m);
                         }}
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none uppercase font-bold">hr</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60 pointer-events-none tracking-wide">hrs</span>
                     </div>
                   </div>
                   <div className="flex-1">
@@ -523,14 +538,15 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                         min="0"
                         max="59"
                         className="text-xs bg-background pr-10"
-                        value={duration % 60}
+                        value={(duration % 60) || ""}
+                        placeholder="0"
                         onChange={(e) => {
                           const m = parseInt(e.target.value) || 0;
                           const h = Math.floor(duration / 60);
                           setDuration(h * 60 + (m > 59 ? 59 : m));
                         }}
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none uppercase font-bold">min</span>
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/60 pointer-events-none tracking-wide">min</span>
                     </div>
                   </div>
                 </div>
@@ -594,12 +610,12 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                     <Table className="table-fixed w-full border-separate border-spacing-y-2">
                       <TableHeader>
                         <TableRow className="bg-secondary/50">
-                          <TableHead className="text-xs tracking-wide uppercase rounded-l-lg">Size</TableHead>
-                          <TableHead className="text-xs tracking-wide uppercase">Vehicle Type</TableHead>
-                          <TableHead className="text-xs tracking-wide uppercase text-right">
+                          <TableHead className="text-xs tracking-wide uppercase rounded-l-lg text-center">Size</TableHead>
+                          <TableHead className="text-xs tracking-wide uppercase text-center">Vehicle Type</TableHead>
+                          <TableHead className="text-xs tracking-wide uppercase text-center">
                             {pricingType === "hourly rate" ? "Rate / hr" : "Price"}
                           </TableHead>
-                          <TableHead className="text-xs uppercase text-right rounded-r-lg w-[15%]"></TableHead>
+                          <TableHead className="text-xs uppercase text-center rounded-r-lg w-[15%]"></TableHead>
                         </TableRow>
                       </TableHeader>
 
@@ -610,12 +626,12 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                           return (
                             <TableRow key={vs.id} className="rounded-lg border bg-card shadow-sm hover:shadow-md">
                               {/* SIZE */}
-                              <TableCell>
+                              <TableCell className="text-center">
                                 {isEditing ? (
                                   <Input
                                     value={editSize.name}
                                     onChange={(e) =>
-                                      setEditSize((p) => ({ ...p, name: e.target.value }))
+                                      setEditSize((p) => ({ ...p, name: capitalize(e.target.value) }))
                                     }
                                   />
                                 ) : (
@@ -626,7 +642,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                               </TableCell>
 
                               {/* DESCRIPTION */}
-                              <TableCell className="text-muted-foreground">
+                              <TableCell className="text-muted-foreground text-center">
                                 {isEditing ? (
                                   <div className="space-y-1">
                                     <div className="flex flex-wrap gap-1">
@@ -672,7 +688,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                                       className="text-xs"
                                       placeholder="type and press enter"
                                       value={editVehicleTypeInput}
-                                      onChange={(e) => setEditVehicleTypeInput(e.target.value)}
+                                      onChange={(e) => setEditVehicleTypeInput(capitalize(e.target.value))}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") {
                                           e.preventDefault();
@@ -687,7 +703,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                               </TableCell>
 
                               {/* PRICE */}
-                              <TableCell className="text-right py-0">
+                              <TableCell className="text-center py-0">
                                 {isEditing ? (
                                   <CurrencyInput
                                     value={editSize.price}
@@ -714,7 +730,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                               </TableCell>
 
                               {/* ACTIONS */}
-                              <TableCell className="text-right py-0">
+                              <TableCell className="text-center py-0">
                                 {isEditing ? (
                                   <div className="flex justify-end gap-2">
                                     <Button size="icon_xs" onClick={handleSaveEditSize}>
@@ -775,18 +791,18 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                         {isAddingSize && (
                           <TableRow className="rounded-lg border bg-card shadow-sm hover:shadow-md">
                             {/* SIZE */}
-                            <TableCell className="text-muted-foreground">
+                            <TableCell className="text-muted-foreground text-center">
                               <Input
                                 placeholder="e.g. Small"
                                 value={newSize.name}
                                 onChange={(e) =>
-                                  setNewSize((p) => ({ ...p, name: e.target.value }))
+                                  setNewSize((p) => ({ ...p, name: capitalize(e.target.value) }))
                                 }
                               />
                             </TableCell>
 
                             {/* DESCRIPTION */}
-                            <TableCell className="align-top">
+                            <TableCell className="align-top text-center">
                               <div className="space-y-1">
                                 {/* TAGS OUTSIDE INPUT */}
                                 <div className="flex flex-wrap gap-1">
@@ -833,7 +849,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                                   className="text-xs"
                                   placeholder="type and press enter"
                                   value={vehicleTypeInput}
-                                  onChange={(e) => setVehicleTypeInput(e.target.value)}
+                                  onChange={(e) => setVehicleTypeInput(capitalize(e.target.value))}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
@@ -845,7 +861,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                             </TableCell>
 
                             {/* PRICE */}
-                            <TableCell className="text-right">
+                            <TableCell className="text-center">
                               <CurrencyInput
                                 value={newSize.price}
                                 onChange={(val) =>
@@ -859,7 +875,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                             </TableCell>
 
                             {/* ACTIONS */}
-                            <TableCell className="text-right space-x-2">
+                            <TableCell className="text-center space-x-2">
                               <Button size="icon_xs" onClick={handleSaveNewSize}>
                                 <Check className="w-4 h-4" />
                               </Button>

@@ -63,6 +63,7 @@ const ServiceDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
 /* ================= LOAD ================= */
 useEffect(() => {
@@ -108,12 +109,15 @@ useEffect(() => {
 /* ================= DELETE SERVICE ================= */
 const handleDeleteService = async () => {
   try {
+    setIsDeleting(true);
     await api.delete(`/products/service-types/${id}`);
     toast.success("Service deleted");
     navigate(-1);
   } catch (err) {
     console.error("Failed to delete service", err);
     toast.error("Failed to delete service");
+  } finally {
+    setIsDeleting(false);
   }
 };
 
@@ -271,9 +275,9 @@ return (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Vehicle Type</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-center">Size</TableHead>
+                  <TableHead className="text-center">Vehicle Type</TableHead>
+                  <TableHead className="text-center">Price</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -281,10 +285,10 @@ return (
                 {servicePricing.map((p, i) => {
                   return (
                     <TableRow key={p.id || i}>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Badge variant="outline">{p.vehicleSizeId}</Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         {p.vehicleTypes && p.vehicleTypes.length > 0 ? (
                           <span className="text-sm text-muted-foreground">
                             {p.vehicleTypes.join(", ")}
@@ -293,7 +297,7 @@ return (
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{Number(p.price).toFixed(2)}</TableCell>
+                      <TableCell className="text-center">{Number(p.price).toFixed(2)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -326,7 +330,7 @@ return (
           </span>
         </>
       }
-      confirmLabel="Delete"
+      confirmLabel={isDeleting ? "Deleting..." : "Delete"}
       destructive
       onConfirm={handleDeleteService}
     />

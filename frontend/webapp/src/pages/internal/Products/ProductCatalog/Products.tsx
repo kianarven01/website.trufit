@@ -42,6 +42,11 @@ interface Product {
   categoryId?: string | number | null;
   category?: string;
   supplierCode?: string;
+
+  fitmentType?: "direct" | "equivalent" | "unfiltered";
+  equivalentToProductId?: string | null;
+  equivalentToProductName?: string | null;
+  equivalenceNotes?: string | null;
 }
 
 interface CategoryOption {
@@ -113,7 +118,38 @@ const normalizeProduct = (row: any): Product => ({
     row.supplier?.supplier_code ||
     row.Supplier?.supplier_code ||
     "",
+
+  fitmentType: row.fitment_type || "unfiltered",
+  equivalentToProductId: row.equivalent_to_product_id || null,
+  equivalentToProductName: row.equivalent_to_product_name || null,
+  equivalenceNotes: row.equivalence_notes || null,
 });
+
+const FitmentBadge = ({
+  product,
+}: {
+  product: Product;
+}) => {
+  if (product.fitmentType === "direct") {
+    return (
+      <span className="w-fit rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
+        Direct fit
+      </span>
+    );
+  }
+
+  if (product.fitmentType === "equivalent") {
+    return (
+      <span className="w-fit rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+        {product.equivalentToProductName
+          ? `Equivalent to ${product.equivalentToProductName}`
+          : "Equivalent fit"}
+      </span>
+    );
+  }
+
+  return null;
+};
 
 const ProductsList: React.FC = () => {
   const navigate = useNavigate();
@@ -513,11 +549,12 @@ const ProductsList: React.FC = () => {
                             </div>
                           )}
 
-                          <div className="flex flex-col">
+                          <div className="flex flex-col gap-1">
                             <span className="font-medium">{product.name}</span>
                             <span className="text-xs text-muted-foreground">
                               {product.brand}
                             </span>
+                            <FitmentBadge product={product} />
                           </div>
                         </div>
                       </TableCell>

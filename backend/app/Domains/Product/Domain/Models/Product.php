@@ -9,6 +9,7 @@ use App\Domains\Product\Domain\Models\Unit;
 use App\Domains\Supplier\Domain\Models\Supplier;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
+use App\Domains\Product\Domain\Models\ProductEquivalent;
 
 class Product extends Model
 {
@@ -47,17 +48,17 @@ class Product extends Model
 
     public function category()
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(Category::class, 'category_id', 'id');
     }
 
     public function manufacturer()
     {
-        return $this->belongsTo(Manufacturers::class, 'manufacturer_id');
+        return $this->belongsTo(Manufacturers::class, 'manufacturer_id', 'id');
     }
 
     public function unitRelation()
     {
-        return $this->belongsTo(Unit::class, 'unit');
+        return $this->belongsTo(Unit::class, 'unit', 'id');
     }
 
     public function vehicleCompatibilities()
@@ -88,6 +89,50 @@ class Product extends Model
         )->withPivot([
             'id',
             'supplier_cost',
+        ]);
+    }
+
+    public function equivalentLinks()
+    {
+        return $this->hasMany(
+            ProductEquivalent::class,
+            'base_product_id',
+            'id'
+        );
+    }
+
+    public function equivalentToLinks()
+    {
+        return $this->hasMany(
+            ProductEquivalent::class,
+            'equivalent_product_id',
+            'id'
+        );
+    }
+
+    public function equivalentProducts()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'Main.ProductEquivalents',
+            'base_product_id',
+            'equivalent_product_id'
+        )->withPivot([
+            'id',
+            'notes',
+        ]);
+    }
+
+    public function equivalentToProducts()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'Main.ProductEquivalents',
+            'equivalent_product_id',
+            'base_product_id'
+        )->withPivot([
+            'id',
+            'notes',
         ]);
     }
 }

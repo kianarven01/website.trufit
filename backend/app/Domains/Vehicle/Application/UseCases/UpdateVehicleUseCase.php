@@ -17,7 +17,7 @@ class UpdateVehicleUseCase
         return $this->repository->update($vehicle, [
             'manufacturer_id' => $data->manufacturer_id,
             'model' => $data->model,
-            'image_path' => $data->image_url,
+            'image_path' => $data->image_path,
         ]);
     }
 }

@@ -15,9 +15,10 @@ class GetVehicleVariants
                 return [
                     'id' => (string) $variant->id,
                     'name' => $variant->variant_name,
-                    'year' => $variant->year_start . ($variant->year_end && $variant->year_end !== $variant->year_start ? '-' . $variant->year_end : ''),
-                    'engine' => $variant->engine_displacement ? ($variant->engine_displacement / 1000) . 'L' : '',
+                    'year' => $variant->year ? (string) $variant->year : '',
+                    'engine' => $variant->engine_displacement ?? '',
                     'transmission' => $variant->transmission_type ?? '',
+                    'drivetrain' => $variant->drivetrain ?? '',
                     'oilCapacity' => $variant->oil_capacity,
                     'serviceClass' => $variant->service_class,
                 ];

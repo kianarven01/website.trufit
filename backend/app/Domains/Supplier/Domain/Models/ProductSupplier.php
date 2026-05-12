@@ -1,24 +1,22 @@
 <?php
 
-namespace App\Domains\Product\Domain\Models;
+namespace App\Domains\Supplier\Domain\Models;
 
-use App\Domains\Supplier\Domain\Models\Supplier;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Supplier\Domain\Models\Supplier;
 
 class ProductSupplier extends Model
 {
-    use HasUuids;
-
     protected $table = 'Main.ProductSuppliers';
-
-    public $timestamps = false;
 
     protected $primaryKey = 'id';
 
     public $incrementing = false;
 
     protected $keyType = 'string';
+
+    public $timestamps = false;
 
     protected $fillable = [
         'id',

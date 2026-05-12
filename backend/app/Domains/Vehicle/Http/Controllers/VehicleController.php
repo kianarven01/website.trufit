@@ -17,6 +17,8 @@ use App\Domains\Vehicle\Http\Requests\UpdateVehicleVariantRequest;
 use App\Domains\Vehicle\Infrastructure\Repositories\VehicleRepository;
 use App\Domains\Vehicle\Infrastructure\Repositories\EloquentVehicleVariantRepository;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class VehicleController extends Controller
 {
@@ -58,10 +60,12 @@ class VehicleController extends Controller
             ->where('type', 'Vehicle')
             ->firstOrFail();
 
+        $imagePath = $this->uploadVehicleImage($request);
+
         $vehicleData = new VehicleData(
             $manufacturer->id,
             trim($request->input('model')),
-            $request->input('image_url')
+            $imagePath
         );
 
         $vehicle = $this->createUseCase->execute($vehicleData);
@@ -81,10 +85,16 @@ class VehicleController extends Controller
             ->where('type', 'Vehicle')
             ->firstOrFail();
 
+        $imagePath = $vehicle->image_path;
+
+        if ($request->hasFile('image')) {
+            $imagePath = $this->uploadVehicleImage($request);
+        }
+
         $vehicleData = new VehicleData(
             $manufacturer->id,
             trim($request->input('model')),
-            $request->input('image_url')
+            $imagePath
         );
 
         $vehicle = $this->updateUseCase->execute($vehicle, $vehicleData);
@@ -93,6 +103,38 @@ class VehicleController extends Controller
         return response()->json([
             'data' => $this->formatter->format($vehicle),
         ]);
+    }
+
+    private function uploadVehicleImage($request): ?string
+    {
+        if (! $request->hasFile('image')) {
+            return null;
+        }
+
+        $file = $request->file('image');
+
+        $bucket = 'vehicle_images';
+        $baseUrl = rtrim(env('SUPABASE_URL'), '/');
+        $serviceKey = env('SUPABASE_SERVICE_ROLE_KEY');
+
+        $extension = $file->getClientOriginalExtension();
+        $fileName = 'vehicles/' . Str::uuid() . '.' . $extension;
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $serviceKey,
+            'apikey' => $serviceKey,
+            'Content-Type' => $file->getMimeType(),
+            'x-upsert' => 'false',
+        ])->withBody(
+            file_get_contents($file->getRealPath()),
+            $file->getMimeType()
+        )->post("{$baseUrl}/storage/v1/object/{$bucket}/{$fileName}");
+
+        if (! $response->successful()) {
+            abort(500, 'Failed to upload vehicle image: ' . $response->body());
+        }
+
+        return $fileName;
     }
 
     public function destroy(int $id): JsonResponse
@@ -135,7 +177,7 @@ class VehicleController extends Controller
     {
         $variant = $this->variantRepository->findById($variantId);
 
-        if (!$variant) {
+        if (! $variant) {
             return response()->json([
                 'message' => 'Variant not found.',
             ], 404);
@@ -153,7 +195,7 @@ class VehicleController extends Controller
     {
         $success = $this->variantRepository->delete($variantId);
 
-        if (!$success) {
+        if (! $success) {
             return response()->json([
                 'message' => 'Variant not found.',
             ], 404);
@@ -172,6 +214,7 @@ class VehicleController extends Controller
             'year' => (string) $variant->year,
             'engine' => $variant->engine_displacement ?? '',
             'transmission' => $variant->transmission_type ?? '',
+            'drivetrain' => $variant->drivetrain ?? '',
             'oilCapacity' => $variant->oil_capacity,
             'serviceClass' => $variant->service_class ?? '',
         ];

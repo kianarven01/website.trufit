@@ -3,86 +3,99 @@
 namespace App\Domains\Product\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Domains\Product\Application\UseCases\GetCategories;
+use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Unit;
-use App\Domains\Product\Domain\Models\VehicleModel;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Product\Domain\Models\Manufacturers;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ProductReferenceController extends Controller
 {
-    public function categories(GetCategories $getCategories)
+    public function categories(): JsonResponse
     {
-        $categories = $getCategories->execute();
-
-        return response()->json($categories);
-    }
-
-    public function units()
-    {
-        $units = Unit::select('id', 'name')
+        $categories = Category::query()
+            ->select('id', 'name', 'code')
+            ->withCount('products')
             ->orderBy('name')
             ->get();
 
         return response()->json([
-            'data' => $units
+            'data' => $categories,
         ]);
     }
 
-    public function vehicles()
+    public function storeCategory(Request $request): JsonResponse
     {
-        $models = VehicleModel::with(['manufacturer', 'variants'])->get();
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $category = Category::create([
+            'name' => $validated['name'],
+            'code' => $validated['code'] ?? Str::upper(Str::slug($validated['name'], '_')),
+        ]);
+
         return response()->json([
-            'data' => $models
+            'message' => 'Category created successfully.',
+            'data' => $category,
+        ], 201);
+    }
+
+    public function updateCategory(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $category = Category::query()->where('id', $id)->firstOrFail();
+
+        $category->update([
+            'name' => $validated['name'],
+            'code' => $validated['code'] ?? $category->code,
+        ]);
+
+        return response()->json([
+            'message' => 'Category updated successfully.',
+            'data' => $category,
         ]);
     }
 
-    public function manufacturers()
+    public function deleteCategory(string $id): JsonResponse
     {
-        $manufacturers = \App\Domains\Product\Domain\Models\Manufacturer::where('type', 'Vehicle')
+        $category = Category::query()->where('id', $id)->firstOrFail();
+
+        $category->delete();
+
+        return response()->json([
+            'message' => 'Category deleted successfully.',
+        ]);
+    }
+
+    public function units(): JsonResponse
+    {
+        $units = Unit::query()
+            ->select('id', 'name')
             ->orderBy('name')
             ->get();
 
         return response()->json([
-            'data' => $manufacturers
+            'data' => $units,
         ]);
     }
 
-    public function storeCustomVehicle(\Illuminate\Http\Request $request)
+    public function manufacturers(): JsonResponse
     {
-        $request->validate([
-            'make' => 'required|string',
-            'model' => 'required|string',
-            'variant' => 'nullable|string',
-            'year' => 'nullable|numeric'
-        ]);
-
-        // Find or create Manufacturer
-        $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::firstOrCreate(
-            ['name' => $request->make, 'type' => 'Vehicle']
-        );
-
-        // Find or create VehicleModel
-        $vehicleModel = VehicleModel::firstOrCreate(
-            ['model' => $request->model, 'manufacturer_id' => $manufacturer->id]
-        );
+        $manufacturers = Manufacturers::query()
+            ->select('id', 'name', 'type')
+            ->where('type', 'Part')
+            ->orderBy('name')
+            ->get();
 
         return response()->json([
-            'message' => 'Vehicle added successfully',
-            'data' => [
-                'id' => $vehicleModel->id,
-                'year' => $request->year ?: 0,
-                'make' => $manufacturer->name,
-                'model' => $vehicleModel->model,
-                'variant' => $request->variant
-            ]
-        ]);
-    }
-
-    public function serviceTypes()
-    {
-        $services = DB::table('Main.ServiceType')->get();
-        return response()->json([
-            'data' => $services
+            'data' => $manufacturers,
         ]);
     }
 }

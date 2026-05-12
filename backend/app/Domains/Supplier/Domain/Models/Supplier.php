@@ -3,14 +3,23 @@
 namespace App\Domains\Supplier\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\Product;
 
 class Supplier extends Model
 {
     protected $table = 'Main.Suppliers';
+
+    protected $primaryKey = 'id';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     public $timestamps = false;
 
     protected $fillable = [
+        'id',
         'CompanyName',
         'CompanyContact',
         'Email',
@@ -19,8 +28,21 @@ class Supplier extends Model
         'supplier_code',
     ];
 
+    public function productSuppliers()
+    {
+        return $this->hasMany(ProductSupplier::class, 'supplier_id', 'id');
+    }
+
     public function products()
     {
-        return $this->hasMany(Product::class, 'supplier_code', 'id');
+        return $this->belongsToMany(
+            Product::class,
+            'Main.ProductSuppliers',
+            'supplier_id',
+            'product_id'
+        )->withPivot([
+            'id',
+            'supplier_cost',
+        ]);
     }
 }

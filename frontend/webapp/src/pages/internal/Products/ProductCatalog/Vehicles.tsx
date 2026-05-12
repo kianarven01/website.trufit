@@ -1,140 +1,290 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
-import { VehicleModal } from "@/components/popupModal/ProductCatalog/addVehicle";
-import { Edit, Trash2, ChevronRight, Car } from "lucide-react"; 
+import {
+  VehicleModal,
+  VehicleMakerOption,
+} from "@/components/popupModal/ProductCatalog/addVehicle";
+import { Edit, Trash2, ChevronRight, Car } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-export interface Variant {
-  id: string;
-  vehicleId: string;
-  name: string;
-  year: string;
-  engine: string;
-  transmission: string;
-  drivetrain: string;
-}
-
-export interface Vehicle {
-  id: string;
-  makeId: string;       
-  makeName: string;     
-  model: string;
-  image?: string;
-}
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbPage,
+  BreadcrumbLink,
+} from "@/components/ui/breadcrumb";
+import api from "@/api/axios";
 
 export interface MakeOption {
   id: string;
   name: string;
 }
 
+export interface Vehicle {
+  id: string;
+  makeId: string;
+  makeName: string;
+  model: string;
+  image?: string;
+  variantCount?: number;
+}
+
+type VehicleApiRow = {
+  id: string;
+  model?: string;
+  Model?: string;
+  image?: string | null;
+  image_URL?: string | null;
+  manufacturer?: string | null;
+  manufacturer_id?: string | number | null;
+  manufacturerId?: string | number | null;
+  make_id?: string | number | null;
+  makeId?: string | number | null;
+  make_name?: string | null;
+  makeName?: string | null;
+  Manufacturer?: {
+    id?: string | number;
+    name?: string;
+  } | null;
+  variants_count?: number;
+};
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+
+const getVehicleSlug = (vehicle: Vehicle) =>
+  `${slugify(vehicle.makeName)}-${slugify(vehicle.model)}`;
+
+const normalizeVehicle = (row: VehicleApiRow): Vehicle => {
+  const makeName =
+    row.makeName ||
+    row.make_name ||
+    row.Manufacturer?.name ||
+    row.manufacturer ||
+    "Unknown";
+
+  const makeId =
+    row.makeId ||
+    row.make_id ||
+    row.manufacturerId ||
+    row.manufacturer_id ||
+    row.Manufacturer?.id ||
+    "";
+
+  return {
+    id: String(row.id),
+    makeId: String(makeId),
+    makeName: String(makeName),
+    model: String(row.model || row.Model || ""),
+    image: row.image || row.image_URL || undefined,
+    variantCount: row.variants_count ?? 0,
+  };
+};
+
 const VehiclesPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [makers, setMakers] = useState<MakeOption[]>([]);
-  const [filters, setFilters] = useState<Record<string, string>>({ make: "all" });
+  const [filters, setFilters] = useState<Record<string, string>>({
+    make: "all",
+  });
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const navigate = useNavigate();
-  const { vehicleSlug } = useParams<{ vehicleSlug: string }>();
+  const loadManufacturers = async () => {
+    const res = await api.get("/vehicles/manufacturers");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
-  const capitalize = (str: string) =>
-    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-
-  // Initial load
-  useEffect(() => {
-    const savedMakers = localStorage.getItem("makers");
-    const savedVehicles = localStorage.getItem("vehicles");
-    
-    if (savedMakers) setMakers(JSON.parse(savedMakers));
-    if (savedVehicles) setVehicles(JSON.parse(savedVehicles));
-  }, []);
-
-  // Sync to localStorage
-  useEffect(() => { localStorage.setItem("makers", JSON.stringify(makers)); }, [makers]);
-  useEffect(() => { localStorage.setItem("vehicles", JSON.stringify(vehicles)); }, [vehicles]);
-
-  // Save/update vehicle
-  const handleSaveVehicle = (vehicleData: any) => {
-    let currentMakeId = vehicleData.makeId;
-    let currentMakeName = "";
-
-    const existingMaker = makers.find(
-      (m) =>
-        m.id === vehicleData.makeId ||
-        m.name.toLowerCase() === vehicleData.makeId.toLowerCase()
+    const normalized: MakeOption[] = (Array.isArray(rows) ? rows : []).map(
+      (item: any) => ({
+        id: String(item.id),
+        name: String(item.name),
+      })
     );
 
-    if (existingMaker) {
-      currentMakeId = existingMaker.id;
-      currentMakeName = existingMaker.name;
-    } else {
-      const newId = crypto.randomUUID();
-      const newName = capitalize(vehicleData.makeId);
-      setMakers((prev) => [...prev, { id: newId, name: newName }]);
-      currentMakeId = newId;
-      currentMakeName = newName;
-    }
-
-    setVehicles((prev) => {
-      const isEdit = prev.some((v) => v.id === vehicleData.id);
-
-      const updatedVehicle: Vehicle = {
-        id: vehicleData.id,
-        makeId: currentMakeId,
-        makeName: currentMakeName,
-        model: vehicleData.model,
-        image: vehicleData.image,
-      };
-
-      // ✅ Save variants to localStorage by vehicle ID
-      localStorage.setItem(
-        `variants_${updatedVehicle.id}`,
-        JSON.stringify(vehicleData.variants || [])
-      );
-
-      return isEdit
-        ? prev.map((v) => (v.id === vehicleData.id ? updatedVehicle : v))
-        : [...prev, updatedVehicle];
-    });
+    setMakers(normalized);
   };
 
-  // Filtered vehicles
+  const loadVehicles = async () => {
+    const res = await api.get("/vehicles");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    const normalized = (Array.isArray(rows) ? rows : []).map(normalizeVehicle);
+    setVehicles(normalized);
+  };
+
+  const loadPageData = async () => {
+    setLoading(true);
+
+    try {
+      await Promise.all([loadManufacturers(), loadVehicles()]);
+    } catch (error) {
+      console.error("Failed to load vehicles page:", error);
+      setVehicles([]);
+      setMakers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPageData();
+  }, []);
+
+  const handleCreateManufacturer = async (
+    name: string
+  ): Promise<VehicleMakerOption | null> => {
+    const trimmedName = name.trim();
+
+    if (!trimmedName) return null;
+
+    const existing = makers.find(
+      (maker) => maker.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existing) {
+      return {
+        id: existing.id,
+        name: existing.name,
+      };
+    }
+
+    try {
+      const response = await api.post("/manufacturers", {
+        name: trimmedName,
+        type: "vehicle",
+      });
+
+      const payload = response.data?.data ?? response.data;
+
+      const created: VehicleMakerOption = {
+        id: String(payload.id),
+        name: String(payload.name),
+      };
+
+      setMakers((prev) => {
+        const exists = prev.some(
+          (maker) =>
+            maker.id === created.id ||
+            maker.name.toLowerCase() === created.name.toLowerCase()
+        );
+
+        if (exists) return prev;
+
+        return [...prev, created].sort((a, b) => a.name.localeCompare(b.name));
+      });
+
+      return created;
+    } catch (error) {
+      console.error("Failed to create manufacturer:", error);
+      return null;
+    }
+  };
+
+  const handleSaveVehicle = async (vehicleData: {
+    id?: string;
+    makeId: string;
+    model: string;
+    image?: string;
+    imageFile?: File | null;
+  }) => {
+    const formData = new FormData();
+
+    formData.append("manufacturer_id", vehicleData.makeId);
+    formData.append("model", vehicleData.model);
+
+    if (vehicleData.imageFile) {
+      formData.append("image", vehicleData.imageFile);
+    }
+
+    if (vehicleData.id) {
+      formData.append("_method", "PUT");
+
+      await api.post(`/vehicles/${vehicleData.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    } else {
+      await api.post("/vehicles", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+    }
+
+    await loadVehicles();
+    await loadManufacturers();
+  };
+
+  const handleDeleteVehicle = async (vehicle: Vehicle) => {
+    const confirmed = window.confirm(
+      `Delete ${vehicle.makeName} ${vehicle.model}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/vehicles/${vehicle.id}`);
+      await loadVehicles();
+    } catch (error) {
+      console.error("Failed to delete vehicle:", error);
+    }
+  };
+
   const filteredVehicles = useMemo(() => {
-    return vehicles.filter((v) => {
-      if (filters.make !== "all" && v.makeName !== filters.make) return false;
-      return true;
+    return vehicles.filter((vehicle) => {
+      const matchesMake =
+        filters.make === "all" || vehicle.makeName === filters.make;
+
+      const haystack = `${vehicle.makeName} ${vehicle.model}`.toLowerCase();
+      const matchesSearch = haystack.includes(search.toLowerCase());
+
+      return matchesMake && matchesSearch;
     });
-  }, [vehicles, filters]);
+  }, [vehicles, filters, search]);
 
   const filterOptions: FilterOption[] = [
     {
       key: "make",
       label: "Make",
-      options: makers.map((m) => ({ label: m.name, value: m.name })),
+      options: makers.map((maker) => ({
+        label: maker.name,
+        value: maker.name,
+      })),
     },
   ];
 
-  // Helper to create URL-safe slug
-  const getVehicleSlug = (v: Vehicle) =>
-    `${v.makeName}-${v.model}`.replace(/\s+/g, "-").toLowerCase();
-
-  const currentVehicle = vehicles.find(
-    (v) => getVehicleSlug(v) === vehicleSlug
-  );
-
-  // Helper to get real variant count from localStorage
-  const getVariantCount = (vehicleId: string) => {
-    const stored = localStorage.getItem(`variants_${vehicleId}`);
-    return stored ? JSON.parse(stored).length : 0;
-  };
-
   return (
     <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
-      {/* Toolbar */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              className="cursor-pointer"
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
+              Product Catalog
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbItem>
+            <BreadcrumbPage>Vehicles</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <DataToolbar
-        searchPlaceholder="Search Vehicles..."
+        searchPlaceholder="Search vehicles..."
+        onSearch={setSearch}
         filters={filterOptions}
         activeFilters={filters}
         onFilterChange={(key, value) =>
@@ -147,48 +297,60 @@ const VehiclesPage: React.FC = () => {
         addLabel="Add Vehicle"
       />
 
-      {/* Empty State */}
-      {filteredVehicles.length === 0 ? (
+      {loading ? (
+        <div className="w-full flex items-center justify-center py-20 border rounded-xl">
+          <p className="text-muted-foreground font-medium">
+            Loading vehicles...
+          </p>
+        </div>
+      ) : filteredVehicles.length === 0 ? (
         <div className="w-full flex items-center justify-center py-20 border-2 border-dashed rounded-xl">
           <p className="text-muted-foreground font-medium uppercase tracking-wider">
             No vehicles found.
           </p>
         </div>
       ) : (
-        /* Vehicles Grid */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredVehicles.map((v) => (
+          {filteredVehicles.map((vehicle) => (
             <Card
-              key={v.id}
-              onClick={() => navigate(`/webapp/products/product-catalog/${getVehicleSlug(v)}`)}
+              key={vehicle.id}
+              onClick={() =>
+                navigate(
+                  `/webapp/products/product-catalog/${getVehicleSlug(vehicle)}`,
+                  {
+                    state: {
+                      vehicleId: vehicle.id,
+                      vehicle,
+                    },
+                  }
+                )
+              }
               className="cursor-pointer overflow-hidden relative group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border"
             >
-              {/* Image / Icon */}
               <CardContent className="p-0">
                 <div className="w-full h-44 relative overflow-hidden flex items-center justify-center bg-muted/30">
-                  {v.image ? (
+                  {vehicle.image ? (
                     <img
-                      src={v.image}
-                      alt={`${v.makeName} ${v.model}`}
+                      src={vehicle.image}
+                      alt={`${vehicle.makeName} ${vehicle.model}`}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
                     <Car className="size-16 text-muted-foreground/20" />
                   )}
 
-                  {/* Edit/Delete Buttons */}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="absolute top-2 right-2 flex gap-2 transition-opacity z-10">
+                    <div className="absolute top-2 right-2 flex gap-2 z-10">
                       <Button
                         variant="secondary"
                         size="icon_xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingVehicle(v);
+                          setEditingVehicle(vehicle);
                           setModalOpen(true);
                         }}
-                        className="p-2 25 shadow-sm transition-colors"
-                        title="Edit Vehicle"                      
+                        className="p-2 shadow-sm"
+                        title="Edit Vehicle"
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
@@ -198,12 +360,10 @@ const VehiclesPage: React.FC = () => {
                         size="icon_xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Delete ${v.makeName} ${v.model}?`)) {
-                            setVehicles(prev => prev.filter(veh => veh.id !== v.id));
-                          }
+                          void handleDeleteVehicle(vehicle);
                         }}
-                        className="p-2 shadow-sm hover:text-white transition-colors"
-                        title="Delete Vehicle"                      
+                        className="p-2 shadow-sm hover:text-white"
+                        title="Delete Vehicle"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -212,20 +372,20 @@ const VehiclesPage: React.FC = () => {
                 </div>
               </CardContent>
 
-              {/* Vehicle Info */}
               <CardFooter className="flex justify-between items-center px-4 py-4 bg-card group-hover:bg-blue-900 transition-colors">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary-foreground/70">
-                    {v.makeName}
+                  <span className="text-sm font-semibold text-foreground group-hover:text-white">
+                    {vehicle.makeName}
                   </span>
-                  <span className="text-sm font-semibold group-hover:text-white">
-                    {v.model}
+                  <span className="text-sm text-muted-foreground group-hover:text-blue-100">
+                    {vehicle.model}
+                  </span>
+                  <span className="text-xs text-muted-foreground group-hover:text-blue-200 mt-1">
+                    {vehicle.variantCount ?? 0} variants
                   </span>
                 </div>
-                <div className="flex items-center text-[11px] font-medium text-muted-foreground group-hover:text-white/90">
-                  {getVariantCount(v.id)} Var
-                  <ChevronRight className="ml-1 w-3 h-3" />
-                </div>
+
+                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-white" />
               </CardFooter>
             </Card>
           ))}
@@ -235,9 +395,19 @@ const VehiclesPage: React.FC = () => {
       <VehicleModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        vehicle={editingVehicle}
+        vehicle={
+          editingVehicle
+            ? {
+                id: editingVehicle.id,
+                makeId: editingVehicle.makeId,
+                model: editingVehicle.model,
+                image: editingVehicle.image || "",
+              }
+            : null
+        }
         makerList={makers}
         onSaved={handleSaveVehicle}
+        onCreateManufacturer={handleCreateManufacturer}
       />
     </div>
   );

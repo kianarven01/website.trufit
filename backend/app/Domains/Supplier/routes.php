@@ -3,4 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Domains\Supplier\Http\Controllers\SupplierController;
 
-Route::get('/suppliers', [SupplierController::class, 'index']);
+Route::prefix('suppliers')->group(function () {
+    Route::get('/', [SupplierController::class, 'index']);
+});

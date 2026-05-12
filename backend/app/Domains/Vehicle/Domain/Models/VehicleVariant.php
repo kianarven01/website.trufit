@@ -16,6 +16,7 @@ class VehicleVariant extends Model
         'engine_displacement',
         'year',
         'transmission_type',
+        'drivetrain',
         'oil_capacity',
         'service_class',
     ];

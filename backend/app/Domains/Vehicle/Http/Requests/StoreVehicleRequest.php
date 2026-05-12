@@ -6,17 +6,17 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreVehicleRequest extends FormRequest
 {
-    public function authorize()
+    public function authorize(): bool
     {
         return true;
     }
 
-    public function rules()
+    public function rules(): array
     {
         return [
-            'manufacturer_id' => 'required|uuid',
-            'model'           => 'required|string|max:100',
-            'image_url'       => 'nullable|string',
+            'manufacturer_id' => ['required', 'integer'],
+            'model' => ['required', 'string', 'max:255'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,avif', 'max:5120'],
         ];
     }
 }

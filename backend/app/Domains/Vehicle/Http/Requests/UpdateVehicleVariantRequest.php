@@ -18,6 +18,7 @@ class UpdateVehicleVariantRequest extends FormRequest
             'engine_displacement' => ['nullable', 'string', 'max:50'],
             'year' => ['required', 'integer', 'min:1900', 'max:2100'],
             'transmission_type' => ['nullable', 'string', 'max:50'],
+            'drivetrain' => ['nullable', 'string', 'max:50'],
             'oil_capacity' => ['nullable', 'integer', 'min:0'],
             'service_class' => ['nullable', 'string', 'max:100'],
         ];
@@ -30,6 +31,7 @@ class UpdateVehicleVariantRequest extends FormRequest
             'engine_displacement' => is_string($this->engine_displacement) ? trim($this->engine_displacement) : $this->engine_displacement,
             'transmission_type' => is_string($this->transmission_type) ? trim($this->transmission_type) : $this->transmission_type,
             'service_class' => is_string($this->service_class) ? trim($this->service_class) : $this->service_class,
+            'drivetrain' => is_string($this->drivetrain) ? trim($this->drivetrain) : $this->drivetrain,
         ]);
     }
 }

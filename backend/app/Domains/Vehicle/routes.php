@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Domains\Vehicle\Http\Controllers\VehicleController;
+use App\Domains\Vehicle\Http\Controllers\ManufacturerController;
+
+Route::get('/vehicles/manufacturers', [ManufacturerController::class, 'index']);
+Route::post('/manufacturers', [ManufacturerController::class, 'store']);
 
 Route::prefix('vehicles')->group(function () {
     Route::get('/', [VehicleController::class, 'index']);
@@ -15,4 +19,6 @@ Route::prefix('vehicles')->group(function () {
 
     Route::put('/variants/{variantId}', [VehicleController::class, 'updateVariant']);
     Route::delete('/variants/{variantId}', [VehicleController::class, 'destroyVariant']);
+
+    
 });

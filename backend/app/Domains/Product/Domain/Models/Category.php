@@ -8,13 +8,27 @@ class Category extends Model
 {
     protected $table = 'Main.Category';
 
+    protected $primaryKey = 'id';
+
+    public $incrementing = true;
+
+    protected $keyType = 'int';
+
+    public $timestamps = false;
+
     protected $fillable = [
         'name',
-        'code'
+        'code',
+        'seq_counter',
+    ];
+
+    protected $casts = [
+        'id' => 'integer',
+        'seq_counter' => 'integer',
     ];
 
     public function products()
     {
-        return $this->hasMany(Product::class, 'category_id');
+        return $this->hasMany(Product::class, 'category_id', 'id');
     }
 }

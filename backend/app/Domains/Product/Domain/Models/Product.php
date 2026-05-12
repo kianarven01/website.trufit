@@ -2,53 +2,137 @@
 
 namespace App\Domains\Product\Domain\Models;
 
-use App\Domains\Supplier\Domain\Models\Supplier;
 use Illuminate\Database\Eloquent\Model;
+use App\Domains\Product\Domain\Models\Category;
+use App\Domains\Product\Domain\Models\Manufacturers;
+use App\Domains\Product\Domain\Models\Unit;
+use App\Domains\Supplier\Domain\Models\Supplier;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
+use App\Domains\Product\Domain\Models\ProductEquivalent;
 
 class Product extends Model
 {
     public $timestamps = false;
 
     protected $table = 'Main.Products';
+    protected $primaryKey = 'id';
+
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'name',
         'SKU',
-        'cost',
         'description',
         'image_path',
         'category_id',
-        'unit',
         'barcode',
         'part_number',
-        'part_id',
-        'manufacturer_id',
         'is_oem',
         'oem_reference_number',
+        'unit',
+        'part_id',
+        'manufacturer_id',
     ];
 
     protected $casts = [
-        'cost' => 'decimal:2',
+        'id' => 'string',
+        'category_id' => 'integer',
+        'manufacturer_id' => 'integer',
+        'unit' => 'integer',
+        'part_id' => 'integer',
         'is_oem' => 'boolean',
     ];
 
     public function category()
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(Category::class, 'category_id', 'id');
     }
 
-    public function supplier()
+    public function manufacturer()
     {
-        return $this->belongsTo(Supplier::class, 'manufacturer_id');
+        return $this->belongsTo(Manufacturers::class, 'manufacturer_id', 'id');
     }
 
     public function unitRelation()
     {
-        return $this->belongsTo(Unit::class, 'unit');
+        return $this->belongsTo(Unit::class, 'unit', 'id');
     }
 
     public function vehicleCompatibilities()
     {
-        return $this->hasMany(ProductVehicleCompatibility::class, 'product_id');
+        return $this->hasMany(
+            ProductVehicleCompatibility::class,
+            'product_id',
+            'id'
+        );
+    }
+
+    public function productSuppliers()
+    {
+        return $this->hasMany(
+            ProductSupplier::class,
+            'product_id',
+            'id'
+        );
+    }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(
+            Supplier::class,
+            'Main.ProductSuppliers',
+            'product_id',
+            'supplier_id'
+        )->withPivot([
+            'id',
+            'supplier_cost',
+        ]);
+    }
+
+    public function equivalentLinks()
+    {
+        return $this->hasMany(
+            ProductEquivalent::class,
+            'base_product_id',
+            'id'
+        );
+    }
+
+    public function equivalentToLinks()
+    {
+        return $this->hasMany(
+            ProductEquivalent::class,
+            'equivalent_product_id',
+            'id'
+        );
+    }
+
+    public function equivalentProducts()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'Main.ProductEquivalents',
+            'base_product_id',
+            'equivalent_product_id'
+        )->withPivot([
+            'id',
+            'notes',
+        ]);
+    }
+
+    public function equivalentToProducts()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'Main.ProductEquivalents',
+            'equivalent_product_id',
+            'base_product_id'
+        )->withPivot([
+            'id',
+            'notes',
+        ]);
     }
 }

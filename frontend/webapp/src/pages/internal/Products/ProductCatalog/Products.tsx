@@ -1,14 +1,29 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell} from "@/components/ui/table";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon } from "lucide-react";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
-
+import api from "@/api/axios";
 
 interface Product {
   id: string;
@@ -21,8 +36,38 @@ interface Product {
   partNumber: string;
   unit: string;
   price: number;
+  cost?: number;
+  description?: string;
+  barcode?: string;
+  categoryId?: string | number | null;
+  category?: string;
+  supplierCode?: string;
+
+  fitmentType?: "direct" | "equivalent" | "unfiltered";
+  equivalentToProductId?: string | null;
+  equivalentToProductName?: string | null;
+  equivalenceNotes?: string | null;
 }
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+interface SupplierOption {
+  id: string;
+  name: string;
+  supplier_code?: string;
+}
+
+interface VariantInfo {
+  id: string;
+  name: string;
+}
+
+const slugify = (str: string) =>
+  str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
 const fromSlug = (slug?: string) =>
   slug
@@ -30,20 +75,109 @@ const fromSlug = (slug?: string) =>
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
-const toSlug = (str: string) =>
-  str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+const normalizeProduct = (row: any): Product => ({
+  id: String(row.id),
+  image: row.image || row.image_URL || undefined,
+  name: String(row.name || ""),
+  brand:
+    row.brand?.name ||
+    row.Brand?.name ||
+    row.brand_name ||
+    row.manufacturer ||
+    "",
+  manufacturer:
+    row.manufacturer_name ||
+    row.manufacturer ||
+    row.brand?.name ||
+    row.Brand?.name ||
+    row.brand_name ||
+    "",
+  supplier:
+    row.supplier?.CompanyName ||
+    row.Supplier?.CompanyName ||
+    row.supplier_name ||
+    row.supplier ||
+    "",
+  sku: String(row.SKU || row.sku || ""),
+  partNumber: String(row.part_number || row.partNumber || ""),
+  unit:
+    row.unit?.name ||
+    row.Unit?.name ||
+    row.unit_name ||
+    row.unit ||
+    "",
+  price: Number(row.selling_price || row.price || row.sell_price || 0),
+  cost: Number(row.cost || 0),
+  description: row.description || "",
+  barcode: row.barcode || "",
+  categoryId: row.category_id ?? row.categoryId ?? null,
+  category:
+    row.category?.name || row.Category?.name || row.category_name || "",
+  supplierCode:
+    row.supplier_code ||
+    row.supplier?.supplier_code ||
+    row.Supplier?.supplier_code ||
+    "",
 
+  fitmentType: row.fitment_type || "unfiltered",
+  equivalentToProductId: row.equivalent_to_product_id || null,
+  equivalentToProductName: row.equivalent_to_product_name || null,
+  equivalenceNotes: row.equivalence_notes || null,
+});
+
+const FitmentBadge = ({
+  product,
+}: {
+  product: Product;
+}) => {
+  if (product.fitmentType === "direct") {
+    return (
+      <span className="w-fit rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
+        Direct fit
+      </span>
+    );
+  }
+
+  if (product.fitmentType === "equivalent") {
+    return (
+      <span className="w-fit rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+        {product.equivalentToProductName
+          ? `Equivalent to ${product.equivalentToProductName}`
+          : "Equivalent fit"}
+      </span>
+    );
+  }
+
+  return null;
+};
 
 const ProductsList: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { vehicleSlug, variantSlug, categorySlug } = useParams<{
     vehicleSlug: string;
     variantSlug: string;
     categorySlug: string;
   }>();
 
+  const routeState = location.state as
+    | {
+        vehicleId?: string;
+        vehicle?: { id: string; makeName: string; model: string };
+        variantId?: string;
+        variant?: VariantInfo;
+        categoryId?: string;
+        category?: CategoryOption;
+      }
+    | undefined;
+
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [variants, setVariants] = useState<VariantInfo[]>([]);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
   const [filtersState, setFiltersState] = useState<Record<string, string>>({
     manufacturer: "all",
@@ -51,50 +185,190 @@ const ProductsList: React.FC = () => {
   });
 
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
-
-  const { page, setPage, pageSize, setPageSize, paginate } =
-    usePagination(25);
-
+  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
   const [openModal, setOpenModal] = useState(false);
 
-  const STORAGE_KEY =
-    vehicleSlug && variantSlug && categorySlug
-      ? `products_${vehicleSlug}_${variantSlug}_${categorySlug}`
-      : "products_temp";
+  const [resolvedVehicleId, setResolvedVehicleId] = useState<string | null>(
+    routeState?.vehicleId || null
+  );
+  const [resolvedVariantId, setResolvedVariantId] = useState<string | null>(
+    routeState?.variantId || null
+  );
+  const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(
+    routeState?.categoryId || null
+  );
 
+  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
+  const variantName = routeState?.variant?.name || fromSlug(variantSlug) || "Variant";
+  const categoryName =
+    routeState?.category?.name || fromSlug(categorySlug) || "Category";
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+  const loadVehiclesAndResolveIds = async () => {
+    const vehiclesRes = await api.get("/vehicles");
+    const vehicleRows = Array.isArray(vehiclesRes.data?.data)
+      ? vehiclesRes.data.data
+      : vehiclesRes.data;
 
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setProducts(Array.isArray(parsed) ? parsed : []);
-      } else {
-        setProducts([]); // no dummy fallback
-      }
-    } catch (error) {
-      console.error("Failed to load products:", error);
-      setProducts([]);
+    const normalizedVehicles = (Array.isArray(vehicleRows) ? vehicleRows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        makeName: String(
+          row.makeName ||
+            row.make_name ||
+            row.Manufacturer?.name ||
+            row.manufacturer ||
+            "Unknown"
+        ),
+        model: String(row.model || row.Model || ""),
+      })
+    );
+
+    const matchedVehicle =
+      routeState?.vehicle ||
+      normalizedVehicles.find(
+        (vehicle: any) =>
+          `${slugify(vehicle.makeName)}-${slugify(vehicle.model)}` === vehicleSlug
+      );
+
+    const vehicleId = matchedVehicle?.id ? String(matchedVehicle.id) : null;
+    setResolvedVehicleId(vehicleId);
+
+    if (!vehicleId) {
+      setResolvedVariantId(null);
+      return;
     }
-  }, [STORAGE_KEY]);
 
+    const variantsRes = await api.get(`/vehicles/models/${vehicleId}/variants`);
+    const variantRows = Array.isArray(variantsRes.data?.data)
+      ? variantsRes.data.data
+      : variantsRes.data;
+
+    const normalizedVariants: VariantInfo[] = (Array.isArray(variantRows)
+      ? variantRows
+      : []
+    ).map((row: any) => ({
+      id: String(row.id),
+      name: String(row.name || row.variant || row.variant_name || ""),
+    }));
+
+    setVariants(normalizedVariants);
+
+    const matchedVariant =
+      routeState?.variant ||
+      normalizedVariants.find((variant) => slugify(variant.name) === variantSlug);
+
+    setResolvedVariantId(matchedVariant?.id ? String(matchedVariant.id) : null);
+  };
+
+  const loadCategories = async () => {
+    const res = await api.get("/products/categories");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+    const normalized: CategoryOption[] = (Array.isArray(rows) ? rows : []).map(
+      (row: any) => ({
+        id: String(row.id),
+        name: String(row.name),
+        code: row.code || undefined,
+      })
+    );
+
+    setCategories(normalized);
+
+    const matchedCategory =
+      routeState?.category ||
+      normalized.find((category) => slugify(category.name) === categorySlug);
+
+    setResolvedCategoryId(matchedCategory?.id ? String(matchedCategory.id) : null);
+  };
+
+  const loadManufacturers = async () => {
+    try {
+      const res = await api.get("/products/manufacturers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setManufacturers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.name || ""),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load manufacturers:", error);
+      setManufacturers([]);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const res = await api.get("/products/suppliers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setSuppliers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.name || row.CompanyName || ""),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load suppliers:", error);
+      setSuppliers([]);
+    }
+  };
+
+  const loadProducts = async (
+    vehicleId?: string | null,
+    variantId?: string | null,
+    categoryId?: string | null
+  ) => {
+    const params: Record<string, string> = {};
+
+    if (vehicleId) params.vehicle_model_id = vehicleId;
+    if (variantId) params.variant_id = variantId;
+    if (categoryId) params.category_id = categoryId;
+
+    const res = await api.get("/products", { params });
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    setProducts((Array.isArray(rows) ? rows : []).map(normalizeProduct));
+  };
+
+  const loadPageData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadCategories(),
+        loadManufacturers(),
+        loadSuppliers(),
+        loadVehiclesAndResolveIds(),
+      ]);
+    } catch (error) {
+      console.error("Failed initial load on products page:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  }, [products, STORAGE_KEY]);
+    void loadPageData();
+  }, [vehicleSlug, variantSlug, categorySlug]);
+
+  useEffect(() => {
+    if (resolvedVehicleId === null && resolvedVariantId === null && resolvedCategoryId === null) {
+      return;
+    }
+
+    void loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId);
+  }, [resolvedVehicleId, resolvedVariantId, resolvedCategoryId]);
 
   useEffect(() => {
     setPage(1);
   }, [search, filtersState]);
 
-
   const manufacturerOptions = Array.from(
-    new Set(products.map((p) => p.manufacturer))
+    new Set(products.map((product) => product.manufacturer).filter(Boolean))
   ).map((m) => ({ label: m, value: m }));
 
   const supplierOptions = Array.from(
-    new Set(products.map((p) => p.supplier))
+    new Set(products.map((product) => product.supplier).filter(Boolean))
   ).map((s) => ({ label: s, value: s }));
 
   const filters: FilterOption[] = [
@@ -110,32 +384,92 @@ const ProductsList: React.FC = () => {
     },
   ];
 
+  const filtered = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch = `${product.name} ${product.brand} ${product.sku} ${product.partNumber}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
 
-  const filtered = products.filter((p) => {
-    const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
-      .toLowerCase()
-      .includes(search.toLowerCase());
+      const matchesManufacturer =
+        filtersState.manufacturer === "all" ||
+        product.manufacturer === filtersState.manufacturer;
 
-    const matchesManufacturer =
-      filtersState.manufacturer === "all" ||
-      p.manufacturer === filtersState.manufacturer;
+      const matchesSupplier =
+        filtersState.supplier === "all" ||
+        product.supplier === filtersState.supplier;
 
-    const matchesSupplier =
-      filtersState.supplier === "all" ||
-      p.supplier === filtersState.supplier;
-
-    return matchesSearch && matchesManufacturer && matchesSupplier;
-  });
+      return matchesSearch && matchesManufacturer && matchesSupplier;
+    });
+  }, [products, search, filtersState]);
 
   const paginated = paginate(filtered);
 
-  /* ================= BREADCRUMB ================= */
-  const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
+  const refreshProducts = async () => {
+    await loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId);
+  };
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-      
-      {/* Toolbar */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+              Product Catalog
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
+              {makeModel}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() =>
+                navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                  state: {
+                    vehicleId: resolvedVehicleId,
+                    variantId: resolvedVariantId,
+                    categoryId: resolvedCategoryId,
+                  },
+                })
+              }
+            >
+              {variantName}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() =>
+                navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                  state: {
+                    vehicleId: resolvedVehicleId,
+                    variantId: resolvedVariantId,
+                    categoryId: resolvedCategoryId,
+                  },
+                })
+              }
+            >
+              {categoryName}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+
+          <BreadcrumbItem>
+            <BreadcrumbPage>Products</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <DataToolbar
         searchPlaceholder={`Search ${categoryName} products...`}
         onSearch={setSearch}
@@ -148,8 +482,13 @@ const ProductsList: React.FC = () => {
         addLabel="Add Product"
       />
 
-      {/* TABLE */}
-      {products.length > 0 ? (
+      {loading ? (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <p className="text-sm font-medium">Loading products...</p>
+          </CardContent>
+        </Card>
+      ) : products.length > 0 ? (
         <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
           <div className="flex-1 overflow-auto">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
@@ -165,10 +504,26 @@ const ProductsList: React.FC = () => {
 
               <TableBody>
                 {filtered.length > 0 ? (
-                  paginated.map((p) => (
+                  paginated.map((product) => (
                     <TableRow
-                      key={p.id}
-                      onClick={() => navigate(`/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${toSlug(p.name)}`)}
+                      key={product.id}
+                      onClick={() =>
+                        navigate(
+                          `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`,
+                          {
+                            state: {
+                              productId: product.id,
+                              product,
+                              vehicleId: resolvedVehicleId,
+                              variantId: resolvedVariantId,
+                              categoryId: resolvedCategoryId,
+                              vehicleSlug,
+                              variantSlug,
+                              categorySlug,
+                            },
+                          }
+                        )
+                      }
                       className={cn(
                         "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                         "hover:bg-accent/30"
@@ -176,15 +531,15 @@ const ProductsList: React.FC = () => {
                     >
                       <TableCell className="py-2">
                         <div className="flex items-center gap-3">
-                          {p.image && !imgError[p.id] ? (
+                          {product.image && !imgError[product.id] ? (
                             <img
-                              src={p.image}
-                              alt={p.name}
+                              src={product.image}
+                              alt={product.name}
                               className="w-12 h-10 rounded-md object-cover border"
                               onError={() =>
                                 setImgError((prev) => ({
                                   ...prev,
-                                  [p.id]: true,
+                                  [product.id]: true,
                                 }))
                               }
                             />
@@ -194,19 +549,20 @@ const ProductsList: React.FC = () => {
                             </div>
                           )}
 
-                          <div className="flex flex-col">
-                            <span className="font-medium">{p.name}</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">{product.name}</span>
                             <span className="text-xs text-muted-foreground">
-                              {p.brand}
+                              {product.brand}
                             </span>
+                            <FitmentBadge product={product} />
                           </div>
                         </div>
                       </TableCell>
 
-                      <TableCell>{p.sku}</TableCell>
-                      <TableCell>{p.partNumber}</TableCell>
-                      <TableCell>{p.unit}</TableCell>
-                      <TableCell>₱ {p.price.toLocaleString()}</TableCell>
+                      <TableCell>{product.sku || "-"}</TableCell>
+                      <TableCell>{product.partNumber || "-"}</TableCell>
+                      <TableCell>{product.unit || "-"}</TableCell>
+                      <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -214,9 +570,7 @@ const ProductsList: React.FC = () => {
                     <TableCell colSpan={5}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">
-                          No products found
-                        </p>
+                        <p className="text-sm font-medium">No products found</p>
                         <p className="text-xs text-muted-foreground">
                           Try adjusting your search or filters
                         </p>
@@ -252,17 +606,15 @@ const ProductsList: React.FC = () => {
         </Card>
       )}
 
-      {/* MODAL */}
       <ProductModal
         open={openModal}
         onOpenChange={setOpenModal}
-        onsaved={(newProduct) => {
-          setProducts((prev) => {
-            const updated = [newProduct, ...prev];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            return updated;
-          });
-        }}
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
+        variantId={resolvedVariantId}
+        categoryId={resolvedCategoryId}
+        onSaved={refreshProducts}
       />
     </div>
   );

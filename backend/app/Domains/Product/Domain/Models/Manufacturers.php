@@ -10,13 +10,20 @@ class Manufacturers extends Model
     public $timestamps = false;
 
     protected $table = 'Main.Manufacturers';
+
     protected $primaryKey = 'id';
+
     public $incrementing = true;
+
     protected $keyType = 'int';
 
     protected $fillable = [
         'name',
         'type',
+    ];
+
+    protected $casts = [
+        'id' => 'integer',
     ];
 
     public function vehicleModels()

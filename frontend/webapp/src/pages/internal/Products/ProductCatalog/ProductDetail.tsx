@@ -1,12 +1,41 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
-
 import { Trash2, Pencil, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import api from "@/api/axios";
+
+interface ProductSupplier {
+  id?: string;
+  supplier_id: string | number;
+  supplier_cost?: number | string | null;
+  is_preferred?: boolean;
+  supplier?: {
+    id?: string | number;
+    CompanyName?: string;
+    name?: string;
+    supplier_code?: string;
+  };
+  Supplier?: {
+    id?: string | number;
+    CompanyName?: string;
+    name?: string;
+    supplier_code?: string;
+  };
+  supplier_name?: string;
+  CompanyName?: string;
+}
 
 interface Product {
   id: string;
@@ -18,13 +47,13 @@ interface Product {
   oemRef?: string | null;
   description: string;
   unit: string;
-  costPrice: number;
   price: number;
   category: string;
   manufacturer: string;
   location?: string;
   barcode?: string;
-  supplier?: string;
+  categoryId?: string | number | null;
+  suppliers?: ProductSupplier[];
   compatibleVehicles?: {
     make: string;
     model: string;
@@ -37,6 +66,18 @@ interface Product {
   }[];
 }
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+interface SupplierOption {
+  id: string;
+  name: string;
+  supplier_code?: string;
+}
+
 const slugify = (str: string) =>
   str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
@@ -46,71 +87,215 @@ const fromSlug = (slug?: string) =>
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
+const normalizeSuppliers = (row: any): ProductSupplier[] => {
+  if (Array.isArray(row.suppliers)) return row.suppliers;
+  if (Array.isArray(row.product_suppliers)) return row.product_suppliers;
+  if (Array.isArray(row.productSuppliers)) return row.productSuppliers;
+  if (Array.isArray(row.ProductSuppliers)) return row.ProductSuppliers;
+
+  return [];
+};
+
+const normalizeProduct = (row: any): Product => ({
+  id: String(row.id),
+  name: String(row.name || ""),
+  sku: String(row.SKU || row.sku || ""),
+  image: row.image || row.image_URL || row.image_path || undefined,
+  partNumber: String(row.part_number || row.partNumber || ""),
+  isOEM: Boolean(row.is_oem || row.isOEM || false),
+  oemRef: row.oem_reference_number || row.oemRef || null,
+  description: row.description || "-",
+  unit: row.unit?.name || row.Unit?.name || row.unit_name || row.unit || "-",
+  price: Number(row.selling_price || row.price || row.sell_price || 0),
+  category: row.category?.name || row.Category?.name || row.category_name || "-",
+  manufacturer:
+    row.manufacturer?.name ||
+    row.Manufacturer?.name ||
+    row.manufacturer_name ||
+    row.brand?.name ||
+    row.Brand?.name ||
+    row.brand_name ||
+    "-",
+  location: row.location || row.warehouse_location || "-",
+  barcode: row.barcode || "",
+  categoryId: row.category_id ?? row.categoryId ?? null,
+  suppliers: normalizeSuppliers(row),
+  compatibleVehicles: Array.isArray(row.compatibleVehicles)
+    ? row.compatibleVehicles
+    : [],
+  crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
+});
+
 const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const {
-    vehicleSlug,
-    variantSlug,
-    categorySlug,
-    productNameSlug,
-  } = useParams<{
+  const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
     variantSlug: string;
     categorySlug: string;
-    productNameSlug: string;
+    productId: string;
   }>();
 
-  const [product, setProduct] = useState<Product | null>(null);
+  const routeState = location.state as
+    | {
+        productId?: string;
+        product?: Product;
+        vehicleId?: string;
+        variantId?: string;
+        categoryId?: string;
+      }
+    | undefined;
 
-  const STORAGE_KEY =
-    vehicleSlug && variantSlug && categorySlug
-      ? `products_${vehicleSlug}_${variantSlug}_${categorySlug}`
-      : "products_temp";
+  const [product, setProduct] = useState<Product | null>(
+    routeState?.product || null
+  );
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [loading, setLoading] = useState(!routeState?.product);
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+
+  const loadCategories = async () => {
+    const res = await api.get("/products/categories");
+    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+    setCategories(
+      (Array.isArray(rows) ? rows : []).map((row: any) => ({
+        id: String(row.id),
+        name: String(row.name),
+        code: row.code || undefined,
+      }))
+    );
+  };
+
+  const loadManufacturers = async () => {
+    try {
+      const res = await api.get("/products/manufacturers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setManufacturers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.name || ""),
+          supplier_code: "",
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load manufacturers:", error);
+      setManufacturers([]);
+    }
+  };
+
+  const loadSuppliers = async () => {
+    try {
+      const res = await api.get("/products/suppliers");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+      setSuppliers(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.CompanyName || row.name || ""),
+          supplier_code: row.supplier_code || "",
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load suppliers:", error);
+      setSuppliers([]);
+    }
+  };
+
+  const loadProduct = async () => {
+    setLoading(true);
+
+    try {
+      const selectedProductId = routeState?.productId || productId;
+
+      if (selectedProductId) {
+        try {
+          const byIdRes = await api.get(`/products/${selectedProductId}`);
+          const row = byIdRes.data?.data ?? byIdRes.data;
+
+          if (row) {
+            setProduct(normalizeProduct(row));
+            return;
+          }
+        } catch (error) {
+          console.warn(
+            `GET /products/${selectedProductId} failed, falling back to list fetch`,
+            error
+          );
+        }
+      }
+
+      const listRes = await api.get("/products", {
+        params: {
+          vehicle_model_id: routeState?.vehicleId || undefined,
+          variant_id: routeState?.variantId || undefined,
+          category_id: routeState?.categoryId || undefined,
+        },
+      });
+
+      const rows = Array.isArray(listRes.data?.data)
+        ? listRes.data.data
+        : listRes.data;
+      const normalized = (Array.isArray(rows) ? rows : []).map(normalizeProduct);
+
+      const found =
+        normalized.find((item) => item.id === selectedProductId) || null;
+
+      setProduct(found);
+    } catch (error) {
+      console.error("Failed to load product detail:", error);
+      setProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const products: Product[] = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || "[]"
-    );
+    void Promise.all([loadCategories(), loadManufacturers(), loadSuppliers()]);
+    void loadProduct();
+  }, [routeState?.productId, productId]);
 
-    const found = products.find(
-      (p) => slugify(p.name) === productNameSlug
-    );
-
-    if (found) {
-      setProduct({
-        ...found,
-        costPrice: found.costPrice ?? 0,
-        price: found.price ?? 0,
-        unit: found.unit ?? "-",
-        supplier: found.supplier ?? "-",
-        description: found.description ?? "-",
-        compatibleVehicles: found.compatibleVehicles ?? [],
-        crossReferences: found.crossReferences ?? [],
-      });
-    } else {
-      setProduct(null);
+  useEffect(() => {
+    if (!product?.suppliers?.length) {
+      setSelectedSupplierId("");
+      return;
     }
-  }, [STORAGE_KEY, productNameSlug]);
+
+    const preferredSupplier =
+      product.suppliers.find((supplier) => supplier.is_preferred) ||
+      product.suppliers[0];
+
+    setSelectedSupplierId(String(preferredSupplier.supplier_id));
+  }, [product]);
+
+  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
+  const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
+  const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
+
+  const backToProductsPath = useMemo(
+    () =>
+      `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products`,
+    [vehicleSlug, variantSlug, categorySlug]
+  );
+
+  if (loading) {
+    return (
+      <div className="px-6 py-4 text-center text-muted-foreground">
+        <p>Loading product...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
       <div className="px-6 py-4 text-center text-muted-foreground">
         <p>No product found.</p>
         <div className="mt-4">
-          <Button
-            variant="outline"
-            onClick={() =>
-              navigate(
-                `/webapp/products/product-catalog${
-                  vehicleSlug ? `/${vehicleSlug}` : ""
-                }${variantSlug ? `/${variantSlug}` : ""}${
-                  categorySlug ? `/${categorySlug}` : ""
-                }`
-              )
-            }
-          >
+          <Button variant="outline" onClick={() => navigate(backToProductsPath)}>
             Back to Products
           </Button>
         </div>
@@ -118,22 +303,120 @@ const ProductDetail: React.FC = () => {
     );
   }
 
+  const selectedSupplier = product.suppliers?.find(
+    (supplier) => String(supplier.supplier_id) === selectedSupplierId
+  );
+
+  const selectedSupplierCost = selectedSupplier?.supplier_cost ?? null;
+
+  const getSupplierName = (supplier: ProductSupplier) => {
+    return (
+      supplier.supplier?.CompanyName ||
+      supplier.supplier?.name ||
+      supplier.Supplier?.CompanyName ||
+      supplier.Supplier?.name ||
+      supplier.supplier_name ||
+      supplier.CompanyName ||
+      `Supplier #${supplier.supplier_id}`
+    );
+  };
+
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
-      {/* Toolbar */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              onClick={() => navigate("/webapp/products/product-catalog")}
+            >
+              Product Catalog
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          {vehicleSlug && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  onClick={() =>
+                    navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                      state: {
+                        vehicleId: routeState?.vehicleId,
+                        variantId: routeState?.variantId,
+                        categoryId: routeState?.categoryId,
+                      },
+                    })
+                  }
+                >
+                  {makeModel}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          )}
+
+          {variantSlug && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  onClick={() =>
+                    navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                      state: {
+                        vehicleId: routeState?.vehicleId,
+                        variantId: routeState?.variantId,
+                        categoryId: routeState?.categoryId,
+                      },
+                    })
+                  }
+                >
+                  {variantName}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          )}
+
+          {categorySlug && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  onClick={() =>
+                    navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
+                      state: {
+                        vehicleId: routeState?.vehicleId,
+                        variantId: routeState?.variantId,
+                        categoryId: routeState?.categoryId,
+                      },
+                    })
+                  }
+                >
+                  {categoryName}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            </>
+          )}
+
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink onClick={() => navigate(backToProductsPath)}>
+              Products
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{product.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* LEFT SIDE */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="p-6 space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
-                <Badge
-                  variant="secondary"
-                  className="bg-green-100 text-green-700"
-                >
+                <Badge variant="secondary" className="bg-green-100 text-green-700">
                   In Stock
                 </Badge>
               </div>
@@ -148,23 +431,18 @@ const ProductDetail: React.FC = () => {
               </Button>
             </div>
 
-            {/* SKU Row */}
             <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
               <div>
                 <span className="font-medium text-foreground">SKU:</span>{" "}
-                {product.sku}
+                {product.sku || "-"}
               </div>
               <div>
-                <span className="font-medium text-foreground">
-                  Part No:
-                </span>{" "}
-                {product.partNumber}
+                <span className="font-medium text-foreground">Part No:</span>{" "}
+                {product.partNumber || "-"}
               </div>
               <div>
-                <span className="font-medium text-foreground">
-                  Brand:
-                </span>{" "}
-                {product.manufacturer}
+                <span className="font-medium text-foreground">Brand:</span>{" "}
+                {product.manufacturer || "-"}
               </div>
               {product.isOEM && (
                 <div>
@@ -175,16 +453,12 @@ const ProductDetail: React.FC = () => {
                 </div>
               )}
               <div>
-                <span className="font-medium text-foreground">
-                  Category:
-                </span>{" "}
-                {product.category}
+                <span className="font-medium text-foreground">Category:</span>{" "}
+                {product.category || "-"}
               </div>
             </div>
 
-            {/* Main Content */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-stretch">
-              {/* Image Section */}
               <div className="md:col-span-2 flex flex-col h-full gap-4">
                 <div className="bg-muted rounded-xl flex-1 min-h-[200px] flex items-center justify-center overflow-hidden">
                   {product.image ? (
@@ -198,7 +472,6 @@ const ProductDetail: React.FC = () => {
                   )}
                 </div>
 
-                {/* Barcode */}
                 <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4">
                   <div className="flex flex-col items-center">
                     <img
@@ -216,14 +489,40 @@ const ProductDetail: React.FC = () => {
                 </div>
               </div>
 
-              {/* Product Details */}
               <Card className="md:col-span-3 p-4 h-full flex flex-col">
                 <CardContent className="p-0 flex flex-col h-full space-y-4">
                   <h2 className="font-semibold">Product Details</h2>
 
                   <div className="grid grid-cols-2 gap-y-3 text-sm flex-1">
-                    <span className="text-muted-foreground">Cost Price</span>
-                    <span>₱{product.costPrice?.toFixed(2) ?? "0.00"}</span>
+                    <span className="text-muted-foreground">Supplier</span>
+                    <select
+                      className="border rounded-md px-2 py-1 bg-background"
+                      value={selectedSupplierId}
+                      onChange={(e) => setSelectedSupplierId(e.target.value)}
+                    >
+                      {product.suppliers && product.suppliers.length > 0 ? (
+                        product.suppliers.map((supplier) => (
+                          <option
+                            key={String(supplier.supplier_id)}
+                            value={String(supplier.supplier_id)}
+                          >
+                            {getSupplierName(supplier)}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">No suppliers</option>
+                      )}
+                    </select>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Supplier Cost</span>
+                    <span>
+                      {selectedSupplierCost !== null &&
+                      selectedSupplierCost !== undefined
+                        ? `₱${Number(selectedSupplierCost).toFixed(2)}`
+                        : "-"}
+                    </span>
 
                     <Separator className="col-span-2" />
 
@@ -237,11 +536,6 @@ const ProductDetail: React.FC = () => {
 
                     <Separator className="col-span-2" />
 
-                    <span className="text-muted-foreground">Supplier</span>
-                    <span>{product.supplier}</span>
-
-                    <Separator className="col-span-2" />
-
                     <span className="text-muted-foreground">
                       Warehouse Location
                     </span>
@@ -249,7 +543,6 @@ const ProductDetail: React.FC = () => {
 
                     <Separator className="col-span-2" />
 
-                    {/* Description */}
                     <div className="col-span-2 flex flex-col gap-1 mt-auto">
                       <span className="text-muted-foreground">Description</span>
                       <textarea
@@ -265,9 +558,7 @@ const ProductDetail: React.FC = () => {
           </Card>
         </div>
 
-        {/* RIGHT SIDE */}
         <div className="space-y-6 flex flex-col">
-          {/* Compatible Vehicles Card */}
           <Card className="flex-1 p-4">
             <CardContent className="p-0 space-y-4">
               <div className="flex justify-between items-center">
@@ -300,7 +591,6 @@ const ProductDetail: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Cross References Card */}
           <Card className="flex-1 p-4">
             <CardContent className="p-0 space-y-4">
               <div className="flex justify-between items-center">
@@ -311,8 +601,7 @@ const ProductDetail: React.FC = () => {
               </div>
 
               <div className="space-y-2 text-sm">
-                {product.crossReferences &&
-                product.crossReferences.length > 0 ? (
+                {product.crossReferences && product.crossReferences.length > 0 ? (
                   product.crossReferences.map((ref, idx) => (
                     <div
                       key={idx}
@@ -339,22 +628,18 @@ const ProductDetail: React.FC = () => {
       <ProductModal
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
-        onsaved={(updatedProduct) => {
-          setProduct(updatedProduct);
-
-          const products: Product[] = JSON.parse(
-            localStorage.getItem(STORAGE_KEY) || "[]"
-          );
-
-          const updatedProducts = products.map((p) =>
-            p.id === updatedProduct.id ? updatedProduct : p
-          );
-
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedProducts));
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
+        variantId={routeState?.variantId || null}
+        categoryId={
+          routeState?.categoryId ||
+          (product.categoryId ? String(product.categoryId) : null)
+        }
+        onSaved={async () => {
+          await loadProduct();
         }}
       />
-
-
     </div>
   );
 };

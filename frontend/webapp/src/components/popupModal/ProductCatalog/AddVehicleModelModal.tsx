@@ -1,41 +1,29 @@
-
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
-
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scrollArea"
-
-import { X, ImagePlus } from "lucide-react"
-import { toast } from "sonner"
-
-import Combobox from "@/components/ui/combobox"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ImagePlus, X } from "lucide-react";
+import { toast } from "sonner";
+import Combobox from "@/components/ui/combobox";
 
 interface MakeOption {
-  id: string
-  name: string
-}
-
-interface VehicleModalItem {
-  id: string
-  image: string
-  makeId: string
-  model: string
+  id: string;
+  name: string;
 }
 
 interface Props {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  vehicle?: VehicleModalItem | null
-  makerList: MakeOption[]
-  onSaved: (vehicle: VehicleModalItem) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  vehicle?: any | null;
+  makerList: MakeOption[];
+  onSaved: (vehicle: any) => void;
 }
 
 export function VehicleModal({
@@ -45,172 +33,152 @@ export function VehicleModal({
   makerList,
   onSaved,
 }: Props) {
-  const isEdit = !!vehicle
+  const isEdit = !!vehicle;
+  const [makeId, setMakeId] = useState(""); // stores ID or typed name temporarily
+  const [model, setModel] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [makeName, setMakeName] = useState("") // always string
-  const [selectedMakeId, setSelectedMakeId] = useState("") // UUID of selected make
-  const [model, setModel] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
-
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const capitalize = (str: string) =>
-  str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  
+    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
   useEffect(() => {
-    console.log("AddVehicleModelModal rendered")
-    console.log("makerList in modal:", makerList)
-
-    if (!open) return
-
-    if (vehicle) {
-      const existingMake = makerList.find((m) => m.id === vehicle.makeId)
-      setMakeName(existingMake ? existingMake.name : "")
-      setSelectedMakeId(existingMake ? existingMake.id : "")
-      setModel(vehicle.model)
-      setImageUrl(vehicle.image)
-    } else {
-      setMakeName("")
-      setSelectedMakeId("")
-      setModel("")
-      setImageUrl("")
+    if (open) {
+      if (vehicle) {
+        const maker = makerList.find((m) => m.id === vehicle.makeId);
+        setMakeId(maker ? maker.id : vehicle.makeId); // display existing make ID or typed value
+        setModel(vehicle.model);
+        setImageUrl(vehicle.image || "");
+      } else {
+        setMakeId("");
+        setModel("");
+        setImageUrl("");
+      }
     }
-  }, [open, vehicle, makerList])
+  }, [open, vehicle, makerList]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImageUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file.")
-      return
+  const handleSave = () => {
+    if (!makeId || !makeId.trim()) {
+      toast.error("Please select or enter a Make");
+      return;
     }
-
-    const reader = new FileReader()
-    reader.onload = () => setImageUrl(reader.result as string)
-    reader.readAsDataURL(file)
-  }
-
-  const handleSave = async () => {
-    if (!selectedMakeId) {
-      toast.error("Please select a valid make from the options.")
-      return
-    }
-
     if (!model.trim()) {
-      toast.error("Vehicle model is required.")
-      return
+      toast.error("Model name is required");
+      return;
     }
 
-    setIsSaving(true)
-
-    const newVehicle: VehicleModalItem = {
-      id: vehicle?.id || crypto.randomUUID(),
-      makeId: selectedMakeId,
-      model: model.trim(),
-      image: imageUrl,
-    }
+    setIsSaving(true);
 
     try {
-      await onSaved(newVehicle)
-      toast.success(isEdit ? "Vehicle updated" : "Vehicle added")
-      onOpenChange(false)
+      onSaved({
+        id: vehicle?.id || crypto.randomUUID(),
+        makeId, // temporary, will resolve in VehiclesPage
+        model: capitalize(model),
+        image: imageUrl,
+        variants: vehicle?.variants || [],
+      });
+      toast.success(isEdit ? "Vehicle updated" : "Vehicle added");
+      onOpenChange(false);
     } catch {
-      toast.error("Failed to save vehicle")
+      toast.error("Failed to save vehicle");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>{isEdit ? "Edit Vehicle" : "Add Vehicle"}</DialogTitle>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-6 pb-2">
+          <DialogTitle>{isEdit ? "Edit Vehicle" : "Add New Vehicle"}</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[68vh]">
-          <div className="px-6 pb-4 space-y-4">
-            {/* IMAGE */}
-            <div>
-              <Label className="text-xs">Vehicle Image</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageUpload}
-              />
+        <div className="space-y-5 pb-4 px-4">
+          {/* Image Section */}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-muted-foreground uppercase">
+              Vehicle Image
+            </Label>
+            <div
+              className="relative h-32 w-full border-2 border-dashed rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden group cursor-pointer"
+              onClick={() => !imageUrl && fileInputRef.current?.click()}
+            >
               {imageUrl ? (
-                <div className="relative w-full h-32 rounded-md border border-border overflow-hidden bg-muted">
+                <>
                   <img
                     src={imageUrl}
-                    alt="Vehicle"
-                    className="w-full h-full object-contain"
+                    alt="Preview"
+                    className="h-full w-full object-contain"
                   />
                   <button
-                    type="button"
-                    onClick={() => {
-                      setImageUrl("")
-                      if (fileInputRef.current) fileInputRef.current.value = ""
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setImageUrl("");
                     }}
-                    className="absolute top-1 right-1 bg-background/80 rounded-full p-0.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                   </button>
-                </div>
+                </>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-32 rounded-md border-2 border-dashed border-border bg-muted/50 flex flex-col items-center justify-center gap-1.5 hover:border-primary/50 hover:bg-muted transition-colors"
-                >
-                  <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    Click to upload image
-                  </span>
-                </button>
+                <div className="flex flex-col items-center text-muted-foreground">
+                  <ImagePlus className="h-6 w-6 mb-1" />
+                  <span className="text-xs">Click to upload</span>
+                </div>
               )}
             </div>
-
-            {/* MAKE */}
-            <div>
-              <Label className="text-xs">Make *</Label>
-              <Combobox
-                value={makeName}
-                onChange={(val) => {
-                  console.log("selected combobox value:", val)
-                  setMakeName(val)
-                  const matchedMake = makerList.find(
-                    (m) => m.name.trim().toLowerCase() === val.trim().toLowerCase()
-                  )
-                  console.log("matchedMake:", matchedMake)
-                  setSelectedMakeId(matchedMake ? matchedMake.id : "")
-                }}
-                items={makerList.map((m) => m.name)}
-                placeholder="Type or select make..."
-              />
-            </div>
-
-            {/* MODEL */}
-            <div>
-              <Label className="text-xs">Model *</Label>
-              <Input
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="Hilux, Civic, Navara"
-              />
-            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              hidden
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
           </div>
-        </ScrollArea>
 
-        <DialogFooter className="px-6 pb-6 pt-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-          >
+          {/* Make Selector */}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-muted-foreground uppercase">
+              Make *
+            </Label>
+            <Combobox
+              value={makerList.find((m) => m.id === makeId)?.name || makeId}
+              onChange={(val) => {
+                const selected = makerList.find(
+                  (m) => m.name.toLowerCase() === val.toLowerCase()
+                );
+                setMakeId(selected ? selected.id : val);
+              }}
+              items={makerList.map((m) => m.name)}
+              placeholder="Select or type manufacturer..."
+            />
+          </div>
+
+          {/* Model Input */}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-muted-foreground uppercase">
+              Model *
+            </Label>
+            <Input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="e.g. Camry, F-150"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="px-4 py-4 border-t bg-muted/10">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
@@ -218,10 +186,10 @@ export function VehicleModal({
               ? "Saving..."
               : isEdit
               ? "Update Vehicle"
-              : "Add Vehicle"}
+              : "Save Vehicle"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

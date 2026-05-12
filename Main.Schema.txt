@@ -1,6 +1,39 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE Main.AppointmentNotes (
+  id bigint NOT NULL DEFAULT nextval('"Main"."AppointmentNotes_id_seq"'::regclass),
+  user_id bigint NOT NULL,
+  key character varying NOT NULL,
+  data json,
+  created_at timestamp without time zone,
+  updated_at timestamp without time zone,
+  CONSTRAINT AppointmentNotes_pkey PRIMARY KEY (id),
+  CONSTRAINT main_appointmentnotes_user_id_foreign FOREIGN KEY (user_id) REFERENCES Main.UserCredentials(id)
+);
+CREATE TABLE Main.Appointments (
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  appointment_code character varying NOT NULL UNIQUE,
+  customer_id bigint,
+  plate_number character varying,
+  first_name character varying,
+  last_name character varying,
+  phone character varying,
+  email character varying,
+  make character varying,
+  model character varying,
+  year character varying,
+  appointment_datetime timestamp with time zone NOT NULL,
+  status character varying DEFAULT 'for approval'::character varying,
+  services jsonb,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  vehicle_id bigint,
+  CONSTRAINT Appointments_pkey PRIMARY KEY (id),
+  CONSTRAINT appointments_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES Main.CustomerVehicles(id),
+  CONSTRAINT appointments_customerid_fkey FOREIGN KEY (customer_id) REFERENCES Main.Customers(customer_id)
+);
 CREATE TABLE Main.AttributeDefinition (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
@@ -13,19 +46,23 @@ CREATE TABLE Main.AttributeValue (
   attributeID uuid NOT NULL,
   value text,
   CONSTRAINT AttributeValue_pkey PRIMARY KEY (id),
-  CONSTRAINT AttributeValue_productID_fkey FOREIGN KEY (productID) REFERENCES Main.Products(id),
-  CONSTRAINT AttributeValue_attributeID_fkey FOREIGN KEY (attributeID) REFERENCES Main.AttributeDefinition(id)
+  CONSTRAINT attributevalue_productid_fkey FOREIGN KEY (productID) REFERENCES Main.Products(id),
+  CONSTRAINT attributevalue_attributeid_fkey FOREIGN KEY (attributeID) REFERENCES Main.AttributeDefinition(id)
 );
 CREATE TABLE Main.AuditLogs (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
-  employeeID bigint NOT NULL,
-  date timestamp without time zone NOT NULL,
-  transaction_type character varying NOT NULL,
-  reference_id bigint NOT NULL,
-  target_item character varying,
-  old_value bigint,
-  new_value bigint,
-  CONSTRAINT AuditLogs_employeeID_fkey FOREIGN KEY (employeeID) REFERENCES Main.Employees(id)
+  id bigint NOT NULL DEFAULT nextval('"Main"."AuditLogs_id_seq"'::regclass),
+  employee_id bigint,
+  event_type character varying NOT NULL,
+  action character varying NOT NULL,
+  auditable_type character varying,
+  auditable_id character varying,
+  old_values jsonb,
+  new_values jsonb,
+  ip_address character varying,
+  user_agent text,
+  created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT AuditLogs_pkey PRIMARY KEY (id),
+  CONSTRAINT main_auditlogs_employee_id_foreign FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.BillingStatement (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -40,14 +77,6 @@ CREATE TABLE Main.BillingStatement (
   CONSTRAINT billing_so_fk FOREIGN KEY (SOID) REFERENCES Main.SalesOrder(id),
   CONSTRAINT billing_jo_fk FOREIGN KEY (JOID) REFERENCES Main.JobOrder(id)
 );
-CREATE TABLE Main.Brands (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
-  brand_type text NOT NULL CHECK (brand_type = ANY (ARRAY['OEM'::text, 'Aftermarket'::text, 'Both'::text])),
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT Brands_pkey PRIMARY KEY (id)
-);
 CREATE TABLE Main.BundlePrice (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   SizeCategory text NOT NULL,
@@ -56,17 +85,6 @@ CREATE TABLE Main.BundlePrice (
   CONSTRAINT BundlePrice_pkey PRIMARY KEY (id),
   CONSTRAINT bundle_service_fk FOREIGN KEY (ServiceTypeID) REFERENCES Main.ServiceType(id)
 );
-CREATE TABLE Main.CarModel (
-  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  manufacturer uuid NOT NULL,
-  model character varying NOT NULL,
-  year integer NOT NULL,
-  engine_displacement integer NOT NULL,
-  variant character varying NOT NULL,
-  transmission_type character varying NOT NULL,
-  CONSTRAINT CarModel_pkey PRIMARY KEY (id),
-  CONSTRAINT CarModel_manufacturer_fkey FOREIGN KEY (manufacturer) REFERENCES Main.Manufacturers(id)
-);
 CREATE TABLE Main.Category (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL,
@@ -74,14 +92,47 @@ CREATE TABLE Main.Category (
   seq_counter numeric NOT NULL DEFAULT '1'::numeric,
   CONSTRAINT Category_pkey PRIMARY KEY (id)
 );
+CREATE TABLE Main.CrossReferenceGroups (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  reference_number text NOT NULL,
+  CONSTRAINT CrossReferenceGroups_pkey PRIMARY KEY (id)
+);
+CREATE TABLE Main.CrossReferenceItems (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  product_id uuid,
+  group_id uuid,
+  CONSTRAINT CrossReferenceItems_pkey PRIMARY KEY (id),
+  CONSTRAINT crossreferenceitems_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
+  CONSTRAINT crossreferenceitems_group_id_fkey FOREIGN KEY (group_id) REFERENCES Main.CrossReferenceGroups(id)
+);
+CREATE TABLE Main.CustomerVehicles (
+  customerID bigint NOT NULL,
+  plate_number character varying NOT NULL UNIQUE,
+  engine_number character varying NOT NULL,
+  VIN character varying NOT NULL,
+  color character varying NOT NULL,
+  registration_number text NOT NULL,
+  selling_dealer character varying NOT NULL,
+  year_model text,
+  make character varying,
+  model character varying,
+  variant character varying,
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  CONSTRAINT CustomerVehicles_pkey PRIMARY KEY (id),
+  CONSTRAINT vehicle_customerid_fkey FOREIGN KEY (customerID) REFERENCES Main.Customers(customer_id)
+);
 CREATE TABLE Main.Customers (
   customer_id bigint GENERATED ALWAYS AS IDENTITY NOT NULL UNIQUE,
-  name character varying NOT NULL,
   address text,
   landline character varying,
   mobile_number character varying NOT NULL,
   email character varying,
-  business character varying
+  business character varying,
+  first_name character varying,
+  last_name character varying,
+  origin character varying DEFAULT 'appointment'::character varying,
+  CONSTRAINT Customers_pkey PRIMARY KEY (customer_id)
 );
 CREATE TABLE Main.EmployeeSecurity (
   employee_id integer NOT NULL,
@@ -100,16 +151,17 @@ CREATE TABLE Main.EmployeeSecurity (
 );
 CREATE TABLE Main.Employees (
   id integer NOT NULL,
-  name character varying NOT NULL,
   email character varying NOT NULL UNIQUE,
   position character varying NOT NULL,
   roleID bigint NOT NULL,
   status boolean,
-  phone character varying,
+  phone text,
   join_date date DEFAULT CURRENT_DATE,
   address text,
+  first_name character varying,
+  last_name character varying,
   CONSTRAINT Employees_pkey PRIMARY KEY (id),
-  CONSTRAINT Employees_roleID_fkey FOREIGN KEY (roleID) REFERENCES Main.Roles(id)
+  CONSTRAINT employees_roleid_fkey FOREIGN KEY (roleID) REFERENCES Main.Roles(id)
 );
 CREATE TABLE Main.EstimateItems (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -119,20 +171,22 @@ CREATE TABLE Main.EstimateItems (
   service_id uuid,
   quantity numeric NOT NULL DEFAULT 1,
   unit_price numeric NOT NULL,
-  subtotal numeric DEFAULT (quantity * unit_price),
+  subtotal numeric,
   created_at timestamp without time zone DEFAULT now(),
   CONSTRAINT EstimateItems_pkey PRIMARY KEY (id),
-  CONSTRAINT EstimateItems_estimate_id_fkey FOREIGN KEY (estimate_id) REFERENCES Main.Estimates(id)
+  CONSTRAINT estimateitems_estimate_id_fkey FOREIGN KEY (estimate_id) REFERENCES Main.Estimates(id)
 );
 CREATE TABLE Main.Estimates (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  vehicle_id character varying NOT NULL,
+  vehicle_id_old character varying NOT NULL,
   customer_id uuid NOT NULL,
   status character varying DEFAULT 'DRAFT'::character varying,
   total_amount numeric DEFAULT 0.00,
   created_at timestamp without time zone DEFAULT now(),
   updated_at timestamp without time zone DEFAULT now(),
-  CONSTRAINT Estimates_pkey PRIMARY KEY (id)
+  vehicle_id bigint,
+  CONSTRAINT Estimates_pkey PRIMARY KEY (id),
+  CONSTRAINT estimates_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES Main.CustomerVehicles(id)
 );
 CREATE TABLE Main.Inventory (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -144,8 +198,8 @@ CREATE TABLE Main.Inventory (
   reserved_quantity integer NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
   reorder_qty integer CHECK (reorder_qty IS NULL OR reorder_qty >= 0),
   CONSTRAINT Inventory_pkey PRIMARY KEY (id),
-  CONSTRAINT Inventory_productID_fkey FOREIGN KEY (productID) REFERENCES Main.Products(id),
-  CONSTRAINT Inventory_location_id_fkey FOREIGN KEY (location_id) REFERENCES Main.StockLocations(id)
+  CONSTRAINT inventory_productid_fkey FOREIGN KEY (productID) REFERENCES Main.Products(id),
+  CONSTRAINT inventory_location_id_fkey FOREIGN KEY (location_id) REFERENCES Main.StockLocations(id)
 );
 CREATE TABLE Main.InventoryTransaction (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -162,9 +216,9 @@ CREATE TABLE Main.InventoryTransaction (
   unit_cost numeric CHECK (unit_cost IS NULL OR unit_cost >= 0::numeric),
   remarks text,
   CONSTRAINT InventoryTransaction_pkey PRIMARY KEY (id),
-  CONSTRAINT InventoryTransaction_productID_fkey FOREIGN KEY (productID) REFERENCES Main.Products(id),
-  CONSTRAINT InventoryTransaction_location_id_fkey FOREIGN KEY (location_id) REFERENCES Main.StockLocations(id),
-  CONSTRAINT InventoryTransaction_created_by_fkey FOREIGN KEY (created_by) REFERENCES Main.Employees(id)
+  CONSTRAINT inventorytransaction_productid_fkey FOREIGN KEY (productID) REFERENCES Main.Products(id),
+  CONSTRAINT inventorytransaction_location_id_fkey FOREIGN KEY (location_id) REFERENCES Main.StockLocations(id),
+  CONSTRAINT inventorytransaction_created_by_fkey FOREIGN KEY (created_by) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.JobOrder (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -173,11 +227,12 @@ CREATE TABLE Main.JobOrder (
   TechnicianID bigint NOT NULL,
   date timestamp without time zone NOT NULL,
   status uuid NOT NULL,
+  vehicle_id_new bigint,
   CONSTRAINT JobOrder_pkey PRIMARY KEY (id),
-  CONSTRAINT JobOrder_SaleOrderID_fkey FOREIGN KEY (SaleOrderID) REFERENCES Main.SalesOrder(id),
-  CONSTRAINT JobOrder_status_fkey FOREIGN KEY (status) REFERENCES Main.Status(id),
-  CONSTRAINT JobOrder_VehicleID_fkey FOREIGN KEY (VehicleID) REFERENCES Main.Vehicle(plate_number),
-  CONSTRAINT JobOrder_TechnicianID_fkey FOREIGN KEY (TechnicianID) REFERENCES Main.Employees(id)
+  CONSTRAINT joborder_vehicle_id_fkey FOREIGN KEY (vehicle_id_new) REFERENCES Main.CustomerVehicles(id),
+  CONSTRAINT joborder_saleorderid_fkey FOREIGN KEY (SaleOrderID) REFERENCES Main.SalesOrder(id),
+  CONSTRAINT joborder_status_fkey FOREIGN KEY (status) REFERENCES Main.Status(id),
+  CONSTRAINT joborder_technicianid_fkey FOREIGN KEY (TechnicianID) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.JobOrderServices (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -185,22 +240,14 @@ CREATE TABLE Main.JobOrderServices (
   ServiceID uuid,
   PriceAtSale numeric,
   CONSTRAINT JobOrderServices_pkey PRIMARY KEY (id),
-  CONSTRAINT JobOrderServices_ServiceID_fkey FOREIGN KEY (ServiceID) REFERENCES Main.ServiceType(id),
-  CONSTRAINT JobOrderServices_JobOrderID_fkey FOREIGN KEY (JobOrderID) REFERENCES Main.JobOrder(id)
+  CONSTRAINT joborderservices_serviceid_fkey FOREIGN KEY (ServiceID) REFERENCES Main.ServiceType(id),
+  CONSTRAINT joborderservices_joborderid_fkey FOREIGN KEY (JobOrderID) REFERENCES Main.JobOrder(id)
 );
 CREATE TABLE Main.Manufacturers (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL,
-  type USER-DEFINED NOT NULL,
+  type USER-DEFINED,
   CONSTRAINT Manufacturers_pkey PRIMARY KEY (id)
-);
-CREATE TABLE Main.PartCategories (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
-  code text UNIQUE,
-  description text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT PartCategories_pkey PRIMARY KEY (id)
 );
 CREATE TABLE Main.PartRequests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -212,23 +259,20 @@ CREATE TABLE Main.PartRequests (
   employee bigint NOT NULL,
   SaleOrderID uuid,
   CONSTRAINT PartRequests_pkey PRIMARY KEY (id),
-  CONSTRAINT PartRequests_JobOrderID_fkey FOREIGN KEY (JobOrderID) REFERENCES Main.JobOrder(id),
-  CONSTRAINT PartRequests_ProductID_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id),
-  CONSTRAINT PartRequests_Status_fkey FOREIGN KEY (Status) REFERENCES Main.Status(id),
-  CONSTRAINT PartRequests_PurchaseOrderID_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrder(id),
-  CONSTRAINT PartRequests_SaleOrderID_fkey FOREIGN KEY (SaleOrderID) REFERENCES Main.SalesOrder(id),
-  CONSTRAINT PartRequests_employee_fkey FOREIGN KEY (employee) REFERENCES Main.Employees(id)
+  CONSTRAINT partrequests_joborderid_fkey FOREIGN KEY (JobOrderID) REFERENCES Main.JobOrder(id),
+  CONSTRAINT partrequests_productid_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id),
+  CONSTRAINT partrequests_status_fkey FOREIGN KEY (Status) REFERENCES Main.Status(id),
+  CONSTRAINT partrequests_purchaseorderid_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrder(id),
+  CONSTRAINT partrequests_saleorderid_fkey FOREIGN KEY (SaleOrderID) REFERENCES Main.SalesOrder(id),
+  CONSTRAINT partrequests_employee_fkey FOREIGN KEY (employee) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.Parts (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
-  category_id uuid,
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL,
   description text,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  category_id bigint NOT NULL,
   CONSTRAINT Parts_pkey PRIMARY KEY (id),
-  CONSTRAINT Parts_category_id_fkey FOREIGN KEY (category_id) REFERENCES Main.PartCategories(id)
+  CONSTRAINT parts_category_id_fkey FOREIGN KEY (category_id) REFERENCES Main.Category(id)
 );
 CREATE TABLE Main.Payment (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -241,83 +285,52 @@ CREATE TABLE Main.Payment (
   CONSTRAINT Payment_pkey PRIMARY KEY (id),
   CONSTRAINT payment_billing_fk FOREIGN KEY (BillingID) REFERENCES Main.BillingStatement(id)
 );
-CREATE TABLE Main.PriceList (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  desc text,
-  CONSTRAINT PriceList_pkey PRIMARY KEY (id)
-);
-CREATE TABLE Main.ProductCrossReferences (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  product_id uuid NOT NULL,
-  reference_type text NOT NULL CHECK (reference_type = ANY (ARRAY['OEM'::text, 'ALTERNATE'::text, 'SUPERSEDED'::text, 'SUPPLIER'::text])),
-  brand_id uuid,
-  part_number text NOT NULL,
-  notes text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT ProductCrossReferences_pkey PRIMARY KEY (id),
-  CONSTRAINT ProductCrossReferences_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
-  CONSTRAINT ProductCrossReferences_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES Main.Brands(id)
-);
 CREATE TABLE Main.ProductPrice (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   ProductID uuid NOT NULL,
-  PriceListID uuid,
-  PricingType text NOT NULL DEFAULT 'regular'::text,
   Price numeric DEFAULT 0 CHECK ("Price" >= 0::numeric),
   Markup numeric DEFAULT 0 CHECK ("Markup" >= 0::numeric),
   CONSTRAINT ProductPrice_pkey PRIMARY KEY (id),
-  CONSTRAINT ProductPrice_ProductID_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id),
-  CONSTRAINT ProductPrice_PriceListID_fkey FOREIGN KEY (PriceListID) REFERENCES Main.PriceList(id)
+  CONSTRAINT productprice_productid_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id)
 );
 CREATE TABLE Main.ProductSuppliers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL,
   supplier_id uuid NOT NULL,
-  supplier_part_number text,
   supplier_cost numeric DEFAULT 0 CHECK (supplier_cost >= 0::numeric),
-  last_purchase_cost numeric DEFAULT 0 CHECK (last_purchase_cost >= 0::numeric),
-  lead_time_days integer CHECK (lead_time_days IS NULL OR lead_time_days >= 0),
-  is_preferred boolean NOT NULL DEFAULT false,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT ProductSuppliers_pkey PRIMARY KEY (id),
-  CONSTRAINT ProductSuppliers_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
-  CONSTRAINT ProductSuppliers_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES Main.Suppliers(id)
+  CONSTRAINT productsuppliers_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
+  CONSTRAINT productsuppliers_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES Main.Suppliers(id)
 );
 CREATE TABLE Main.ProductVehicleCompatibility (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL,
-  car_model_id bigint NOT NULL,
   notes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  car_variant_id bigint,
   CONSTRAINT ProductVehicleCompatibility_pkey PRIMARY KEY (id),
-  CONSTRAINT ProductVehicleCompatibility_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
-  CONSTRAINT ProductVehicleCompatibility_car_model_id_fkey FOREIGN KEY (car_model_id) REFERENCES Main.CarModel(id)
+  CONSTRAINT productvehiclecompatibility_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
+  CONSTRAINT productvehiclecompatibility_car_variant_id_fkey FOREIGN KEY (car_variant_id) REFERENCES Main.VehicleVariants(id)
 );
 CREATE TABLE Main.Products (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
   SKU text NOT NULL UNIQUE,
-  cost numeric NOT NULL CHECK (cost >= 0::numeric),
   description text,
-  image_URL text,
+  image_path text,
   category_id bigint,
-  unit uuid NOT NULL,
   barcode text UNIQUE,
   part_number text NOT NULL CHECK (length(TRIM(BOTH FROM part_number)) > 0),
-  part_id uuid,
-  brand_id uuid,
   is_oem boolean NOT NULL DEFAULT false,
   oem_reference_number text,
-  is_active boolean NOT NULL DEFAULT true,
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  unit bigint,
+  part_id bigint,
+  manufacturer_id bigint,
   CONSTRAINT Products_pkey PRIMARY KEY (id),
-  CONSTRAINT Products_unit_fkey FOREIGN KEY (unit) REFERENCES Main.UnitOfMeasure(id),
-  CONSTRAINT Products_category_id_fkey FOREIGN KEY (category_id) REFERENCES Main.Category(id),
-  CONSTRAINT Products_part_id_fkey FOREIGN KEY (part_id) REFERENCES Main.Parts(id),
-  CONSTRAINT Products_brand_id_fkey FOREIGN KEY (brand_id) REFERENCES Main.Brands(id)
+  CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES Main.Category(id),
+  CONSTRAINT products_unit_fkey FOREIGN KEY (unit) REFERENCES Main.UnitOfMeasure(id),
+  CONSTRAINT products_part_id_fkey FOREIGN KEY (part_id) REFERENCES Main.Parts(id),
+  CONSTRAINT products_manufacturer_id_fkey FOREIGN KEY (manufacturer_id) REFERENCES Main.Manufacturers(id)
 );
 CREATE TABLE Main.PurchaseOrder (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -334,7 +347,7 @@ CREATE TABLE Main.PurchaseOrder (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT PurchaseOrder_pkey PRIMARY KEY (id),
-  CONSTRAINT PurchaseOrder_Vendor_fkey FOREIGN KEY (supplier) REFERENCES Main.Suppliers(id)
+  CONSTRAINT purchaseorder_vendor_fkey FOREIGN KEY (supplier) REFERENCES Main.Suppliers(id)
 );
 CREATE TABLE Main.PurchaseOrderItems (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -344,7 +357,7 @@ CREATE TABLE Main.PurchaseOrderItems (
   UnitPrice numeric NOT NULL DEFAULT '0'::numeric CHECK ("UnitPrice" >= 0::numeric),
   subtotal numeric NOT NULL DEFAULT '0'::numeric CHECK (subtotal >= 0::numeric),
   CONSTRAINT PurchaseOrderItems_pkey PRIMARY KEY (id),
-  CONSTRAINT PurchaseOrderItems_PurchaseOrderID_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrder(id),
+  CONSTRAINT purchaseorderitems_purchaseorderid_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrder(id),
   CONSTRAINT purchase_order_items_product_fk FOREIGN KEY (productID) REFERENCES Main.Products(id)
 );
 CREATE TABLE Main.RegistrationKeys (
@@ -356,11 +369,15 @@ CREATE TABLE Main.RegistrationKeys (
   updated_at timestamp without time zone,
   expires_at timestamp without time zone,
   employee_id integer,
-  address character varying,
-  phone character varying,
+  address text,
+  phone text,
+  email character varying,
+  position character varying,
+  first_name character varying,
+  last_name character varying,
   CONSTRAINT RegistrationKeys_pkey PRIMARY KEY (id),
   CONSTRAINT main_registrationkeys_role_id_foreign FOREIGN KEY (role_id) REFERENCES Main.Roles(id),
-  CONSTRAINT RegistrationKeys_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)
+  CONSTRAINT registrationkeys_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.Roles (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
@@ -377,16 +394,14 @@ CREATE TABLE Main.SalesOrder (
   Balance numeric NOT NULL CHECK ("Balance" >= 0::numeric),
   Status text NOT NULL CHECK ("Status" = ANY (ARRAY['DRAFT'::text, 'PENDING'::text, 'APPROVED'::text, 'IN_PROGRESS'::text, 'COMPLETED'::text, 'CANCELLED'::text])),
   StockAvailability text NOT NULL CHECK ("StockAvailability" = ANY (ARRAY['IN_STOCK'::text, 'PARTIAL'::text, 'OUT_OF_STOCK'::text, 'FOR_ORDER'::text])),
-  PriceListID uuid,
   job_order_id uuid,
   so_number text UNIQUE,
   remarks text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT SalesOrder_pkey PRIMARY KEY (id),
-  CONSTRAINT SalesOrder_customerID_fkey FOREIGN KEY (customerID) REFERENCES Main.Customers(customer_id),
-  CONSTRAINT SalesOrder_PriceListID_fkey FOREIGN KEY (PriceListID) REFERENCES Main.PriceList(id),
-  CONSTRAINT SalesOrder_employee_fkey FOREIGN KEY (employee) REFERENCES Main.Employees(id),
+  CONSTRAINT salesorder_customerid_fkey FOREIGN KEY (customerID) REFERENCES Main.Customers(customer_id),
+  CONSTRAINT salesorder_employee_fkey FOREIGN KEY (employee) REFERENCES Main.Employees(id),
   CONSTRAINT sales_order_job_order_fk FOREIGN KEY (job_order_id) REFERENCES Main.JobOrder(id)
 );
 CREATE TABLE Main.SalesOrderItemTax (
@@ -408,8 +423,8 @@ CREATE TABLE Main.SalesOrderItems (
   CostAtSale numeric NOT NULL CHECK ("CostAtSale" >= 0::numeric),
   TaxAtSale text,
   CONSTRAINT SalesOrderItems_pkey PRIMARY KEY (id),
-  CONSTRAINT SalesOrderItems_SalesOrderID_fkey FOREIGN KEY (SalesOrderID) REFERENCES Main.SalesOrder(id),
-  CONSTRAINT SalesOrderItems_ProductID_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id)
+  CONSTRAINT salesorderitems_salesorderid_fkey FOREIGN KEY (SalesOrderID) REFERENCES Main.SalesOrder(id),
+  CONSTRAINT salesorderitems_productid_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id)
 );
 CREATE TABLE Main.ServiceType (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -450,8 +465,8 @@ CREATE TABLE Main.Tax (
   CONSTRAINT Tax_pkey PRIMARY KEY (id)
 );
 CREATE TABLE Main.UnitOfMeasure (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
+  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name text NOT NULL,
   CONSTRAINT UnitOfMeasure_pkey PRIMARY KEY (id)
 );
 CREATE TABLE Main.UserCredentials (
@@ -460,38 +475,35 @@ CREATE TABLE Main.UserCredentials (
   username character varying NOT NULL UNIQUE,
   password_hash character varying NOT NULL,
   CONSTRAINT UserCredentials_pkey PRIMARY KEY (id),
-  CONSTRAINT UserCredentials_employeeID_fkey FOREIGN KEY (employeeID) REFERENCES Main.Employees(id)
+  CONSTRAINT usercredentials_employeeid_fkey FOREIGN KEY (employeeID) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.UserEmployeeMap (
   user_id uuid NOT NULL,
   employee_id bigint NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT UserEmployeeMap_pkey PRIMARY KEY (user_id),
-  CONSTRAINT UserEmployeeMap_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
-  CONSTRAINT UserEmployeeMap_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)
+  CONSTRAINT useremployeemap_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT useremployeemap_employee_id_fkey FOREIGN KEY (employee_id) REFERENCES Main.Employees(id)
 );
-CREATE TABLE Main.Vehicle (
-  customerID bigint NOT NULL,
-  modelID bigint NOT NULL,
-  plate_number character varying NOT NULL,
-  engine_number character varying NOT NULL,
-  VIN character varying NOT NULL,
-  Color character varying NOT NULL,
-  registration _number date NOT NULL,
-  selling_dealer character varying NOT NULL,
-  CONSTRAINT Vehicle_pkey PRIMARY KEY (plate_number),
-  CONSTRAINT Vehicle_customerID_fkey FOREIGN KEY (customerID) REFERENCES Main.Customers(customer_id),
-  CONSTRAINT Vehicle_modelID_fkey FOREIGN KEY (modelID) REFERENCES Main.CarModel(id)
+CREATE TABLE Main.VehicleModels (
+  id bigint NOT NULL DEFAULT nextval('"Main"."CarModels_id_seq"'::regclass),
+  model character varying NOT NULL,
+  image_path text,
+  manufacturer_id bigint NOT NULL,
+  CONSTRAINT VehicleModels_pkey PRIMARY KEY (id),
+  CONSTRAINT vehiclemodels_manufacturer_id_fkey FOREIGN KEY (manufacturer_id) REFERENCES Main.Manufacturers(id)
 );
-CREATE TABLE Main.VehiclePartFitments (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  part_id uuid NOT NULL,
+CREATE TABLE Main.VehicleVariants (
+  id bigint NOT NULL DEFAULT nextval('"Main"."CarVariants_id_seq"'::regclass),
   car_model_id bigint NOT NULL,
-  notes text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT VehiclePartFitments_pkey PRIMARY KEY (id),
-  CONSTRAINT VehiclePartFitments_part_id_fkey FOREIGN KEY (part_id) REFERENCES Main.Parts(id),
-  CONSTRAINT VehiclePartFitments_car_model_id_fkey FOREIGN KEY (car_model_id) REFERENCES Main.CarModel(id)
+  variant_name character varying,
+  engine_displacement text,
+  year integer,
+  transmission_type character varying,
+  oil_capacity integer,
+  service_class text,
+  drivetrain text,
+  CONSTRAINT VehicleVariants_pkey PRIMARY KEY (id)
 );
 CREATE TABLE Main.Warranties (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -500,9 +512,10 @@ CREATE TABLE Main.Warranties (
   start_date date NOT NULL DEFAULT CURRENT_DATE,
   expiry date NOT NULL,
   status text NOT NULL DEFAULT 'Active'::text CHECK (status = ANY (ARRAY['Active'::text, 'expired'::text, 'claimed'::text, 'Expired'::text, 'Claimed'::text])),
+  vehicle_id_new bigint,
   CONSTRAINT Warranties_pkey PRIMARY KEY (id),
-  CONSTRAINT warranty_jo_fk FOREIGN KEY (JOID) REFERENCES Main.JobOrder(id),
-  CONSTRAINT warranty_vehicle_fk FOREIGN KEY (VehicleID) REFERENCES Main.Vehicle(plate_number)
+  CONSTRAINT warranties_vehicle_id_fkey FOREIGN KEY (vehicle_id_new) REFERENCES Main.CustomerVehicles(id),
+  CONSTRAINT warranty_jo_fk FOREIGN KEY (JOID) REFERENCES Main.JobOrder(id)
 );
 CREATE TABLE Main.cache (
   key character varying NOT NULL,

@@ -48,7 +48,8 @@ class SendVerificationCode
         }
 
         try {
-            $this->mailService->sendVerificationCode($employee->email, $code, $employee->name);            return [
+            $employeeName = trim($employee->first_name . ' ' . $employee->last_name);
+            $this->mailService->sendVerificationCode($employee->email, $code, $employeeName);            return [
                 'status' => 'success',
                 'message' => 'Verification code sent to ' . $employee->email,
             ];

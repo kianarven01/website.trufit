@@ -24,62 +24,128 @@ export default function HeroSlider() {
     }, intervalTime)
   }
 
+  // 1. Progress Bar Logic using requestAnimationFrame for smoothness
   useEffect(() => {
-    startInterval()
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+    if (nextIndex !== null || isCompleting) {
+      setProgress(0);
+      return;
+    }
+
+    let rafId: number;
+    const startTime = performance.now();
+
+    const update = () => {
+      const currentTime = performance.now();
+      const elapsed = currentTime - startTime;
+      const newProgress = Math.min((elapsed / intervalTime) * 100, 100);
+      
+      setProgress(newProgress);
+
+      if (newProgress < 100) {
+        rafId = requestAnimationFrame(update);
+      }
+    };
+
+    rafId = requestAnimationFrame(update);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [index, nextIndex, isCompleting, intervalTime]);
+
+  // 2. Start Completion Phase (The "Ping")
+  useEffect(() => {
+    if (progress >= 100 && nextIndex === null && !isCompleting) {
+      setIsCompleting(true);
     }
   }, [slideCount])
 
   useEffect(() => {
-    setProgress(0)
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => Math.min(prev + 100 / (intervalTime / 100), 100))
-    }, 100)
-    return () => clearInterval(progressInterval)
-  }, [index, intervalTime])
-
-  const handleClick = (i: number) => {
-    setIndex(i)
-    setProgress(0)
-    startInterval()
-  }
-
-  // handle swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX
-  }
-
-  const handleTouchEnd = () => {
-    const distance = touchStartX.current - touchEndX.current
-    if (Math.abs(distance) > minSwipeDistance) {
-      if (distance > 0) {
-        // swipe left → next slide
-        setIndex((prev) => (prev + 1) % slideCount)
-      } else {
-        // swipe right → previous slide
-        setIndex((prev) => (prev - 1 + slideCount) % slideCount)
-      }
-      setProgress(0)
-      startInterval()
+    if (isCompleting) {
+      const timer = setTimeout(() => {
+        triggerTransition((index + 1) % slideCount);
+      }, 800);
+      return () => clearTimeout(timer);
     }
-  }
+  }, [isCompleting, index, slideCount]);
+
+  // 4. GSAP Animation Logic
+  useEffect(() => {
+    if (nextIndex === null) return;
+
+    const timer = setTimeout(() => {
+      const incoming = containerRef.current?.querySelector(".incoming-slide");
+      if (!incoming) {
+        setIndex(nextIndex);
+        setNextIndex(null);
+        return;
+      }
+
+      const ctx = gsap.context(() => {
+        const tl = gsap.timeline({
+          onComplete: () => {
+            // Swap immediately without delay to prevent "double overlay" darkening
+            setIndex(nextIndex);
+            setNextIndex(null);
+            setProgress(0);
+            setIsCompleting(false);
+          }
+        });
+
+        tl.fromTo(incoming, 
+          { clipPath: "polygon(0% 0%, 0% 0%, 0% 0%)", webkitClipPath: "polygon(0% 0%, 0% 0%, 0% 0%)" },
+          { 
+            clipPath: "polygon(0% 0%, 200% 0%, 0% 200%)", 
+            webkitClipPath: "polygon(0% 0%, 200% 0%, 0% 200%)",
+            duration: 1.5, 
+            ease: "expo.inOut",
+            force3D: true
+          }
+        );
+        tl.to({}, { duration: 1.5 });
+      }, containerRef);
+
+      return () => ctx.revert();
+    }, 30);
+
+    return () => clearTimeout(timer);
+  }, [nextIndex]);
+
+  // Handlers
+  const handleClick = (i: number) => triggerTransition(i);
+
+  const touchStartX = useRef(0);
+  const handleTouchStart = (e: React.TouchEvent) => (touchStartX.current = e.touches[0].clientX);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const distance = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(distance) > 50) {
+      triggerTransition(distance > 0 ? (index + 1) % slideCount : (index - 1 + slideCount) % slideCount);
+    }
+  };
 
   return (
-    <div
-      className="relative w-full overflow-hidden"
+    <section
+      ref={containerRef}
+      className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       <HeroSlide slide={slides[index]} />
 
-      {/* clickable rectangle progress bars */}
-      <div className="absolute bottom-4 left-0 right-0 px-6 md:px-16 flex gap-2 z-50">
+      {/* Transition Layer */}
+      {nextIndex !== null && (
+        <div 
+          className="incoming-slide absolute inset-0 z-20"
+          style={{ 
+            clipPath: "polygon(0% 0%, 0% 0%, 0% 0%)", 
+            WebkitClipPath: "polygon(0% 0%, 0% 0%, 0% 0%)" 
+          }}
+        >
+          <HeroSlide key={`incoming-${nextIndex}`} slide={slides[nextIndex]} isActive={true} />
+        </div>
+      )}
+
+      {/* Progress Bars */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[1820px] px-6 sm:px-10 lg:px-16 flex gap-2 z-20">
         {slides.map((_, i) => (
           <div
             key={i}
@@ -87,9 +153,10 @@ export default function HeroSlider() {
             className="flex-1 h-3 bg-white/30 cursor-pointer hover:bg-white/50 relative"
           >
             <div
-              className="h-full bg-white transition-[width] duration-100 linear pointer-events-none"
+              className={`h-full bg-brand-red transition-all ${i === index && isCompleting ? 'opacity-50' : 'opacity-100'}`}
               style={{
-                width: i === index ? `${progress}%` : "0%",
+                width: i === index ? `${progress}%` : '0%',
+                transition: 'none'
               }}
             />
           </div>

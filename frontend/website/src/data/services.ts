@@ -1,6 +1,8 @@
-import { Service } from "@/types/services"
-
-export const services: Service[] = [
+export const services = [
+  {
+    id: "pms",
+    name: "Preventive Maintenance Service (PMS)"
+  },
   {
     id: 1,
     title: "AC Repair",

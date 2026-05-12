@@ -5,7 +5,8 @@ import { Loader2, Send, Trash2 } from "lucide-react";
 
 interface OnboardingEmployee {
   id: number;
-  employee_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   key_code: string;
   is_used: boolean;
@@ -140,7 +141,7 @@ const OnboardingTable: React.FC = () => {
                 >
                   <td className="p-4">
                     <div className="font-bold text-slate-800 uppercase tracking-tight">
-                      {emp.employee_name || "Unknown"}
+                      {`${emp.first_name} ${emp.last_name}`.trim() || "Unknown"}
                     </div>
                     <div className="text-[10px] text-slate-400 lowercase font-medium">
                       {emp.email}

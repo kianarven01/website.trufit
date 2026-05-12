@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card";
 
 import temporary_bg from "@/assets/temporary_bg.jpeg";
-import trufit_logo from "@/assets/trufit_logo.png";
+import trufit_logo from "@/assets/trufit_logo.webp";
 import { Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,7 +43,7 @@ const LoginPage: React.FC = () => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  
+
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -75,7 +75,7 @@ const LoginPage: React.FC = () => {
       const response = await api.post("auth/login", {
         username,
         password,
-        remember
+        remember,
       });
 
       if (response.data.status === "success") {
@@ -85,17 +85,23 @@ const LoginPage: React.FC = () => {
       } else if (response.data.status === "requires_verification") {
         setChallengeEmail(response.data.email);
         setShowChallengeModal(true);
-        toast.warning("Identity verification required due to multiple failed attempts.");
+        toast.warning(
+          "Identity verification required due to multiple failed attempts.",
+        );
       } else if (response.data.status === "account_locked") {
         toast.error(response.data.message, { duration: 10000 });
       } else if (response.data.status === "contact_admin") {
         toast.error(response.data.message, { duration: 10000 });
       } else if (response.data.status === "error") {
-        setLoginError(response.data.message || "Invalid credentials. Please try again.");
+        setLoginError(
+          response.data.message || "Invalid credentials. Please try again.",
+        );
       }
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setLoginError(err.response.data.message || "Invalid credentials. Please try again.");
+        setLoginError(
+          err.response.data.message || "Invalid credentials. Please try again.",
+        );
       } else if (err.response?.data?.message) {
         setLoginError(err.response.data.message);
       } else {
@@ -113,7 +119,7 @@ const LoginPage: React.FC = () => {
       const response = await api.post("auth/login/verify-challenge", {
         username,
         code: challengeCode,
-        remember
+        remember,
       });
 
       if (response.data.status === "success") {
@@ -149,7 +155,8 @@ const LoginPage: React.FC = () => {
         navigate("/webapp/register", {
           state: {
             validKey: regKey,
-            employeeName: employeeData.employee_name,
+            employeeName:
+              `${employeeData.first_name} ${employeeData.last_name}`.trim(),
             position: employeeData.position,
           },
         });
@@ -166,7 +173,9 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setForgotLoading(true);
     try {
-      const response = await api.post("/auth/forgot-password", { email: forgotEmail });
+      const response = await api.post("/auth/forgot-password", {
+        email: forgotEmail,
+      });
       if (response.data.status === "success") {
         toast.success(response.data.message);
         setShowForgotModal(false);
@@ -177,7 +186,9 @@ const LoginPage: React.FC = () => {
         toast.error(response.data.message || "Something went wrong.");
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Error requesting password reset.");
+      toast.error(
+        err.response?.data?.message || "Error requesting password reset.",
+      );
     } finally {
       setForgotLoading(false);
     }
@@ -195,7 +206,7 @@ const LoginPage: React.FC = () => {
         email: forgotEmail,
         code: resetCode,
         password: newPassword,
-        password_confirmation: confirmPassword
+        password_confirmation: confirmPassword,
       });
       if (response.data.status === "success") {
         toast.success(response.data.message);
@@ -221,9 +232,7 @@ const LoginPage: React.FC = () => {
     >
       <div className="absolute inset-0 bg-black/40"></div>
 
-      <div
-        className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row bg-white/10 border-[2px] border-white/30 backdrop-blur-md shadow-[inset_0_0_8px_1px_rgba(255,255,255,0.2)] rounded-2xl overflow-hidden"
-      >
+      <div className="relative z-10 w-full max-w-6xl flex flex-col md:flex-row bg-white/10 border-[2px] border-white/30 backdrop-blur-md shadow-[inset_0_0_8px_1px_rgba(255,255,255,0.2)] rounded-2xl overflow-hidden">
         {/* LEFT: Logo */}
         <section className="relative md:w-1/2 flex flex-col justify-center items-center p-10 text-white overflow-hidden">
           {/* Base Gradient */}
@@ -388,43 +397,71 @@ const LoginPage: React.FC = () => {
                 <ShieldAlert className="h-12 w-12 text-amber-400 animate-pulse" />
               </div>
               <CardTitle className="text-2xl font-bold text-white tracking-wide">
-                {challengePassed ? "Identity Verified" : "Identity Verification"}
+                {challengePassed
+                  ? "Identity Verified"
+                  : "Identity Verification"}
               </CardTitle>
               <CardDescription className="text-gray-300 text-sm">
-                {challengePassed 
+                {challengePassed
                   ? "Your account is unblocked. Since there were multiple failures, we recommend updating your password."
-                  : `We've noticed unusual activity on your account. Please enter the code sent to ${challengeEmail} to continue.`
-                }
+                  : `We've noticed unusual activity on your account. Please enter the code sent to ${challengeEmail} to continue.`}
               </CardDescription>
             </CardHeader>
             <CardContent className="relative">
               {!challengePassed ? (
-                <form onSubmit={handleVerifyChallenge} className="flex flex-col gap-5">
+                <form
+                  onSubmit={handleVerifyChallenge}
+                  className="flex flex-col gap-5"
+                >
                   <div className="space-y-2">
-                    <Label htmlFor="challengeCode" className="text-gray-200 font-semibold">Verification Code</Label>
-                    <Input 
-                      id="challengeCode" 
-                      placeholder="000000" 
-                      value={challengeCode} 
-                      onChange={(e) => setChallengeCode(e.target.value.replace(/\D/g, '').slice(0, 6))} 
-                      required 
-                      className="bg-white/10 border-white/30 text-white text-center tracking-widest font-bold h-12 text-xl" 
+                    <Label
+                      htmlFor="challengeCode"
+                      className="text-gray-200 font-semibold"
+                    >
+                      Verification Code
+                    </Label>
+                    <Input
+                      id="challengeCode"
+                      placeholder="000000"
+                      value={challengeCode}
+                      onChange={(e) =>
+                        setChallengeCode(
+                          e.target.value.replace(/\D/g, "").slice(0, 6),
+                        )
+                      }
+                      required
+                      className="bg-white/10 border-white/30 text-white text-center tracking-widest font-bold h-12 text-xl"
                     />
                   </div>
                   <div className="flex flex-col gap-3 pt-2">
-                    <Button type="submit" disabled={challengeLoading} className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold h-11 transition-all">
-                      {challengeLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Verify Identity"}
+                    <Button
+                      type="submit"
+                      disabled={challengeLoading}
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white font-semibold h-11 transition-all"
+                    >
+                      {challengeLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        "Verify Identity"
+                      )}
                     </Button>
-                    <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => {
-                      setShowChallengeModal(false);
-                      setChallengePassed(false);
-                      setAuthPayload(null);
-                    }}>Cancel</Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent"
+                      onClick={() => {
+                        setShowChallengeModal(false);
+                        setChallengePassed(false);
+                        setAuthPayload(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </form>
               ) : (
                 <div className="flex flex-col gap-3">
-                  <Button 
+                  <Button
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold h-11"
                     onClick={() => {
                       if (authPayload) {
@@ -437,7 +474,7 @@ const LoginPage: React.FC = () => {
                   >
                     Enter Dashboard
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
                     className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent"
                     onClick={() => {
@@ -462,19 +499,57 @@ const LoginPage: React.FC = () => {
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
             <CardHeader className="relative text-center space-y-2 pb-6">
-              <CardTitle className="text-2xl font-bold text-white tracking-wide">Verify Registration</CardTitle>
-              <CardDescription className="text-gray-300 text-sm">Enter your employee registration key to create an account.</CardDescription>
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">
+                Verify Registration
+              </CardTitle>
+              <CardDescription className="text-gray-300 text-sm">
+                Enter your employee registration key to create an account.
+              </CardDescription>
             </CardHeader>
             <CardContent className="relative">
               <form onSubmit={handleVerifyKey} className="flex flex-col gap-5">
                 <div className="space-y-2">
-                  <Label htmlFor="registrationCode" className="text-gray-200 font-semibold">Registration Key</Label>
-                  <Input id="registrationCode" type="text" placeholder="TRUFIT-XXXXXX" value={regKey} onChange={(e) => setRegKey(e.target.value.toUpperCase())} required className="bg-white/10 border-white/30 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400" />
+                  <Label
+                    htmlFor="registrationCode"
+                    className="text-gray-200 font-semibold"
+                  >
+                    Registration Key
+                  </Label>
+                  <Input
+                    id="registrationCode"
+                    type="text"
+                    placeholder="TRUFIT-XXXXXX"
+                    value={regKey}
+                    onChange={(e) => setRegKey(e.target.value.toUpperCase())}
+                    required
+                    className="bg-white/10 border-white/30 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400"
+                  />
                 </div>
-                {regKeyError && <p className="text-red-400 text-sm font-medium">{regKeyError}</p>}
+                {regKeyError && (
+                  <p className="text-red-400 text-sm font-medium">
+                    {regKeyError}
+                  </p>
+                )}
                 <div className="flex flex-col gap-3 pt-2">
-                  <Button type="submit" disabled={loadingState} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{loadingState ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Verify Key"}</Button>
-                  <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowRegisterModal(false)}>Cancel</Button>
+                  <Button
+                    type="submit"
+                    disabled={loadingState}
+                    className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all"
+                  >
+                    {loadingState ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      "Verify Key"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent"
+                    onClick={() => setShowRegisterModal(false)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </form>
             </CardContent>
@@ -489,19 +564,49 @@ const LoginPage: React.FC = () => {
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
             <CardHeader className="relative text-center space-y-2 pb-6">
-              <CardTitle className="text-2xl font-bold text-white tracking-wide">Forgot Password</CardTitle>
-              <CardDescription className="text-gray-300 text-sm">Enter your email address to receive a 6-digit reset code.</CardDescription>
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">
+                Forgot Password
+              </CardTitle>
+              <CardDescription className="text-gray-300 text-sm">
+                Enter your email address to receive a 6-digit reset code.
+              </CardDescription>
             </CardHeader>
             <CardContent className="relative">
-              <form onSubmit={handleForgotPassword} className="flex flex-col gap-5">
+              <form
+                onSubmit={handleForgotPassword}
+                className="flex flex-col gap-5"
+              >
                 <div className="space-y-2">
-                  <Label htmlFor="forgotEmail" className="text-gray-200 font-semibold">Email Address</Label>
-                  <Input id="forgotEmail" type="email" placeholder="email@example.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required className="bg-white/10 border-white/30 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400" />
+                  <Label
+                    htmlFor="forgotEmail"
+                    className="text-gray-200 font-semibold"
+                  >
+                    Email Address
+                  </Label>
+                  <Input
+                    id="forgotEmail"
+                    type="email"
+                    placeholder="email@example.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/30 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400"
+                  />
                 </div>
                 <div className="flex flex-col gap-3 pt-2">
-                  <Button type="submit" disabled={forgotLoading} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{forgotLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Code"}</Button>
-                  
-                  <button 
+                  <Button
+                    type="submit"
+                    disabled={forgotLoading}
+                    className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all"
+                  >
+                    {forgotLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      "Send Reset Code"
+                    )}
+                  </Button>
+
+                  <button
                     type="button"
                     onClick={() => {
                       if (!forgotEmail) {
@@ -516,7 +621,14 @@ const LoginPage: React.FC = () => {
                     Already have a reset code?
                   </button>
 
-                  <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowForgotModal(false)}>Cancel</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent"
+                    onClick={() => setShowForgotModal(false)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </form>
             </CardContent>
@@ -531,26 +643,92 @@ const LoginPage: React.FC = () => {
             <div className="absolute -top-20 -right-20 w-60 h-60 bg-blue-600/30 blur-3xl rounded-full"></div>
             <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-red-500/30 blur-3xl rounded-full"></div>
             <CardHeader className="relative text-center space-y-2 pb-6">
-              <CardTitle className="text-2xl font-bold text-white tracking-wide">Reset Password</CardTitle>
-              <CardDescription className="text-gray-300 text-sm">Enter the code sent to {forgotEmail} and your new password.</CardDescription>
+              <CardTitle className="text-2xl font-bold text-white tracking-wide">
+                Reset Password
+              </CardTitle>
+              <CardDescription className="text-gray-300 text-sm">
+                Enter the code sent to {forgotEmail} and your new password.
+              </CardDescription>
             </CardHeader>
             <CardContent className="relative">
-              <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+              <form
+                onSubmit={handleResetPassword}
+                className="flex flex-col gap-4"
+              >
                 <div className="space-y-1.5">
-                  <Label htmlFor="resetCode" className="text-gray-200 font-semibold">Verification Code</Label>
-                  <Input id="resetCode" placeholder="000000" value={resetCode} onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required className="bg-white/10 border-white/30 text-white text-center tracking-widest font-bold h-11" />
+                  <Label
+                    htmlFor="resetCode"
+                    className="text-gray-200 font-semibold"
+                  >
+                    Verification Code
+                  </Label>
+                  <Input
+                    id="resetCode"
+                    placeholder="000000"
+                    value={resetCode}
+                    onChange={(e) =>
+                      setResetCode(
+                        e.target.value.replace(/\D/g, "").slice(0, 6),
+                      )
+                    }
+                    required
+                    className="bg-white/10 border-white/30 text-white text-center tracking-widest font-bold h-11"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className="text-gray-200 font-semibold">New Password</Label>
-                  <Input id="newPassword" type="password" placeholder="Min. 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required className="bg-white/10 border-white/30 text-white h-11" />
+                  <Label
+                    htmlFor="newPassword"
+                    className="text-gray-200 font-semibold"
+                  >
+                    New Password
+                  </Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="Min. 8 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/30 text-white h-11"
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword" className="text-gray-200 font-semibold">Confirm Password</Label>
-                  <Input id="confirmPassword" type="password" placeholder="Confirm your new password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="bg-white/10 border-white/30 text-white h-11" />
+                  <Label
+                    htmlFor="confirmPassword"
+                    className="text-gray-200 font-semibold"
+                  >
+                    Confirm Password
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="bg-white/10 border-white/30 text-white h-11"
+                  />
                 </div>
                 <div className="flex flex-col gap-3 pt-4">
-                  <Button type="submit" disabled={resetLoading} className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all">{resetLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Reset Password"}</Button>
-                  <Button type="button" variant="outline" className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent" onClick={() => setShowResetModal(false)}>Cancel</Button>
+                  <Button
+                    type="submit"
+                    disabled={resetLoading}
+                    className="w-full bg-blue-900 hover:bg-blue-950 text-white font-semibold h-11 transition-all"
+                  >
+                    {resetLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      "Reset Password"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-white/30 text-white hover:text-white hover:bg-white/10 bg-transparent"
+                    onClick={() => setShowResetModal(false)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </form>
             </CardContent>

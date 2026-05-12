@@ -22,7 +22,8 @@ class UpdateProfileRequest extends FormRequest
     {
         $user = $this->user();
         return [
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'username' => [

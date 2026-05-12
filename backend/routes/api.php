@@ -9,11 +9,31 @@ use App\Domains\KeyManagement\Http\Controllers\KeyController;
 // Product + Reference routes
 require app_path('Domains/Product/routes.php');
 
-// Vehicle routes
-require app_path('Domains/Vehicle/routes.php');
+/*
+|--------------------------------------------------------------------------
+| Supplier Reference Routes
+|--------------------------------------------------------------------------
+*/
 
-// Supplier route
-require app_path('Domains/Supplier/routes.php');
+
+/*
+|--------------------------------------------------------------------------
+| Product Reference Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::prefix('products')->group(function () {
+
+    Route::get('/', [ProductController::class, 'index']);
+
+    Route::get('/categories', [ProductReferenceController::class, 'categories']);
+    Route::get('/units', [ProductReferenceController::class, 'units']);
+    Route::get('/suppliers', [SupplierController::class, 'index']);
+    Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
+    Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);
+    Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
+    Route::get('/service-types', [ProductReferenceController::class, 'serviceTypes']);
+});
 /*
 |--------------------------------------------------------------------------
 | Authentication Domain
@@ -47,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require app_path('Domains/Employee/routes.php');
     require app_path('Domains/KeyManagement/routes.php');
     require app_path('Domains/Audit/routes.php');
+    require app_path('Domains/Customer/routes.php');
     // Future Domains will go here:
     // require app_path('Domains/Inventory/routes.php');
     // require app_path('Domains/Sales/routes.php');

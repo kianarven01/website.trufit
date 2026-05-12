@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* 60% — Neutral base surfaces */
-    --background: 240 4.3% 95.5%;
+    --background: 210 8.9% 95.1%;
     --foreground: 220 25% 18%;
 
     --card: 0 0% 100%;
@@ -43,23 +43,20 @@
     --warning: 38 92% 50%;
     --warning-foreground: 220 25% 18%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem; /* Slightly softer radius for modern feel */
 
-    /* Sidebar — dark shell */
-    --sidebar-background: 222 30% 14%;
-    --sidebar-foreground: 216 15% 62%;
-    --sidebar-primary: 217 91% 60%;
+    /* Sidebar — Deep Charcoal/Slate */
+    --sidebar-background: 224 40% 7%;
+    --sidebar-foreground: 216 15% 75%;
+    --sidebar-primary: 221 83% 53%; /* Brand Blue */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 22% 20%;
-    --sidebar-accent-foreground: 210 30% 92%;
-    --sidebar-border: 222 18% 22%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 224 20% 12%;
+    --sidebar-accent-foreground: 210 30% 95%;
+    --sidebar-border: 224 20% 15%;
+    --sidebar-ring: 221 83% 53%;
 
-    --chart-1: 221 83% 53%;
-    --chart-2: 199 89% 48%;
-    --chart-3: 142 64% 38%;
-    --chart-4: 262 83% 58%;
-    --chart-5: 0 72% 51%;
+    --brand-red: 0 72% 51%;
+    --brand-blue: 221 83% 53%;
   }
 
   .dark {
@@ -116,15 +113,17 @@
     --chart-4: 262 83% 58%;
     --chart-5: 0 72% 51%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
 
+  html {
+    font-size: 16.5px;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased text-[15px];
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
@@ -141,5 +140,14 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--muted-foreground));
+  }
+
+  /* Scrollbar hide utility */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }

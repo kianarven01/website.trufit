@@ -1,7 +1,7 @@
 export type Slide = {
-  image: string
-  title: string
-  subtitle: string
-  buttonText?: string
-  buttonLink?: string
-}
+  image: string;
+  smallHeader: string;
+  title: string;
+  subtitle: string;
+  primaryLink: string;   // for "Our Services" button
+};

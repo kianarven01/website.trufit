@@ -36,7 +36,8 @@ class CompleteRegistration
             // 3. Create the Employee record
             $employee = Employee::create([
                 'id' => $randomId,
-                'name' => $keyRecord->employee_name,
+                'first_name' => $keyRecord->first_name,
+                'last_name' => $keyRecord->last_name,
                 'email' => $keyRecord->email,
                 'address' => $keyRecord->address,
                 'phone' => $keyRecord->phone,

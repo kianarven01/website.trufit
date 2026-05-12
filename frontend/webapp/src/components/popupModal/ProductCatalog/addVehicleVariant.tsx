@@ -44,25 +44,22 @@ const AddVehicleVariant: React.FC<Props> = ({
 
   useEffect(() => {
     if (variant) {
-      setName(variant.name ?? "");
-      setYear(variant.year ?? "");
-      setEngine(variant.engine ?? "");
-      setTransmission(variant.transmission ?? "");
-      setOilCapacity(variant.oilCapacity);
-      setServiceClass(variant.serviceClass ?? "");
-      return;
+      setName(variant.name);
+      setYear(variant.year);
+      setEngine(variant.engine);
+      setTransmission(variant.transmission);
+      setDrivetrain(variant.drivetrain);
+    } else {
+      setName("");
+      setYear(new Date().getFullYear().toString());
+      setEngine("");
+      setTransmission("");
+      setDrivetrain("");
     }
-
-    setName("");
-    setYear(new Date().getFullYear().toString());
-    setEngine("");
-    setTransmission("");
-    setOilCapacity(undefined);
-    setServiceClass("");
   }, [variant, open]);
 
-  const handleSave = async () => {
-    if (!name.trim() || !year.trim()) return;
+  const handleSave = () => {
+    if (!name || !year || !engine || !transmission || !drivetrain) return;
 
     await onSaved({
       id: variant?.id,

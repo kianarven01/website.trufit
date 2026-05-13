@@ -243,6 +243,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [, setForceRender] = useState(0);
+
+  useEffect(() => {
+    const handleBreadcrumbUpdate = () => {
+      setForceRender(prev => prev + 1);
+    };
+    window.addEventListener('breadcrumb-update', handleBreadcrumbUpdate);
+    return () => window.removeEventListener('breadcrumb-update', handleBreadcrumbUpdate);
+  }, []);
+
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sidebar-collapsed");
@@ -299,21 +309,34 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     .map((segment, index) => {
       const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
       
-      const findLabel = (items: NavItem[]): string | null => {
+      const findInfo = (items: NavItem[]): { label: string; isClickable: boolean } | null => {
         for (const item of items) {
-          if (item.path === path) return item.label;
+          if (item.path === path) return { label: item.label, isClickable: true };
           if (item.children) {
             const child = item.children.find(c => c.path === path);
-            if (child) return child.label;
+            if (child) return { label: child.label, isClickable: true };
+            
+            // If the current path segment is a group parent (e.g. /webapp/services)
+            // but it's not the final segment and doesn't have its own path
+            // Ensure we don't match the root '/webapp' as a group parent
+            const isGroupParent = path !== "/webapp" && item.children.some(c => c.path.startsWith(path));
+            if (isGroupParent) return { label: item.label, isClickable: false };
           }
         }
         return null;
       };
       
-      const mappedLabel = findLabel(navItems);
-      const label = mappedLabel || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+      const info = findInfo(navItems);
+      let label = info?.label || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+      const isClickable = info?.isClickable ?? false;
       
-      return { label, path };
+      // Dynamic Label override (for UUIDs or dynamic routes)
+      if (!info && segment.length > 20) { // Likely a UUID
+        const dynamicLabel = sessionStorage.getItem(`breadcrumb-${path}`);
+        if (dynamicLabel) label = dynamicLabel;
+      }
+      
+      return { label, path, isClickable };
     })
     .filter(item => item.label.toLowerCase() !== "webapp");
 
@@ -600,8 +623,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <React.Fragment key={item.path}>
                       {idx > 0 && <BreadcrumbSeparator className="text-muted-foreground/30" />}
                       <BreadcrumbItem>
-                        {idx === breadcrumbItems.length - 1 ? (
-                          <BreadcrumbPage className="text-[13px] font-semibold text-foreground/90">
+                        {idx === breadcrumbItems.length - 1 || !item.isClickable ? (
+                          <BreadcrumbPage className={cn(
+                            "text-[13px] font-semibold",
+                            idx === breadcrumbItems.length - 1 ? "text-foreground/90" : "text-muted-foreground/60"
+                          )}>
                             {item.label}
                           </BreadcrumbPage>
                         ) : (

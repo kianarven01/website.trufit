@@ -7,12 +7,8 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 
-import { ImageIcon, Library } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-/* ================= STORAGE ================= */
-const CATEGORY_KEY = "serviceCategories";
-const SERVICE_KEY = "services";
+import { ImageIcon } from "lucide-react";
+import api from "@/api/axios";
 
 /* ================= TYPES ================= */
 interface ServiceCategory {
@@ -24,61 +20,17 @@ interface Service {
   id: string;
   name: string;
   serviceCategoryId: string;
+  category?: string; // from backend ServiceType.category
   description?: string;
-  pricingType: "fixed" | "hourly";
+  pricingType: "fixed" | "hourly rate";
 }
-
-/* ================= HELPERS ================= */
-const genId = () =>
-  crypto.randomUUID
-    ? crypto.randomUUID()
-    : Math.random().toString(27).substring(2);
-
-/* ================= DUMMY SEED ================= */
-const seedData = () => {
-  if (localStorage.getItem(SERVICE_KEY)) return;
-
-  const categories: ServiceCategory[] = [
-    { id: genId(), name: "Maintenance" },
-    { id: genId(), name: "Repair" },
-    { id: genId(), name: "Detailing" },
-    { id: genId(), name: "Inspection" },
-  ];
-
-  const services: Service[] = [];
-
-  const names = [
-    "Oil Change",
-    "Brake Service",
-    "Engine Tune-up",
-    "Car Wash",
-    "Interior Cleaning",
-    "Battery Replacement",
-    "Tire Rotation",
-    "Wheel Alignment",
-    "Aircon Cleaning",
-    "Full Inspection",
-  ];
-
-  for (let i = 0; i < 27; i++) {
-    services.push({
-      id: genId(),
-      name: `${names[i % names.length]} ${i + 1}`,
-      serviceCategoryId: categories[i % categories.length].id,
-      description: "Standard service package",
-      pricingType: i % 2 === 0 ? "fixed" : "hourly",
-    });
-  }
-
-  localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories));
-  localStorage.setItem(SERVICE_KEY, JSON.stringify(services));
-};
 
 /* ================= COMPONENT ================= */
 const ServiceCatalogList: React.FC = () => {
   const navigate = useNavigate();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const [filters, setFilters] = useState({
@@ -91,10 +43,32 @@ const ServiceCatalogList: React.FC = () => {
 
   /* ================= LOAD ================= */
   useEffect(() => {
-    seedData();
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // Fetch Service Types from backend
+        const res = await api.get('/products/service-types');
+        const data = res.data.data.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          serviceCategoryId: s.category, // using text as ID for now if not normalized
+          description: s.description || "No description provided",
+          pricingType: s.pricing_type || "fixed"
+        }));
+        setServices(data);
 
-    setCategories(JSON.parse(localStorage.getItem(CATEGORY_KEY) || "[]"));
-    setServices(JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]"));
+        // Extract unique categories from services for filtering
+        const uniqueCats = [...new Set(data.map((s: any) => s.category))].filter(Boolean);
+        setCategories(uniqueCats.map(cat => ({ id: cat as string, name: cat as string })));
+
+      } catch (err) {
+        console.error("Failed to load services", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   /* ================= MAP ================= */
@@ -148,7 +122,7 @@ const ServiceCatalogList: React.FC = () => {
 
   const pricingOptions = [
     { label: "Fixed Price", value: "fixed" },
-    { label: "Hourly Rate", value: "hourly" }, 
+    { label: "Hourly Rate", value: "hourly rate" }, 
   ];
 
   const toolbarFilters = [
@@ -165,22 +139,6 @@ const ServiceCatalogList: React.FC = () => {
   }, [search, pageSize]);
 
   /* ================= UI ================= */
-
-  if (services.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-16 flex flex-col items-center text-center">
-          <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-          <p className="text-sm font-medium">
-            No services available
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Add a service to get started
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
@@ -199,60 +157,63 @@ const ServiceCatalogList: React.FC = () => {
           <Table className="table-fixed w-full border-separate border-spacing-y-2">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-1/4">Service</TableHead>
-                <TableHead className="w-1/4">Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-[15%]">Pricing</TableHead>
+                <TableHead className="w-1/4 text-center">Service</TableHead>
+                <TableHead className="w-1/4 text-center">Category</TableHead>
+                <TableHead className="text-center">Description</TableHead>
+                <TableHead className="w-[15%] text-center">Pricing</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
-              {filtered.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <div className="py-20 flex flex-col items-center justify-center">
+                      <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                      <p className="text-sm font-medium text-muted-foreground animate-pulse">
+                        Loading services...
+                      </p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : services.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <div className="py-16 flex flex-col items-center text-center">
+                      <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                      <p className="text-sm font-medium">No services available</p>
+                      <p className="text-xs text-muted-foreground">Add a service to get started</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length > 0 ? (
                 paginated.map((s) => {
-                  const category = categoryMap.get(
-                    s.serviceCategoryId
-                  );
+                  const category = categoryMap.get(s.serviceCategoryId);
 
                   return (
                     <TableRow
                       key={s.id}
                       onClick={() => navigate(`/webapp/services/service-catalog/${s.id}`)}
-                      className="rounded-lg border bg-card shadow-sm hover:shadow-md"
+                      className="rounded-lg border bg-card shadow-sm hover:shadow-md cursor-pointer"
                     >
-                      <TableCell>
-                        {s.name}
-                      </TableCell>
-
-                      <TableCell>
-                        {category?.name}
-                      </TableCell>
-
-                      <TableCell className="text-muted-foreground">
-                        {s.description}
-                      </TableCell>
-
-                      <TableCell>
+                      <TableCell className="font-medium text-center">{s.name}</TableCell>
+                      <TableCell className="text-center">{category?.name || s.category || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground truncate text-center">{s.description}</TableCell>
+                      <TableCell className="text-center">
                         <Badge variant="outline">
-                          {s.pricingType === "hourly"
-                            ? "Hourly Rate"
-                            : "Fixed Price"}
+                          {s.pricingType === "hourly rate" ? "Hourly Rate" : "Fixed Price"}
                         </Badge>
                       </TableCell>
                     </TableRow>
                   );
                 })
               ) : (
-
                 <TableRow>
                   <TableCell colSpan={4}>
                     <div className="py-16 flex flex-col items-center text-center">
                       <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                      <p className="text-sm font-medium">
-                        No services found
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Try adjusting your search or filters
-                      </p>
+                      <p className="text-sm font-medium">No services found</p>
+                      <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -277,4 +238,4 @@ const ServiceCatalogList: React.FC = () => {
   );
 };
 
-export default ServiceCatalogList;
+export default ServiceCatalogList;

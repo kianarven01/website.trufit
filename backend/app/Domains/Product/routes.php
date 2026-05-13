@@ -24,6 +24,14 @@ Route::prefix('products')->group(function () {
 
     Route::get('/units', [ProductReferenceController::class, 'units']);
     Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
+    Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
+    Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);
+
+    Route::get('/service-types', [ProductReferenceController::class, 'serviceTypes']);
+    Route::get('/service-types/{id}', [ProductReferenceController::class, 'showServiceType']);
+    Route::post('/service-types', [ProductReferenceController::class, 'storeServiceType']);
+    Route::put('/service-types/{id}', [ProductReferenceController::class, 'updateServiceType']);
+    Route::delete('/service-types/{id}', [ProductReferenceController::class, 'destroyServiceType']);
 
     Route::get('/suppliers', [SupplierController::class, 'index']);
 

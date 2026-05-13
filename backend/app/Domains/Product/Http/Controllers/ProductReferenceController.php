@@ -191,7 +191,8 @@ class ProductReferenceController extends Controller
                     'service_type_id' => $service->id,
                     'vehicle_size_name' => $p['vehicle_size_name'] ?? ($p['vehicle_size_id'] ?? 'Default'),
                     'vehicle_types' => $p['vehicle_types'] ?? [],
-                    'price' => $p['price'] ?? 0
+                    'price' => $p['price'] ?? 0,
+                    'pricing_type' => $p['pricing_type'] ?? $service->pricing_type
                 ]);
             }
         }
@@ -235,7 +236,8 @@ class ProductReferenceController extends Controller
                     'service_type_id' => $service->id,
                     'vehicle_size_name' => $p['vehicle_size_name'] ?? ($p['vehicle_size_id'] ?? 'Default'),
                     'vehicle_types' => $p['vehicle_types'] ?? [],
-                    'price' => $p['price'] ?? 0
+                    'price' => $p['price'] ?? 0,
+                    'pricing_type' => $p['pricing_type'] ?? $service->pricing_type
                 ]);
             }
         }

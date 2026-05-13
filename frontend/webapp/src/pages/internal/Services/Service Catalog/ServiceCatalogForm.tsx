@@ -72,7 +72,12 @@ const [categories, setCategories] = useState<ServiceCategory[]>([]);
 const [services, setServices] = useState<Service[]>([]);
 const [pricing, setPricing] = useState<ServicePricing[]>([]);
 const [duration, setDuration] = useState<number>(0); // total minutes
+
+// Shared sizes for both tables, separate pricing
 const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
+const [fixedSizePricing, setFixedSizePricing] = useState<Record<string, number>>({});
+const [hourlySizePricing, setHourlySizePricing] = useState<Record<string, number>>({});
+
 const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 const [isLoading, setIsLoading] = useState(false);
 const [isSaving, setIsSaving] = useState(false);
@@ -86,7 +91,6 @@ const [categoryName, setCategoryName] = useState("");
 const [description, setDescription] = useState("");
 const [pricingType, setPricingType] = useState<PricingType>("fixed");
 
-const [sizePricing, setSizePricing] = useState<Record<string, number>>({});
 const [vehicleTypeInput, setVehicleTypeInput] = useState("");
 const [editVehicleTypeInput, setEditVehicleTypeInput] = useState("");
 const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
@@ -95,6 +99,10 @@ const [editingTagValue, setEditingTagValue] = useState("");
 const [confirmOpen, setConfirmOpen] = useState(false);
 const [confirmType, setConfirmType] = useState<"size" | null>(null);
 const [targetId, setTargetId] = useState<string | null>(null);
+
+// Derived active state based on pricingType
+const activeSizePricing = pricingType === "fixed" ? fixedSizePricing : hourlySizePricing;
+const setActiveSizePricing = pricingType === "fixed" ? setFixedSizePricing : setHourlySizePricing;
 
 
 /* ================= HELPERS ================= */
@@ -142,24 +150,45 @@ useEffect(() => {
         setPricingType(s.pricing_type || "fixed");
         setDuration(s.duration || 0);
 
-        // Rebuild vehicleSizes and sizePricing from backend pricings
+        // Rebuild vehicleSizes and pricing maps from backend pricings
         if (s.pricings && s.pricings.length > 0) {
-          const sizes: VehicleSize[] = [];
-          const priceMap: Record<string, number> = {};
+          const sizesMap: Record<string, VehicleSize> = {};
+          const fixedPrices: Record<string, number> = {};
+          const hourlyPrices: Record<string, number> = {};
 
           s.pricings.forEach((p: any) => {
-            const sizeId = genId();
-            sizes.push({
-              id: sizeId,
-              name: p.vehicle_size_name,
-              abbreviation: (p.vehicle_size_name || "").slice(0, 3).toUpperCase(),
-              vehicleTypes: p.vehicle_types || [],
-            });
-            priceMap[sizeId] = parseFloat(p.price) || 0;
+            const type = p.pricing_type || "fixed";
+            const name = p.vehicle_size_name;
+            
+            // Check if we already created a size object for this name
+            let sizeId: string;
+            const existingSize = Object.values(sizesMap).find(v => v.name === name);
+            
+            if (existingSize) {
+              sizeId = existingSize.id;
+              // Merge vehicle types if they differ
+              const mergedTypes = Array.from(new Set([...existingSize.vehicleTypes, ...(p.vehicle_types || [])]));
+              sizesMap[sizeId].vehicleTypes = mergedTypes;
+            } else {
+              sizeId = genId();
+              sizesMap[sizeId] = {
+                id: sizeId,
+                name: name,
+                abbreviation: (name || "").slice(0, 3).toUpperCase(),
+                vehicleTypes: p.vehicle_types || [],
+              };
+            }
+
+            if (type === "hourly rate") {
+              hourlyPrices[sizeId] = p.price;
+            } else {
+              fixedPrices[sizeId] = p.price;
+            }
           });
 
-          setVehicleSizes(sizes);
-          setSizePricing(priceMap);
+          setVehicleSizes(Object.values(sizesMap));
+          setFixedSizePricing(fixedPrices);
+          setHourlySizePricing(hourlyPrices);
         }
       }
     } catch (err) {
@@ -280,12 +309,22 @@ const handleEditSize = (vs: VehicleSize) => {
   setEditSize({
     name: vs.name,
     vehicleTypes: [...vs.vehicleTypes],
-    price: sizePricing[vs.id] || 0,
+    price: activeSizePricing[vs.id] || 0,
   });
 };
 
 const handleSaveEditSize = () => {
   if (!editingSizeId) return;
+
+  // Ensure any pending vehicle type input is added before saving
+  let finalVehicleTypes = [...editSize.vehicleTypes];
+  if (editVehicleTypeInput.trim()) {
+    const trimmed = editVehicleTypeInput.trim();
+    if (!finalVehicleTypes.includes(trimmed)) {
+      finalVehicleTypes.push(trimmed);
+    }
+    setEditVehicleTypeInput("");
+  }
 
   setVehicleSizes((prev) =>
     prev.map((vs) =>
@@ -293,19 +332,19 @@ const handleSaveEditSize = () => {
         ? {
             ...vs,
             name: editSize.name,
-            vehicleTypes: [...editSize.vehicleTypes],
+            abbreviation: editSize.name.slice(0, 3).toUpperCase(),
+            vehicleTypes: finalVehicleTypes,
           }
         : vs
     )
   );
 
-  setSizePricing((prev) => ({
+  setActiveSizePricing((prev) => ({
     ...prev,
     [editingSizeId]: editSize.price,
   }));
 
   setEditingSizeId(null);
-  toast.success("Size pricing updated");
 };
 
 const handleCancelEditSize = () => {
@@ -318,23 +357,30 @@ const handleAddRow = () => {
 };
 
 const handleSaveNewSize = () => {
-  if (!newSize.name) {
-    toast.error("Size name required");
-    return;
-  }
+  if (!newSize.name) return;
 
   const id = genId();
+  
+  // Ensure any pending vehicle type input is added before saving
+  let finalVehicleTypes = [...newSize.vehicleTypes];
+  if (vehicleTypeInput.trim()) {
+    const trimmed = vehicleTypeInput.trim();
+    if (!finalVehicleTypes.includes(trimmed)) {
+      finalVehicleTypes.push(trimmed);
+    }
+    setVehicleTypeInput("");
+  }
+
   const vs: VehicleSize = {
     id,
     name: newSize.name,
     abbreviation: newSize.name.slice(0, 3).toUpperCase(),
-    vehicleTypes: [...newSize.vehicleTypes],
+    vehicleTypes: finalVehicleTypes,
   };
 
   setVehicleSizes((prev) => [...prev, vs]);
-  setSizePricing((prev) => ({ ...prev, [id]: newSize.price }));
+  setActiveSizePricing((prev) => ({ ...prev, [id]: newSize.price }));
   setIsAddingSize(false);
-  toast.success("Vehicle size added");
 };
 
 const handleCancelAddSize = () => {
@@ -348,18 +394,30 @@ const handleSubmit = async () => {
     return;
   }
 
+  const pricingData = [
+    ...vehicleSizes.map(vs => ({
+      vehicle_size_id: vs.id,
+      vehicle_size_name: vs.name,
+      vehicle_types: vs.vehicleTypes,
+      price: fixedSizePricing[vs.id] || 0,
+      pricing_type: 'fixed'
+    })),
+    ...vehicleSizes.map(vs => ({
+      vehicle_size_id: vs.id,
+      vehicle_size_name: vs.name,
+      vehicle_types: vs.vehicleTypes,
+      price: hourlySizePricing[vs.id] || 0,
+      pricing_type: 'hourly rate'
+    }))
+  ];
+
   const payload = {
     name,
     category_name: categoryName,
     description,
     duration,
     pricing_type: pricingType,
-    pricing: vehicleSizes.map(vs => ({
-      vehicle_size_id: vs.id,
-      vehicle_size_name: vs.name,
-      vehicle_types: vs.vehicleTypes,
-      price: sizePricing[vs.id] || 0
-    }))
+    pricing: pricingData
   };
 
   try {
@@ -401,13 +459,11 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
       setVehicleSizes(updatedSizes);
       localStorage.setItem(VEHICLE_SIZE_KEY, JSON.stringify(updatedSizes));
 
-      setSizePricing((prev) => {
+      setActiveSizePricing((prev) => {
         const copy = { ...prev };
         delete copy[targetId];
         return copy;
       });
-
-      toast.success("Vehicle size deleted");
     }
 
     setConfirmOpen(false);
@@ -573,7 +629,11 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                         <button
                           key={type.id}
                           type="button"
-                          onClick={() => setPricingType(type.id as PricingType)}
+                          onClick={() => {
+                            setPricingType(type.id as PricingType);
+                            setIsAddingSize(false);
+                            setEditingSizeId(null);
+                          }}
                           className={cn(
                             "relative flex items-center gap-2 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ease-out rounded-lg",
                             isActive 
@@ -717,9 +777,9 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                                   />
                                 ) : (
                                   <CurrencyInput
-                                    value={sizePricing[vs.id] ?? 0}
+                                    value={activeSizePricing[vs.id] ?? 0}
                                     onChange={(val) =>
-                                      setSizePricing((prev) => ({
+                                      setActiveSizePricing((prev) => ({
                                         ...prev,
                                         [vs.id]: val,
                                       }))
@@ -920,9 +980,8 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
             Are you sure you want to delete this vehicle size?
             <br />
             <br />
-            <span className="text-muted-foreground">
-              Note: This will permanently delete the vehicle size
-              (including all services that use it).
+            <span className="text-destructive font-medium">
+              Warning: This will remove this size and its data from BOTH Fixed Price and Hourly Rate tables.
             </span>
           </>
         }

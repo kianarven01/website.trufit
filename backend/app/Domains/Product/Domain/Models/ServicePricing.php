@@ -16,7 +16,8 @@ class ServicePricing extends Model
         'service_type_id',
         'vehicle_size_name',
         'vehicle_types',
-        'price'
+        'price',
+        'pricing_type'
     ];
 
     protected $casts = [

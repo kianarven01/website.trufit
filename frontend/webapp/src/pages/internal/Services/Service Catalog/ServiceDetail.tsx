@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
@@ -48,6 +49,7 @@ interface ServicePricing {
   vehicleSizeId: string;
   vehicleTypes?: string[];
   price: number;
+  pricingType: "fixed" | "hourly rate";
 }
 
 
@@ -64,6 +66,7 @@ const ServiceDetail: React.FC = () => {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingType, setIsUpdatingType] = useState(false);
 
 /* ================= LOAD ================= */
 useEffect(() => {
@@ -74,6 +77,7 @@ useEffect(() => {
       const s = res.data.data;
       setService({
         ...s,
+        pricingType: s.pricing_type || "fixed",
         serviceCategoryId: s.category // Mapping text category to serviceCategoryId for UI consistency
       });
       
@@ -92,7 +96,8 @@ useEffect(() => {
           serviceId: s.id,
           vehicleSizeId: p.vehicle_size_name,
           vehicleTypes: p.vehicle_types || [],
-          price: p.price
+          price: p.price,
+          pricingType: p.pricing_type || "fixed"
         })));
       }
 
@@ -126,10 +131,10 @@ const categoryName = useMemo(() => {
   return service?.category || "—";
 }, [service]);
 
-const servicePricing = useMemo(
-  () => pricing,
-  [pricing]
-);
+const filteredPricing = useMemo(() => {
+  if (!service) return [];
+  return pricing.filter(p => p.pricingType === service.pricingType);
+}, [pricing, service]);
 
 const durationFormatted = useMemo(() => {
   if (service?.duration == null) return "—";
@@ -254,35 +259,75 @@ return (
                 Indicated pricing type and price range based on vehicle size.
               </p>             
             </div>  
-            <Badge variant="outline" className="flex items-center gap-1 text-[11px] uppercase">
-              {service.pricingType === "fixed" ? (
-                <>
-                  <Tag className="w-3 h-3" />
-                  Fixed Price
-                </>
-              ) : (
-                <>
-                  <Clock className="w-3 h-3" />
-                  Hourly Rate
-                </>
-              )}
-            </Badge> 
+            <div className="inline-flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 backdrop-blur-sm">
+              {[
+                { id: "fixed", label: "Fixed Price", icon: <Tag className="w-3 h-3" /> },
+                { id: "hourly rate", label: "Hourly Rate", icon: <Clock className="w-3 h-3" /> },
+              ].map((type) => {
+                const isActive = (service?.pricingType || "fixed") === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={async () => {
+                      if (!service || isUpdatingType) return;
+                      const newType = type.id as "fixed" | "hourly rate";
+                      if (service.pricingType === newType) return;
+
+                      try {
+                        setIsUpdatingType(true);
+                        await api.put(`/products/service-types/${id}`, {
+                          ...service,
+                          category_name: service.category,
+                          pricing_type: newType
+                        });
+                        setService({ ...service, pricingType: newType });
+                      } catch (err) {
+                        toast.error("Failed to update pricing type");
+                      } finally {
+                        setIsUpdatingType(false);
+                      }
+                    }}
+                    disabled={isUpdatingType}
+                    className={cn(
+                      "relative flex items-center gap-2 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ease-out rounded-lg",
+                      isActive 
+                        ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-slate-200" 
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50",
+                      isUpdatingType && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <span className={cn("transition-transform duration-200", isActive && "scale-110")}>
+                      {type.icon}
+                    </span>
+                    {type.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>                  
         </CardHeader>
 
-        <CardContent className="flex flex-col min-h-[200px]">
-          {servicePricing.length > 0 ? (
+        <CardContent className={cn("flex flex-col min-h-[200px] transition-opacity duration-300", isUpdatingType && "opacity-50 pointer-events-none")}>
+          {isUpdatingType ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-10">
+              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+              <p className="text-xs text-muted-foreground animate-pulse">Updating pricing view...</p>
+            </div>
+          ) : filteredPricing.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-center">Size</TableHead>
                   <TableHead className="text-center">Vehicle Type</TableHead>
-                  <TableHead className="text-center">Price</TableHead>
+                  <TableHead className="text-center">
+                    {service.pricingType === "hourly rate" ? "Rate / hr" : "Price"}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {servicePricing.map((p, i) => {
+                {filteredPricing.map((p, i) => {
                   return (
                     <TableRow key={p.id || i}>
                       <TableCell className="text-center">
@@ -307,7 +352,10 @@ return (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <BanknoteX className="h-10 w-10 stroke-1 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No pricing for different vehicle sizes has been set for this service.
+                No {service.pricingType === "fixed" ? "fixed prices" : "hourly rates"} have been set for this service.
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                You can add pricing for different vehicle sizes in the edit section.
               </p>
             </div>
           )}

@@ -155,7 +155,7 @@ const ServiceCatalogList: React.FC = () => {
         activeFilters={filters}
       />
 
-      <div className="flex-1 flex flex-col border rounded-xl overflow-hidden">
+      <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
         <ScrollArea className="flex-1 px-3">
           <Table className="table-fixed w-full border-separate border-spacing-y-2">
             <TableHeader>

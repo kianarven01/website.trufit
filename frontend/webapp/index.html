@@ -5,6 +5,17 @@
     <link rel="icon" type="image/png" href="/logo-white.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trufit Auto Center</title>
+    <script>
+      (function() {
+        var saved = localStorage.getItem('theme');
+        if (saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          // Default to dark if no preference saved
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -143,22 +143,22 @@ const Calendar: React.FC<CalendarProps> = ({
   const remainingCells = totalCells - (firstDayOfMonth + daysInMonth);
 
   return (
-    <div className="w-full max-w-[360px] bg-white border rounded-2xl shadow-sm overflow-hidden">
+    <div className="w-full max-w-[360px] bg-card border border-border/60 rounded-2xl shadow-md overflow-hidden">
 
       {/* HEADER */}
-      <div className="relative flex items-center justify-between px-4 py-3 border-b">
-        <button onClick={handlePrevMonth} className="p-1 rounded hover:bg-gray-100">
+      <div className="relative flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <button onClick={handlePrevMonth} className="p-1 rounded hover:bg-accent text-foreground transition-colors">
           <ChevronLeft size={18} />
         </button>
 
         <button
           onClick={() => setOpenPicker(!openPicker)}
-          className="text-sm font-medium hover:text-indigo-600"
+          className="text-sm font-medium hover:text-primary transition-colors text-foreground"
         >
           {months[month]} {year}
         </button>
 
-        <button onClick={handleNextMonth} className="p-1 rounded hover:bg-gray-100">
+        <button onClick={handleNextMonth} className="p-1 rounded hover:bg-accent text-foreground transition-colors">
           <ChevronRight size={18} />
         </button>
 
@@ -166,18 +166,22 @@ const Calendar: React.FC<CalendarProps> = ({
         {openPicker && (
           <div
             ref={pickerRef}
-            className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-[320px] bg-white border rounded-xl shadow-lg z-50 p-3"
+            className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-[320px] bg-card border border-border/60 rounded-xl shadow-lg z-50 p-3"
           >
             <div className="flex gap-3">
               <div className="flex-1">
-                <p className="text-xs text-gray-400 mb-2">Month</p>
+                <p className="text-xs text-muted-foreground mb-2">Month</p>
                 <div className="grid grid-cols-2 gap-1 max-h-44 overflow-y-auto">
                   {months.map((m, i) => (
                     <button
                       key={m}
                       onClick={() => setMonthYear(i, year)}
-                      className={`text-xs px-2 py-1 rounded-md text-left
-                        ${i === month ? "bg-indigo-600 text-white" : "hover:bg-indigo-50"}`}
+                      className={cn(
+                        "text-xs px-2 py-1 rounded-md text-left transition-colors",
+                        i === month
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-accent text-foreground"
+                      )}
                     >
                       {m}
                     </button>
@@ -186,14 +190,18 @@ const Calendar: React.FC<CalendarProps> = ({
               </div>
 
               <div className="w-24">
-                <p className="text-xs text-gray-400 mb-2">Year</p>
+                <p className="text-xs text-muted-foreground mb-2">Year</p>
                 <div className="flex flex-col gap-1 max-h-44 overflow-y-auto">
                   {years.map((y) => (
                     <button
                       key={y}
                       onClick={() => setMonthYear(month, y)}
-                      className={`text-xs px-2 py-1 rounded-md
-                        ${y === year ? "bg-indigo-600 text-white" : "hover:bg-indigo-50"}`}
+                      className={cn(
+                        "text-xs px-2 py-1 rounded-md transition-colors",
+                        y === year
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-accent text-foreground"
+                      )}
                     >
                       {y}
                     </button>
@@ -206,18 +214,17 @@ const Calendar: React.FC<CalendarProps> = ({
       </div>
 
       {/* WEEKDAYS */}
-      <div className="grid grid-cols-7 text-[11px] text-gray-400 text-center py-2">
+      <div className="grid grid-cols-7 text-[11px] text-muted-foreground text-center py-2 bg-muted/20">
         {daysOfWeek.map((d) => <div key={d}>{d}</div>)}
       </div>
 
       {/* GRID */}
-      <div className="grid grid-cols-7 gap-y-1 px-2 pb-3">
+      <div className="grid grid-cols-7 gap-y-1 px-2 pb-3 pt-1">
 
-        {/* PREV MONTH DAYS (CLICKABLE) */}
+        {/* PREV MONTH DAYS */}
         {[...Array(firstDayOfMonth)].map((_, i) => {
           const day = prevMonthDays - firstDayOfMonth + i + 1;
           const date = new Date(year, month - 1, day);
-
           const disabled = date.getDay() === 0;
 
           return (
@@ -229,8 +236,10 @@ const Calendar: React.FC<CalendarProps> = ({
                 handleDateClick(date);
               }}
               className={cn(
-                "h-9 w-9 mx-auto text-sm rounded-lg transition",
-                disabled ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:bg-gray-100"
+                "h-9 w-9 mx-auto text-sm rounded-lg transition-colors",
+                disabled
+                  ? "text-muted-foreground/20 cursor-not-allowed"
+                  : "text-muted-foreground/40 hover:bg-accent"
               )}
             >
               {day}
@@ -238,7 +247,7 @@ const Calendar: React.FC<CalendarProps> = ({
           );
         })}
 
-        {/* CURRENT */}
+        {/* CURRENT MONTH DAYS */}
         {[...Array(daysInMonth)].map((_, i) => {
           const day = i + 1;
           const date = new Date(year, month, day);
@@ -257,12 +266,13 @@ const Calendar: React.FC<CalendarProps> = ({
               <button
                 onClick={() => handleDateClick(date)}
                 disabled={disabled}
-                className={`
-                  h-9 w-9 rounded-lg text-sm
-                  ${selected ? "bg-indigo-600 text-white" : ""}
-                  ${inRange ? "bg-indigo-100" : ""}
-                  ${disabled ? "opacity-20 cursor-not-allowed" : "hover:bg-indigo-50"}
-                `}
+                className={cn(
+                  "h-9 w-9 rounded-lg text-sm transition-colors",
+                  selected && "bg-primary text-primary-foreground font-semibold",
+                  inRange && !selected && "bg-primary/20 text-primary",
+                  disabled && "opacity-20 cursor-not-allowed",
+                  !selected && !disabled && "hover:bg-accent text-foreground"
+                )}
               >
                 {day}
               </button>
@@ -272,7 +282,7 @@ const Calendar: React.FC<CalendarProps> = ({
                   {dayEvents.slice(0, 3).map((e, idx) => (
                     <span
                       key={idx}
-                      className={`w-1.5 h-1.5 rounded-full ${statusColors[e.status] || "bg-gray-400"}`}
+                      className={`w-1.5 h-1.5 rounded-full ${statusColors[e.status] || "bg-muted-foreground"}`}
                     />
                   ))}
                 </div>
@@ -281,11 +291,10 @@ const Calendar: React.FC<CalendarProps> = ({
           );
         })}
 
-        {/* NEXT MONTH DAYS (CLICKABLE) */}
+        {/* NEXT MONTH DAYS */}
         {[...Array(remainingCells)].map((_, i) => {
           const day = i + 1;
           const date = new Date(year, month + 1, day);
-
           const disabled = date.getDay() === 0;
 
           return (
@@ -297,8 +306,10 @@ const Calendar: React.FC<CalendarProps> = ({
                 handleDateClick(date);
               }}
               className={cn(
-                "h-9 w-9 mx-auto text-sm rounded-lg transition",
-                disabled ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:bg-gray-100"
+                "h-9 w-9 mx-auto text-sm rounded-lg transition-colors",
+                disabled
+                  ? "text-muted-foreground/20 cursor-not-allowed"
+                  : "text-muted-foreground/40 hover:bg-accent"
               )}
             >
               {day}

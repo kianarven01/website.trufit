@@ -160,10 +160,10 @@ const SalesOrderList: React.FC = () => {
       />
 
       {orders.length > 0 ? (
-        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
           {/* Scrollable Table */}
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 px-2">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -217,18 +217,13 @@ const SalesOrderList: React.FC = () => {
             </Table>
           </ScrollArea>
 
-          {/* Pagination */}
-          {filtered.length > 25 && (
-            <div className="border-t bg-background">
-              <Pagination
-                totalItems={filtered.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+          <Pagination
+            totalItems={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       ) : (
         <Card>

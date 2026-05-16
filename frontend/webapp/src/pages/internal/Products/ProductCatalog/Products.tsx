@@ -489,7 +489,7 @@ const ProductsList: React.FC = () => {
           </CardContent>
         </Card>
       ) : products.length > 0 ? (
-        <ScrollArea className="flex-1 h-0 border rounded-xl px-2 flex flex-col">
+        <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background">
           <div className="flex-1 overflow-auto">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>

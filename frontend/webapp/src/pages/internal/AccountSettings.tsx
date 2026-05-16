@@ -258,140 +258,242 @@ const AccountSettings: React.FC = function () {
     <DashboardLayout>
       <div className="flex h-full flex-col overflow-hidden">
         {/* Header */}
-        <div className="shrink-0 border-b border-border px-4 py-3 sm:px-6">
-          <h1 className="text-lg font-bold text-foreground">Account Settings</h1>
-          <p className="text-xs text-muted-foreground">Manage your profile, security, and preferences</p>
+        <div className="shrink-0 px-6 pt-5 pb-4">
+          <h1 className="text-xl font-bold text-foreground">Account Settings</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Manage your profile, security, and preferences</p>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-4 sm:p-6">
-          <div className="mx-auto max-w-2xl space-y-4">
+        {/* Content — full width two-column layout */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
 
-            {/* Profile Information */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-sm">Profile Information</CardTitle>
-                </div>
-                <CardDescription className="text-xs">Update your personal details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Full Name</Label>
-                  <div className="flex gap-2">
-                    <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-8" placeholder="First Name" />
-                    <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-8" placeholder="Last Name" />
+            {/* ── LEFT COLUMN: Identity & Avatar ── */}
+            <div className="flex flex-col gap-6">
+
+              {/* Avatar Card */}
+              <Card className="bg-card border-0 shadow-sm">
+                <CardContent className="pt-6 flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <div className="h-20 w-20 rounded-full bg-primary/15 flex items-center justify-center text-primary font-bold text-3xl ring-4 ring-primary/10">
+                      {firstName ? firstName.charAt(0).toUpperCase() : (username?.charAt(0).toUpperCase() || "?")}
+                    </div>
+                    <div className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-green-500 border-2 border-card" title="Online" />
                   </div>
-                </div>
+                  <div className="text-center">
+                    <p className="font-bold text-base text-foreground">
+                      {firstName || lastName ? `${firstName} ${lastName}`.trim() : username}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{jobPosition || "No position set"}</p>
+                  </div>
+                  <div className="w-full pt-3 border-t border-border/40 space-y-3">
+                    <div className="flex flex-col gap-0.5 text-xs">
+                      <span className="text-muted-foreground">Username</span>
+                      <span className="font-medium text-foreground">@{username}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 text-xs">
+                      <span className="text-muted-foreground">Email</span>
+                      <span className="font-medium text-foreground break-all">{email}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Email</span>
+                      {isVerified ? (
+                        <span className="text-green-500 font-semibold flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Verified
+                        </span>
+                      ) : (
+                        <span className="text-amber-500 font-semibold flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> Unverified
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Phone</span>
+                      {isPhoneVerified ? (
+                        <span className="text-green-500 font-semibold flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Verified
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/50 font-medium">Not verified</span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="address" className="text-xs">Address</Label>
-                  <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="h-8" />
-                </div>
-
-                {/* Email with verification */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs">Email</Label>
+              {/* Security & Appearance */}
+              <Card className="bg-card border-0 shadow-sm">
+                <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <Input id="email" type="email" value={email} disabled className="h-8 flex-1 bg-muted/50" />
-                    {isVerified ? (
-                      <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
-                        <ShieldCheck className="h-3 w-3" /> Verified
-                      </Badge>
-                    ) : (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 shrink-0 gap-1 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-50" 
-                        onClick={handleSendVerification}
-                        disabled={emailLoading}
-                      >
-                        {emailLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertCircle className="h-3 w-3" />} 
-                        Verify Now
-                      </Button>
-                    )}
+                    <Lock className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm">Security</CardTitle>
                   </div>
-                  <div className="flex gap-4">
-                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setChangeEmailOpen(true)}>
-                      Change email address
-                    </Button>
-                    {!isVerified && (
-                       <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setVerifyDialogOpen(true)}>
-                        Enter code
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-sm border-border/50"
+                    onClick={() => setPwDialogOpen(true)}
+                  >
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    Change Password
+                  </Button>
+                </CardContent>
+              </Card>
 
-                {/* Phone Number with verification */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone" className="text-xs">Phone Number</Label>
+              {/* Appearance */}
+              <Card className="bg-card border-0 shadow-sm">
+                <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
-                    <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8 flex-1" />
-                    {isPhoneVerified ? (
-                      <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
-                        <ShieldCheck className="h-3 w-3" /> Verified
-                      </Badge>
-                    ) : (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 shrink-0 gap-1 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-50" 
-                        onClick={handleSendPhoneVerification}
-                        disabled={phoneSendingLoading}
-                      >
-                        {phoneSendingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Phone className="h-3 w-3" />} 
-                        Verify Phone
+                    <Sun className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm">Appearance</CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">Toggle between light and dark mode</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">Dark Mode</p>
+                      <p className="text-xs text-muted-foreground">Preferred for this app</p>
+                    </div>
+                    <ThemeToggle />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* ── RIGHT COLUMN: Form Fields ── */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+
+              {/* Profile Information */}
+              <Card className="bg-card border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm">Profile Information</CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">Update your personal details</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Full Name */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Full Name</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="firstName" className="text-xs text-muted-foreground">First Name</Label>
+                        <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First Name" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="lastName" className="text-xs text-muted-foreground">Last Name</Label>
+                        <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last Name" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Address & Username side by side */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="address" className="text-xs font-semibold">Address</Label>
+                      <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Your address" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="username" className="text-xs font-semibold">Username</Label>
+                      <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
+                    </div>
+                  </div>
+
+                  {/* Job Position (read-only) */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold">Job Position</Label>
+                    <Input value={jobPosition} disabled className="capitalize bg-muted/50 text-muted-foreground" />
+                    <p className="text-[10px] text-muted-foreground">Position is managed by your administrator.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact & Verification */}
+              <Card className="bg-card border-0 shadow-sm">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm">Contact & Verification</CardTitle>
+                  </div>
+                  <CardDescription className="text-xs">Manage your email and phone number</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs font-semibold">Email Address</Label>
+                    <div className="flex items-center gap-2">
+                      <Input id="email" type="email" value={email} disabled className="flex-1 bg-muted/50 text-muted-foreground" />
+                      {isVerified ? (
+                        <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+                          <ShieldCheck className="h-3 w-3" /> Verified
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 gap-1 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                          onClick={handleSendVerification}
+                          disabled={emailLoading}
+                        >
+                          {emailLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <AlertCircle className="h-3 w-3" />}
+                          Verify Now
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex gap-4">
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setChangeEmailOpen(true)}>
+                        Change email address
+                      </Button>
+                      {!isVerified && (
+                        <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setVerifyDialogOpen(true)}>
+                          Enter code
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="phone" className="text-xs font-semibold">Phone Number</Label>
+                    <div className="flex items-center gap-2">
+                      <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="flex-1" placeholder="+63 900 000 0000" />
+                      {isPhoneVerified ? (
+                        <Badge variant="outline" className="gap-1 text-xs border-green-500/30 text-green-600 dark:text-green-400 shrink-0">
+                          <ShieldCheck className="h-3 w-3" /> Verified
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 gap-1 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+                          onClick={handleSendPhoneVerification}
+                          disabled={phoneSendingLoading}
+                        >
+                          {phoneSendingLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Phone className="h-3 w-3" />}
+                          Verify Phone
+                        </Button>
+                      )}
+                    </div>
+                    {!isPhoneVerified && phone && (
+                      <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setPhoneVerifyDialogOpen(true)}>
+                        Enter verification code
                       </Button>
                     )}
                   </div>
-                  {!isPhoneVerified && phone && (
-                    <Button variant="link" size="sm" className="h-auto p-0 text-xs text-primary" onClick={() => setPhoneVerifyDialogOpen(true)}>
-                      Enter verification code
-                    </Button>
-                  )}
-                </div>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Job Position</Label>
-                  <Input value={jobPosition} disabled className="h-8 capitalize bg-muted" />
-                </div>
+              {/* Save Button */}
+              <div className="flex justify-end">
+                <Button onClick={handleSave} className="px-8" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-xs">Username</Label>
-                  <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} className="h-8" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Change Password */}
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={() => setPwDialogOpen(true)}>
-              <Lock className="h-4 w-4 text-primary" />
-              Change Password
-            </Button>
-
-            {/* Appearance */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Sun className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-sm">Appearance</CardTitle>
-                </div>
-                <CardDescription className="text-xs">Toggle between light and dark mode</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Dark Mode</Label>
-                  <ThemeToggle />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Button onClick={handleSave} className="w-full sm:w-auto" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
-            </Button>
           </div>
         </div>
       </div>

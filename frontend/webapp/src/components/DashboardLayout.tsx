@@ -565,7 +565,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Desktop sidebar */}
         <aside
           className={cn(
-            "hidden md:flex md:flex-col bg-sidebar border-r border-sidebar-border shrink-0 transition-all duration-300 ease-in-out z-40",
+            "hidden md:flex md:flex-col bg-sidebar shrink-0 transition-all duration-300 ease-in-out z-40",
             collapsed ? "md:w-24" : "md:w-72",
           )}
         >
@@ -593,7 +593,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Main content */}
         <div className="flex flex-1 flex-col min-w-0">
-          <header className="flex h-16 items-center gap-4 border-b border-border bg-card/50 backdrop-blur-md px-6 shrink-0">
+          <header className="flex h-16 items-center gap-4 border-b border-border/50 bg-card/30 backdrop-blur-md px-6 shrink-0">
             {/* Mobile menu */}
             <button
               onClick={() => setMobileOpen(true)}
@@ -743,7 +743,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex-1 overflow-hidden bg-background/50 pt-4">
+          <main className="flex-1 overflow-hidden bg-background pt-4">
             {children}
           </main>
         </div>

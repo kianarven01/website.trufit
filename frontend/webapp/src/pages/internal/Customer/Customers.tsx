@@ -321,7 +321,7 @@ const toolbarFilters = [
       />
 
       {isLoading ? (
-        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden bg-card/50">
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
           <div className="flex-1 flex flex-col items-center justify-center py-20">
             <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
             <p className="text-sm font-medium text-muted-foreground animate-pulse">
@@ -330,9 +330,9 @@ const toolbarFilters = [
           </div>
         </div>
       ) : customers.length > 0 ? (
-        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 px-2">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
@@ -410,17 +410,13 @@ const toolbarFilters = [
             </Table>
           </ScrollArea>
 
-          {filtered.length > 0 && (
-            <div className="border-t bg-background">
-              <Pagination
-                totalItems={filtered.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+          <Pagination
+            totalItems={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       ) : (
         <Card>

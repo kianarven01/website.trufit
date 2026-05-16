@@ -18,6 +18,10 @@ Route::prefix('products')->group(function () {
     Route::post('/', [ProductController::class, 'store']);
 
     Route::get('/categories', [ProductReferenceController::class, 'categories']);
+    Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories']);
+    Route::post('/service-categories', [ProductReferenceController::class, 'storeServiceCategory']);
+    Route::put('/service-categories/{id}', [ProductReferenceController::class, 'updateServiceCategory']);
+    Route::delete('/service-categories/{id}', [ProductReferenceController::class, 'deleteServiceCategory']);
     Route::post('/categories', [ProductReferenceController::class, 'storeCategory']);
     Route::put('/categories/{id}', [ProductReferenceController::class, 'updateCategory']);
     Route::delete('/categories/{id}', [ProductReferenceController::class, 'deleteCategory']);

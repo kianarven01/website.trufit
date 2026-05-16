@@ -14,6 +14,7 @@ class ServiceType extends Model
     protected $fillable = [
         'name',
         'category',
+        'service_category_id',
         'price',
         'description',
         'pricing_type',
@@ -23,5 +24,10 @@ class ServiceType extends Model
     public function pricings()
     {
         return $this->hasMany(ServicePricing::class, 'service_type_id');
+    }
+
+    public function serviceCategory()
+    {
+        return $this->belongsTo(ServiceCategory::class, 'service_category_id');
     }
 }

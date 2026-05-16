@@ -33,6 +33,7 @@ interface MakeComboboxProps {
   showGroupSeparator?: boolean;
   isLoading?: boolean;
   disabled?: boolean;
+  className?: string;
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -46,6 +47,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   showGroupSeparator = false,
   isLoading,
   disabled,
+  className,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -108,7 +110,7 @@ const Combobox: FC<MakeComboboxProps> = ({
               setOpen(true);
             }}
             disabled={disabled || isLoading}
-            className="w-full pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={cn("w-full pr-10 disabled:opacity-50 disabled:cursor-not-allowed", className)}
           />
 
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">

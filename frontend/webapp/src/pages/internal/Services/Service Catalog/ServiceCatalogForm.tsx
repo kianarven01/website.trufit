@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
+import ManageServiceCategoriesModal from "@/components/popupModal/ServiceCatalog/ManageServiceCategoriesModal";
 
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
@@ -32,9 +33,8 @@ type PricingType = "fixed" | "hourly rate";
 interface Props {
   mode: "add" | "edit";
 }
-
 interface ServiceCategory {
-  id: string;
+  id: number;
   name: string;
 }
 
@@ -69,7 +69,6 @@ const ServiceCatalogForm: React.FC<Props> = ({ mode }) => {
   const { id } = useParams();
 
 const [categories, setCategories] = useState<ServiceCategory[]>([]);
-const [services, setServices] = useState<Service[]>([]);
 const [pricing, setPricing] = useState<ServicePricing[]>([]);
 const [duration, setDuration] = useState<number>(0); // total minutes
 
@@ -86,8 +85,9 @@ const scrollRef = useRef<HTMLDivElement | null>(null);
 
 /* ================= FORM ================= */
 const [name, setName] = useState("");
-const [categoryId, setCategoryId] = useState("");
 const [categoryName, setCategoryName] = useState("");
+const [serviceCategoryId, setServiceCategoryId] = useState<number | null>(null);
+const [isManageModalOpen, setIsManageModalOpen] = useState(false);
 const [description, setDescription] = useState("");
 const [pricingType, setPricingType] = useState<PricingType>("fixed");
 
@@ -137,15 +137,15 @@ useEffect(() => {
     try {
       setIsLoading(true);
       // Fetch categories
-      const catRes = await api.get('/products/categories');
+      const catRes = await api.get('/products/service-categories');
       setCategories(catRes.data.data);
 
       if (mode === "edit" && id) {
         const res = await api.get(`/products/service-types/${id}`);
         const s = res.data.data;
         setName(s.name);
-        setCategoryId(s.category_id);
         setCategoryName(s.category || "");
+        setServiceCategoryId(s.service_category_id || null);
         setDescription(s.description || "");
         setPricingType(s.pricing_type || "fixed");
         setDuration(s.duration || 0);
@@ -228,7 +228,7 @@ const normalizeCategory = (input: string) => {
 const categoryOptions = useMemo(() => {
   return categories.map((c) => ({
     label: c.name,
-    value: c.name,
+    value: c.id.toString(),
   }));
 }, [categories]);
 
@@ -389,8 +389,8 @@ const handleCancelAddSize = () => {
 
 /* ================= SAVE ================= */
 const handleSubmit = async () => {
-  if (!name || !categoryName.trim()) {
-    toast.error("Name and category required");
+  if (!name.trim()) {
+    toast.error("Service name is required");
     return;
   }
 
@@ -414,6 +414,7 @@ const handleSubmit = async () => {
   const payload = {
     name,
     category_name: categoryName,
+    service_category_id: serviceCategoryId,
     description,
     duration,
     pricing_type: pricingType,
@@ -535,8 +536,8 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
             <CardHeader>
               <CardTitle>Service Information</CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <div>
+            <CardContent className="flex flex-col gap-5 p-6">
+              <div className="space-y-1.5">
                 <Label>Service Name</Label>
                 <Input
                   type="text"
@@ -546,28 +547,49 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   onChange={(e) => setName(capitalize(e.target.value))} 
                 />              
               </div>
-              <div>
-                <Label>Category</Label>
-                <div className="bg-background">
-                  <Combobox
-                    items={categoryOptions}
-                    value={categoryName}
-                    onChange={(val) => setCategoryName(capitalize(val))}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between h-5">
+                  <Label>Category</Label>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 text-[11px] font-medium text-primary hover:no-underline"
+                    onClick={() => setIsManageModalOpen(true)}
+                  >
+                    Manage Categories
+                  </Button>
+                </div>
+                <Combobox
+                  className="text-xs bg-background"
+                  items={categoryOptions}
+                    value={serviceCategoryId?.toString() || ""}
+                    onChange={(val) => {
+                      const match = categories.find(c => c.id.toString() === val || c.name === val);
+                      if (match) {
+                        setServiceCategoryId(match.id);
+                        setCategoryName(match.name);
+                      } else {
+                        setServiceCategoryId(null);
+                        // Prevent saving raw numeric IDs as category names
+                        if (val && !/^\d+$/.test(val)) {
+                          setCategoryName(capitalize(val));
+                        }
+                      }
+                    }}
                     placeholder="Select or type category"
                   />                  
-                </div>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label>Description</Label>
                 <Textarea 
                   placeholder="Description" 
                   value={description} 
                   onChange={(e) => setDescription(e.target.value)} 
                   rows={5} 
-                  className="text-xs bg-background max-h-[240px]"
+                  className="text-xs bg-background max-h-[240px] resize-none"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Estimated Duration</Label>
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -990,6 +1012,28 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
         onConfirm={handleConfirmDelete}
       />
 
+      <ManageServiceCategoriesModal 
+        isOpen={isManageModalOpen} 
+        onClose={() => setIsManageModalOpen(false)} 
+        onCategoriesUpdated={async () => {
+          const catRes = await api.get('/products/service-categories');
+          const newCategories = catRes.data.data;
+          setCategories(newCategories);
+          
+          // Synchronize form state with updated categories
+          if (serviceCategoryId) {
+            const match = newCategories.find((c: any) => c.id === serviceCategoryId);
+            if (match) {
+              // Update name if it was renamed
+              setCategoryName(match.name);
+            } else {
+              // Clear if it was deleted
+              setServiceCategoryId(null);
+              setCategoryName("");
+            }
+          }
+        }}
+      />
     </div>
   );
 };

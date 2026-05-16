@@ -11,30 +11,20 @@ import { cn } from "@/lib/utils";
 import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, XCircle, BanknoteX, ClipboardList, Tag, Clock } from "lucide-react";
+import { ArrowLeft, Pencil, XCircle, BanknoteX, Tag, Clock } from "lucide-react";
 import api from "@/api/axios";
-
-/* ================= STORAGE ================= */
-const SERVICE_KEY = "services";
-const CATEGORY_KEY = "serviceCategories";
-const VEHICLE_SIZE_KEY = "vehicleSizes";
-const PRICING_KEY = "servicePricing";
-
 
 /* ================= TYPES ================= */
 interface Service {
   id: string;
   name: string;
   category?: string;
+  service_category?: { name: string };
+  service_category_id?: number;
   serviceCategoryId: string;
   description?: string;
   duration?: number;
   pricingType: "fixed" | "hourly rate";
-}
-
-interface ServiceCategory {
-  id: string;
-  name: string;
 }
 
 interface VehicleSize {
@@ -59,8 +49,6 @@ const ServiceDetail: React.FC = () => {
   const { id } = useParams();
 
   const [service, setService] = useState<Service | null>(null);
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
   const [pricing, setPricing] = useState<ServicePricing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -78,17 +66,13 @@ useEffect(() => {
       setService({
         ...s,
         pricingType: s.pricing_type || "fixed",
-        serviceCategoryId: s.category // Mapping text category to serviceCategoryId for UI consistency
+        serviceCategoryId: s.service_category?.name || s.category || "Uncategorized" // Prefer relational name
       });
       
       // Dynamic Breadcrumb
       sessionStorage.setItem(`breadcrumb-/webapp/services/service-catalog/${id}`, s.name);
       window.dispatchEvent(new Event('breadcrumb-update'));
 
-      // Fetch categories for mapping
-      const catRes = await api.get('/products/categories');
-      setCategories(catRes.data.data);
-      
       // Set pricing from backend if available
       if (s.pricings) {
         setPricing(s.pricings.map((p: any) => ({
@@ -127,10 +111,6 @@ const handleDeleteService = async () => {
 };
 
 /* ================= DERIVED DATA ================= */
-const categoryName = useMemo(() => {
-  return service?.category || "—";
-}, [service]);
-
 const filteredPricing = useMemo(() => {
   if (!service) return [];
   return pricing.filter(p => p.pricingType === service.pricingType);
@@ -175,9 +155,6 @@ if (!service) return null;
 return (
   <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
 
-    {/* TOOLBAR (VIEW MODE ONLY) */}
-
-    {/* TOOLBAR (VIEW MODE ONLY) */}
     <DataToolbar
       variant="detail"
       actions={
@@ -217,34 +194,27 @@ return (
 
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <Label> Service Name</Label>
-            <p className="text-sm">{service.name}</p>
+            <Label>Service Name</Label>
+            <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">{service.name}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Category</Label>
+            <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">{service.serviceCategoryId}</p>
           </div>
 
           <div className="space-y-1">
-            <Label>Category</Label>
-            <p className="text-sm">{categoryName}</p>
-          </div>
-
-          <div className="space-y-2">
             <Label>Description</Label>
-              <div>
-                <Textarea 
-                  value={service?.description || "—"} 
-                  rows={5} 
-                  readOnly
-                  className="text-xs resize-none"
-                />
-              </div>
+            <div className="text-sm px-3 py-2 bg-muted/20 rounded-md border min-h-[100px] whitespace-pre-wrap">
+              {service?.description || "No description provided"}
+            </div>
           </div>
 
           <div className="space-y-1">
             <Label>Estimated Duration</Label>
-            <Input
-              value={durationFormatted} 
-              readOnly 
-              className="text-xs" 
-            />
+            <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">
+              {durationFormatted}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -385,4 +355,5 @@ return (
   </div>
 );
 }
+
 export default ServiceDetail;

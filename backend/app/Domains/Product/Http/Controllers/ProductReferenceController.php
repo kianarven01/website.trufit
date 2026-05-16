@@ -10,9 +10,11 @@ use App\Domains\Product\Domain\Models\Manufacturer;
 use App\Domains\Product\Domain\Models\VehicleModel;
 use App\Domains\Product\Domain\Models\ServiceType;
 use App\Domains\Product\Domain\Models\ServicePricing;
+use App\Domains\Product\Domain\Models\ServiceCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProductReferenceController extends Controller
 {
@@ -26,6 +28,60 @@ class ProductReferenceController extends Controller
 
         return response()->json([
             'data' => $categories,
+        ]);
+    }
+
+    public function serviceCategories(): JsonResponse
+    {
+        $categories = ServiceCategory::query()
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $categories,
+        ]);
+    }
+
+    public function storeServiceCategory(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', Rule::unique(ServiceCategory::class, 'name')],
+        ]);
+
+        $category = ServiceCategory::create($validated);
+
+        return response()->json([
+            'message' => 'Service category created successfully.',
+            'data' => $category,
+        ], 201);
+    }
+
+    public function updateServiceCategory(Request $request, $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', Rule::unique(ServiceCategory::class, 'name')->ignore($id)],
+        ]);
+
+        $category = ServiceCategory::findOrFail($id);
+        $category->update($validated);
+
+        return response()->json([
+            'message' => 'Service category updated successfully.',
+            'data' => $category,
+        ]);
+    }
+
+    public function deleteServiceCategory($id): JsonResponse
+    {
+        $category = ServiceCategory::findOrFail($id);
+        
+        // Clear the redundant string category column for associated services
+        ServiceType::where('service_category_id', $id)->update(['category' => '']);
+
+        $category->delete();
+
+        return response()->json([
+            'message' => 'Service category deleted successfully.',
         ]);
     }
 
@@ -149,7 +205,7 @@ class ProductReferenceController extends Controller
 
     public function serviceTypes()
     {
-        $services = ServiceType::all();
+        $services = ServiceType::with('serviceCategory')->get();
         return response()->json([
             'data' => $services,
         ]);
@@ -157,7 +213,7 @@ class ProductReferenceController extends Controller
 
     public function showServiceType($id)
     {
-        $service = ServiceType::with('pricings')->find($id);
+        $service = ServiceType::with(['pricings', 'serviceCategory'])->find($id);
         if (!$service) {
             return response()->json(['message' => 'Service not found'], 404);
         }
@@ -168,7 +224,8 @@ class ProductReferenceController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string',
-            'category_name' => 'required|string',
+            'category_name' => 'nullable|string',
+            'service_category_id' => ['nullable', Rule::exists(ServiceCategory::class, 'id')],
             'description' => 'nullable|string',
             'duration' => 'nullable|integer',
             'pricing_type' => 'nullable|string',
@@ -176,9 +233,15 @@ class ProductReferenceController extends Controller
             'pricing' => 'nullable|array'
         ]);
 
+        if (!isset($data['service_category_id']) && isset($data['category_name'])) {
+            $cat = ServiceCategory::firstOrCreate(['name' => ucfirst($data['category_name'])]);
+            $data['service_category_id'] = $cat->id;
+        }
+
         $service = ServiceType::create([
             'name' => ucfirst($data['name']),
-            'category' => ucfirst($data['category_name']),
+            'category' => $data['category_name'] ?? '',
+            'service_category_id' => $data['service_category_id'] ?? null,
             'description' => $data['description'] ?? '',
             'duration' => $data['duration'] ?? 0,
             'pricing_type' => $data['pricing_type'] ?? 'fixed',
@@ -212,7 +275,8 @@ class ProductReferenceController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string',
-            'category_name' => 'required|string',
+            'category_name' => 'nullable|string',
+            'service_category_id' => ['nullable', Rule::exists(ServiceCategory::class, 'id')],
             'description' => 'nullable|string',
             'duration' => 'nullable|integer',
             'pricing_type' => 'nullable|string',
@@ -220,9 +284,15 @@ class ProductReferenceController extends Controller
             'pricing' => 'nullable|array'
         ]);
 
+        if (!isset($data['service_category_id']) && isset($data['category_name'])) {
+            $cat = ServiceCategory::firstOrCreate(['name' => ucfirst($data['category_name'])]);
+            $data['service_category_id'] = $cat->id;
+        }
+
         $service->update([
             'name' => ucfirst($data['name']),
-            'category' => ucfirst($data['category_name']),
+            'category' => $data['category_name'] ?? $service->category,
+            'service_category_id' => $data['service_category_id'] ?? $service->service_category_id,
             'description' => $data['description'] ?? $service->description,
             'duration' => $data['duration'] ?? $service->duration,
             'pricing_type' => $data['pricing_type'] ?? $service->pricing_type,

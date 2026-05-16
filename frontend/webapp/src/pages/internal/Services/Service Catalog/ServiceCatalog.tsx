@@ -51,16 +51,19 @@ const ServiceCatalogList: React.FC = () => {
         const data = res.data.data.map((s: any) => ({
           id: s.id,
           name: s.name,
-          category: s.category,
-          serviceCategoryId: s.category, // using text as ID for now if not normalized
+          category: s.service_category?.name || s.category,
+          serviceCategoryId: s.service_category_id ? s.service_category_id.toString() : null,
           description: s.description || "No description provided",
           pricingType: s.pricing_type || "fixed"
         }));
         setServices(data);
 
-        // Extract unique categories from services for filtering
-        const uniqueCats = [...new Set(data.map((s: any) => s.category))].filter(Boolean);
-        setCategories(uniqueCats.map(cat => ({ id: cat as string, name: cat as string })));
+        // Fetch actual categories for filtering
+        const catRes = await api.get('/products/service-categories');
+        setCategories(catRes.data.data.map((c: any) => ({ 
+          id: c.id.toString(), 
+          name: c.name 
+        })));
 
       } catch (err) {
         console.error("Failed to load services", err);
@@ -197,7 +200,7 @@ const ServiceCatalogList: React.FC = () => {
                       className="rounded-lg border bg-card shadow-sm hover:shadow-md cursor-pointer"
                     >
                       <TableCell className="font-medium text-center">{s.name}</TableCell>
-                      <TableCell className="text-center">{category?.name || s.category || "—"}</TableCell>
+                      <TableCell className="text-center">{s.category || "—"}</TableCell>
                       <TableCell className="text-muted-foreground truncate text-center">{s.description}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">

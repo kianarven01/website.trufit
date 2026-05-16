@@ -699,17 +699,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <button 
                   type="button"
-                  className="flex items-center gap-3 rounded-full px-1.5 py-1.5 hover:bg-accent transition-all group outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0"
+                  className="flex items-center gap-2.5 rounded-full px-1 py-1 hover:bg-accent transition-all group outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0 border border-transparent hover:border-border"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold text-lg">
-                    {user?.username?.charAt(0).toUpperCase()}
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold text-sm">
+                    {(user?.first_name || user?.username || "A").charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left pr-2">
-                    <p className="text-base font-bold text-foreground leading-tight">
-                      {user?.username}
+                    <p className="text-[14px] font-bold text-foreground leading-tight">
+                      {user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : user?.username}
                     </p>
-                    <p className="text-xs text-muted-foreground/70 font-medium capitalize">
-                      {user?.position || user?.role}
+                    <p className="text-[11px] text-muted-foreground/70 font-medium capitalize">
+                      {user?.position || user?.role || "Administrator"}
                     </p>
                   </div>
                 </button>

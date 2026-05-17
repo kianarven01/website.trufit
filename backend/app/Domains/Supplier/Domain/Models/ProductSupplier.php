@@ -23,10 +23,14 @@ class ProductSupplier extends Model
         'product_id',
         'supplier_id',
         'supplier_cost',
+        'is_vat',
+        'vat_percent',
     ];
 
     protected $casts = [
         'supplier_cost' => 'decimal:2',
+        'is_vat' => 'boolean',
+        'vat_percent' => 'decimal:2',
     ];
 
     public function product()

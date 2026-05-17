@@ -11,12 +11,14 @@ import DataToolbar from "@/components/DataToolbar";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import SupplierModal from "@/components/popupModal/Purchasing/addSupplier"; 
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ContactSupplierModal from "@/components/popupModal/Purchasing/contactSupplier";
 
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
 
-import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent } from "lucide-react";
+import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent, Plus } from "lucide-react";
+import api from "@/api/axios";
 
 interface Supplier {
   id: string;
@@ -26,8 +28,6 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
-  isVAT: boolean;
-  vatRate: number;
 }
 
 interface Product {
@@ -36,19 +36,12 @@ interface Product {
   partNumber: string;
   price: number;
   stock: number;
+  isVat?: boolean;
+  vatPercent?: number | null;
 }
 
-const STORAGE_KEY = "suppliers";
 
 
-const generateDummyProducts = (): Product[] =>
-  Array.from({ length: 12 }, (_, i) => ({
-    id: `prod-${i}`,
-    name: `Part ${i + 1}`,
-    partNumber: `PRT-${1000 + i}`,
-    price: Math.floor(Math.random() * 5000),
-    stock: Math.floor(Math.random() * 50),
-  }));
 
 const SupplierDetails: React.FC = () => {
   const { supplierId } = useParams<{ supplierId: string }>();
@@ -59,43 +52,138 @@ const SupplierDetails: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [isCostOpen, setIsCostOpen] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [supplierCost, setSupplierCost] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [isVat, setIsVat] = useState(false);
+  const [vatPercent, setVatPercent] = useState("12");
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return;
-    const parsed: Supplier[] = JSON.parse(stored);
-    const found = parsed.find((s) => s.id === supplierId);
-    if (found) setSupplier(found);
-  }, [supplierId]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setProducts(generateDummyProducts());
-  }, []);
-
-  const handleSaveSupplier = (updated: Supplier) => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const suppliers: Supplier[] = stored ? JSON.parse(stored) : [];
-
-    const updatedList = suppliers.map((s) =>
-      s.id === updated.id ? updated : s
-    );
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
-    setSupplier(updated);
+  const loadSupplier = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get(`/products/suppliers/${supplierId}`);
+      if (res.data?.data) {
+        setSupplier(res.data.data);
+        setProducts(res.data.data.products || []);
+        
+        sessionStorage.setItem(`breadcrumb-/webapp/purchasing/suppliers/${supplierId}`, res.data.data.name || "Supplier");
+        window.dispatchEvent(new Event('breadcrumb-update'));
+      }
+    } catch (error) {
+      console.error("Failed to load supplier:", error);
+      toast.error("Failed to load supplier details");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteSupplier = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const suppliers: Supplier[] = stored ? JSON.parse(stored) : [];
+  useEffect(() => {
+    if (supplierId) {
+      void loadSupplier();
+    }
+  }, [supplierId]);
 
-    const updatedList = suppliers.filter((s) => s.id !== supplier!.id);
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedList));
 
-    toast.success("Supplier deleted.");
-    navigate("/webapp/purchasing/suppliers");
+  const handleSaveSupplier = async (updated: Supplier) => {
+    try {
+      await api.put(`/products/suppliers/${updated.id}`, updated);
+      setSupplier(updated);
+      toast.success("Supplier updated.");
+    } catch (error) {
+      console.error("Failed to update supplier:", error);
+      toast.error("Failed to update supplier.");
+    }
+  };
+
+  const handleDeleteSupplier = async () => {
+    try {
+      await api.delete(`/products/suppliers/${supplier!.id}`);
+      toast.success("Supplier deleted.");
+      navigate("/webapp/purchasing/suppliers");
+    } catch (error) {
+      console.error("Failed to delete supplier:", error);
+      toast.error("Failed to delete supplier.");
+    }
+  };
+
+  const fetchCatalogProducts = async () => {
+    try {
+      const res = await api.get("/products");
+      setCatalogProducts(res.data || []);
+    } catch (error) {
+      console.error("Failed to load catalog products:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (isLinkOpen) {
+      void fetchCatalogProducts();
+    }
+  }, [isLinkOpen]);
+
+  const handleLinkProduct = async () => {
+    if (!selectedProductId || !supplierCost) {
+      toast.error("Please select a product and input cost.");
+      return;
+    }
+    try {
+      await api.post(`/products/suppliers/${supplierId}/products`, {
+        productId: selectedProductId,
+        cost: Number(supplierCost),
+        isVat: isVat,
+        vatPercent: isVat ? Number(vatPercent) : null
+      });
+      toast.success("Product linked successfully.");
+      setIsLinkOpen(false);
+      setSelectedProductId("");
+      setSupplierCost("");
+      setIsVat(false);
+      setVatPercent("12");
+      void loadSupplier();
+    } catch (error) {
+      console.error("Failed to link product:", error);
+      toast.error("Failed to link product.");
+    }
+  };
+
+  const handleUpdateCost = async () => {
+    if (!selectedProduct || !supplierCost) return;
+    try {
+      await api.put(`/products/suppliers/${supplierId}/products/${selectedProduct.id}`, {
+        cost: Number(supplierCost),
+        isVat: isVat,
+        vatPercent: isVat ? Number(vatPercent) : null
+      });
+      toast.success("Supplier cost updated successfully.");
+      setIsCostOpen(false);
+      setSelectedProduct(null);
+      setSupplierCost("");
+      setIsVat(false);
+      setVatPercent("12");
+      void loadSupplier();
+    } catch (error) {
+      console.error("Failed to update cost:", error);
+      toast.error("Failed to update cost.");
+    }
+  };
+
+  const handleUnlinkProduct = async (productId: string) => {
+    try {
+      await api.delete(`/products/suppliers/${supplierId}/products/${productId}`);
+      toast.success("Product unlinked successfully.");
+      void loadSupplier();
+    } catch (error) {
+      console.error("Failed to unlink product:", error);
+      toast.error("Failed to unlink product.");
+    }
   };
 
   const formatPHPhone = (phone: string) => {
@@ -112,6 +200,14 @@ const SupplierDetails: React.FC = () => {
 
     return phone;
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+      </div>
+    );
+  }
 
   if (!supplier) {
     return (
@@ -145,7 +241,7 @@ const SupplierDetails: React.FC = () => {
               onClick={() => setIsEditOpen(true)}
             >
               <Pencil className="w-4 h-4 mr-1" />
-              Edit Service
+              Edit Supplier
             </Button>
 
             <Button
@@ -154,7 +250,7 @@ const SupplierDetails: React.FC = () => {
               onClick={() => setIsDeleteOpen(true)}
             >
               <XCircle className="w-4 h-4 mr-1" />
-              Remove Service
+              Remove Supplier
             </Button>
           </div>
         </div>
@@ -179,8 +275,8 @@ const SupplierDetails: React.FC = () => {
                 </p>
                 <div className="flex items-center gap-2">
                   <User className="w-3.5 h-3.5" />
-                  <p className="text-sm">
-                    {supplier.contactPerson || "—"}
+                  <p className={`text-sm ${!supplier.contactPerson ? 'text-muted-foreground italic' : ''}`}>
+                    {supplier.contactPerson || "Not Provided"}
                   </p>
                 </div>
               </div>
@@ -192,7 +288,9 @@ const SupplierDetails: React.FC = () => {
                 </p>
                 <div className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5" />
-                  <p className="text-sm">{supplier.email || "—"}</p>
+                  <p className={`text-sm ${!supplier.email ? 'text-muted-foreground italic' : ''}`}>
+                    {supplier.email || "Not Provided"}
+                  </p>
                 </div>
               </div>
 
@@ -203,8 +301,8 @@ const SupplierDetails: React.FC = () => {
                 </p>
                 <div className="flex items-center gap-2">
                   <Phone className="w-3.5 h-3.5" />
-                  <p className="text-sm">
-                    {supplier.phone ? formatPHPhone(supplier.phone) : "—"}
+                  <p className={`text-sm ${!supplier.phone ? 'text-muted-foreground italic' : ''}`}>
+                    {supplier.phone ? formatPHPhone(supplier.phone) : "Not Provided"}
                   </p>
                 </div>
               </div>
@@ -216,24 +314,12 @@ const SupplierDetails: React.FC = () => {
                 </p>
                 <div className="flex items-center gap-2">
                   <MessageCircle className="w-3.5 h-3.5" />
-                  <p className="text-sm">{supplier.viber || "—"}</p>
-                </div>
-              </div>
-
-              {/* Tax */}
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Tax
-                </p>
-                <div className="flex items-center gap-2">
-                  <Percent className="w-3.5 h-3.5" />
-                  <p className="text-sm">
-                    {supplier.isVAT
-                      ? `${supplier.vatRate}% VAT applied`
-                      : "Non-VAT supplier"}
+                  <p className={`text-sm ${!supplier.viber ? 'text-muted-foreground italic' : ''}`}>
+                    {supplier.viber || "Not Provided"}
                   </p>
                 </div>
               </div>
+
 
             </CardContent>
 
@@ -250,10 +336,14 @@ const SupplierDetails: React.FC = () => {
         
         <div className="col-span-4 flex flex-col min-h-0">
           <Card className="flex flex-col flex-1 min-h-0">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="text-lg">
                 Supplied Products ({products.length})
               </CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setIsLinkOpen(true)}>
+                <Plus className="w-4 h-4 mr-1" />
+                Link Product
+              </Button>
             </CardHeader>
 
             <CardContent className="flex flex-col flex-1 overflow-hidden p-0">
@@ -263,10 +353,12 @@ const SupplierDetails: React.FC = () => {
                   <Table className="table-fixed w-full">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-[40%]">Product Name</TableHead>
-                        <TableHead className="w-[20%]">Part Number</TableHead>
-                        <TableHead className="w-[20%]">Price</TableHead>
-                        <TableHead className="w-[20%]">Stock</TableHead>
+                        <TableHead className="w-[25%]">Product Name</TableHead>
+                        <TableHead className="w-[15%]">Part Number</TableHead>
+                        <TableHead className="w-[15%]">Price</TableHead>
+                        <TableHead className="w-[20%]">VAT Status</TableHead>
+                        <TableHead className="w-[10%]">Stock</TableHead>
+                        <TableHead className="w-[15%] text-right pr-4">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                   </Table>
@@ -277,17 +369,54 @@ const SupplierDetails: React.FC = () => {
                       <TableBody>
                         {paginate(products).map((prod, index) => (
                           <TableRow key={prod.id}>
-                            <TableCell className="w-[40%] truncate">
+                            <TableCell className="w-[25%] truncate">
                               {prod.name}
                             </TableCell>
-                            <TableCell className="w-[20%]">
+                            <TableCell className="w-[15%]">
                               {prod.partNumber}
                             </TableCell>
-                            <TableCell className="w-[20%]">
-                              {prod.price}
+                            <TableCell className="w-[15%]">
+                              ₱{Number(prod.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </TableCell>
                             <TableCell className="w-[20%]">
+                              {prod.isVat ? (
+                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20 font-normal">
+                                  VAT ({prod.vatPercent}%)
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground font-normal">
+                                  Non-VAT
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="w-[10%]">
                               {prod.stock}
+                            </TableCell>
+                            <TableCell className="w-[15%] text-right pr-4">
+                              <div className="flex justify-end gap-1.5">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                  onClick={() => {
+                                    setSelectedProduct(prod);
+                                    setSupplierCost(prod.price.toString());
+                                    setIsVat(prod.isVat ?? false);
+                                    setVatPercent((prod.vatPercent ?? 12).toString());
+                                    setIsCostOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleUnlinkProduct(prod.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -355,6 +484,155 @@ const SupplierDetails: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Link Product Modal */}
+      <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link Product</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs">Select Product</Label>
+              <select
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                className="w-full border rounded-md p-2 bg-background text-sm"
+              >
+                <option value="">Select Product...</option>
+                {catalogProducts
+                  .filter((p) => !products.some((linked) => linked.id === p.id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} {p.partNumber ? `(${p.partNumber})` : ""}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Supplier Cost</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={supplierCost}
+                onChange={(e) => setSupplierCost(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-4 items-center pt-2">
+              <div className="flex-1 space-y-2">
+                <Label className="text-xs">Tax Type</Label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="linkIsVat"
+                      checked={!isVat}
+                      onChange={() => setIsVat(false)}
+                      className="accent-primary"
+                    />
+                    Non-VAT
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="linkIsVat"
+                      checked={isVat}
+                      onChange={() => setIsVat(true)}
+                      className="accent-primary"
+                    />
+                    VAT
+                  </label>
+                </div>
+              </div>
+              
+              {isVat && (
+                <div className="w-[120px] space-y-2">
+                  <Label className="text-xs">VAT Percent (%)</Label>
+                  <Input
+                    type="number"
+                    placeholder="12"
+                    value={vatPercent}
+                    onChange={(e) => setVatPercent(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLinkOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleLinkProduct}>Link Product</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Cost Modal */}
+      <Dialog open={isCostOpen} onOpenChange={setIsCostOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Supplier Cost</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm font-semibold">{selectedProduct?.name}</p>
+            <div className="space-y-2">
+              <Label className="text-xs">Supplier Cost</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={supplierCost}
+                onChange={(e) => setSupplierCost(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-4 items-center pt-2">
+              <div className="flex-1 space-y-2">
+                <Label className="text-xs">Tax Type</Label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="editIsVat"
+                      checked={!isVat}
+                      onChange={() => setIsVat(false)}
+                      className="accent-primary"
+                    />
+                    Non-VAT
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                    <input
+                      type="radio"
+                      name="editIsVat"
+                      checked={isVat}
+                      onChange={() => setIsVat(true)}
+                      className="accent-primary"
+                    />
+                    VAT
+                  </label>
+                </div>
+              </div>
+              
+              {isVat && (
+                <div className="w-[120px] space-y-2">
+                  <Label className="text-xs">VAT Percent (%)</Label>
+                  <Input
+                    type="number"
+                    placeholder="12"
+                    value={vatPercent}
+                    onChange={(e) => setVatPercent(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCostOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateCost}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

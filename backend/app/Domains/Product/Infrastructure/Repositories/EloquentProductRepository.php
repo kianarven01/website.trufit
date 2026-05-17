@@ -42,6 +42,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     'product_id' => $productId,
                     'supplier_id' => $supplier['supplier_id'],
                     'supplier_cost' => $supplier['supplier_cost'] ?? null,
+                    'is_vat' => $supplier['is_vat'] ?? false,
+                    'vat_percent' => ($supplier['is_vat'] ?? false) ? ($supplier['vat_percent'] ?? null) : null,
                 ]);
             }
 

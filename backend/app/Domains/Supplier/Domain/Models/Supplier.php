@@ -43,6 +43,8 @@ class Supplier extends Model
         )->withPivot([
             'id',
             'supplier_cost',
+            'is_vat',
+            'vat_percent',
         ]);
     }
 }

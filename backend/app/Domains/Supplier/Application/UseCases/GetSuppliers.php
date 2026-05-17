@@ -8,7 +8,15 @@ class GetSuppliers
 {
     public function execute()
     {
-        return Supplier::select('id', 'supplier_code', 'CompanyName')
+        return Supplier::select([
+            'id', 
+            'supplier_code', 
+            'CompanyName', 
+            'CompanyContact', 
+            'Email', 
+            'ContactNumber', 
+            'Viber'
+        ])
             ->orderBy('CompanyName')
             ->get();
     }

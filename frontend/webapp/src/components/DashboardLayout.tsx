@@ -331,7 +331,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       const isClickable = info?.isClickable ?? false;
       
       // Dynamic Label override (for UUIDs or dynamic routes)
-      if (!info && segment.length > 20) { // Likely a UUID
+      if (!info) {
         const dynamicLabel = sessionStorage.getItem(`breadcrumb-${path}`);
         if (dynamicLabel) label = dynamicLabel;
       }

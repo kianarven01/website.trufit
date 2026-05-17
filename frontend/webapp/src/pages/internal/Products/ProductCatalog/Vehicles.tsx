@@ -37,6 +37,7 @@ type VehicleApiRow = {
   Model?: string;
   image?: string | null;
   image_URL?: string | null;
+  make?: string | null;
   manufacturer?: string | null;
   manufacturer_id?: string | number | null;
   manufacturerId?: string | number | null;
@@ -64,6 +65,7 @@ const getVehicleSlug = (vehicle: Vehicle) =>
 const normalizeVehicle = (row: VehicleApiRow): Vehicle => {
   const makeName =
     row.makeName ||
+    row.make ||
     row.make_name ||
     row.Manufacturer?.name ||
     row.manufacturer ||
@@ -265,23 +267,6 @@ const VehiclesPage: React.FC = () => {
 
   return (
     <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              className="cursor-pointer"
-              onClick={() => navigate("/webapp/products/product-catalog")}
-            >
-              Product Catalog
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbItem>
-            <BreadcrumbPage>Vehicles</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       <DataToolbar
         searchPlaceholder="Search vehicles..."
         onSearch={setSearch}

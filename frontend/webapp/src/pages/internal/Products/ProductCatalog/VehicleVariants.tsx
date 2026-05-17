@@ -208,6 +208,7 @@ const VehicleVariantsPage: React.FC = () => {
         ),
         makeName: String(
           row.makeName ||
+            row.make ||
             row.make_name ||
             row.Manufacturer?.name ||
             row.manufacturer ||
@@ -451,36 +452,6 @@ const VehicleVariantsPage: React.FC = () => {
 
   return (
     <div className="w-full h-full p-4 flex flex-col space-y-4 select-none overflow-auto">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() => navigate("/webapp/products/product-catalog")}
-            >
-              Product Catalog
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() => navigate("/webapp/products/product-catalog")}
-            >
-              {currentVehicle
-                ? `${currentVehicle.makeName} ${currentVehicle.model}`
-                : `${slugParts.make} ${slugParts.model}`}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbPage>Vehicle Variants</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       <DataToolbar
         variant="detail"
         title={

@@ -214,6 +214,7 @@ const ProductsList: React.FC = () => {
         id: String(row.id),
         makeName: String(
           row.makeName ||
+            row.make ||
             row.make_name ||
             row.Manufacturer?.name ||
             row.manufacturer ||
@@ -410,66 +411,6 @@ const ProductsList: React.FC = () => {
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
-              Product Catalog
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink onClick={() => navigate("/webapp/products/product-catalog")}>
-              {makeModel}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
-                  state: {
-                    vehicleId: resolvedVehicleId,
-                    variantId: resolvedVariantId,
-                    categoryId: resolvedCategoryId,
-                  },
-                })
-              }
-            >
-              {variantName}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbLink
-              onClick={() =>
-                navigate(`/webapp/products/product-catalog/${vehicleSlug}`, {
-                  state: {
-                    vehicleId: resolvedVehicleId,
-                    variantId: resolvedVariantId,
-                    categoryId: resolvedCategoryId,
-                  },
-                })
-              }
-            >
-              {categoryName}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-
-          <BreadcrumbSeparator />
-
-          <BreadcrumbItem>
-            <BreadcrumbPage>Products</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       <DataToolbar
         searchPlaceholder={`Search ${categoryName} products...`}
         onSearch={setSearch}

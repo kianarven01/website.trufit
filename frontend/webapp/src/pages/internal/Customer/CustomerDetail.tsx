@@ -113,6 +113,12 @@ const CustomerDetail: React.FC = () => {
     try {
       const res = await api.get(`/customers/${id}`);
       const c = res.data.data;
+
+      // Dynamic Breadcrumb
+      const fullName = `${c.first_name || ""} ${c.last_name || ""}`.trim();
+      sessionStorage.setItem(`breadcrumb-/webapp/customers/${id}`, fullName || "Customer Profile");
+      window.dispatchEvent(new Event('breadcrumb-update'));
+
       if (c.vehicles) {
         const mappedVehicles = c.vehicles.map((v: any) => ({
           id: v.plate_number,
@@ -170,6 +176,9 @@ const CustomerDetail: React.FC = () => {
 
   useEffect(() => {
     if (id) fetchCustomerData();
+    return () => {
+      sessionStorage.removeItem(`breadcrumb-/webapp/customers/${id}`);
+    };
   }, [id]);
 
   useEffect(() => {

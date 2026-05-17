@@ -16,6 +16,7 @@ app()->bind(
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);
     Route::post('/', [ProductController::class, 'store']);
+    Route::post('/{id}/adjust-stock', [ProductController::class, 'adjustStock']);
 
     Route::get('/categories', [ProductReferenceController::class, 'categories']);
     Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories']);

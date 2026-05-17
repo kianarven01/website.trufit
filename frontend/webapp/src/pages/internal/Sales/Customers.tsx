@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MasterDetailPanel, ColumnDef } from "@/components/MasterDetailPanel";
 
-import CustomerModal from "@/components/popupModal/addCustomer";
+import CustomerModal from "@/components/popupModal/Customers/addCustomer";
 import AddVehicle from "@/components/popupModal/AddCustomerVehicleModal";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,11 +22,12 @@ interface Vehicle {
 
 interface Customer {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   address: string;
   mobileNumber: string;
   landline?: string;
-  email: string;
+  email?: string;
   businessPhone?: string;
   vehicles: Vehicle[];
 }
@@ -94,7 +95,7 @@ const Customers: React.FC = () => {
       label: "Name",
       render: (c) => (
         <div>
-          <div className="font-semibold text-foreground">{c.name}</div>
+          <div className="font-semibold text-foreground">{`${c.firstName} ${c.lastName}`}</div>
           <div className="text-xs text-muted-foreground">{c.email}</div>
         </div>
       ),
@@ -117,15 +118,15 @@ const Customers: React.FC = () => {
     {
       key: "vehicles",
       label: "Vehicles",
-      render: (c) => c.vehicles.length,
+      render: (c) => c.vehicles?.length ?? 0,
     },
   ];
 
   const filteredCustomers = useMemo(() => {
     return customers.filter(
       (c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        `${c.firstName} ${c.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.mobileNumber.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [customers, searchQuery]);
@@ -153,7 +154,7 @@ const Customers: React.FC = () => {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-lg font-bold text-foreground">
-                  {selectedCustomer.name}
+                  {`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {selectedCustomer.id} · Customer Details
@@ -246,8 +247,8 @@ const Customers: React.FC = () => {
       <CustomerModal
         open={customerModalOpen}
         onOpenChange={setCustomerModalOpen}
-        customer={editingCustomer}
-        onSaved={handleCustomerSaved}
+        customer={editingCustomer as any}
+        onSaved={handleCustomerSaved as any}
       />
 
       <AddVehicle

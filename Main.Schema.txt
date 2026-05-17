@@ -418,6 +418,13 @@ CREATE TABLE Main.SalesOrderItems (
   CONSTRAINT salesorderitems_salesorderid_fkey FOREIGN KEY (SalesOrderID) REFERENCES Main.SalesOrder(id),
   CONSTRAINT salesorderitems_productid_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id)
 );
+CREATE TABLE Main.ServiceCategory (
+  id bigint NOT NULL DEFAULT nextval('"Main"."ServiceCategory_id_seq"'::regclass),
+  name character varying NOT NULL UNIQUE,
+  created_at timestamp without time zone,
+  updated_at timestamp without time zone,
+  CONSTRAINT ServiceCategory_pkey PRIMARY KEY (id)
+);
 CREATE TABLE Main.ServicePricing (
   id uuid NOT NULL,
   service_type_id uuid NOT NULL,
@@ -436,7 +443,9 @@ CREATE TABLE Main.ServiceType (
   description text,
   pricing_type character varying NOT NULL DEFAULT 'fixed'::character varying,
   duration integer NOT NULL DEFAULT 0,
-  CONSTRAINT ServiceType_pkey PRIMARY KEY (id)
+  service_category_id bigint,
+  CONSTRAINT ServiceType_pkey PRIMARY KEY (id),
+  CONSTRAINT main_servicetype_service_category_id_foreign FOREIGN KEY (service_category_id) REFERENCES Main.ServiceCategory(id)
 );
 CREATE TABLE Main.Status (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

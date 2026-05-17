@@ -160,6 +160,8 @@ const ProductsList: React.FC = () => {
     categorySlug: string;
   }>();
 
+  const isGeneralView = !vehicleSlug;
+
   const routeState = location.state as
     | {
         vehicleId?: string;
@@ -198,10 +200,10 @@ const ProductsList: React.FC = () => {
     routeState?.categoryId || null
   );
 
-  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
-  const variantName = routeState?.variant?.name || fromSlug(variantSlug) || "Variant";
+  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "All Vehicles";
+  const variantName = routeState?.variant?.name || (variantSlug ? fromSlug(variantSlug) : "All Variants");
   const categoryName =
-    routeState?.category?.name || fromSlug(categorySlug) || "Category";
+    routeState?.category?.name || (categorySlug ? fromSlug(categorySlug) : "All Categories");
 
   const loadVehiclesAndResolveIds = async () => {
     const vehiclesRes = await api.get("/vehicles");
@@ -339,8 +341,11 @@ const ProductsList: React.FC = () => {
         loadCategories(),
         loadManufacturers(),
         loadSuppliers(),
-        loadVehiclesAndResolveIds(),
+        vehicleSlug ? loadVehiclesAndResolveIds() : Promise.resolve(),
       ]);
+      if (isGeneralView) {
+        await loadProducts(null, null, null);
+      }
     } catch (error) {
       console.error("Failed initial load on products page:", error);
     } finally {
@@ -353,12 +358,13 @@ const ProductsList: React.FC = () => {
   }, [vehicleSlug, variantSlug, categorySlug]);
 
   useEffect(() => {
+    if (isGeneralView) return;
     if (resolvedVehicleId === null && resolvedVariantId === null && resolvedCategoryId === null) {
       return;
     }
 
     void loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId);
-  }, [resolvedVehicleId, resolvedVariantId, resolvedCategoryId]);
+  }, [resolvedVehicleId, resolvedVariantId, resolvedCategoryId, isGeneralView]);
 
   useEffect(() => {
     setPage(1);
@@ -412,7 +418,7 @@ const ProductsList: React.FC = () => {
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
       <DataToolbar
-        searchPlaceholder={`Search ${categoryName} products...`}
+        searchPlaceholder={isGeneralView ? "Search all products..." : `Search ${categoryName} products...`}
         onSearch={setSearch}
         filters={filters}
         activeFilters={filtersState}
@@ -422,6 +428,35 @@ const ProductsList: React.FC = () => {
         onAdd={() => setOpenModal(true)}
         addLabel="Add Product"
       />
+
+      <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
+        <button
+          onClick={() => navigate("/webapp/products/product-catalog")}
+          className={cn(
+            "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+            !isGeneralView
+              ? "bg-blue-900 text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Browse by Vehicle
+        </button>
+        <button
+          onClick={() => {
+            if (!isGeneralView) {
+              navigate("/webapp/products/product-catalog/products");
+            }
+          }}
+          className={cn(
+            "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+            isGeneralView
+              ? "bg-blue-900 text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Browse All Products
+        </button>
+      </div>
 
       {loading ? (
         <Card>
@@ -448,23 +483,23 @@ const ProductsList: React.FC = () => {
                   paginated.map((product) => (
                     <TableRow
                       key={product.id}
-                      onClick={() =>
-                        navigate(
-                          `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`,
-                          {
-                            state: {
-                              productId: product.id,
-                              product,
-                              vehicleId: resolvedVehicleId,
-                              variantId: resolvedVariantId,
-                              categoryId: resolvedCategoryId,
-                              vehicleSlug,
-                              variantSlug,
-                              categorySlug,
-                            },
-                          }
-                        )
-                      }
+                      onClick={() => {
+                        const path = isGeneralView
+                          ? `/webapp/products/product-catalog/products/${product.id}`
+                          : `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`;
+                        navigate(path, {
+                          state: {
+                            productId: product.id,
+                            product,
+                            vehicleId: resolvedVehicleId,
+                            variantId: resolvedVariantId,
+                            categoryId: resolvedCategoryId,
+                            vehicleSlug,
+                            variantSlug,
+                            categorySlug,
+                          },
+                        });
+                      }}
                       className={cn(
                         "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                         "hover:bg-accent/30"

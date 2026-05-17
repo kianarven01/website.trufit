@@ -282,6 +282,21 @@ const VehiclesPage: React.FC = () => {
         addLabel="Add Vehicle"
       />
 
+      <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 self-start shadow-sm">
+        <button
+          onClick={() => {}}
+          className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-900 text-white shadow-sm transition"
+        >
+          Browse by Vehicle
+        </button>
+        <button
+          onClick={() => navigate("/webapp/products/product-catalog/products")}
+          className="px-4 py-1.5 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground transition"
+        >
+          Browse All Products
+        </button>
+      </div>
+
       {loading ? (
         <div className="w-full flex items-center justify-center py-20 border rounded-xl">
           <p className="text-muted-foreground font-medium">

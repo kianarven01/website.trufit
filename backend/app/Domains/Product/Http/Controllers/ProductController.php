@@ -20,7 +20,7 @@ class ProductController extends Controller
         $categoryId = $request->query('category_id');
 
         $baseQuery = Product::query()
-            ->with(['category', 'manufacturer', 'unitRelation', 'suppliers']);
+            ->with(['category', 'manufacturer', 'unitRelation', 'suppliers', 'inventoryRelation']);
 
         if ($categoryId) {
             $baseQuery->where('category_id', $categoryId);
@@ -76,7 +76,7 @@ class ProductController extends Controller
 
         if ($equivalentProductIds->isNotEmpty()) {
             $equivalentProducts = Product::query()
-                ->with(['category', 'manufacturer', 'unitRelation', 'suppliers'])
+                ->with(['category', 'manufacturer', 'unitRelation', 'suppliers', 'inventoryRelation'])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
                 ->orderBy('name')
@@ -154,6 +154,30 @@ class ProductController extends Controller
         ], 201);
     }
 
+    public function adjustStock(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity_on_hand' => 'required|integer|min:0',
+            'sell_price' => 'required|numeric|min:0',
+        ]);
+
+        $product = Product::findOrFail($id);
+
+        $inventory = \App\Domains\Product\Domain\Models\Inventory::updateOrCreate(
+            ['productID' => $product->id],
+            [
+                'quantity_on_hand' => $validated['quantity_on_hand'],
+                'sell_price' => $validated['sell_price'],
+                'location_id' => $request->input('location_id') ?? 'd3b07384-d113-4ec6-a55d-752007414777',
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Stock adjusted successfully.',
+            'data' => $this->formatProduct($product->fresh(['inventoryRelation'])),
+        ]);
+    }
+
     public function show(string $id): JsonResponse
     {
         $product = Product::query()
@@ -164,6 +188,7 @@ class ProductController extends Controller
                 'suppliers',
                 'equivalentProducts',
                 'equivalentToProducts',
+                'inventoryRelation',
             ])
             ->where('id', $id)
             ->firstOrFail();
@@ -204,8 +229,8 @@ class ProductController extends Controller
             'supplier_code' => $firstSupplier?->supplier_code,
             'cost' => $firstSupplier?->pivot?->supplier_cost,
 
-            'quantity_on_hand' => null,
-            'sell_price' => null,
+            'quantity_on_hand' => $product->inventoryRelation?->quantity_on_hand,
+            'sell_price' => $product->inventoryRelation?->sell_price,
 
             'is_oem' => $product->is_oem,
             'oem_reference_number' => $product->oem_reference_number,

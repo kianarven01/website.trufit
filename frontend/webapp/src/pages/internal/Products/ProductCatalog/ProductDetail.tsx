@@ -272,13 +272,15 @@ const ProductDetail: React.FC = () => {
     setSelectedSupplierId(String(preferredSupplier.supplier_id));
   }, [product]);
 
-  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "";
-  const variantName = variantSlug ? fromSlug(variantSlug) : "Variant";
-  const categoryName = categorySlug ? fromSlug(categorySlug) : "Category";
+  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "All Vehicles";
+  const variantName = variantSlug ? fromSlug(variantSlug) : "All Variants";
+  const categoryName = categorySlug ? fromSlug(categorySlug) : "All Categories";
 
   const backToProductsPath = useMemo(
     () =>
-      `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products`,
+      vehicleSlug
+        ? `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products`
+        : `/webapp/products/product-catalog/products`,
     [vehicleSlug, variantSlug, categorySlug]
   );
 

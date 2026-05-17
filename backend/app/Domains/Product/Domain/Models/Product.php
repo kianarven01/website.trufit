@@ -10,6 +10,7 @@ use App\Domains\Supplier\Domain\Models\Supplier;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Models\ProductEquivalent;
+use App\Domains\Product\Domain\Models\Inventory;
 
 class Product extends Model
 {
@@ -134,5 +135,10 @@ class Product extends Model
             'id',
             'notes',
         ]);
+    }
+
+    public function inventoryRelation()
+    {
+        return $this->hasOne(Inventory::class, 'productID', 'id');
     }
 }

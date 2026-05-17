@@ -55,12 +55,24 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 ]);
             }
 
+            // Automatically create corresponding default Inventory row in the DB
+            \App\Domains\Product\Domain\Models\Inventory::create([
+                'productID' => $productId,
+                'quantity_on_hand' => 15,
+                'sell_price' => 750.00,
+                'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                'reserved_quantity' => 0,
+                'reorder_level' => 5,
+                'reorder_qty' => 10,
+            ]);
+
             return $product->fresh([
                 'category',
                 'manufacturer',
                 'unitRelation',
                 'suppliers',
                 'vehicleCompatibilities',
+                'inventoryRelation',
             ]);
         });
     }

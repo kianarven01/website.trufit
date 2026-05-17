@@ -15,6 +15,11 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon, Ellipsis } from "lucide-react";
+import api from "@/api/axios";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 /* ================= TYPES ================= */
 interface InventoryItem {
@@ -26,6 +31,7 @@ interface InventoryItem {
   partNumber: string;
   unit: string;
   stock: number;
+  sellPrice: number;
 }
 
 /* ================= STOCK STATUS ================= */
@@ -34,27 +40,20 @@ const getStockStatus = (stock: number) => {
     return {
       label: "Out of Stock",
       value: "out-of-stock",
-      className: "bg-red-100 text-red-600",
+      className: "bg-red-100/10 text-red-400 border border-red-500/20",
     };
   }
   if (stock <= 5) {
     return {
-      label: "Near Out",
-      value: "near-out",
-      className: "bg-orange-100 text-orange-600",
-    };
-  }
-  if (stock <= 10) {
-    return {
       label: "Low Stock",
       value: "low-stock",
-      className: "bg-yellow-100 text-yellow-600",
+      className: "bg-yellow-100/10 text-yellow-400 border border-yellow-500/20",
     };
   }
   return {
     label: "In Stock",
     value: "in-stock",
-    className: "bg-green-100 text-green-600",
+    className: "bg-green-100/10 text-green-400 border border-green-500/20",
   };
 };
 
@@ -63,70 +62,94 @@ const Inventory: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
-  const { page, setPage, pageSize, setPageSize, paginate } =
-    usePagination(25);
+  // Adjust stock modal state
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [selectedProductForAdjust, setSelectedProductForAdjust] = useState<InventoryItem | null>(null);
+  const [adjustQty, setAdjustQty] = useState<number>(0);
+  const [adjustPrice, setAdjustPrice] = useState<number>(0);
+  const [adjustProductId, setAdjustProductId] = useState<string>("");
+  const [isSavingAdjust, setIsSavingAdjust] = useState(false);
 
-  const STORAGE_KEY = "inventory_items";
-
-  /* ================= DUMMY DATA ================= */
-const generatePartNumber = () => {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const numbers = "0123456789";
-
-  const randomLetters = Array.from({ length: 3 }, () =>
-    letters[Math.floor(Math.random() * letters.length)]
-  ).join("");
-
-  const randomNumbers = Array.from({ length: 5 }, () =>
-    numbers[Math.floor(Math.random() * numbers.length)]
-  ).join("");
-
-  return `${randomLetters}-${randomNumbers}`; 
-  // Example: ABC-48291
-};
-
-  const generateDummy = (): InventoryItem[] => {
-    return Array.from({ length: 60 }, (_, i) => ({
-      id: `inv-${i + 1}`,
-      image: i % 3 === 0 ? "" : `https://via.placeholder.com/40`,
-      name: `Product ${i + 1}`,
-      brand: ["Toyota", "Honda"][i % 2],
-      sku: `SKU-${1000 + i}`,
-      partNumber: generatePartNumber(), 
-      unit: ["pcs", "box", "set"][i % 3],
-      stock: Math.floor(Math.random() * 20),
-    }));
-  };
+  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
   /* ================= LOAD ================= */
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (!parsed.length) {
-        const dummy = generateDummy();
-        setItems(dummy);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
-      } else {
-        setItems(parsed);
-      }
-    } else {
-      const dummy = generateDummy();
-      setItems(dummy);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+  const loadInventory = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/products");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map((row: any) => ({
+        id: String(row.id),
+        image: row.image_URL || row.image_path || undefined,
+        name: String(row.name || ""),
+        brand: row.manufacturer_name || "-",
+        sku: String(row.SKU || row.sku || ""),
+        partNumber: String(row.part_number || ""),
+        unit: row.unit_name || row.unit || "pcs",
+        stock: Number(row.quantity_on_hand ?? 0),
+        sellPrice: Number(row.sell_price ?? 0),
+      }));
+      setItems(normalized);
+    } catch (error) {
+      console.error("Failed to load inventory:", error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  /* ================= SAVE ================= */
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    void loadInventory();
+  }, []);
 
   useEffect(() => {
     setPage(1);
   }, [search]);
+
+  // Adjust stock handler
+  const handleOpenAdjust = (item: InventoryItem) => {
+    setSelectedProductForAdjust(item);
+    setAdjustProductId(item.id);
+    setAdjustQty(item.stock);
+    setAdjustPrice(item.sellPrice);
+    setIsAdjustOpen(true);
+  };
+
+  const handleOpenAdjustNew = () => {
+    setSelectedProductForAdjust(null);
+    setAdjustProductId(items[0]?.id || "");
+    setAdjustQty(0);
+    setAdjustPrice(items[0]?.sellPrice ?? 0);
+    setIsAdjustOpen(true);
+  };
+
+  useEffect(() => {
+    if (!selectedProductForAdjust && adjustProductId) {
+      const prod = items.find((x) => x.id === adjustProductId);
+      if (prod) {
+        setAdjustQty(prod.stock);
+        setAdjustPrice(prod.sellPrice);
+      }
+    }
+  }, [adjustProductId, selectedProductForAdjust, items]);
+
+  const handleSaveAdjust = async () => {
+    if (!adjustProductId) return;
+    setIsSavingAdjust(true);
+    try {
+      await api.post(`/products/${adjustProductId}/adjust-stock`, {
+        quantity_on_hand: adjustQty,
+        sell_price: adjustPrice,
+      });
+      await loadInventory();
+      setIsAdjustOpen(false);
+    } catch (error) {
+      console.error("Failed to adjust stock:", error);
+    } finally {
+      setIsSavingAdjust(false);
+    }
+  };
 
   /* ================= FILTER ================= */
   const filtered = items.filter((p) =>
@@ -142,30 +165,35 @@ const generatePartNumber = () => {
       <div className="flex flex-col gap-4 p-4 h-full w-full">
         
         {/* toolbar */}
-
-        {/* toolbar */}
         <DataToolbar
           searchPlaceholder="Search inventory..."
           onSearch={setSearch}
-          onAdd={() => console.log("adjust stock")}
+          onAdd={handleOpenAdjustNew}
           addLabel="Adjust Stock"
         />
 
         {/* ================= TABLE ================= */}
-        {items.length > 0 ? (
-          <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background">
+        {loading ? (
+          <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
+            <CardContent className="py-20 flex flex-col items-center justify-center">
+              <p className="text-muted-foreground text-sm font-medium">Loading inventory...</p>
+            </CardContent>
+          </Card>
+        ) : items.length > 0 ? (
+          <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
             <div className="flex-1 overflow-auto">
               <Table className="table-fixed w-full border-separate border-spacing-y-2">
                 
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-3/12">Product</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Part No.</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[8%]" />
+                  <TableRow className="hover:bg-transparent border-none">
+                    <TableHead className="w-4/12 text-muted-foreground font-semibold">Product</TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">SKU</TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">Part No.</TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">Stock</TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">Price</TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">Unit</TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">Status</TableHead>
+                    <TableHead className="w-[8%] text-muted-foreground font-semibold" />
                   </TableRow>
                 </TableHeader>
 
@@ -189,7 +217,7 @@ const generatePartNumber = () => {
                                 <img
                                   src={p.image}
                                   alt={p.name}
-                                  className="w-12 h-10 rounded-md object-cover border"
+                                  className="w-12 h-10 rounded-md object-cover border border-border/40"
                                   onError={() =>
                                     setImgError((prev) => ({
                                       ...prev,
@@ -198,13 +226,13 @@ const generatePartNumber = () => {
                                   }
                                 />
                               ) : (
-                                <div className="w-12 h-10 flex items-center justify-center rounded-md border">
-                                  <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                                <div className="w-12 h-10 flex items-center justify-center rounded-md border border-border/40 bg-muted/30">
+                                  <ImageIcon className="w-5 h-5 text-muted-foreground/60" />
                                 </div>
                               )}
 
                               <div className="flex flex-col">
-                                <span className="font-medium">{p.name}</span>
+                                <span className="font-medium text-foreground text-sm leading-tight">{p.name}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {p.brand}
                                 </span>
@@ -212,50 +240,68 @@ const generatePartNumber = () => {
                             </div>
                           </TableCell>
 
-                          <TableCell>{p.sku}</TableCell>
-                          <TableCell>{p.partNumber}</TableCell>
+                          <TableCell className="text-foreground/80 text-sm">{p.sku}</TableCell>
+                          <TableCell className="text-foreground/80 text-sm">{p.partNumber}</TableCell>
 
                           {/* STOCK */}
                           <TableCell>
-                            <span className="font-medium">{p.stock}</span>
+                            <span className="font-semibold text-foreground text-sm">{p.stock}</span>
                           </TableCell>
 
-                          <TableCell>{p.unit}</TableCell>
+                          {/* PRICE */}
+                          <TableCell>
+                            <span className="font-medium text-foreground text-sm">₱{p.sellPrice.toFixed(2)}</span>
+                          </TableCell>
+
+                          <TableCell className="text-foreground/80 text-sm">{p.unit}</TableCell>
 
                           {/* STATUS */}
                           <TableCell>
                             <span
                               className={cn(
-                                "text-xs px-2 py-0.5 rounded-full flex items-center gap-1 w-fit",
+                                "text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit",
                                 status.className
                               )}
                             >
-                              <span className=" rounded-full bg-current" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
                               {status.label}
                             </span>
                           </TableCell>
                             
                           <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="icon_xs"
-                            >
-                              <Ellipsis className="h-4 w-4 text-muted-foreground" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="icon_xs"
+                                  className="hover:bg-accent/40"
+                                >
+                                  <Ellipsis className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]">
+                                <DropdownMenuItem
+                                  onClick={() => handleOpenAdjust(p)}
+                                  className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
+                                >
+                                  Adjust Stock
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7}>
+                      <TableCell colSpan={8}>
                         <div className="py-16 flex flex-col items-center text-center">
-                          <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                          <p className="text-sm font-medium">
+                          <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
+                          <p className="text-sm font-semibold text-foreground">
                             No inventory found
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            Try adjusting your search
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Try adjusting your search query
                           </p>
                         </div>
                       </TableCell>
@@ -267,7 +313,7 @@ const generatePartNumber = () => {
 
             {/* ================= PAGINATION ================= */}
             {filtered.length > 25 && (
-              <div className="sticky bottom-0 bg-background z-10">
+              <div className="sticky bottom-0 bg-background z-10 py-2 border-t border-border/40">
                 <Pagination
                   totalItems={filtered.length}
                   page={page}
@@ -279,19 +325,94 @@ const generatePartNumber = () => {
             )}
           </ScrollArea>
         ) : (
-          <Card>
-            <CardContent className="py-16 flex flex-col items-center text-center">
-              <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-              <p className="text-sm font-medium">
+          <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
+            <CardContent className="py-20 flex flex-col items-center text-center">
+              <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
+              <p className="text-sm font-semibold text-foreground">
                 No inventory available
               </p>
-              <p className="text-xs text-muted-foreground">
-                Adjust stock to get started
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Adjust stock to populate inventory items
               </p>
             </CardContent>
           </Card>
         )}
       </div>
+
+      {/* ================= ADJUST STOCK MODAL ================= */}
+      <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card border border-border/40 shadow-2xl rounded-2xl p-6 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+              Adjust Inventory Stock
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-5 py-4 text-sm">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="adjust-product" className="text-right text-muted-foreground font-medium">
+                Product
+              </Label>
+              <select
+                id="adjust-product"
+                className="col-span-3 border border-border/80 rounded-lg px-3 py-2 bg-background text-foreground focus:ring-1 focus:ring-blue-900 transition text-sm"
+                value={adjustProductId}
+                onChange={(e) => setAdjustProductId(e.target.value)}
+                disabled={!!selectedProductForAdjust}
+              >
+                {items.map((prod) => (
+                  <option key={prod.id} value={prod.id}>
+                    {prod.name} ({prod.sku})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="adjust-qty" className="text-right text-muted-foreground font-medium">
+                Stock Count
+              </Label>
+              <Input
+                id="adjust-qty"
+                type="number"
+                min="0"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={adjustQty}
+                onChange={(e) => setAdjustQty(Math.max(0, parseInt(e.target.value) || 0))}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="adjust-price" className="text-right text-muted-foreground font-medium">
+                Selling Price
+              </Label>
+              <Input
+                id="adjust-price"
+                type="number"
+                min="0"
+                step="0.01"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={adjustPrice}
+                onChange={(e) => setAdjustPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsAdjustOpen(false)}
+              disabled={isSavingAdjust}
+              className="border-border/80 hover:bg-accent/40 text-sm px-4 py-2"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveAdjust}
+              disabled={isSavingAdjust || !adjustProductId}
+              className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+            >
+              {isSavingAdjust ? "Saving..." : "Save Adjustments"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

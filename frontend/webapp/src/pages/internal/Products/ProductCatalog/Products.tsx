@@ -431,20 +431,9 @@ const ProductsList: React.FC = () => {
 
       <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
         <button
-          onClick={() => navigate("/webapp/products/product-catalog")}
-          className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-            !isGeneralView
-              ? "bg-blue-900 text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Browse by Vehicle
-        </button>
-        <button
           onClick={() => {
             if (!isGeneralView) {
-              navigate("/webapp/products/product-catalog/products");
+              navigate("/webapp/products/product-catalog");
             }
           }}
           className={cn(
@@ -456,14 +445,28 @@ const ProductsList: React.FC = () => {
         >
           Browse All Products
         </button>
+        <button
+          onClick={() => navigate("/webapp/products/product-catalog/vehicles")}
+          className={cn(
+            "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+            !isGeneralView
+              ? "bg-blue-900 text-white shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Browse by Vehicle
+        </button>
       </div>
 
       {loading ? (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center text-center">
-            <p className="text-sm font-medium">Loading products...</p>
-          </CardContent>
-        </Card>
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading products...
+            </p>
+          </div>
+        </div>
       ) : products.length > 0 ? (
         <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background">
           <div className="flex-1 overflow-auto">
@@ -527,8 +530,8 @@ const ProductsList: React.FC = () => {
 
                           <div className="flex flex-col gap-1">
                             <span className="font-medium">{product.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {product.brand}
+                            <span className="text-[11px] text-muted-foreground leading-none">
+                              {product.manufacturer || product.brand || "-"}
                             </span>
                             <FitmentBadge product={product} />
                           </div>

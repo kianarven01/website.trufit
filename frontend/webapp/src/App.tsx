@@ -138,8 +138,9 @@ const App: React.FC = () => {
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
-              <Route index element={<VehiclesPage />} />
-              <Route path="products" element={<ProductList />} />
+              <Route index element={<ProductList />} />
+              <Route path="vehicles" element={<VehiclesPage />} />
+              <Route path="products" element={<Navigate to="/webapp/products/product-catalog" replace />} />
               <Route path="products/:productId" element={<ProductDetail />} />
               <Route path=":vehicleSlug" element={<VehicleVariantsPage />} />
               <Route path=":vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />

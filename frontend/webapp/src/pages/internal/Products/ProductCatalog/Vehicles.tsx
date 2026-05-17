@@ -284,24 +284,27 @@ const VehiclesPage: React.FC = () => {
 
       <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 self-start shadow-sm">
         <button
+          onClick={() => navigate("/webapp/products/product-catalog")}
+          className="px-4 py-1.5 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground transition"
+        >
+          Browse All Products
+        </button>
+        <button
           onClick={() => {}}
           className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-900 text-white shadow-sm transition"
         >
           Browse by Vehicle
         </button>
-        <button
-          onClick={() => navigate("/webapp/products/product-catalog/products")}
-          className="px-4 py-1.5 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground transition"
-        >
-          Browse All Products
-        </button>
       </div>
 
       {loading ? (
-        <div className="w-full flex items-center justify-center py-20 border rounded-xl">
-          <p className="text-muted-foreground font-medium">
-            Loading vehicles...
-          </p>
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading vehicles...
+            </p>
+          </div>
         </div>
       ) : filteredVehicles.length === 0 ? (
         <div className="w-full flex items-center justify-center py-20 border-2 border-dashed rounded-xl">

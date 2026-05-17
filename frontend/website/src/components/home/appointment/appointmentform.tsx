@@ -47,6 +47,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     lastName: "",
     email: "",
     phone: "",
+    plateNumber: "",
     date: null,
     service: "",
     vehicleMake: "",
@@ -72,12 +73,6 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       const updated = prev.includes(id)
         ? prev.filter(s => s !== id)
         : [...prev, id]
-
-      // close dropdown when "other" is selected
-      if (id === "other" && !prev.includes("other")) {
-        setServiceOpen(false)
-      }
-
       return updated
     })
   }
@@ -155,6 +150,11 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     setForm({ ...form, phone: formatted });
   }
 
+  const handlePlateNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").substring(0, 7);
+    setForm({ ...form, plateNumber: val });
+  }
+
   const handleDateChange = (date: Date | null) => {
     if (!date) {
       setForm({ ...form, date: null })
@@ -230,12 +230,12 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     setSending(true)
     let finalService = ""
 
-    if (selectedServices.includes("other")) {
-      finalService = otherService || "Other"
-    } else if (selectedServices.length > 0) {
-      finalService = selectedServices
-        .map(id => services.find(s => s.id === id)?.name || id)
-        .join(", ")
+    if (selectedServices.length > 0) {
+      const parts = selectedServices.map(id => {
+        if (id === "other") return otherService ? `Other (${otherService})` : "Other"
+        return services.find(s => s.id === id)?.name || id
+      })
+      finalService = parts.join(", ")
     } else {
       finalService =
         form.service === "other"
@@ -265,6 +265,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         lastName: "",
         email: "",
         phone: "",
+        plateNumber: "",
         date: null,
         service: "",
         vehicleMake: "",
@@ -378,115 +379,111 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <label className={labelClass}>Phone</label>
       </div>
 
-      {/* SERVICE (MULTI SELECT) */}
-      <div className="relative service-dropdown md:col-span-2">
-        <div
-          className={`${inputClass} cursor-pointer`}
-          onClick={() => setServiceOpen(prev => !prev)}
-        >
-          <div className="flex flex-wrap gap-2 h-7 overflow-y-auto pr-2">
-            {selectedServices.length === 0 ? (
-              <span className="text-white/40">Select service(s)</span>
-            ) : selectedServices.includes("other") ? (
-              selectedServices
-                .filter(id => id === "other")
-                .map(id => (
-                  <span
-                    key={id}
-                    className="flex items-center gap-2 bg-white/10 px-2 py-1 text-xs rounded-sm"
-                  >
-                    Other
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeService(id)
-                      }}
-                      className="text-white/60 hover:text-white"
+
+      {/* SERVICE + SPECIFY — side by side in a full-width wrapper */}
+      <div className="md:col-span-2 grid grid-cols-2 gap-4 service-dropdown">
+
+        {/* SERVICE DROPDOWN (left half) */}
+        <div className="relative">
+          <div
+            className={`${inputClass} cursor-pointer`}
+            onClick={() => setServiceOpen(prev => !prev)}
+          >
+            <div className="flex flex-wrap gap-2 h-7 overflow-y-auto pr-2">
+              {selectedServices.length === 0 ? (
+                <span className="text-white/40">Select service(s)</span>
+              ) : (
+                selectedServices.map(id => {
+                  const s = services.find(x => x.id === id)
+                  const label = id === "other" ? "Other" : s?.name
+
+                  return (
+                    <span
+                      key={id}
+                      className="flex items-center gap-2 bg-white/10 px-2 py-1 text-xs rounded-sm"
                     >
-                      ✕
-                    </button>
-                  </span>
-                ))
-            ) : (
-              selectedServices.map(id => {
-                const s = services.find(x => x.id === id)
-
-                return (
-                  <span
-                    key={id}
-                    className="flex items-center gap-2 bg-white/10 px-2 py-1 text-xs rounded-sm"
-                  >
-                    {s?.name}
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeService(id)
-                      }}
-                      className="text-white/60 hover:text-white"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )
-              })
-            )}
+                      {label}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeService(id)
+                        }}
+                        className="text-white/60 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )
+                })
+              )}
+            </div>
           </div>
+
+          <label className={labelClass}>Service Needed</label>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60" />
+
+          {serviceOpen && (
+            <div className="absolute z-50 mt-2 w-full bg-white border border-white/10 rounded-sm shadow-lg h-60 overflow-y-auto">
+              {[...services, { id: "other", name: "Other" }].map(s => (
+                <label
+                  key={s.id}
+                  className="flex gap-2 px-4 py-2 text-sm cursor-pointer transition-colors hover:bg-brand-red hover:text-white"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedServices.includes(s.id)}
+                    onChange={() => toggleService(s.id)}
+                    className="w-4 h-4 accent-brand-red cursor-pointer"
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          )}
+
+          {serviceError && (
+            <p className="text-red-500 text-xs mt-1">
+              Please select at least one service
+            </p>
+          )}
         </div>
 
-        <label className={labelClass}>Service Needed</label>
+        {/* SPECIFY OTHER SERVICE (right half) */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Specify service"
+            value={otherService}
+            onChange={(e) => setOtherService(e.target.value)}
+            required={selectedServices.includes("other")}
+            disabled={!selectedServices.includes("other")}
+            onBlur={(e) => setOtherService(capitalize(e.target.value))}
+            className={`
+              peer w-full
+              ${!selectedServices.includes("other")
+                ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10"
+                : "bg-white/15 text-white border-white/30"}
+              border rounded-sm
+              px-4 pt-6 pb-2
+              focus:outline-none focus:ring-1 focus:ring-brand-red
+              transition duration-300
+            `}
+          />
+          <label className={`
+            absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
+            ${!selectedServices.includes("other")
+              ? "text-white/30"
+              : "text-white/60 peer-focus:text-brand-red"}
+          `}>
+            Specify Other Service
+          </label>
+        </div>
 
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60" />
-
-        {serviceOpen && (
-          <div className="absolute z-50 mt-2 w-full bg-white border border-white/10 rounded-sm shadow-lg h-60 overflow-y-auto">
-            {[...services, { id: "other", name: "Other" }].map(s => (
-              <label
-                key={s.id}
-                className={`
-                  flex gap-2 px-4 py-2 text-sm cursor-pointer transition-colors
-                  ${
-                    selectedServices.includes("other") && s.id !== "other"
-                      ? "cursor-not-allowed pointer-events-none opacity-50"
-                      : "cursor-pointer hover:bg-brand-red hover:text-white"
-                  }
-                `}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedServices.includes(s.id)}
-                  onChange={() => toggleService(s.id)}
-                  disabled={
-                    selectedServices.includes("other") && s.id !== "other"
-                  }
-                  className={`
-                    w-4 h-4 transition-colors
-                    accent-brand-red
-
-                    ${
-                      selectedServices.includes("other") && s.id !== "other"
-                        ? "accent-gray-500 cursor-not-allowed"
-                        : "cursor-pointer"
-                    }
-                  `}
-                />
-                {s.name}
-              </label>
-            ))}
-          </div>
-        )}
-
-        {serviceError && (
-        <p className="text-red-500 text-xs mt-1">
-          Please select at least one service
-        </p>
-      )}
       </div>
 
-      {/* DATE */}
+      {/* DATE | VEHICLE YEAR */}
       <div className={`w-full relative`}>
         <DatePicker
           selected={form.date}
@@ -535,39 +532,24 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         )}
       </div>
 
-      {/* OTHER SERVICE INPUT */}
+      {/* VEHICLE YEAR */}
       <div className="relative">
-        <input
-          type="text"
-          placeholder="Specify service"
-          value={otherService}
-          onChange={(e) => setOtherService(e.target.value)}
-          required={selectedServices.includes("other")}
-          disabled={!selectedServices.includes("other")}
-          onBlur={(e) => setOtherService(capitalize(e.target.value))}
-          className={`
-            peer w-full
-            ${!selectedServices.includes("other")
-              ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10"
-              : "bg-white/15 text-white border-white/30"}
-            border rounded-sm
-            px-4 pt-6 pb-2
-            focus:outline-none focus:ring-1 focus:ring-brand-red
-            transition duration-300
-          `}
-        />
-
-        <label className={`
-          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
-          ${!selectedServices.includes("other")
-            ? "text-white/30"
-            : "text-white/60 peer-focus:text-brand-red"}
-        `}>
-          Specify Service
-        </label>
+        <select
+          name="vehicleYear"
+          value={form.vehicleYear || ""}
+          onChange={handleChange}
+          className={`${inputClass} appearance-none pr-10`}
+        >
+          <option value="" disabled hidden className="text-gray-900">Select Year</option>
+          {years.map((year) => (
+            <option key={year} value={year} className="text-gray-900">{year}</option>
+          ))}
+        </select>
+        <label className={labelClass}>Vehicle Year</label>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
       </div>
 
-      {/* VEHICLE MAKE */}
+      {/* VEHICLE MAKE | SPECIFY MAKE */}
       <div className="relative">
         <select
           name="vehicleMake"
@@ -585,7 +567,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
       </div>
 
-      {/* OTHER VEHICLE MAKE INPUT */}
+      {/* SPECIFY MAKE */}
       <div className="relative">
         <input
           type="text"
@@ -612,31 +594,30 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         </label>
       </div>
 
-      {/* VEHICLE YEAR */}
+      {/* VEHICLE MODEL | PLATE NUMBER */}
       <div className="relative">
-        <select
-          name="vehicleYear"
-          value={form.vehicleYear || ""}
-          onChange={handleChange}
-          className={`${inputClass} appearance-none pr-10`}
-        >
-          <option value="" disabled hidden className="text-gray-900">Select Year</option>
-          {years.map((year) => (
-            <option key={year} value={year} className="text-gray-900">{year}</option>
-          ))}
-        </select>
-        <label className={labelClass}>Vehicle Year</label>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
-      </div>
-
-      {/* VEHICLE MODEL */}
-      <div className="relative">
-        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} 
+        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange}
         onBlur={(e) =>
           setForm({ ...form, vehicleModel: capitalize(e.target.value) })
         }
         className={inputClass} />
         <label className={labelClass}>Vehicle Model</label>
+      </div>
+
+      {/* PLATE NUMBER */}
+      <div className="relative">
+        <input
+          type="text"
+          name="plateNumber"
+          placeholder=""
+          value={form.plateNumber}
+          onChange={handlePlateNumberChange}
+          required
+          maxLength={7}
+          className={inputClass}
+          style={{ textTransform: "uppercase", letterSpacing: "0.1em" }}
+        />
+        <label className={labelClass}>Plate Number</label>
       </div>
 
       {/* MESSAGE */}

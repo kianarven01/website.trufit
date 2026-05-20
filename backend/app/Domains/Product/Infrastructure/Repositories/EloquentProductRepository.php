@@ -55,11 +55,12 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 ]);
             }
 
-            // Automatically create corresponding default Inventory row in the DB
+            // Automatically create a blank inventory row for the new product.
+            // Do not set a fake starting stock or selling price here.
             \App\Domains\Product\Domain\Models\Inventory::create([
                 'productID' => $productId,
-                'quantity_on_hand' => 15,
-                'sell_price' => 750.00,
+                'quantity_on_hand' => 0,
+                'sell_price' => null,
                 'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
                 'reserved_quantity' => 0,
                 'reorder_level' => 5,

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domains\Product\Domain\Models;
+namespace App\Domains\Inventory\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Domains\Product\Domain\Models\Product;

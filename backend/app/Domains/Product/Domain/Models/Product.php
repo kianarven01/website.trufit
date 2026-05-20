@@ -10,7 +10,7 @@ use App\Domains\Supplier\Domain\Models\Supplier;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Models\ProductEquivalent;
-use App\Domains\Product\Domain\Models\Inventory;
+use App\Domains\Inventory\Domain\Models\Inventory;
 
 class Product extends Model
 {

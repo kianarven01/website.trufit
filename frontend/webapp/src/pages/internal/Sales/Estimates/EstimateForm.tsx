@@ -157,7 +157,14 @@ interface EstimatePartLine extends SOPartLine {
 }
                      
 
-const genLineId = () => crypto.randomUUID();
+const generateId = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+const genLineId = () => generateId();
 
 const emptyJOLine = (): JOServiceLine => ({
   id: genLineId(),
@@ -168,7 +175,7 @@ const emptyJOLine = (): JOServiceLine => ({
 
 /** Pad a 6-char hex segment for the human-readable code */
 const genEstimateNo = () =>
-  `EST-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}`;
+  `EST-${generateId().replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 
 const emptySOLine = (): SOPartLine => ({
   id: genLineId(),
@@ -775,7 +782,7 @@ const saveEstimate = () => {
     // ── Create: append new estimate ──────────────────────────────────────
     const estimateNo = genEstimateNo();
     const newEstimate: Estimate = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       estimateNo,
       customer: selectedCustomer,
       vehicle: selectedVehicle,

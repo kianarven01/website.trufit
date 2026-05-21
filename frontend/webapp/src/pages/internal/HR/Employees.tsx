@@ -1,8 +1,19 @@
-import { DashboardLayout } from "@/components/DashboardLayout";
-import { PageShell, FilterOption, ColumnDef } from "@/components/PageShell";
-import { useEffect, useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import DataToolbar from "@/components/DataToolbar";
+import { ImageIcon, MoreVertical, Edit, UserX } from "lucide-react";
 import api from "@/api/axios";
-import { MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Employee {
   id: number;
@@ -16,29 +27,30 @@ interface Employee {
   join_date?: string;
 }
 
-const Employees: React.FC = () => {
+const EmployeesList: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
-  const [filters, setFilters] = useState<Record<string, string>>({
+  const [filters, setFilters] = useState({
     role: "all",
     position: "all",
   });
 
   const fetchEmployees = async () => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       const res = await api.get("/admin/employees");
-
       if (res.data?.status === "success") {
         setEmployees(res.data.data);
       }
     } catch {
-      alert("Failed to load employees");
+      console.error("Failed to load employees");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -46,171 +58,185 @@ const Employees: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  const filteredEmployees = useMemo(() => {
-    return employees
-      .filter((e) => {
-        if (filters.role !== "all") {
-          return e.role_name === filters.role;
-        }
-        return true;
-      })
-      .filter((e) => {
-        if (filters.position !== "all") {
-          return e.position === filters.position;
-        }
-        return true;
-      })
-      .filter((e) => {
-        const q = searchQuery.toLowerCase();
-        const fullName = `${e.first_name} ${e.last_name}`.toLowerCase();
+  const getFullName = (e: Employee) => `${e.first_name} ${e.last_name}`.trim() || "Unnamed";
 
-        return (
-          fullName.includes(q) ||
-          e.first_name?.toLowerCase().includes(q) ||
-          e.last_name?.toLowerCase().includes(q) ||
-          e.email?.toLowerCase().includes(q) ||
-          e.position?.toLowerCase().includes(q)
+  /* SEARCH & FILTER */
+  const normalize = (val: string) =>
+    (val || "").toLowerCase().replace(/\s+/g, " ").trim();
+
+  const filtered = useMemo(() => {
+    const q = normalize(search);
+
+    return employees.filter((e) => {
+      // Role Filter
+      if (filters.role !== "all" && e.role_name !== filters.role) {
+        return false;
+      }
+
+      // Position Filter
+      if (filters.position !== "all" && e.position !== filters.position) {
+        return false;
+      }
+
+      const fullName = normalize(getFullName(e));
+      const position = normalize(e.position || "");
+      const role = normalize(e.role_name || "");
+
+      const tokens = q.split(" ").filter(Boolean);
+
+      const matchesSearch =
+        tokens.length === 0 ||
+        tokens.every((t) =>
+          fullName.includes(t) ||
+          e.email.toLowerCase().includes(t) ||
+          position.includes(t) ||
+          role.includes(t)
         );
-      });
-  }, [employees, filters.role, filters.position, searchQuery]);
+
+      return matchesSearch;
+    });
+  }, [employees, search, filters]);
 
   const roleOptions = useMemo(() => {
-    const roles = Array.from(
-      new Set(employees.map((e) => e.role_name).filter(Boolean)),
-    );
-
-    return roles.map((role) => ({
-      value: role as string,
-      label: role as string,
-    }));
+    const roles = Array.from(new Set(employees.map((e) => e.role_name).filter(Boolean)));
+    return roles.map((role) => ({ label: role as string, value: role as string }));
   }, [employees]);
 
   const positionOptions = useMemo(() => {
-    const positions = Array.from(
-      new Set(employees.map((e) => e.position).filter(Boolean)),
-    );
-
-    return positions.map((pos) => ({
-      value: pos as string,
-      label: pos as string,
-    }));
+    const positions = Array.from(new Set(employees.map((e) => e.position).filter(Boolean)));
+    return positions.map((pos) => ({ label: pos as string, value: pos as string }));
   }, [employees]);
 
-  const filterOptions: FilterOption[] = [
-    { key: "role", label: "Role", options: roleOptions },
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const toolbarFilters = [
+    { key: "role", label: "System Role", options: roleOptions },
     { key: "position", label: "Position", options: positionOptions },
   ];
 
-  const ActionDropdown: React.FC<{ emp: Employee }> = ({ emp }) => {
-    const [open, setOpen] = useState(false);
+  const paginated = paginate(filtered);
 
-    const handleEdit = () => {
-      alert(`Edit ${emp.first_name} ${emp.last_name}`);
-      setOpen(false);
-    };
-
-    const handleDeactivate = () => {
-      alert(`Deactivate ${emp.first_name} ${emp.last_name}`);
-      setOpen(false);
-    };
-
-    return (
-      <div className="relative flex justify-end">
-        <button
-          onClick={() => setOpen(!open)}
-          className="p-1 rounded hover:bg-muted"
-        >
-          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-        </button>
-
-        {open && (
-          <div className="absolute right-0 mt-1 w-40 bg-popover border border-border rounded-md shadow-lg z-10">
-            <button
-              onClick={handleEdit}
-              className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground text-sm"
-            >
-              Edit
-            </button>
-
-            <button
-              onClick={handleDeactivate}
-              className="w-full text-left px-4 py-2 hover:bg-accent hover:text-accent-foreground text-sm text-red-500"
-            >
-              Terminate
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const columns: ColumnDef<Employee>[] = [
-    {
-      key: "employee",
-      label: "Employee",
-      render: (emp) => (
-        <div>
-          <div className="font-semibold uppercase tracking-tight">
-            {`${emp.first_name} ${emp.last_name}`.trim() || "Unnamed"}
-          </div>
-          <div className="text-[10px] text-muted-foreground">{emp.email}</div>
-        </div>
-      ),
-    },
-    {
-      key: "phone",
-      label: "Phone",
-      render: (emp) => emp.phone || "-",
-    },
-    {
-      key: "address",
-      label: "Address",
-      render: (emp) => emp.address || "-",
-    },
-    {
-      key: "position",
-      label: "Position",
-      render: (emp) => emp.position || "-",
-    },
-    {
-      key: "role",
-      label: " System Role",
-      render: (emp) => emp.role_name || "-",
-    },
-    {
-      key: "join_date",
-      label: "Join Date",
-      render: (emp) =>
-        emp.join_date
-          ? new Date(emp.join_date).toLocaleDateString()
-          : "Pending",
-    },
-    {
-      key: "actions",
-      label: "",
-      render: (emp) => <ActionDropdown emp={emp} />,
-    },
-  ];
+  useEffect(() => {
+    setPage(1);
+  }, [search, pageSize, filters, setPage]);
 
   return (
-    <DashboardLayout>
-      <PageShell<Employee>
-        title="Employees"
-        description="Manage company employees."
-        items={filteredEmployees}
-        columns={columns}
-        getItemId={(emp) => emp.id.toString()}
-        filters={filterOptions}
-        activeFilters={filters}
-        onFilterChange={(key, value) =>
-          setFilters((prev) => ({ ...prev, [key]: value }))
-        }
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
+      <DataToolbar
         searchPlaceholder="Search employees..."
-        onSearch={(query) => setSearchQuery(query)}
-        loading={loading}
+        onSearch={setSearch}
+        onAdd={() => alert("Add Employee Modal TBD")}
+        addLabel="Add Employee"
+        filters={toolbarFilters}
+        onFilterChange={handleFilterChange}
+        activeFilters={filters}
       />
-    </DashboardLayout>
+
+      {isLoading ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading employees...
+            </p>
+          </div>
+        </div>
+      ) : employees.length > 0 ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
+          <ScrollArea className="flex-1 px-2">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[25%] text-center">Employee</TableHead>
+                  <TableHead className="w-[15%] text-center">Phone</TableHead>
+                  <TableHead className="w-[20%] text-center">Position</TableHead>
+                  <TableHead className="w-[15%] text-center">System Role</TableHead>
+                  <TableHead className="w-[15%] text-center">Join Date</TableHead>
+                  <TableHead className="w-[10%] text-center"></TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {filtered.length > 0 ? (
+                  paginated.map((e) => (
+                    <TableRow
+                      key={e.id}
+                      className={cn(
+                        "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                        "hover:bg-accent/30"
+                      )}
+                    >
+                      <TableCell className="py-2 text-center">
+                        <div className="flex flex-col items-center">
+                          <p className="font-semibold text-foreground uppercase">{getFullName(e)}</p>
+                          <p className="text-[10px] tracking-wider text-muted-foreground font-medium">
+                            {e.email || "No Email"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center font-medium">{e.phone || "-"}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{e.position || "-"}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">{e.role_name || "-"}</TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {e.join_date ? new Date(e.join_date).toLocaleDateString() : "Pending"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors">
+                              <MoreVertical size={18} />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => alert(`Edit ${getFullName(e)}`)} className="cursor-pointer">
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => alert(`Terminate ${getFullName(e)}`)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                              <UserX className="w-4 h-4 mr-2" />
+                              Terminate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <div className="py-16 flex flex-col items-center text-center">
+                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium">No employees found</p>
+                        <p className="text-xs text-muted-foreground">Try adjusting your search</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+
+          <Pagination
+            totalItems={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No employees available</p>
+            <p className="text-xs text-muted-foreground">Add an employee to get started</p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
 
-export default Employees;
+export default EmployeesList;

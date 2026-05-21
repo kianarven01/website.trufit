@@ -31,11 +31,65 @@ class EmployeeController extends Controller
     public function getRoles()
     {
         // Fetch roles to populate the Select component in the modal
-        $roles = Role::select('id', 'name')->get();
+        $roles = Role::select('id', 'name', 'permissions')->get();
 
         return response()->json([
             'status' => 'success',
             'data' => $roles
+        ]);
+    }
+
+    public function storeRole(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:Main.Roles,name',
+            'permissions' => 'nullable|array',
+        ]);
+
+        $role = Role::create($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Role created successfully',
+            'data' => $role
+        ], 201);
+    }
+
+    public function updateRole(Request $request, int $id)
+    {
+        $role = Role::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:Main.Roles,name,' . $id,
+            'permissions' => 'nullable|array',
+        ]);
+
+        $role->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Role updated successfully',
+            'data' => $role
+        ]);
+    }
+
+    public function deleteRole(int $id)
+    {
+        $role = Role::findOrFail($id);
+
+        // Don't allow deleting "Admin" role for safety
+        if (strtolower($role->name) === 'admin') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The Admin role cannot be deleted'
+            ], 400);
+        }
+
+        $role->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Role deleted successfully'
         ]);
     }
 

@@ -11,3 +11,6 @@ Route::put('/admin/employees/{id}', [EmployeeController::class, 'update']);
 Route::delete('/admin/employees/{id}', [EmployeeController::class, 'terminate']);
 Route::get('/admin/registration-keys', [EmployeeController::class, 'onboarding']);
 Route::get('/admin/roles', [EmployeeController::class, 'getRoles']);
+Route::post('/admin/roles', [EmployeeController::class, 'storeRole']);
+Route::put('/admin/roles/{id}', [EmployeeController::class, 'updateRole']);
+Route::delete('/admin/roles/{id}', [EmployeeController::class, 'deleteRole']);

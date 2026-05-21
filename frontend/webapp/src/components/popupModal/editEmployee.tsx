@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
 interface Role {
   id: number;
@@ -43,6 +44,7 @@ interface Props {
 }
 
 const EditEmployeeModal: React.FC<Props> = ({ open, onClose, onSuccess, employee }) => {
+  const { user, refreshUser } = useAuth();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -96,6 +98,9 @@ const EditEmployeeModal: React.FC<Props> = ({ open, onClose, onSuccess, employee
 
       if (res.data.status === "success") {
         toast.success("Employee updated successfully!");
+        if (user && employee.id === user.employeeID) {
+          await refreshUser();
+        }
         if (onSuccess) onSuccess();
         onClose();
       }

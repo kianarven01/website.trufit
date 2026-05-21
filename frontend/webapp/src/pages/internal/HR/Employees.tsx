@@ -8,12 +8,24 @@ import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import { ImageIcon, MoreVertical, Edit, UserX } from "lucide-react";
 import api from "@/api/axios";
+import { toast } from "sonner";
+import EditEmployeeModal from "@/components/popupModal/editEmployee";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Employee {
   id: number;
@@ -31,6 +43,8 @@ const EmployeesList: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+  const [employeeToTerminate, setEmployeeToTerminate] = useState<Employee | null>(null);
   const navigate = useNavigate();
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
@@ -57,6 +71,21 @@ const EmployeesList: React.FC = () => {
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  const handleTerminate = async () => {
+    if (!employeeToTerminate) return;
+    try {
+      const res = await api.delete(`/admin/employees/${employeeToTerminate.id}`);
+      if (res.data?.status === "success") {
+        toast.success(`${getFullName(employeeToTerminate)} has been terminated.`);
+        fetchEmployees(); // Refresh list
+      }
+    } catch {
+      toast.error("Failed to terminate employee.");
+    } finally {
+      setEmployeeToTerminate(null);
+    }
+  };
 
   const getFullName = (e: Employee) => `${e.first_name} ${e.last_name}`.trim() || "Unnamed";
 
@@ -127,8 +156,6 @@ const EmployeesList: React.FC = () => {
       <DataToolbar
         searchPlaceholder="Search employees..."
         onSearch={setSearch}
-        onAdd={() => alert("Add Employee Modal TBD")}
-        addLabel="Add Employee"
         filters={toolbarFilters}
         onFilterChange={handleFilterChange}
         activeFilters={filters}
@@ -149,12 +176,13 @@ const EmployeesList: React.FC = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[25%] text-center">Employee</TableHead>
-                  <TableHead className="w-[15%] text-center">Phone</TableHead>
-                  <TableHead className="w-[20%] text-center">Position</TableHead>
-                  <TableHead className="w-[15%] text-center">System Role</TableHead>
-                  <TableHead className="w-[15%] text-center">Join Date</TableHead>
-                  <TableHead className="w-[10%] text-center"></TableHead>
+                  <TableHead className="w-[10%] text-center">Employee ID</TableHead>
+                  <TableHead className="w-[22%] text-center">Employee</TableHead>
+                  <TableHead className="w-[13%] text-center">Phone</TableHead>
+                  <TableHead className="w-[15%] text-center">Position</TableHead>
+                  <TableHead className="w-[12%] text-center">System Role</TableHead>
+                  <TableHead className="w-[12%] text-center">Join Date</TableHead>
+                  <TableHead className="w-[6%] text-center"></TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -168,9 +196,12 @@ const EmployeesList: React.FC = () => {
                         "hover:bg-accent/30"
                       )}
                     >
+                      <TableCell className="py-2 text-center font-mono text-xs text-muted-foreground">
+                        {e.id}
+                      </TableCell>
                       <TableCell className="py-2 text-center">
                         <div className="flex flex-col items-center">
-                          <p className="font-semibold text-foreground uppercase">{getFullName(e)}</p>
+                          <p className="font-semibold text-foreground capitalize">{getFullName(e).toLowerCase()}</p>
                           <p className="text-[10px] tracking-wider text-muted-foreground font-medium">
                             {e.email || "No Email"}
                           </p>
@@ -190,11 +221,11 @@ const EmployeesList: React.FC = () => {
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={() => alert(`Edit ${getFullName(e)}`)} className="cursor-pointer">
+                            <DropdownMenuItem onClick={() => setEmployeeToEdit(e)} className="cursor-pointer">
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => alert(`Terminate ${getFullName(e)}`)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                            <DropdownMenuItem onClick={() => setEmployeeToTerminate(e)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                               <UserX className="w-4 h-4 mr-2" />
                               Terminate
                             </DropdownMenuItem>
@@ -205,7 +236,7 @@ const EmployeesList: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={7}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">No employees found</p>
@@ -235,6 +266,33 @@ const EmployeesList: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Employee Modal */}
+      <EditEmployeeModal
+        open={!!employeeToEdit}
+        onClose={() => setEmployeeToEdit(null)}
+        employee={employeeToEdit}
+        onSuccess={fetchEmployees}
+      />
+
+      {/* Terminate Confirmation Alert */}
+      <AlertDialog open={!!employeeToTerminate} onOpenChange={(open) => !open && setEmployeeToTerminate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Terminate Employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to terminate <span className="font-bold">{employeeToTerminate ? getFullName(employeeToTerminate) : ""}</span>? 
+              This will restrict their access but preserve their historical data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTerminate} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Terminate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

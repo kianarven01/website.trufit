@@ -481,7 +481,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         : "group-hover:text-sidebar-accent-foreground",
                     )}
                   />
-                  <span>{child.label}</span>
+                  <span className="truncate whitespace-nowrap overflow-hidden">{child.label}</span>
                 </button>
               );
             })}

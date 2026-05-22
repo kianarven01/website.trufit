@@ -163,11 +163,11 @@ class ProductController extends Controller
 
         $product = Product::findOrFail($id);
 
-        $inventory = \App\Domains\Product\Domain\Models\Inventory::updateOrCreate(
+        $inventory = \App\Domains\Inventory\Domain\Models\Inventory::updateOrCreate(
             ['productID' => $product->id],
             [
                 'quantity_on_hand' => $validated['quantity_on_hand'],
-                'sell_price' => $validated['sell_price'],
+                'sell_price' => $validated['sell_price'] ?? null,
                 'location_id' => $request->input('location_id') ?? 'd3b07384-d113-4ec6-a55d-752007414777',
             ]
         );

@@ -6,6 +6,7 @@ use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
+use App\Domains\Product\Domain\Models\ProductPrice;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -37,11 +38,34 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     continue;
                 }
 
-                ProductSupplier::create([
-                    'id' => (string) Str::uuid(),
+                $productSupplierId = (string) Str::uuid();
+
+                $productSupplier = ProductSupplier::create([
+                    'id' => $productSupplierId,
                     'product_id' => $productId,
                     'supplier_id' => $supplier['supplier_id'],
                     'supplier_cost' => $supplier['supplier_cost'] ?? null,
+                    'is_vat' => $supplier['is_vat'] ?? false,
+                    'vat_percent' => $supplier['vat_percent'] ?? null,
+                ]);
+
+                $markup = $supplier['markup'] ?? null;
+                $price = $supplier['price'] ?? null;
+
+                if ($price === null && $markup !== null && isset($supplier['supplier_cost'])) {
+                    $price = (float) $supplier['supplier_cost'] + ((float) $supplier['supplier_cost'] * ((float) $markup / 100));
+                }
+
+                ProductPrice::create([
+                    'id' => (string) Str::uuid(),
+                    'ProductID' => $productId,
+                    'product_supplier_id' => $productSupplier->id,
+                    'supplier_id' => $supplier['supplier_id'],
+                    'Price' => $price,
+                    'Markup' => $markup,
+                    'is_active' => true,
+                    'effective_from' => now(),
+                    'effective_until' => null,
                 ]);
             }
 

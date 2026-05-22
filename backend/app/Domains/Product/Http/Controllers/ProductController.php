@@ -9,6 +9,7 @@ use App\Domains\Product\Application\DTO\CreateProductDTO;
 use App\Domains\Product\Application\UseCases\CreateProduct;
 use App\Domains\Product\Http\Requests\StoreProductRequest;
 use App\Domains\Product\Application\Services\ProductImageUploader;
+use App\Domains\Inventory\Domain\Models\Inventory;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -20,7 +21,14 @@ class ProductController extends Controller
         $categoryId = $request->query('category_id');
 
         $baseQuery = Product::query()
-            ->with(['category', 'manufacturer', 'unitRelation', 'suppliers', 'inventoryRelation']);
+            ->with([
+                'category',
+                'manufacturer',
+                'unitRelation',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
+                'inventoryRelation',
+            ]);
 
         if ($categoryId) {
             $baseQuery->where('category_id', $categoryId);
@@ -76,7 +84,14 @@ class ProductController extends Controller
 
         if ($equivalentProductIds->isNotEmpty()) {
             $equivalentProducts = Product::query()
-                ->with(['category', 'manufacturer', 'unitRelation', 'suppliers', 'inventoryRelation'])
+                ->with([
+                    'category',
+                    'manufacturer',
+                    'unitRelation',
+                    'productSuppliers.supplier',
+                    'productSuppliers.price',
+                    'inventoryRelation',
+                ])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
                 ->orderBy('name')
@@ -142,15 +157,22 @@ class ProductController extends Controller
             }
         }
 
-        // Do NOT unset car_variant_id.
-        // CreateProductDTO uses it to create ProductVehicleCompatibility.
         $dto = CreateProductDTO::fromArray($validated);
 
         $product = $createProduct->execute($dto);
 
+        $product->load([
+            'category',
+            'manufacturer',
+            'unitRelation',
+            'productSuppliers.supplier',
+            'productSuppliers.price',
+            'inventoryRelation',
+        ]);
+
         return response()->json([
             'message' => 'Product created successfully.',
-            'data' => $product,
+            'data' => $this->formatProduct($product),
         ], 201);
     }
 
@@ -158,12 +180,12 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'quantity_on_hand' => 'required|integer|min:0',
-            'sell_price' => 'required|numeric|min:0',
+            'sell_price' => 'nullable|numeric|min:0',
         ]);
 
         $product = Product::findOrFail($id);
 
-        $inventory = \App\Domains\Inventory\Domain\Models\Inventory::updateOrCreate(
+        Inventory::updateOrCreate(
             ['productID' => $product->id],
             [
                 'quantity_on_hand' => $validated['quantity_on_hand'],
@@ -172,9 +194,18 @@ class ProductController extends Controller
             ]
         );
 
+        $freshProduct = $product->fresh([
+            'category',
+            'manufacturer',
+            'unitRelation',
+            'productSuppliers.supplier',
+            'productSuppliers.price',
+            'inventoryRelation',
+        ]);
+
         return response()->json([
             'message' => 'Stock adjusted successfully.',
-            'data' => $this->formatProduct($product->fresh(['inventoryRelation'])),
+            'data' => $this->formatProduct($freshProduct),
         ]);
     }
 
@@ -185,7 +216,8 @@ class ProductController extends Controller
                 'category',
                 'manufacturer',
                 'unitRelation',
-                'suppliers',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
                 'equivalentProducts',
                 'equivalentToProducts',
                 'inventoryRelation',
@@ -205,7 +237,8 @@ class ProductController extends Controller
         ?string $equivalentToProductName = null,
         ?string $equivalenceNotes = null
     ): array {
-        $firstSupplier = $product->suppliers->first();
+        $productSuppliers = $product->productSuppliers ?? collect();
+        $firstProductSupplier = $productSuppliers->first();
 
         return [
             'id' => $product->id,
@@ -225,12 +258,55 @@ class ProductController extends Controller
             'manufacturer_id' => $product->manufacturer_id,
             'manufacturer_name' => $product->manufacturer?->name,
 
-            'supplier_name' => $firstSupplier?->CompanyName,
-            'supplier_code' => $firstSupplier?->supplier_code,
-            'cost' => $firstSupplier?->pivot?->supplier_cost,
+            /*
+             * Summary supplier fields.
+             * These are kept for old frontend compatibility.
+             * The real supplier pricing data is in the "suppliers" array below.
+             */
+            'supplier_name' => $firstProductSupplier?->supplier?->CompanyName,
+            'supplier_code' => $firstProductSupplier?->supplier?->supplier_code,
+            'cost' => $firstProductSupplier?->supplier_cost,
 
+            /*
+             * Inventory should now be stock-focused.
+             * sell_price is intentionally not treated as the product's true selling price.
+             */
             'quantity_on_hand' => $product->inventoryRelation?->quantity_on_hand,
-            'sell_price' => $product->inventoryRelation?->sell_price,
+            'reserved_quantity' => $product->inventoryRelation?->reserved_quantity,
+            'reorder_level' => $product->inventoryRelation?->reorder_level,
+            'reorder_qty' => $product->inventoryRelation?->reorder_qty,
+            'location_id' => $product->inventoryRelation?->location_id,
+            'sell_price' => null,
+
+            /*
+             * Dynamic supplier-based pricing.
+             * ProductPrice belongs to ProductSupplier through product_supplier_id.
+             */
+            'suppliers' => $productSuppliers
+                ->map(function ($productSupplier) {
+                    return [
+                        'id' => $productSupplier->id,
+                        'supplier_id' => $productSupplier->supplier_id,
+                        'supplier_cost' => $productSupplier->supplier_cost,
+                        'is_vat' => $productSupplier->is_vat,
+                        'vat_percent' => $productSupplier->vat_percent,
+
+                        'supplier' => $productSupplier->supplier ? [
+                            'id' => $productSupplier->supplier->id,
+                            'CompanyName' => $productSupplier->supplier->CompanyName,
+                            'name' => $productSupplier->supplier->CompanyName,
+                            'supplier_code' => $productSupplier->supplier->supplier_code,
+                        ] : null,
+
+                        'active_price' => $productSupplier->price ? [
+                            'id' => $productSupplier->price->id,
+                            'product_supplier_id' => $productSupplier->price->product_supplier_id,
+                            'Price' => $productSupplier->price->Price,
+                            'Markup' => $productSupplier->price->Markup,
+                        ] : null,
+                    ];
+                })
+                ->values(),
 
             'is_oem' => $product->is_oem,
             'oem_reference_number' => $product->oem_reference_number,

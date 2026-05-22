@@ -18,6 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon } from "lucide-react";
+import api from "@/api/axios";
 
 /* ================= TYPES ================= */
 
@@ -26,23 +27,23 @@ interface Estimate {
   estimateNo?: string;
   customer?: any;
   vehicle?: any;
+  items?: any[];
   services: any[];
   parts: any[];
   createdAt?: string;
   updatedAt?: string;
-  status: "approved" | "issued";
+  status: "approved" | "issued" | "DRAFT" | "APPROVED" | "ISSUED";
   total: number;
 }
 
-/* ================= STORAGE ================= */
-
-const STORAGE_KEY = "estimates";
-
 /* ================= STATUS CONFIG ================= */
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; variant: any }> = {
   approved: { label: "Approved", variant: "approved" as const },
   issued: { label: "Issued", variant: "received" as const },
+  DRAFT: { label: "Draft", variant: "default" as const },
+  APPROVED: { label: "Approved", variant: "approved" as const },
+  ISSUED: { label: "Issued", variant: "received" as const },
 };
 
 /* ================= FILTER ================= */
@@ -52,8 +53,9 @@ const statusFilterOptions: FilterOption[] = [
     key: "status",
     label: "Status",
     options: [
-      { label: "Approved", value: "approved" },
-      { label: "Issued", value: "issued" },
+      { label: "Draft", value: "DRAFT" },
+      { label: "Approved", value: "APPROVED" },
+      { label: "Issued", value: "ISSUED" },
     ],
   },
 ];
@@ -62,6 +64,7 @@ const statusFilterOptions: FilterOption[] = [
 
 const Estimates: React.FC = () => {
   const [estimates, setEstimates] = useState<Estimate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({
     status: "all",
@@ -72,46 +75,68 @@ const Estimates: React.FC = () => {
   const { page, setPage, pageSize, setPageSize, paginate } =
     usePagination(25);
 
-  /* ================= LOAD FROM LOCALSTORAGE ================= */
+  /* ================= LOAD FROM API ================= */
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const fetchEstimates = async () => {
+      try {
+        setIsLoading(true);
+        const res = await api.get('/estimates');
+        const data = res.data.data;
 
-    if (!stored) {
-      setEstimates([]);
-      return;
-    }
+        if (!Array.isArray(data)) {
+          setEstimates([]);
+          return;
+        }
 
-    try {
-      const parsed: Estimate[] = JSON.parse(stored);
+        const normalized: Estimate[] = data.map((e: any) => {
+          // Separate items into services and parts based on item_type
+          const items = Array.isArray(e.items) ? e.items : [];
+          const services = items.filter((i: any) => i.item_type === 'service');
+          const parts = items.filter((i: any) => i.item_type === 'part');
 
-      if (!Array.isArray(parsed)) {
+          // Build customer name from the relationship
+          const customer = e.customer ? {
+            firstName: e.customer.first_name || "",
+            lastName: e.customer.last_name || "",
+          } : null;
+
+          return {
+            id: e.id,
+            estimateNo: e.id?.substring(0, 8)?.toUpperCase(),
+            customer,
+            vehicle: e.vehicle || null,
+            items,
+            services,
+            parts,
+            total: Number(e.total_amount) || 0,
+            status: e.status || "DRAFT",
+            createdAt: e.created_at,
+            updatedAt: e.updated_at,
+          };
+        });
+
+        setEstimates(normalized);
+      } catch (err) {
+        console.error("Failed to load estimates", err);
         setEstimates([]);
-        return;
+      } finally {
+        setIsLoading(false);
       }
-
-      const normalized = parsed.map((e) => ({
-        ...e,
-        services: Array.isArray(e.services) ? e.services : [],
-        parts: Array.isArray(e.parts) ? e.parts : [],
-        total: e.total ?? 0,
-        status: e.status ?? "issued",
-        createdAt: e.createdAt ?? new Date().toISOString(),
-      }));
-
-      setEstimates(normalized);
-    } catch (err) {
-      console.error("Failed to parse estimates", err);
-      setEstimates([]);
-    }
+    };
+    fetchEstimates();
   }, []);
 
   /* ================= SEARCH + FILTER ================= */
 
   const filtered = useMemo(() => {
     return estimates.filter((e) => {
+      const customerName = e.customer
+        ? `${e.customer.firstName ?? ""} ${e.customer.lastName ?? ""}`.trim()
+        : "";
+
       const searchMatch =
-        `${e.id} ${e.status}`
+        `${e.id} ${e.estimateNo || ""} ${customerName} ${e.status}`
           .toLowerCase()
           .includes(search.toLowerCase());
 
@@ -134,8 +159,6 @@ const Estimates: React.FC = () => {
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
 
       {/* Toolbar */}
-
-      {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search estimates..."
         onSearch={setSearch}
@@ -150,8 +173,17 @@ const Estimates: React.FC = () => {
         addLabel="Create Estimate"
       />
 
-      {/* TABLE */}
-      {estimates.length > 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading estimates...
+            </p>
+          </div>
+        </div>
+      ) : estimates.length > 0 ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
           <ScrollArea className="flex-1 px-3">
@@ -171,7 +203,7 @@ const Estimates: React.FC = () => {
               <TableBody>
                 {filtered.length > 0 ? (
                   paginated.map((e) => {
-                    const config = statusConfig[e.status];
+                    const config = statusConfig[e.status] || { label: e.status, variant: "default" };
 
                     return (
                       <TableRow

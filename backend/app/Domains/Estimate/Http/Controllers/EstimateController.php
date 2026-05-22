@@ -1,0 +1,162 @@
+<?php
+
+namespace App\Domains\Estimate\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Domains\Estimate\Domain\Repositories\EstimateRepositoryInterface;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class EstimateController extends Controller
+{
+    public function __construct(
+        protected EstimateRepositoryInterface $estimateRepo
+    ) {}
+
+    /**
+     * List all estimates with customer, vehicle, and items.
+     */
+    public function index()
+    {
+        try {
+            $estimates = $this->estimateRepo->getAll();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $estimates,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch estimates: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch estimates: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Show a single estimate by ID.
+     */
+    public function show($id)
+    {
+        try {
+            $estimate = $this->estimateRepo->findById($id);
+
+            if (!$estimate) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Estimate not found',
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $estimate,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch estimate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Create a new estimate.
+     */
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'customer_id' => 'required|exists:Main.Customers,customer_id',
+                'vehicle_id' => 'required|exists:Main.CustomerVehicles,id',
+                'status' => 'nullable|string',
+                'total_amount' => 'required|numeric',
+                'items' => 'required|array',
+                'items.*.item_type' => 'required|string|in:service,part',
+                'items.*.product_id' => 'nullable|uuid',
+                'items.*.service_id' => 'nullable|uuid',
+                'items.*.quantity' => 'required|numeric',
+                'items.*.unit_price' => 'required|numeric',
+                'items.*.subtotal' => 'required|numeric',
+            ]);
+
+            $estimate = $this->estimateRepo->create($validated);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $estimate,
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Failed to create estimate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update an existing estimate.
+     */
+    public function update(Request $request, $id)
+    {
+        try {
+            $validated = $request->validate([
+                'customer_id' => 'nullable|exists:Main.Customers,customer_id',
+                'vehicle_id' => 'nullable|exists:Main.CustomerVehicles,id',
+                'status' => 'nullable|string',
+                'total_amount' => 'nullable|numeric',
+                'items' => 'nullable|array',
+                'items.*.item_type' => 'required|string|in:service,part',
+                'items.*.product_id' => 'nullable|uuid',
+                'items.*.service_id' => 'nullable|uuid',
+                'items.*.quantity' => 'required|numeric',
+                'items.*.unit_price' => 'required|numeric',
+                'items.*.subtotal' => 'required|numeric',
+            ]);
+
+            $estimate = $this->estimateRepo->update($id, $validated);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $estimate,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update estimate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete an existing estimate.
+     */
+    public function destroy($id)
+    {
+        try {
+            $deleted = $this->estimateRepo->delete($id);
+
+            if (!$deleted) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to delete estimate',
+                ], 400);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Estimate deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to delete estimate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+}

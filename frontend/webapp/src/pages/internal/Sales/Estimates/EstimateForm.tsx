@@ -13,45 +13,11 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
-import AddCustomerVehicle from "@/components/popupModal/Customers/addCustomerVehicle";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Car, Wrench, Box, Percent, Banknote, Calculator } from "lucide-react";
+import { Plus, Trash2, User, Car, Wrench, Box, Calculator } from "lucide-react";
+import api from "@/api/axios";
 
-/* ================= STORAGE ================= */
-const SERVICE_KEY = "services";
-const CATEGORY_KEY = "serviceCategories";
-const VEHICLE_SIZE_KEY = "vehicleSizes";
-const PRICING_KEY = "servicePricing";
-
-const STORAGE_KEY = "customers";
-const VEHICLE_STORAGE_KEY = "vehicles";
-const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
-
-const PRODUCT_KEY = "products";
-const INVENTORY_KEY = "inventory";
-const ESTIMATE_KEY = "estimates";
 /* ================= TYPES ================= */
-
-interface VehicleModel {
-  id: string;
-  year: number;
-  make: string;
-  model: string;
-  variant: string;
-  serviceClass: string;
-}
-
-interface Vehicle {
-  id: string;
-  customerId: string;
-  vehicleModelId: string;
-  color: string;
-  plateNo: string;
-  engineNo: string;
-  vin: string;
-  registrationNo: string;
-  sellingDealer: string;
-}
 
 interface Customer {
   id: string;
@@ -64,7 +30,30 @@ interface Customer {
   businessPhone?: string;
 }
 
-type PricingType = "fixed" | "hourly rate";
+interface Vehicle {
+  id: string;
+  customerId: string;
+  vehicleModelId: string;
+  color: string;
+  plateNo: string;
+  engineNo: string;
+  vin: string;
+  registrationNo: string;
+  sellingDealer: string;
+  year?: string;
+  make?: string;
+  model?: string;
+  variant?: string;
+}
+
+interface ServicePricing {
+  id: string;
+  service_type_id: string;
+  vehicle_size_name: string;
+  price: number;
+  vehicle_types?: string[] | string;
+  pricing_type: string;
+}
 
 interface Service {
   id: string;
@@ -72,21 +61,8 @@ interface Service {
   serviceCategoryId: string;
   description?: string;
   duration?: number;
-  pricingType: PricingType;
-}
-
-interface VehicleSize {
-  id: string;
-  name: string;           
-  abbreviation: string;
-  vehicleTypes: string[];
-}
-
-interface ServicePricing {
-  id: string;
-  serviceId: string;
-  vehicleSizeId: string;
-  price: number;
+  pricingType: "fixed" | "hourly rate";
+  pricings?: ServicePricing[];
 }
 
 interface ServiceCategory {
@@ -96,40 +72,16 @@ interface ServiceCategory {
 
 interface Product {
   id: string;
-  image?: string;
   name: string;
   sku: string;
   price: number;
   unit: string;
 }
 
-interface Inventory {
-  id: string;
-  productId: string;
-  quantity_on_hand: number;
-}
-
-export interface Estimate {
-  id: string;
-  estimateNo: string;
-  customer: Customer;
-  vehicle: Vehicle;
-  mileage?: number;
-  services: EstimateServiceLine[];
-  parts: EstimatePartLine[];
-  status: "issued" | "approved";
-  subtotalServices: number;
-  subtotalParts: number;
-  total: number;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface JOServiceLine {
   id: string;
   ServiceTypeId: string;
-  /** User-overridable rate; undefined = use catalog price */
+  pricingId?: string; // Tracks the selected pricing row ID!
   manualRate?: number;
   amount: number;
 }
@@ -141,21 +93,9 @@ interface SOPartLine {
   amount: number;
 }
 
-
-interface EstimateServiceLine extends JOServiceLine {
-  service: string;
-  category: string;
-  estimateDuration: number;
-  price: number;
+interface AddEstimateProps {
+  mode?: "create" | "edit";
 }
-
-interface EstimatePartLine extends SOPartLine {
-  name: string;
-  sku: string;
-  price: number;
-  unit: string;
-}
-                     
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -169,13 +109,10 @@ const genLineId = () => generateId();
 const emptyJOLine = (): JOServiceLine => ({
   id: genLineId(),
   ServiceTypeId: "",
+  pricingId: "",
   manualRate: undefined,
   amount: 0,
 });
-
-/** Pad a 6-char hex segment for the human-readable code */
-const genEstimateNo = () =>
-  `EST-${generateId().replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 
 const emptySOLine = (): SOPartLine => ({
   id: genLineId(),
@@ -184,41 +121,28 @@ const emptySOLine = (): SOPartLine => ({
   amount: 0,
 });
 
-interface AddEstimateProps {
-  mode?: "create" | "edit";
-}
-
 const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const { id: estimateId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
   const [mileage, setMileage] = useState<number>(0);
+  
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
-  // Add Vehicle Modal
-  const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
-
-
 
   const [notes, setNotes] = useState("");
-
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [joLines, setJoLines] = useState<JOServiceLine[]>([emptyJOLine()]);
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
-  const [pricing, setPricing] = useState<ServicePricing[]>([]);
-  const [inventory, setInventory] = useState<Inventory[]>([]);
-
 
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
-
 
   const servicesMap = useMemo<Record<string, Service>>(() => {
     return Object.fromEntries(
@@ -238,285 +162,311 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
   const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
 
-  const customerVehicles = vehicles.filter(v => v.customerId === selectedCustomer?.id);
+  const customerVehicles = useMemo(() => {
+    return vehicles.filter(v => String(v.customerId) === String(selectedCustomer?.id));
+  }, [vehicles, selectedCustomer]);
 
-
-//========= HELPERS ==========//
-const getVehicleModel = (vehicle?: Vehicle | null) =>
-  vehicleModels.find(vm => vm.id === vehicle?.vehicleModelId);
-  
-const vm = useMemo(
-  () => getVehicleModel(selectedVehicle),
-  [selectedVehicle, vehicleModels]
-);  
-
-const categoryMap = useMemo<Record<string, ServiceCategory>>(
-  () =>
-    Object.fromEntries(
-      serviceCategories.map(c => [c.id, c])
-    ),
-  [serviceCategories]
-);
-
-const getService = (serviceId: string) =>
-  servicesMap[serviceId];
-
-const getServicePrice = (
-  serviceId: string,
-  vehicle?: Vehicle | null
-) => {
-  if (!vehicle) return 0;
-
-  const selectedVehicleModel = vehicleModels.find(
-    m => m.id === vehicle.vehicleModelId
+  const categoryMap = useMemo<Record<string, ServiceCategory>>(
+    () =>
+      Object.fromEntries(
+        serviceCategories.map(c => [c.id, c])
+      ),
+    [serviceCategories]
   );
 
-  if (!selectedVehicleModel) return 0;
+  const getService = (serviceId: string) =>
+    servicesMap[serviceId];
 
-  // find matching vehicle size
-  const matchedVehicleSize = vehicleSizes.find(vs =>
-    vs.vehicleTypes?.some(
-      vt =>
-        vt.trim().toLowerCase() ===
-        (selectedVehicleModel.serviceClass ?? "").trim().toLowerCase()
-    )
-  );
+  // Helper to match pricing based on selected vehicle
+  const getMatchingPricing = (service: Service | null, vehicle: Vehicle | null) => {
+    if (!service || !service.pricings?.length) return null;
+    if (!vehicle) return service.pricings[0];
 
-  if (!matchedVehicleSize) return 0;
+    const make = vehicle.make?.trim().toLowerCase() || "";
+    const model = vehicle.model?.trim().toLowerCase() || "";
 
-  // find pricing for BOTH service + vehicle size
-  const matchedPricing = pricing.find(
-    p =>
-      p.serviceId === serviceId &&
-      p.vehicleSizeId === matchedVehicleSize.id
-  );
+    // 1) Find pricing that explicitly lists this vehicle variant or type
+    const matchedByType = service.pricings.find((p: any) => {
+      const types = Array.isArray(p.vehicle_types)
+        ? p.vehicle_types
+        : typeof p.vehicle_types === 'string'
+        ? p.vehicle_types.split(',').map((t: string) => t.trim())
+        : [];
+      return types.some((t: string) => {
+        const normalizedT = t.toLowerCase();
+        return normalizedT.includes(make) || normalizedT.includes(model);
+      });
+    });
 
-  return matchedPricing?.price || 0;
-};
+    if (matchedByType) return matchedByType;
 
-const formatDuration = (minutes?: number) => {
-  if (!minutes) return "-";
+    // 2) Fallback to size category match
+    const matchedBySize = service.pricings.find((p: any) =>
+      p.vehicle_size_name?.trim().toLowerCase() === model.toLowerCase()
+    );
 
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+    if (matchedBySize) return matchedBySize;
 
-  if (hrs && mins) return `${hrs}h ${mins}m`;
-  if (hrs) return `${hrs}h`;
+    return service.pricings[0];
+  };
 
-  return `${mins}m`;
-};
+  const getServicePrice = (
+    serviceId: string,
+    vehicle?: Vehicle | null
+  ) => {
+    const service = servicesMap[serviceId];
+    if (!service) return 0;
+    
+    const matched = getMatchingPricing(service, vehicle || null);
+    return matched ? Number(matched.price) : Number(0);
+  };
 
+  const formatDuration = (minutes?: number) => {
+    if (!minutes) return "-";
 
-//===============  ==================//  
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    if (hrs && mins) return `${hrs}h ${mins}m`;
+    if (hrs) return `${hrs}h`;
+
+    return `${mins}m`;
+  };
+
   const handleAddCustomer = (search: string) => {
-    setCustomerSearch(search); // optional prefill
+    setCustomerSearch(search);
     setCustomerModalOpen(true);
   };
 
-  const handleCustomerSaved = (newCustomer: Customer & { __lastAddedVehicle?: Vehicle }) => {
-    setCustomers((prev) => [...prev, newCustomer]);
-    setSelectedCustomer(newCustomer);
+  const handleCustomerSaved = (newCustomer: any) => {
+    const normalizedCust: Customer = {
+      id: String(newCustomer.customer_id),
+      firstName: newCustomer.first_name || "",
+      lastName: newCustomer.last_name || "",
+      address: newCustomer.address || "",
+      mobileNumber: newCustomer.mobile_number || "",
+      landline: newCustomer.landline || "",
+      email: newCustomer.email || "",
+      businessPhone: newCustomer.business || "",
+    };
 
-    // Vehicle selection — use vehicles from state + possible new vehicle
-    const relatedVehicles = vehicles.filter(v => v.customerId === newCustomer.id);
+    const newVehiclesList: Vehicle[] = [];
+    if (Array.isArray(newCustomer.vehicles)) {
+      newCustomer.vehicles.forEach((v: any) => {
+        newVehiclesList.push({
+          id: String(v.id),
+          customerId: String(newCustomer.customer_id),
+          vehicleModelId: String(v.id),
+          color: v.color || "",
+          plateNo: v.plate_number || "",
+          engineNo: v.engine_number || "",
+          vin: v.VIN || "",
+          registrationNo: v.registration_number || "",
+          sellingDealer: v.selling_dealer || "",
+          year: v.year_model || "",
+          make: v.make || "",
+          model: v.model || "",
+          variant: v.variant || "",
+        });
+      });
+    }
 
-    if (newCustomer.__lastAddedVehicle) {
-      setSelectedVehicle(newCustomer.__lastAddedVehicle);
-    } else if (relatedVehicles.length === 1) {
-      setSelectedVehicle(relatedVehicles[0]);
+    setCustomers((prev) => [...prev, normalizedCust]);
+    setVehicles((prev) => [...prev, ...newVehiclesList]);
+    setSelectedCustomer(normalizedCust);
+
+    if (newVehiclesList.length > 0) {
+      setSelectedVehicle(newVehiclesList[0]);
     } else {
-      setSelectedVehicle(null); //if multiple vehicles, user must pick
+      setSelectedVehicle(null);
     }
   };
 
-  const handleVehicleSaved = (newVehicle: Vehicle) => {
-    setVehicles((prev) => [...prev, newVehicle]);
-    setSelectedVehicle(newVehicle);
-    setVehicleModalOpen(false);
-  };
-
-
-  //=============== USE EFFECT ==================//
-
-useEffect(() => {
-  const existingCustomers = localStorage.getItem(STORAGE_KEY);
-
-  // already seeded
-  if (existingCustomers) return;
-
-  // =========================================
-  // VEHICLE MODELS
-  // =========================================
-  const vehicleModels = Array.from({ length: 10 }, (_, i) => ({
-    id: `vm-${i + 1}`,
-    year: 2020 + (i % 5),
-    make: ["Toyota", "Honda", "Ford", "Mitsubishi", "Nissan"][i % 5],
-    model: `Model ${i + 1}`,
-    variant: `Variant ${i + 1}`,
-    serviceClass: ["SUV", "Sedan", "Pickup"][i % 3],
-  }));
-
-  // =========================================
-  // CUSTOMERS
-  // =========================================
-  const customers = Array.from({ length: 10 }, (_, i) => ({
-    id: `cust-${i + 1}`,
-    firstName: "Customer",
-    lastName: `${i + 1}`,
-    address: `Address ${i + 1}`,
-    mobileNumber: `0917000000${i}`,
-    landline: `054-881-10${i}`,
-    email: `customer${i + 1}@gmail.com`,
-    businessPhone: `054-900-10${i}`,
-  }));
-
-  // =========================================
-  // VEHICLES
-  // =========================================
-  const vehicles = customers.map((customer, i) => ({
-    id: `veh-${i + 1}`,
-    customerId: customer.id,
-    vehicleModelId: vehicleModels[i].id,
-    color: ["White", "Black", "Red", "Blue", "Gray"][i % 5],
-    plateNo: `ABC-${1000 + i}`,
-    engineNo: `ENG-${i + 1}`,
-    vin: `VIN-${i + 1}`,
-    registrationNo: `REG-${i + 1}`,
-    sellingDealer: `Dealer ${i + 1}`,
-    hasWarranty: i % 2 === 0,
-  }));
-
-  // =========================================
-  // PRODUCTS
-  // =========================================
-  const products = Array.from({ length: 10 }, (_, i) => ({
-    id: `prod-${i + 1}`,
-    image: "",
-    name: `Product ${i + 1}`,
-    sku: `SKU-${i + 1}`,
-    price: 100 + i * 50,
-    unit: "pc",
-  }));
-
-  // =========================================
-  // INVENTORY
-  // =========================================
-  const inventory = products.map((product, i) => ({
-    id: `inv-${i + 1}`,
-    productId: product.id,
-    quantity_on_hand: 10 + i * 5,
-  }));
-
-  // =========================================
-  // SAVE
-  // =========================================
-  localStorage.setItem(
-    VEHICLE_MODEL_STORAGE_KEY,
-    JSON.stringify(vehicleModels)
-  );
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(customers)
-  );
-
-  localStorage.setItem(
-    VEHICLE_STORAGE_KEY,
-    JSON.stringify(vehicles)
-  );
-
-  localStorage.setItem(
-    PRODUCT_KEY,
-    JSON.stringify(products)
-  );
-
-  localStorage.setItem(
-    INVENTORY_KEY,
-    JSON.stringify(inventory)
-  );
-
-  console.log("✅ Dummy data seeded successfully!");
-}, []); // seed once
-
-  // ── Load existing estimate in edit mode ──────────────────────────────────
+  // ── Load Catalog Data & Existing Estimate ──────────────────────────────────
   useEffect(() => {
-    if (mode !== "edit" || !estimateId) return;
+    const loadCatalogData = async () => {
+      try {
+        setIsLoading(true);
+        const [
+          customersRes,
+          productsRes,
+          serviceTypesRes,
+          serviceCategoriesRes,
+        ] = await Promise.all([
+          api.get('/customers'),
+          api.get('/products'),
+          api.get('/products/service-types'),
+          api.get('/products/service-categories'),
+        ]);
 
-    try {
-      const stored: Estimate[] = JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "[]");
-      const found = stored.find(e => e.id === estimateId);
+        const dbCustomers = customersRes.data.data || [];
+        const dbProducts = productsRes.data.data || [];
+        const dbServiceTypes = serviceTypesRes.data.data || [];
+        const dbServiceCategories = serviceCategoriesRes.data.data || [];
 
-      if (!found) {
-        toast.error("Estimate not found.");
-        navigate("/webapp/sales/estimates");
-        return;
+        // Flatten vehicles from all customers
+        const allVehicles: Vehicle[] = [];
+        const normalizedCustomers: Customer[] = dbCustomers.map((c: any) => {
+          if (Array.isArray(c.vehicles)) {
+            c.vehicles.forEach((v: any) => {
+              allVehicles.push({
+                id: String(v.id),
+                customerId: String(c.customer_id),
+                vehicleModelId: String(v.id),
+                color: v.color || "",
+                plateNo: v.plate_number || "",
+                engineNo: v.engine_number || "",
+                vin: v.VIN || "",
+                registrationNo: v.registration_number || "",
+                sellingDealer: v.selling_dealer || "",
+                year: v.year_model || "",
+                make: v.make || "",
+                model: v.model || "",
+                variant: v.variant || "",
+              });
+            });
+          }
+
+          return {
+            id: String(c.customer_id),
+            firstName: c.first_name || "",
+            lastName: c.last_name || "",
+            address: c.address || "",
+            mobileNumber: c.mobile_number || "",
+            landline: c.landline || "",
+            email: c.email || "",
+            businessPhone: c.business || "",
+          };
+        });
+
+        // Map service catalog
+        const normalizedServices: Service[] = dbServiceTypes.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          serviceCategoryId: s.service_category_id || "",
+          description: s.description || "",
+          duration: s.duration || 0,
+          pricingType: s.pricing_type || "fixed",
+          pricings: s.pricings || [],
+        }));
+
+        // Map parts catalog
+        const normalizedParts: Product[] = dbProducts.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          sku: p.SKU,
+          price: Number(p.sell_price || p.price || 0),
+          unit: p.unit?.name || "pc",
+        }));
+
+        setCustomers(normalizedCustomers);
+        setVehicles(allVehicles);
+        setServicesCatalog(normalizedServices);
+        setPartsCatalog(normalizedParts);
+        setServiceCategories(dbServiceCategories);
+
+      } catch (err) {
+        console.error("Failed to load data from backend", err);
+        toast.error("Failed to fetch catalog data");
+      } finally {
+        setIsLoading(false);
       }
-
-      setSelectedCustomer(found.customer);
-      setSelectedVehicle(found.vehicle);
-      setMileage(found.mileage ?? 0);
-      setNotes(found.notes ?? "");
-
-      if (found.services.length > 0) {
-        setJoLines(
-          found.services.map(s => ({
-            id: s.id,
-            ServiceTypeId: s.ServiceTypeId,
-            // restore the saved manual rate so the input shows the right value
-            manualRate: s.price,
-            amount: s.amount,
-          }))
-        );
-      }
-
-      if (found.parts.length > 0) {
-        setSoLines(
-          found.parts.map(p => ({
-            id: p.id,
-            ProductId: p.ProductId,
-            quantity: p.quantity,
-            amount: p.amount,
-          }))
-        );
-      }
-    } catch (err) {
-      console.error("Failed to load estimate for editing", err);
-      toast.error("Failed to load estimate.");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, estimateId]);
-
-
-  useEffect(() => {
-    try {
-      const storedCustomers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const storedVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");
-      const storedServices = JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]");
-      const storedVehicleSizes = JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]");
-      const storedProducts = JSON.parse(localStorage.getItem(PRODUCT_KEY) || "[]");
-      const storedModels = JSON.parse(localStorage.getItem(VEHICLE_MODEL_STORAGE_KEY) || "[]");
-      const storedInventory = JSON.parse(localStorage.getItem(INVENTORY_KEY) || "[]");
-      const storedPricing = JSON.parse(localStorage.getItem(PRICING_KEY) || "[]");
-      const storedCategories = JSON.parse( localStorage.getItem(CATEGORY_KEY) || "[]");
-
-      setCustomers(Array.isArray(storedCustomers) ? storedCustomers : []);
-      setVehicles(Array.isArray(storedVehicles) ? storedVehicles : []);
-      setVehicleSizes( Array.isArray(storedVehicleSizes) ? storedVehicleSizes : []);
-      setServicesCatalog(Array.isArray(storedServices) ? storedServices : []);
-      setPartsCatalog(Array.isArray(storedProducts) ? storedProducts : []);
-      setVehicleModels(Array.isArray(storedModels) ? storedModels : []);
-      setInventory(Array.isArray(storedInventory) ? storedInventory : []);
-      setPricing(Array.isArray(storedPricing) ? storedPricing : []);
-      setServiceCategories( Array.isArray(storedCategories) ? storedCategories : []);
-
-    } catch (err) {
-      console.error("Failed to load localStorage data", err);
-    }
+    };
+    loadCatalogData();
   }, []);
 
+  // Hydrate Estimate in Edit Mode
+  useEffect(() => {
+    if (mode !== "edit" || !estimateId || !servicesCatalog.length) return;
 
-  /** Change the selected service on a JO line; clears manual rate override.
-   *  Blocks selection if the service is already used on another line. */
+    const fetchEstimate = async () => {
+      try {
+        const res = await api.get(`/estimates/${estimateId}`);
+        const found = res.data.data;
+
+        if (!found) {
+          toast.error("Estimate not found.");
+          navigate("/webapp/sales/estimates");
+          return;
+        }
+
+        const cust = found.customer;
+        const normalizedCust = cust ? {
+          id: String(cust.customer_id),
+          firstName: cust.first_name || "",
+          lastName: cust.last_name || "",
+          address: cust.address || "",
+          mobileNumber: cust.mobile_number || "",
+          landline: cust.landline || "",
+          email: cust.email || "",
+          businessPhone: cust.business || "",
+        } : null;
+
+        setSelectedCustomer(normalizedCust);
+
+        const veh = found.vehicle;
+        const normalizedVeh = veh ? {
+          id: String(veh.id),
+          customerId: String(found.customer_id),
+          vehicleModelId: String(veh.id),
+          color: veh.color || "",
+          plateNo: veh.plate_number || "",
+          engineNo: veh.engine_number || "",
+          vin: veh.VIN || "",
+          registrationNo: veh.registration_number || "",
+          sellingDealer: veh.selling_dealer || "",
+          year: veh.year_model || "",
+          make: veh.make || "",
+          model: veh.model || "",
+          variant: veh.variant || "",
+        } : null;
+
+        setSelectedVehicle(normalizedVeh);
+        setMileage(found.mileage ?? 0);
+        setNotes(found.notes ?? "");
+
+        const dbItems = found.items || [];
+        const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
+        const partItems = dbItems.filter((i: any) => i.item_type === "part");
+
+        if (serviceItems.length > 0) {
+          setJoLines(
+            serviceItems.map((s: any) => {
+              const service = servicesCatalog.find(sc => sc.id === s.service_id);
+              const pricingOpt = service?.pricings?.find((p: any) => Number(p.price) === Number(s.unit_price));
+              return {
+                id: s.id,
+                ServiceTypeId: s.service_id,
+                pricingId: pricingOpt ? pricingOpt.id : "",
+                manualRate: Number(s.unit_price),
+                amount: Number(s.subtotal),
+              };
+            })
+          );
+        } else {
+          setJoLines([emptyJOLine()]);
+        }
+
+        if (partItems.length > 0) {
+          setSoLines(
+            partItems.map((p: any) => ({
+              id: p.id,
+              ProductId: p.product_id,
+              quantity: Number(p.quantity),
+              amount: Number(p.subtotal),
+            }))
+          );
+        } else {
+          setSoLines([emptySOLine()]);
+        }
+      } catch (err) {
+        console.error("Failed to load estimate for editing", err);
+        toast.error("Failed to load estimate.");
+      }
+    };
+    fetchEstimate();
+  }, [mode, estimateId, servicesCatalog]);
+
   const updateJO = (idx: number, serviceId: string) => {
     if (joLines[idx]?.ServiceTypeId === serviceId) return;
 
@@ -540,20 +490,42 @@ useEffect(() => {
         if (i !== idx) return l;
 
         const service = servicesMap[serviceId];
-        if (!service) return { ...l, ServiceTypeId: serviceId, manualRate: undefined, amount: 0 };
+        if (!service) return { ...l, ServiceTypeId: serviceId, pricingId: "", manualRate: undefined, amount: 0 };
 
-        const catalogRate = getServicePrice(serviceId, selectedVehicle);
+        const matchedPricing = getMatchingPricing(service, selectedVehicle);
+        const pricingId = matchedPricing ? matchedPricing.id : "";
+        const rate = matchedPricing ? Number(matchedPricing.price) : Number(0);
+
         const amount =
           service.pricingType === "fixed"
-            ? catalogRate
-            : catalogRate * ((service.duration || 0) / 60);
+            ? rate
+            : rate * ((service.duration || 0) / 60);
 
-        return { ...l, ServiceTypeId: serviceId, manualRate: undefined, amount };
+        return { ...l, ServiceTypeId: serviceId, pricingId, manualRate: rate, amount };
       })
     );
   };
 
-  /** Override the rate (and recompute amount) for a JO line without changing the service */
+  const updateJOPricing = (idx: number, pricingId: string) => {
+    setJoLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
+
+        const service = servicesMap[l.ServiceTypeId];
+        if (!service) return l;
+
+        const p = service.pricings?.find((p: any) => p.id === pricingId);
+        const rate = p ? Number(p.price) : 0;
+        const amount =
+          service.pricingType === "fixed"
+            ? rate
+            : rate * ((service.duration || 0) / 60);
+
+        return { ...l, pricingId, manualRate: rate, amount };
+      })
+    );
+  };
+
   const updateJORate = (idx: number, rawValue: string) => {
     setJoLines((prev) =>
       prev.map((l, i) => {
@@ -575,7 +547,6 @@ useEffect(() => {
   };
 
   const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
-    // Duplicate-part guard: if the chosen product already exists on another line, increment its qty instead
     if (field === "ProductId" && value) {
       const existingIdx = soLines.findIndex(
         (l, i) => i !== idx && l.ProductId === value
@@ -583,16 +554,12 @@ useEffect(() => {
       if (existingIdx !== -1) {
         const product = partsMap[value];
         const productName = product?.name ?? "Part";
-        // Remove the current (empty/duplicate) line and bump the existing line's qty
         setSoLines((prev) => {
           const next = prev.filter((_, i) => i !== idx);
           return next.map((l, i) => {
             if (i !== existingIdx - (idx < existingIdx ? 1 : 0)) return l;
             const newQty = (Number(l.quantity) || 0) + 1;
-            const stockEntry = inventory.find(inv => inv.productId === l.ProductId);
-            const availableStock = stockEntry?.quantity_on_hand ?? Infinity;
-            const safeQty = Math.min(newQty, availableStock);
-            return { ...l, quantity: safeQty, amount: safeQty * (product?.price ?? 0) };
+            return { ...l, quantity: newQty, amount: newQty * (product?.price ?? 0) };
           });
         });
         toast.info(`"${productName}" is already added. Quantity increased.`);
@@ -621,18 +588,14 @@ useEffect(() => {
             return updated;
           }
 
-          const stockEntry = inventory.find(inv => inv.productId === updated.ProductId);
-          const availableStock = stockEntry?.quantity_on_hand || 0;
-          const safeQty = Math.min(qty, availableStock);
-          updated.quantity = safeQty;
-          updated.amount = safeQty * found.price;
+          updated.quantity = qty;
+          updated.amount = qty * found.price;
         }
 
         return updated;
       })
     );
   };
-
 
   const totals = useMemo(() => {
     const validJO = joLines.filter((l) => l.ServiceTypeId);
@@ -671,140 +634,98 @@ useEffect(() => {
     };
   }, [joLines, soLines, servicesMap]);
 
-
   const peso = (n: number) =>
     `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-
-const saveEstimate = () => {
-  // ── 1. Validate first, build object after ───────────────────────────────
-  if (!selectedCustomer || !selectedVehicle) {
-    toast.error("Please select a customer and vehicle.");
-    return;
-  }
-
-  // Validate vehicle belongs to the selected customer
-  const isValidVehicle = vehicles.some(
-    (v) => v.id === selectedVehicle.id && v.customerId === selectedCustomer.id
-  );
-
-  if (!isValidVehicle) {
-    toast.error("The selected vehicle does not belong to this customer.");
-    return;
-  }
-
-  if (mileage <= 0) {
-    toast.error("Mileage is required.");
-    return;
-  }
-
-  if (totals.validJO.length === 0 && totals.validSO.length === 0) {
-    toast.error("Add at least one service or part.");
-    return;
-  }
-
-  if (totals.validSO.some((l) => !l.quantity || l.quantity <= 0)) {
-    toast.error("All part lines must have a quantity greater than zero.");
-    return;
-  }
-
-  // ── 2. Build the estimate object ────────────────────────────────────────
-  const now = new Date().toISOString();
-
-  let estimates: Estimate[] = [];
-  try {
-    const existing = JSON.parse(localStorage.getItem(ESTIMATE_KEY) || "[]");
-    estimates = Array.isArray(existing) ? existing : [];
-  } catch (err) {
-    console.error("Invalid localStorage data", err);
-    estimates = [];
-  }
-
-  const builtServices: EstimateServiceLine[] = joLines
-    .filter((l) => l.ServiceTypeId)
-    .map((l) => {
-      const service = servicesMap[l.ServiceTypeId];
-      const category = categoryMap[service?.serviceCategoryId || ""];
-      const rate = l.manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
-      return {
-        id: l.id,
-        ServiceTypeId: l.ServiceTypeId,
-        service: service?.name || "",
-        category: category?.name || "",
-        estimateDuration: service?.duration || 0,
-        price: rate,
-        amount: l.amount,
-      };
-    });
-
-  const builtParts: EstimatePartLine[] = soLines
-    .filter((l) => l.ProductId)
-    .map((l) => {
-      const found = partsMap[l.ProductId];
-      return {
-        id: l.id,
-        ProductId: l.ProductId,
-        name: found?.name || "",
-        sku: found?.sku || "",
-        price: found?.price || 0,
-        unit: found?.unit || "",
-        quantity: l.quantity,
-        amount: l.amount,
-      };
-    });
-
-  if (mode === "edit" && estimateId) {
-    // ── Edit: find & update existing estimate ────────────────────────────
-    const idx = estimates.findIndex((e) => e.id === estimateId);
-    if (idx === -1) {
-      toast.error("Estimate not found. It may have been deleted.");
+  const saveEstimate = async () => {
+    if (!selectedCustomer || !selectedVehicle) {
+      toast.error("Please select a customer and vehicle.");
       return;
     }
 
-    estimates[idx] = {
-      ...estimates[idx],
-      customer: selectedCustomer,
-      vehicle: selectedVehicle,
-      mileage: mileage,
-      services: builtServices,
-      parts: builtParts,
-      subtotalServices: totals.totalServices,
-      subtotalParts: totals.totalParts,
-      total: totals.total,
-      notes: notes || undefined,
-      updatedAt: now,
+    const isValidVehicle = vehicles.some(
+      (v) => String(v.id) === String(selectedVehicle.id) && String(v.customerId) === String(selectedCustomer.id)
+    );
+
+    if (!isValidVehicle) {
+      toast.error("The selected vehicle does not belong to this customer.");
+      return;
+    }
+
+    if (totals.validJO.length === 0 && totals.validSO.length === 0) {
+      toast.error("Add at least one service or part.");
+      return;
+    }
+
+    if (totals.validSO.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All part lines must have a quantity greater than zero.");
+      return;
+    }
+
+    const payloadItems = [
+      ...joLines
+        .filter((l) => l.ServiceTypeId)
+        .map((l) => {
+          const rate = l.manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
+          return {
+            item_type: "service",
+            service_id: l.ServiceTypeId,
+            product_id: null,
+            quantity: 1,
+            unit_price: rate,
+            subtotal: l.amount,
+          };
+        }),
+      ...soLines
+        .filter((l) => l.ProductId)
+        .map((l) => {
+          const found = partsMap[l.ProductId];
+          const price = found?.price || 0;
+          return {
+            item_type: "part",
+            service_id: null,
+            product_id: l.ProductId,
+            quantity: Number(l.quantity),
+            unit_price: price,
+            subtotal: l.amount,
+          };
+        })
+    ];
+
+    const payload = {
+      customer_id: Number(selectedCustomer.id),
+      vehicle_id: Number(selectedVehicle.id),
+      status: mode === "edit" ? undefined : "issued",
+      total_amount: totals.total,
+      items: payloadItems,
     };
 
-    localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
-    toast.success("Estimate updated successfully!");
-    navigate(`/webapp/sales/estimates/${estimateId}`);
-  } else {
-    // ── Create: append new estimate ──────────────────────────────────────
-    const estimateNo = genEstimateNo();
-    const newEstimate: Estimate = {
-      id: generateId(),
-      estimateNo,
-      customer: selectedCustomer,
-      vehicle: selectedVehicle,
-      mileage: mileage,
-      services: builtServices,
-      parts: builtParts,
-      createdAt: now,
-      updatedAt: now,
-      status: "issued",
-      subtotalServices: totals.totalServices,
-      subtotalParts: totals.totalParts,
-      total: totals.total,
-      notes: notes || undefined,
-    };
+    try {
+      if (mode === "edit" && estimateId) {
+        await api.put(`/estimates/${estimateId}`, payload);
+        toast.success("Estimate updated successfully!");
+        navigate(`/webapp/sales/estimates`);
+      } else {
+        await api.post(`/estimates`, payload);
+        toast.success("Estimate created successfully!");
+        navigate(`/webapp/sales/estimates`);
+      }
+    } catch (err: any) {
+      console.error("Failed to save estimate", err);
+      toast.error(err.response?.data?.message || "Failed to save estimate.");
+    }
+  };
 
-    estimates.push(newEstimate);
-    localStorage.setItem(ESTIMATE_KEY, JSON.stringify(estimates));
-    toast.success("Estimate created successfully!");
-    navigate("/webapp/sales/estimates");
+  if (isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20 bg-background text-foreground">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium text-muted-foreground animate-pulse">
+          Loading catalog data...
+        </p>
+      </div>
+    );
   }
-};
-
 
   return (
     <div className="w-full h-full pl-4 pr-3 pb-4 flex flex-col gap-4 overflow-y-auto">
@@ -830,7 +751,6 @@ const saveEstimate = () => {
                     value={selectedCustomer?.id || ""}
                     onChange={(val) => {
                       const customer = customers.find(c => c.id === val) || null;
-
                       setSelectedCustomer(customer);
 
                       if (!customer) {
@@ -838,12 +758,11 @@ const saveEstimate = () => {
                         return;
                       }
 
-                      const customerVehicles = vehicles.filter(v => v.customerId === customer.id);
-                      
-                      if (customerVehicles.length === 0) {
+                      const relatedVehicles = vehicles.filter(v => String(v.customerId) === String(customer.id));
+                      if (relatedVehicles.length === 0) {
                         setSelectedVehicle(null);
-                      } else if (customerVehicles.length === 1) {
-                        setSelectedVehicle(customerVehicles[0]);
+                      } else if (relatedVehicles.length === 1) {
+                        setSelectedVehicle(relatedVehicles[0]);
                       } else {
                         setSelectedVehicle(null);
                       }
@@ -919,41 +838,28 @@ const saveEstimate = () => {
                       <Input value="" placeholder="Select customer first" disabled />
                     ) : customerVehicles.length === 1 ? (
                       <Input
-                        value={vm ? `${vm.year} ${vm.make} ${vm.model}` : ""}
+                        value={selectedVehicle ? `${selectedVehicle.year || ""} ${selectedVehicle.make || ""} ${selectedVehicle.model || ""}` : ""}
                         readOnly
                       />
                     ) : (
                       <Combobox
                         value={selectedVehicle?.id || ""}
                         onChange={(val) => {
-                          const vehicle =
-                            customerVehicles.find(v => v.id === val) || null;
+                          const vehicle = customerVehicles.find(v => v.id === val) || null;
                           setSelectedVehicle(vehicle);
                         }}
-                        items={customerVehicles.map(v => {
-                          const vm = vehicleModels.find(m => m.id === v.vehicleModelId);
-                          return {
-                            label: vm ? `${vm.year} ${vm.make} ${vm.model}` : "",
-                            value: v.id
-                          }
-                        })}
-                        placeholder={
-                          customerVehicles.length === 0
-                            ? "Select vehicle"
-                            : "Select vehicle"
-                        }
-                        allowAdd
-                        addLabel="vehicle"
-                        onAdd={() => {
-                          setVehicleModalOpen(true);
-                        }}
+                        items={customerVehicles.map(v => ({
+                          label: `${v.year || ""} ${v.make || ""} ${v.model || ""}`,
+                          value: v.id
+                        }))}
+                        placeholder="Select vehicle"
                       />
                     )}
                   </div>
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
                     <Input
-                      value={vm?.variant || ""}
+                      value={selectedVehicle?.variant || ""}
                       readOnly
                     />
                   </div>
@@ -1034,10 +940,11 @@ const saveEstimate = () => {
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs w-[40%]">Service</TableHead>
-                        <TableHead className="text-xs w-[19%]">Est. Duration</TableHead>
-                        <TableHead className="text-xs w-[16%]">Rate (₱)</TableHead>
-                        <TableHead className="text-xs w-[20%]">Amount</TableHead>
+                        <TableHead className="text-xs w-[30%]">Service</TableHead>
+                        <TableHead className="text-xs w-[25%]">Pricing</TableHead>
+                        <TableHead className="text-xs w-[14%]">Est. Duration</TableHead>
+                        <TableHead className="text-xs w-[13%]">Rate (₱)</TableHead>
+                        <TableHead className="text-xs w-[13%]">Amount</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1059,46 +966,54 @@ const saveEstimate = () => {
                                   .sort((a, b) => {
                                     const categoryA =
                                       categoryMap[a.serviceCategoryId]?.name || "Uncategorized";
-
                                     const categoryB =
                                       categoryMap[b.serviceCategoryId]?.name || "Uncategorized";
-
-                                    const categoryCompare =
-                                      categoryA.localeCompare(categoryB);
-
-                                    if (categoryCompare !== 0) {
-                                      return categoryCompare;
-                                    }
-
+                                    const categoryCompare = categoryA.localeCompare(categoryB);
+                                    if (categoryCompare !== 0) return categoryCompare;
                                     return (a.name || "").localeCompare(b.name || "");
                                   })
                                   .map((s) => {
-                                    const price = getServicePrice(
-                                      s.id,
-                                      selectedVehicle
-                                    );
-
-                                    const category =
-                                      categoryMap[s.serviceCategoryId];
-
+                                    const category = categoryMap[s.serviceCategoryId];
                                     return {
                                       label: s.name,
                                       value: s.id,
-
                                       group: category?.name || "Uncategorized",
-
                                       description: [
                                         formatDuration(s.duration),
-                                        `${peso(price)}`,
-                                        s.pricingType === "fixed"
-                                          ? "Fixed"
-                                          : "Hourly",
+                                        s.pricingType === "fixed" ? "Fixed" : "Hourly",
                                       ]
                                         .filter(Boolean)
                                         .join(" • "),
                                     };
                                   })}
                               />
+                            </TableCell>
+
+                            <TableCell>
+                              <select
+                                className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-40 disabled:pointer-events-none"
+                                value={l.pricingId || ""}
+                                disabled={!service}
+                                onChange={(e) => {
+                                  const selectedPricingId = e.target.value;
+                                  updateJOPricing(idx, selectedPricingId);
+                                }}
+                              >
+                                <option value="" disabled={!!service?.pricings?.length}>
+                                  {!service ? "Select service first" : service.pricings?.length ? "Select vehicle pricing" : "Default Rate"}
+                                </option>
+                                {service?.pricings?.map((p: any) => {
+                                  const typesStr = Array.isArray(p.vehicle_types) 
+                                    ? p.vehicle_types.join(", ") 
+                                    : p.vehicle_types || "";
+                                  const label = `${p.vehicle_size_name}${typesStr ? ` (${typesStr})` : ""} - ₱${Number(p.price).toFixed(2)}${service.pricingType === "hourly rate" ? "/hr" : ""}`;
+                                  return (
+                                    <option key={p.id} value={p.id}>
+                                      {label}
+                                    </option>
+                                  );
+                                })}
+                              </select>
                             </TableCell>
 
                             <TableCell>
@@ -1264,7 +1179,7 @@ const saveEstimate = () => {
                   <div className="space-y-2 pt-2">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Internal Notes</Label>
                     <Textarea 
-                    value={notes} 
+                      value={notes} 
                       onChange={e => setNotes(e.target.value)} 
                       placeholder="Terms, warranty info, etc..." 
                       rows={4} 
@@ -1280,7 +1195,6 @@ const saveEstimate = () => {
                       disabled= {
                         !selectedCustomer || 
                         !selectedVehicle ||
-                        !mileage ||
                         (totals.validJO.length === 0 && totals.validSO.length === 0) 
                       }
                     >
@@ -1305,6 +1219,13 @@ const saveEstimate = () => {
           </div>
         </div>
       </div>
+
+      {/* Customer Form Modal */}
+      <CustomerFormModal
+        open={customerModalOpen}
+        onOpenChange={setCustomerModalOpen}
+        onSaved={handleCustomerSaved}
+      />
     </div>
   );
 };

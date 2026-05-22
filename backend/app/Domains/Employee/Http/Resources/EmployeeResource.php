@@ -13,6 +13,7 @@ class EmployeeResource extends JsonResource
         'first_name' => $this->first_name,
         'last_name' => $this->last_name,
         'email' => $this->email,
+        'phone' => $this->phone,
         'position' => $this->position,
         'role_name' => $this->role->name ?? 'Unassigned', 
         'join_date' => $this->join_date, 

@@ -1,5 +1,9 @@
 import React, { useState } from "react";
 import api from "@/api/axios";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface RoleManagerProps {
   initialData?: any;
@@ -10,7 +14,6 @@ const RoleManager: React.FC<RoleManagerProps> = ({
   initialData,
   onComplete,
 }) => {
-  // If initialData exists, we are in EDIT mode
   const [roleName, setRoleName] = useState(initialData?.name || "");
   const [permissions, setPermissions] = useState<any>(
     initialData?.permissions || {
@@ -21,26 +24,26 @@ const RoleManager: React.FC<RoleManagerProps> = ({
   );
 
   const handleSaveRole = async () => {
-    if (!roleName) return alert("Please enter a role name");
+    if (!roleName) return toast.error("Please enter a role name");
 
     try {
       if (initialData?.id) {
-        // UPDATE existing role (matching your Controller update method)
         await api.put(`/admin/roles/${initialData.id}`, {
           name: roleName,
           permissions: permissions,
         });
+        toast.success("Role updated successfully!");
       } else {
-        // CREATE new role
         await api.post("/admin/roles", {
           name: roleName,
           permissions: permissions,
         });
+        toast.success("Role created successfully!");
       }
 
       if (onComplete) onComplete();
     } catch (error: any) {
-      alert(error.response?.data?.message || "Error saving role");
+      toast.error(error.response?.data?.message || "Error saving role");
     }
   };
 
@@ -61,88 +64,89 @@ const RoleManager: React.FC<RoleManagerProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <label className="block text-sm font-bold text-slate-700 mb-2">
+    <div className="space-y-8">
+      {/* Role Name Input */}
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-foreground">
           Role Name
         </label>
-        <input
+        <Input
           type="text"
           placeholder="e.g., HR Manager"
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
           value={roleName}
           onChange={(e) => setRoleName(e.target.value)}
+          className="w-full max-w-md bg-background"
         />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* HR ACCESS MODULE */}
-        <div className="p-4 border border-slate-100 rounded-xl bg-slate-50">
-          <span className="text-sm font-bold text-slate-800 block mb-3 text-slate-400 uppercase text-[10px] tracking-widest">
+        <div className="p-5 border border-border/60 rounded-xl bg-accent/10">
+          <span className="block mb-4 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
             HR Access
           </span>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="flex flex-col gap-3">
             {hrPermissions.map((perm) => (
               <label
                 key={perm.id}
-                className="flex items-center space-x-3 text-sm text-slate-600 cursor-pointer"
+                className="flex items-center space-x-3 text-sm font-medium text-foreground cursor-pointer"
               >
-                <input
-                  type="checkbox"
-                  className="rounded border-slate-300 text-red-600 focus:ring-red-500"
+                <Checkbox
                   checked={permissions.hr_access.includes(perm.id)}
-                  onChange={() => togglePermission("hr_access", perm.id)}
+                  onCheckedChange={() => togglePermission("hr_access", perm.id)}
+                  className="rounded"
                 />
-                <span>{perm.label}</span>
+                <span className="leading-none">{perm.label}</span>
               </label>
             ))}
           </div>
         </div>
 
         {/* INVENTORY ACCESS */}
-        <div className="p-4 border border-slate-100 rounded-xl">
-          <span className="text-sm font-bold text-slate-800 block mb-3 text-slate-400 uppercase text-[10px] tracking-widest">
+        <div className="p-5 border border-border/60 rounded-xl bg-accent/10">
+          <span className="block mb-4 text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
             Inventory Access
           </span>
-          <div className="flex space-x-6">
+          <div className="flex items-center gap-6">
             {["read", "write"].map((act) => (
               <label
                 key={act}
-                className="flex items-center space-x-2 text-sm uppercase font-bold text-slate-500 cursor-pointer"
+                className="flex items-center space-x-3 text-sm font-bold uppercase text-foreground cursor-pointer"
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={permissions.inventory.includes(act)}
-                  onChange={() => togglePermission("inventory", act)}
+                  onCheckedChange={() => togglePermission("inventory", act)}
+                  className="rounded"
                 />
-                <span>{act}</span>
+                <span className="leading-none">{act}</span>
               </label>
             ))}
           </div>
         </div>
 
         {/* ADMIN DASHBOARD TOGGLE */}
-        <div className="flex items-center justify-between p-4 border border-slate-100 rounded-xl">
-          <span className="text-sm font-bold text-slate-800">
+        <div className="flex items-center justify-between p-5 border border-border/60 rounded-xl bg-accent/10">
+          <span className="text-sm font-semibold text-foreground">
             Can Access Admin Panel
           </span>
-          <input
-            type="checkbox"
-            className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+          <Checkbox
             checked={permissions.admin_panel}
-            onChange={(e) =>
-              setPermissions({ ...permissions, admin_panel: e.target.checked })
+            onCheckedChange={(checked) =>
+              setPermissions({ ...permissions, admin_panel: checked === true })
             }
+            className="w-5 h-5 rounded"
           />
         </div>
       </div>
 
-      <button
-        onClick={handleSaveRole}
-        className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl hover:bg-red-600 transition-all shadow-lg"
-      >
-        Create Role
-      </button>
+      <div className="pt-4">
+        <Button
+          onClick={handleSaveRole}
+          className="w-full sm:w-auto px-10 py-5 text-sm font-bold tracking-wide"
+        >
+          {initialData?.id ? "Update Role" : "Create Role"}
+        </Button>
+      </div>
     </div>
   );
 };

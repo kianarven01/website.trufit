@@ -383,11 +383,6 @@ const SalesOrderForm: React.FC<SalesOrderProps> = ({
       return;
     }
 
-    if (includeVehicle && mileage <= 0) {
-      toast.error("Mileage is required when vehicle information is included.");
-      return;
-    }
-
     if (totals.validSO.length === 0) {
       toast.error("Add at least one part.");
       return;
@@ -509,7 +504,7 @@ const SalesOrderForm: React.FC<SalesOrderProps> = ({
       />
 
       <div className="space-y-6">
-        <div className={`grid ${includeVehicle ? "lg:grid-cols-2" : "lg:grid-cols-1"} gap-4`}>
+        <div className= "grid lg:grid-cols-2 gap-4">
           {/* CUSTOMER DETAILS */}
           <Card>
             <CardHeader className="pb-3">
@@ -614,156 +609,162 @@ const SalesOrderForm: React.FC<SalesOrderProps> = ({
           </Card>
 
           {/* VEHICLE */}
-          {includeVehicle && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-blue-500">
-                    <Car className="size-5" />
-                    <p className="font-semibold text-foreground">
-                      Vehicle Details
-                    </p>
-                  </div>
+          <Card
+            className={`
+              relative overflow-hidden transition-all duration-200
+              ${!includeVehicle 
+                ? "opacity-50 grayscale-[0.2] pointer-events-none select-none" 
+                : ""
+              }
+            `}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-blue-500">
+                  <Car className="size-5" />
+                  <p className="font-semibold text-foreground">
+                    Vehicle Details
+                  </p>
                 </div>
-              </CardHeader>
+              </div>
+            </CardHeader>
 
-              <CardContent>
-                <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
-                  <div className="sm:col-span-2 grid lg:grid-cols-4 gap-4">
-                    <div className="lg:col-span-2">
-                      <Label className="text-muted-foreground font-normal text-xs">
-                        Year / Make / Model
-                      </Label>
-                      {!selectedCustomer ? (
-                        <Input
-                          value=""
-                          placeholder="Select customer first"
-                          disabled
-                        />
-                      ) : customerVehicles.length === 1 ? (
-                        <Input
-                          value={
-                            vm
-                              ? `${vm.year} ${vm.make} ${vm.model}`
-                              : ""
-                          }
-                          readOnly
-                        />
-                      ) : (
-                        <Combobox
-                          value={selectedVehicle?.id || ""}
-                          onChange={(val) => {
-                            const vehicle =
-                              customerVehicles.find(
-                                (v) => v.id === val
-                              ) || null;
-
-                            setSelectedVehicle(vehicle);
-                          }}
-                          items={customerVehicles.map((v) => {
-                            const vm = vehicleModels.find(
-                              (m) =>
-                                m.id === v.vehicleModelId
-                            );
-
-                            return {
-                              label: vm
-                                ? `${vm.year} ${vm.make} ${vm.model}`
-                                : "",
-                              value: v.id,
-                            };
-                          })}
-                          placeholder="Select vehicle"
-                        />
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+                <div className="sm:col-span-2 grid lg:grid-cols-4 gap-4">
+                  <div className="lg:col-span-2">
+                    <Label className="text-muted-foreground font-normal text-xs">
+                      Year / Make / Model
+                    </Label>
+                    {!selectedCustomer ? (
                       <Input
-                        value={vm?.variant || ""}
-                        readOnly
+                        value=""
+                        placeholder="Select customer first"
+                        disabled
                       />
-                    </div>
-
-                    <div>
-                      <Label className="text-muted-foreground font-normal text-xs">Color</Label>
+                    ) : customerVehicles.length === 1 ? (
                       <Input
-                        value={selectedVehicle?.color || ""}
-                        readOnly
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground font-normal text-xs">Plate No.</Label>
-                    <Input
-                      value={selectedVehicle?.plateNo || ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground font-normal text-xs">Engine No.</Label>
-                    <Input
-                      value={selectedVehicle?.engineNo || ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground font-normal text-xs">Chassis No. (VIN)</Label>
-                    <Input
-                      value={selectedVehicle?.vin || ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground font-normal text-xs">Registration No.</Label>
-                    <Input
-                      value={selectedVehicle?.registrationNo || ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground font-normal text-xs">Selling Dealer</Label>
-
-                    <Input
-                      value={selectedVehicle?.sellingDealer || ""}
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={mileage === 0 ? "" : mileage}
-                      placeholder="0"
-                      onChange={(e) =>
-                        setMileage(
-                          e.target.value === ""
-                            ? 0
-                            : Math.max(
-                                0,
-                                Number(e.target.value)
-                              )
-                        )
-                      }
-                      onBlur={(e) => {
-                        if (e.target.value === "") {
-                          setMileage(0);
+                        value={
+                          vm
+                            ? `${vm.year} ${vm.make} ${vm.model}`
+                            : ""
                         }
-                      }}
+                        readOnly
+                      />
+                    ) : (
+                      <Combobox
+                        value={selectedVehicle?.id || ""}
+                        onChange={(val) => {
+                          const vehicle =
+                            customerVehicles.find(
+                              (v) => v.id === val
+                            ) || null;
+
+                          setSelectedVehicle(vehicle);
+                        }}
+                        items={customerVehicles.map((v) => {
+                          const vm = vehicleModels.find(
+                            (m) =>
+                              m.id === v.vehicleModelId
+                          );
+
+                          return {
+                            label: vm
+                              ? `${vm.year} ${vm.make} ${vm.model}`
+                              : "",
+                            value: v.id,
+                          };
+                        })}
+                        placeholder="Select vehicle"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
+                    <Input
+                      value={vm?.variant || ""}
+                      readOnly
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-muted-foreground font-normal text-xs">Color</Label>
+                    <Input
+                      value={selectedVehicle?.color || ""}
+                      readOnly
                     />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Plate No.</Label>
+                  <Input
+                    value={selectedVehicle?.plateNo || ""}
+                    readOnly
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Engine No.</Label>
+                  <Input
+                    value={selectedVehicle?.engineNo || ""}
+                    readOnly
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Chassis No. (VIN)</Label>
+                  <Input
+                    value={selectedVehicle?.vin || ""}
+                    readOnly
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Registration No.</Label>
+                  <Input
+                    value={selectedVehicle?.registrationNo || ""}
+                    readOnly
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Selling Dealer</Label>
+
+                  <Input
+                    value={selectedVehicle?.sellingDealer || ""}
+                    readOnly
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={mileage === 0 ? "" : mileage}
+                    placeholder="0"
+                    onChange={(e) =>
+                      setMileage(
+                        e.target.value === ""
+                          ? 0
+                          : Math.max(
+                              0,
+                              Number(e.target.value)
+                            )
+                      )
+                    }
+                    onBlur={(e) => {
+                      if (e.target.value === "") {
+                        setMileage(0);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* PARTS + SUMMARY */}

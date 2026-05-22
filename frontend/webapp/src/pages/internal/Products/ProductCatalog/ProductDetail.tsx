@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import { Trash2, Pencil, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
 import api from "@/api/axios";
 
 interface ProductPrice {
@@ -93,6 +94,8 @@ const fromSlug = (slug?: string) =>
     ?.split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
+
+const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
 
 const normalizeSuppliers = (row: any): ProductSupplier[] => {
   if (Array.isArray(row.suppliers)) return row.suppliers;
@@ -556,7 +559,7 @@ const ProductDetail: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsEditOpen(true)}
+                  onClick={() => setIsAddSupplierOpen(true)}
                 >
                   + Add Supplier
                 </Button>
@@ -694,6 +697,16 @@ const ProductDetail: React.FC = () => {
           routeState?.categoryId ||
           (product.categoryId ? String(product.categoryId) : null)
         }
+        onSaved={async () => {
+          await loadProduct();
+        }}
+      />
+
+      <AddProductSupplierModal
+        open={isAddSupplierOpen}
+        onOpenChange={setIsAddSupplierOpen}
+        productId={product.id}
+        suppliers={suppliers}
         onSaved={async () => {
           await loadProduct();
         }}

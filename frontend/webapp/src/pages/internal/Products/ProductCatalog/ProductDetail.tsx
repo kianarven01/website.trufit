@@ -95,7 +95,7 @@ const fromSlug = (slug?: string) =>
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
-const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+
 
 const normalizeSuppliers = (row: any): ProductSupplier[] => {
   if (Array.isArray(row.suppliers)) return row.suppliers;
@@ -219,6 +219,7 @@ const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
 
   const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;

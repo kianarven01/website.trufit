@@ -120,7 +120,6 @@ class Product extends Model
             'equivalent_product_id'
         )->withPivot([
             'id',
-            'notes',
         ]);
     }
 
@@ -133,7 +132,6 @@ class Product extends Model
             'base_product_id'
         )->withPivot([
             'id',
-            'notes',
         ]);
     }
 

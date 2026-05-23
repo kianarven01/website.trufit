@@ -10,6 +10,10 @@ use App\Domains\Product\Application\UseCases\CreateProduct;
 use App\Domains\Product\Http\Requests\StoreProductRequest;
 use App\Domains\Product\Application\Services\ProductImageUploader;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\ProductPrice;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -316,5 +320,51 @@ class ProductController extends Controller
             'equivalent_to_product_name' => $equivalentToProductName,
             'equivalence_notes' => $equivalenceNotes,
         ];
+    }
+
+    public function addSupplier(Request $request, string $productId): JsonResponse
+    {
+        $validated = $request->validate([
+            'supplier_id' => ['required', 'uuid'],
+            'supplier_cost' => ['nullable', 'numeric', 'min:0'],
+            'markup' => ['nullable', 'numeric'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'is_vat' => ['nullable', 'boolean'],
+            'vat_percent' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $product = Product::findOrFail($productId);
+
+        $updatedProduct = DB::transaction(function () use ($product, $validated) {
+            $productSupplier = ProductSupplier::create([
+                'id' => (string) Str::uuid(),
+                'product_id' => $product->id,
+                'supplier_id' => $validated['supplier_id'],
+                'supplier_cost' => $validated['supplier_cost'] ?? null,
+                'is_vat' => $validated['is_vat'] ?? false,
+                'vat_percent' => $validated['vat_percent'] ?? null,
+            ]);
+
+            ProductPrice::create([
+                'id' => (string) Str::uuid(),
+                'product_supplier_id' => $productSupplier->id,
+                'Price' => $validated['price'] ?? null,
+                'Markup' => $validated['markup'] ?? null,
+            ]);
+
+            return $product->fresh([
+                'category',
+                'manufacturer',
+                'unitRelation',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
+                'inventoryRelation',
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Supplier added to product successfully.',
+            'data' => $this->formatProduct($updatedProduct),
+        ], 201);
     }
 }

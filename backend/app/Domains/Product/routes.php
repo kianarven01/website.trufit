@@ -8,6 +8,7 @@ use App\Domains\Supplier\Http\Controllers\SupplierController;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Infrastructure\Repositories\EloquentProductRepository;
 
+
 app()->bind(
     ProductRepositoryInterface::class,
     EloquentProductRepository::class
@@ -39,6 +40,7 @@ Route::prefix('products')->group(function () {
     Route::delete('/service-types/{id}', [ProductReferenceController::class, 'destroyServiceType']);
 
     Route::get('/suppliers', [SupplierController::class, 'index']);
+    Route::post('/{product}/suppliers', [ProductController::class, 'addSupplier']);
 
     Route::get('/{productId}/equivalents', [ProductEquivalentController::class, 'index']);
     Route::post('/{productId}/equivalents', [ProductEquivalentController::class, 'store']);

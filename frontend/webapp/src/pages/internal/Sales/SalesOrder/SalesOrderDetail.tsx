@@ -1,278 +1,695 @@
-// Sales Order Details (based on PurchaseOrderDetails UI)
-
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Car, User, Box, Mail, Phone, MapPin, Edit, XCircle, Paperclip } from "lucide-react";
+
 import DataToolbar from "@/components/DataToolbar";
+import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
+import { toast } from "sonner";
+
 import { Pagination, usePagination } from "@/components/ui/pagination";
 
-/* TYPES */
+/* ================= STORAGE ================= */
+
+const STORAGE_KEY = "salesOrders";
+const VEHICLE_MODEL_STORAGE_KEY = "vehicleModels";
+
+/* ================= TYPES ================= */
+
 interface Customer {
-  name: string;
-  email: string;
-  mobile: string;
+  id: string;
+  firstName: string;
+  lastName: string;
   address: string;
+  mobileNumber: string;
+  landline?: string;
+  email?: string;
+  businessPhone?: string;
 }
 
 interface Vehicle {
-  year: string;
+  id: string;
+  customerId: string;
+  vehicleModelId: string;
+  color: string;
+  plateNo: string;
+  engineNo: string;
+  vin: string;
+  registrationNo: string;
+  sellingDealer: string;
+}
+
+interface VehicleModel {
+  id: string;
+  year: number;
   make: string;
   model: string;
   variant: string;
-  plateNo: string;
-  mileage: number;
+  serviceClass: string;
 }
 
-interface Product {
+interface SalesOrderPartLine {
   id: string;
+  ProductId: string;
   name: string;
-  qty: number;
+  sku: string;
   price: number;
+  unit: string;
+  quantity: number | "";
   amount: number;
-}
-
-interface Payment {
-  id: string;
-  date: string;
-  amount: number;
-  method: string;
 }
 
 interface SalesOrder {
   id: string;
-  status: "pending" | "partial" | "paid";
+  salesOrderNo: string;
   customer: Customer;
-  vehicle: Vehicle;
-  linkedJO?: string | null;
-  products: Product[];
-  tax: number;
-  payments: Payment[];
+  vehicle?: Vehicle | null;
+  mileage?: number;
+  parts: SalesOrderPartLine[];
+  subtotalParts: number;
+  total: number;
+  notes?: string;
+  status:
+    | "issued"
+    | "partially paid"
+    | "fulfilled"
+    | "cancelled";
   createdAt: string;
   updatedAt: string;
-  notes?: string;
 }
 
-const STORAGE_KEY = "salesOrders";
+/* ================= COMPONENT ================= */
 
 const SalesOrderDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+
   const navigate = useNavigate();
 
-  const [order, setOrder] = useState<SalesOrder | null>(null);
+  const [order, setOrder] =
+    useState<SalesOrder | null>(null);
 
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(10);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const [vehicleModels, setVehicleModels] =
+    useState<VehicleModel[]>([]);
+
+  const {
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    paginate,
+  } = usePagination(10);
+
+  /* ================= LOAD ================= */
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const found = stored.find((o: SalesOrder) => o.id === id);
-    setOrder(found || null);
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem(STORAGE_KEY) || "[]"
+      );
+
+      const found = stored.find(
+        (o: SalesOrder) => o.id === id
+      );
+
+      setOrder(found || null);
+
+      const storedVehicleModels = JSON.parse(
+        localStorage.getItem(
+          VEHICLE_MODEL_STORAGE_KEY
+        ) || "[]"
+      );
+
+      setVehicleModels(storedVehicleModels || []);
+    } catch (err) {
+      console.error(
+        "Failed to load sales order:",
+        err
+      );
+    }
   }, [id]);
 
+  /* ================= ACTIONS ================= */
+
+  const handleEditSalesOrder = () => {
+    navigate(`/webapp/sales/sales-orders/${order?.id}/edit`);
+  };
+
+  const handleRemoveSalesOrder = () => {
+    const orders: SalesOrder[] = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) || "[]"
+    );
+
+    const updated = orders.filter(
+      (o) => o.id !== order?.id
+    );
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+    toast.success("Sales order deleted");
+
+    navigate("/webapp/sales/sales-orders");
+  };
+
+  /* ================= HELPERS ================= */
+
+  const vehicleModel = useMemo(() => {
+    if (!order?.vehicle) return null;
+
+    return vehicleModels.find(
+      (vm) =>
+        vm.id ===
+        order.vehicle?.vehicleModelId
+    );
+  }, [order, vehicleModels]);
+
+  const getStatusVariant = (
+    status: SalesOrder["status"]
+  ) => {
+    switch (status) {
+      case "fulfilled":
+        return "approved";
+
+      case "partially paid":
+        return "received";
+
+      case "cancelled":
+        return "destructive";
+
+      default:
+        return "secondary";
+    }
+  };
+
+  const peso = (value: number) =>
+    `₱${value.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const formatDate = (d?: string) => {
+    if (!d) return "—";
+
+    return new Date(d).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  /* ================= EMPTY ================= */
+
   if (!order) {
-    return <div className="p-6">Sales order not found</div>;
+    return (
+      <div className="p-6">
+        Sales order not found
+      </div>
+    );
   }
 
-  const items = order.products;
+  /* ================= DATA ================= */
+
+  const items = order.parts || [];
+
   const paginatedItems = paginate(items);
 
-  const subtotal = items.reduce((s, i) => s + i.amount, 0);
-  const total = subtotal + order.tax;
-  const paid = order.payments.reduce((s, p) => s + p.amount, 0);
+  const subtotal = Number(
+    order.subtotalParts || 0
+  );
+
+  const total = Number(order.total || 0);
+
+  // placeholder until payment module exists
+  const paid = 0;
+
   const balance = total - paid;
 
+  /* ================= UI ================= */
+
   return (
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
+    <div className="w-full h-full pl-4 pr-3 pb-4 flex flex-col gap-4 overflow-y-auto">
+      {/* ================= TOOLBAR ================= */}
+
       <DataToolbar
         variant="detail"
-        title={order.id}
+        title={`Sales Order: ${order.salesOrderNo}`}
         actions={
-          <>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate(-1)}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/webapp/sales/sales-orders")}
             >
-              <ArrowLeft className="w-4 h-4 mr-1" /> 
+              <ArrowLeft className="w-4 h-4 mr-1" />
               Back
-            </Button> 
+            </Button>
+
             <Button
               size="sm"
-              onClick={() => navigate(`/webapp/sales/sales-orders/${order.id}/edit-estimate`)}
+              onClick={handleEditSalesOrder}
             >
-              Edit    
+              <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
+
             <Button
               variant="destructive"
               size="sm"
+              onClick={() => setConfirmOpen(true)}
             >
-              Generate Invoice
-            </Button>         
-          </>
-
+              <XCircle className="w-4 h-4 mr-1" /> Remove Sales Order
+            </Button>
+          </div>
         }
       />
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* LEFT */}
+      {/* ================= CUSTOMER + VEHICLE ================= */}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        
+        {/* CUSTOMER DETAILS */}
         <Card>
-          <CardHeader className="justify-between">
-            <h2 className="text-lg font-semibold">Sales Order Information</h2>
-            <Badge>{order.status}</Badge>
+          <CardHeader>
+            <div className="flex items-center gap-2 text-blue-500">
+              <User className="size-5" />
+              <p className="font-semibold text-foreground">
+                Customer Details
+              </p>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm">
 
-            <div className="space-y-4">
-              <p className="text-muted-foreground">Customer Details</p>
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Name</p>
-                <span>{order.customer.name}</span>
-              </div>     
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Email</p>
-                <span>{order.customer.email}</span>
-              </div>   
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Mobile</p>
-                <span>{order.customer.mobile}</span>
+          <CardContent className="space-y-4">
+            
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Full Name
+              </p>
+
+              <p className="text-sm font-medium">
+                {order.customer.firstName}{" "}
+                {order.customer.lastName}
+              </p>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Email Address
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Mail className="size-3.5 text-muted-foreground" />
+                  <p className="text-sm">
+                    {order.customer.email || "—"}
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Address</p>
-                <p>{order.customer.address}</p>
+
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Phone Number
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Phone className="size-3.5 text-muted-foreground" />
+                  <p className="text-sm">
+                    {order.customer.mobileNumber || "—"}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <Separator />
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Landline
+                </p>
 
-            <div className="space-y-4">
-              <p className="text-muted-foreground">Vehicle Details</p>
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Vehicle</p>
-                <span>{order.vehicle.year} {order.vehicle.make} {order.vehicle.model}</span>
-              </div>     
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Variant</p>
-                <span>{order.vehicle.variant}</span>
-              </div>   
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Plate No.</p>
-                <span>{order.vehicle.plateNo}</span>
+                <p className="text-sm">
+                  {order.customer.landline || "—"}
+                </p>
               </div>
-              <div className="flex justify-between">
-                <p className="text-muted-foreground">Mileage</p>
-                <p>{order.vehicle.mileage}</p>
+
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Business Phone
+                </p>
+
+                <p className="text-sm">
+                  {order.customer.businessPhone || "—"}
+                </p>
               </div>
-            </div>
 
-            <Separator />
+              <div className="space-y-1 col-span-2">
+                <p className="text-xs text-muted-foreground">
+                  Address
+                </p>
 
-            <div className="flex justify-between">
-              <span>Linked JO</span>
-              <span>{order.linkedJO || "—"}</span>
-            </div>
+                <div className="flex items-start gap-2">
+                  <MapPin className="size-3.5 mt-0.5 text-muted-foreground" />
+                  <p className="text-sm">
+                    {order.customer.address || "—"}
+                  </p>
+                </div>
+              </div>
 
-            <Separator />
-
-            <div className="flex justify-between">
-              <span>Total</span>
-              <span>₱{total.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Paid</span>
-              <span>₱{paid.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Balance</span>
-              <span>₱{balance.toLocaleString()}</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* RIGHT */}
-        <div className="col-span-2 flex flex-col gap-4">
-          {/* PRODUCTS */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold">Products</h2>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedItems.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>{p.name}</TableCell>
-                      <TableCell>{p.price}</TableCell>
-                      <TableCell>{p.qty}</TableCell>
-                      <TableCell>₱{p.amount}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
+        {/* VEHICLE DETAILS */}
+        <Card
+          className={`
+            relative overflow-hidden transition-all duration-200
+            ${
+              !order.vehicle
+                ? "opacity-50 grayscale-[0.2]"
+                : ""
+            }
+          `}
+        >
+          {!order.vehicle && (
+            <div className="absolute inset-0 z-10 backdrop-blur-[2px] bg-background/40" />
+          )}
 
-            <div className="border-t p-4 text-sm">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>₱{subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax</span>
-                <span>₱{order.tax.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
-                <span>₱{total.toLocaleString()}</span>
-              </div>
+          <CardHeader>
+            <div className="flex items-center gap-2 text-blue-500">
+              <Car className="size-5" />
 
-              <Pagination
-                totalItems={items.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
+              <p className="font-semibold text-foreground">
+                {order.vehicle
+                  ? [
+                      vehicleModel?.year,
+                      vehicleModel?.make,
+                      vehicleModel?.model,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  : "No Vehicle Information"}
+              </p>
             </div>
-          </Card>
+          </CardHeader>
 
-          {/* PAYMENT HISTORY */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-lg font-semibold">Payment History</h2>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {order.payments.length === 0 ? (
-                <p>No payments yet</p>
+          <CardContent>
+            <div className="grid sm:grid-cols-2 gap-x-4 gap-y-4">
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Variant
+                </p>
+
+                <p className="text-sm">
+                  {vehicleModel?.variant || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Color
+                </p>
+
+                <p className="text-sm">
+                  {order.vehicle?.color || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Plate No.
+                </p>
+
+                <p className="text-sm">
+                  {order.vehicle?.plateNo || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Engine No.
+                </p>
+
+                <p className="text-sm">
+                  {order.vehicle?.engineNo || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Chassis No. (VIN)
+                </p>
+
+                <p className="text-sm break-all">
+                  {order.vehicle?.vin || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Registration No.
+                </p>
+
+                <p className="text-sm">
+                  {order.vehicle?.registrationNo || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Selling Dealer
+                </p>
+
+                <p className="text-sm">
+                  {order.vehicle?.sellingDealer || "—"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Mileage
+                </p>
+
+                <p className="text-sm">
+                  {order.mileage
+                    ? `${order.mileage.toLocaleString()} km`
+                    : "—"}
+                </p>
+              </div>
+
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ================= ORDER DETAILS ================= */}
+
+      <div className="grid lg:grid-cols-3 gap-4">
+        
+        {/* LEFT SIDE */}
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* ================= PARTS ================= */}
+          <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+
+            <div className="flex items-center gap-2">
+              <Box className="size-5 text-orange-500" />
+
+              <h2 className="text-sm font-semibold text-foreground">
+                Parts (Sales Order)
+              </h2>
+            </div>
+
+            <div className="border border-border rounded-lg overflow-hidden">
+              {items.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs">
+                          Item Name
+                        </TableHead>
+
+                        <TableHead className="text-xs">
+                          SKU
+                        </TableHead>
+
+                        <TableHead className="text-xs text-right">
+                          Qty
+                        </TableHead>
+
+                        <TableHead className="text-xs text-right">
+                          Unit Price
+                        </TableHead>
+
+                        <TableHead className="text-xs text-right">
+                          Amount
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {paginatedItems.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">
+                            {p.name}
+                          </TableCell>
+
+                          <TableCell>
+                            {p.sku || "—"}
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            {p.quantity} {p.unit}
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            {peso(p.price)}
+                          </TableCell>
+
+                          <TableCell className="text-right font-semibold">
+                            {peso(p.amount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  {items.length > pageSize && (
+                    <Pagination
+                      totalItems={items.length}
+                      page={page}
+                      pageSize={pageSize}
+                      onPageChange={setPage}
+                      onPageSizeChange={setPageSize}
+                    />
+                  )}
+                </>
               ) : (
-                order.payments.map((p) => (
-                  <div key={p.id} className="flex justify-between">
-                    <span>{p.method}</span>
-                    <span>₱{p.amount}</span>
-                  </div>
-                ))
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  No parts added.
+                </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </div>
+
+        {/* ================= SUMMARY ================= */}
+        <div>
+          <div className="sticky top-6 space-y-4">
+            <Card className="shadow-lg border-primary/20">
+              <CardHeader>
+                <h2 className="text-lg font-semibold">Summary</h2>
+              </CardHeader>
+
+              <CardContent className="space-y-4 text-sm">
+                <div className="flex justify-between items-center">
+                  <p className="text-muted-foreground">Status</p>
+                  <Badge
+                    variant={getStatusVariant(order.status)}
+                    className="capitalize"
+                  >
+                    {order.status}
+                  </Badge>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4">
+                  <div className="flex justify-between font-semibold">
+                    <p className="text-foreground">Total</p>
+                    <span>{peso(total)}</span>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Paid</p>
+                    <span>{peso(paid)}</span>
+                  </div>
+
+                  <div className="flex justify-between font-semibold">
+                    <p className="text-muted-foreground">Balance</p>
+                    <span>{peso(balance)}</span>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Linked JO</p>
+                  </div>
+
+                  <Separator/>  
+
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Created</p>
+                    <div>
+                      {formatDate(order.createdAt)}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <p className="text-muted-foreground">Updated</p>
+                    <div>
+                      {formatDate(order.updatedAt)}
+                    </div>
+                  </div>                  
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <p className="text-muted-foreground">
+                    Notes
+                  </p>
+
+                  <Textarea
+                    value={
+                      order.notes ||
+                      "No notes added."
+                    }
+                    readOnly
+                    rows={5}
+                    className="resize-none text-xs"
+                  />
+                </div>
+
+                <Button 
+                  className="w-full"
+                  size="sm"
+                >
+                  <Paperclip className="w-4 h-4 mr-1" /> Generate Printable PDF
+                </Button>
+
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Sales Order"
+        description={
+          <>
+            Are you sure you want to delete this sales order?
+            <br />
+            <br />
+            <span className="text-muted-foreground">
+              This action cannot be undone.
+            </span>
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={handleRemoveSalesOrder}
+      />
     </div>
   );
 };

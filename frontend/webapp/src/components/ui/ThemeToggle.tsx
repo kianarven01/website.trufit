@@ -1,13 +1,14 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark");
+      const saved = localStorage.getItem("theme");
+      // Default to dark if no preference saved
+      return saved ? saved === "dark" : true;
     }
-    return false;
+    return true;
   });
 
   useEffect(() => {
@@ -20,21 +21,22 @@ export function ThemeToggle() {
     }
   }, [dark]);
 
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") {
-      setDark(true);
-    }
-  }, []);
-
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
+      type="button"
       onClick={() => setDark(!dark)}
-      className="h-8 w-8"
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+        dark ? "bg-primary" : "bg-muted-foreground/30"
+      }`}
+      role="switch"
+      aria-checked={dark}
     >
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform ${
+          dark ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+      <span className="sr-only">{dark ? "Switch to light mode" : "Switch to dark mode"}</span>
+    </button>
   );
 }

@@ -32,6 +32,8 @@ interface MakeComboboxProps {
   onAdd?: (currentSearch: string) => void;
   showGroupSeparator?: boolean;
   isLoading?: boolean;
+  disabled?: boolean;
+  className?: string;
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -44,6 +46,8 @@ const Combobox: FC<MakeComboboxProps> = ({
   onAdd,
   showGroupSeparator = false,
   isLoading,
+  disabled,
+  className,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -73,6 +77,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   );
 
   const resolveValue = (input: string) => {
+    if (input.endsWith(" ")) return input;
     const match = normalizedItems.find(
       i => i.value.trim().toLowerCase() === input.trim().toLowerCase()
     );
@@ -91,20 +96,21 @@ const Combobox: FC<MakeComboboxProps> = ({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !disabled} onOpenChange={(val) => !disabled && setOpen(val)}>
       <PopoverTrigger asChild>
         <div className="relative w-full">
           <Input
             placeholder={placeholder || "Type or select..."}
             value={search}
             onChange={(e) => {
+              if (disabled) return;
               const val = e.target.value;
               setSearch(val);
               onChange(resolveValue(val));
               setOpen(true);
             }}
-            disabled={isLoading}
-            className="w-full pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={disabled || isLoading}
+            className={cn("w-full pr-10 disabled:opacity-50 disabled:cursor-not-allowed", className)}
           />
 
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">

@@ -243,6 +243,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [, setForceRender] = useState(0);
+
+  useEffect(() => {
+    const handleBreadcrumbUpdate = () => {
+      setForceRender(prev => prev + 1);
+    };
+    window.addEventListener('breadcrumb-update', handleBreadcrumbUpdate);
+    return () => window.removeEventListener('breadcrumb-update', handleBreadcrumbUpdate);
+  }, []);
+
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("sidebar-collapsed");
@@ -299,21 +309,34 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     .map((segment, index) => {
       const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
       
-      const findLabel = (items: NavItem[]): string | null => {
+      const findInfo = (items: NavItem[]): { label: string; isClickable: boolean } | null => {
         for (const item of items) {
-          if (item.path === path) return item.label;
+          if (item.path === path) return { label: item.label, isClickable: true };
           if (item.children) {
             const child = item.children.find(c => c.path === path);
-            if (child) return child.label;
+            if (child) return { label: child.label, isClickable: true };
+            
+            // If the current path segment is a group parent (e.g. /webapp/services)
+            // but it's not the final segment and doesn't have its own path
+            // Ensure we don't match the root '/webapp' as a group parent
+            const isGroupParent = path !== "/webapp" && item.children.some(c => c.path.startsWith(path));
+            if (isGroupParent) return { label: item.label, isClickable: false };
           }
         }
         return null;
       };
       
-      const mappedLabel = findLabel(navItems);
-      const label = mappedLabel || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+      const info = findInfo(navItems);
+      let label = info?.label || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+      const isClickable = info?.isClickable ?? false;
       
-      return { label, path };
+      // Dynamic Label override (for UUIDs or dynamic routes)
+      if (!info) {
+        const dynamicLabel = sessionStorage.getItem(`breadcrumb-${path}`);
+        if (dynamicLabel) label = dynamicLabel;
+      }
+      
+      return { label, path, isClickable };
     })
     .filter(item => item.label.toLowerCase() !== "webapp");
 
@@ -542,7 +565,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Desktop sidebar */}
         <aside
           className={cn(
-            "hidden md:flex md:flex-col bg-sidebar border-r border-sidebar-border shrink-0 transition-all duration-300 ease-in-out z-40",
+            "hidden md:flex md:flex-col bg-sidebar shrink-0 transition-all duration-300 ease-in-out z-40",
             collapsed ? "md:w-24" : "md:w-72",
           )}
         >
@@ -570,7 +593,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {/* Main content */}
         <div className="flex flex-1 flex-col min-w-0">
-          <header className="flex h-16 items-center gap-4 border-b border-border bg-card/50 backdrop-blur-md px-6 shrink-0">
+          <header className="flex h-16 items-center gap-4 border-b border-border/50 bg-card/30 backdrop-blur-md px-6 shrink-0">
             {/* Mobile menu */}
             <button
               onClick={() => setMobileOpen(true)}
@@ -600,8 +623,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <React.Fragment key={item.path}>
                       {idx > 0 && <BreadcrumbSeparator className="text-muted-foreground/30" />}
                       <BreadcrumbItem>
-                        {idx === breadcrumbItems.length - 1 ? (
-                          <BreadcrumbPage className="text-[13px] font-semibold text-foreground/90">
+                        {idx === breadcrumbItems.length - 1 || !item.isClickable ? (
+                          <BreadcrumbPage className={cn(
+                            "text-[13px] font-semibold",
+                            idx === breadcrumbItems.length - 1 ? "text-foreground/90" : "text-muted-foreground/60"
+                          )}>
                             {item.label}
                           </BreadcrumbPage>
                         ) : (
@@ -673,17 +699,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <button 
                   type="button"
-                  className="flex items-center gap-3 rounded-full px-1.5 py-1.5 hover:bg-accent transition-all group outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0"
+                  className="flex items-center gap-2.5 rounded-full px-1 py-1 hover:bg-accent transition-all group outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ring-0 border border-transparent hover:border-border"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold text-lg">
-                    {user?.username?.charAt(0).toUpperCase()}
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm font-bold text-sm">
+                    {(user?.first_name || user?.username || "A").charAt(0).toUpperCase()}
                   </div>
                   <div className="hidden sm:block text-left pr-2">
-                    <p className="text-base font-bold text-foreground leading-tight">
-                      {user?.username}
+                    <p className="text-[14px] font-bold text-foreground leading-tight">
+                      {user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : user?.username}
                     </p>
-                    <p className="text-xs text-muted-foreground/70 font-medium capitalize">
-                      {user?.position || user?.role}
+                    <p className="text-[11px] text-muted-foreground/70 font-medium capitalize">
+                      {user?.position || user?.role || "Administrator"}
                     </p>
                   </div>
                 </button>
@@ -717,7 +743,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main className="flex-1 overflow-hidden bg-background/50 pt-4">
+          <main className="flex-1 overflow-hidden bg-background pt-4">
             {children}
           </main>
         </div>

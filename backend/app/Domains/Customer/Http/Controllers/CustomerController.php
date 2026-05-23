@@ -109,6 +109,29 @@ class CustomerController extends Controller
                 ->where('plate_number', $plateNumber)
                 ->firstOrFail();
 
+            // Check if vehicle has service history
+            $hasJobOrders = \Illuminate\Support\Facades\DB::table('Main.JobOrder')
+                ->where('vehicle_id_new', $vehicle->id)
+                ->exists();
+            $hasWarranties = \Illuminate\Support\Facades\DB::table('Main.Warranties')
+                ->where('vehicle_id_new', $vehicle->id)
+                ->exists();
+            $hasEstimates = \Illuminate\Support\Facades\DB::table('Main.Estimates')
+                ->where('vehicle_id', $vehicle->id)
+                ->exists();
+
+            if ($hasJobOrders || $hasWarranties || $hasEstimates) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This vehicle has service history and cannot be removed.'
+                ], 422);
+            }
+
+            // Unlink any appointments referencing this vehicle
+            \Illuminate\Support\Facades\DB::table('Main.Appointments')
+                ->where('vehicle_id', $vehicle->id)
+                ->update(['vehicle_id' => null]);
+
             $vehicle->delete();
 
             return response()->json([

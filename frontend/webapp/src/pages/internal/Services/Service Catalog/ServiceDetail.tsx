@@ -7,31 +7,24 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, XCircle, BanknoteX, ClipboardList, Tag, Clock } from "lucide-react";
-
-/* ================= STORAGE ================= */
-const SERVICE_KEY = "services";
-const CATEGORY_KEY = "serviceCategories";
-const VEHICLE_SIZE_KEY = "vehicleSizes";
-const PRICING_KEY = "servicePricing";
-
+import { ArrowLeft, Pencil, XCircle, BanknoteX, Tag, Clock } from "lucide-react";
+import api from "@/api/axios";
 
 /* ================= TYPES ================= */
 interface Service {
   id: string;
   name: string;
+  category?: string;
+  service_category?: { name: string };
+  service_category_id?: number;
   serviceCategoryId: string;
   description?: string;
   duration?: number;
   pricingType: "fixed" | "hourly rate";
-}
-
-interface ServiceCategory {
-  id: string;
-  name: string;
 }
 
 interface VehicleSize {
@@ -44,7 +37,9 @@ interface ServicePricing {
   id: string;
   serviceId: string;
   vehicleSizeId: string;
+  vehicleTypes?: string[];
   price: number;
+  pricingType: "fixed" | "hourly rate";
 }
 
 
@@ -54,32 +49,72 @@ const ServiceDetail: React.FC = () => {
   const { id } = useParams();
 
   const [service, setService] = useState<Service | null>(null);
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [vehicleSizes, setVehicleSizes] = useState<VehicleSize[]>([]);
   const [pricing, setPricing] = useState<ServicePricing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingType, setIsUpdatingType] = useState(false);
 
 /* ================= LOAD ================= */
 useEffect(() => {
-  const services: Service[] = JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]");
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get(`/products/service-types/${id}`);
+      const s = res.data.data;
+      setService({
+        ...s,
+        pricingType: s.pricing_type || "fixed",
+        serviceCategoryId: s.service_category?.name || s.category || "Uncategorized" // Prefer relational name
+      });
+      
+      // Dynamic Breadcrumb
+      sessionStorage.setItem(`breadcrumb-/webapp/services/service-catalog/${id}`, s.name);
+      window.dispatchEvent(new Event('breadcrumb-update'));
 
-  setService(services.find((s) => s.id === id) || null);
-  setCategories(JSON.parse(localStorage.getItem(CATEGORY_KEY) || "[]"));
-  setVehicleSizes(JSON.parse(localStorage.getItem(VEHICLE_SIZE_KEY) || "[]"));
-  setPricing(JSON.parse(localStorage.getItem(PRICING_KEY) || "[]"));
+      // Set pricing from backend if available
+      if (s.pricings) {
+        setPricing(s.pricings.map((p: any) => ({
+          id: p.id,
+          serviceId: s.id,
+          vehicleSizeId: p.vehicle_size_name,
+          vehicleTypes: p.vehicle_types || [],
+          price: p.price,
+          pricingType: p.pricing_type || "fixed"
+        })));
+      }
+
+    } catch (err) {
+      console.error("Failed to load service detail", err);
+      toast.error("Failed to load service detail");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchData();
 }, [id]);
 
-/* ================= DERIVED DATA ================= */
-const category = useMemo(
-  () => categories.find((c) => c.id === service?.serviceCategoryId),
-  [categories, service]
-);
+/* ================= DELETE SERVICE ================= */
+const handleDeleteService = async () => {
+  try {
+    setIsDeleting(true);
+    await api.delete(`/products/service-types/${id}`);
+    toast.success("Service deleted");
+    navigate(-1);
+  } catch (err) {
+    console.error("Failed to delete service", err);
+    toast.error("Failed to delete service");
+  } finally {
+    setIsDeleting(false);
+  }
+};
 
-const servicePricing = useMemo(
-  () => pricing.filter((p) => p.serviceId === id),
-  [pricing, id]
-);
+/* ================= DERIVED DATA ================= */
+const filteredPricing = useMemo(() => {
+  if (!service) return [];
+  return pricing.filter(p => p.pricingType === service.pricingType);
+}, [pricing, service]);
 
 const durationFormatted = useMemo(() => {
   if (service?.duration == null) return "—";
@@ -103,28 +138,23 @@ const durationFormatted = useMemo(() => {
   return text;
 }, [service]);
 
-
-/* ================= DELETE SERVICE ================= */
-const handleDeleteService = () => {
-  const services: Service[] = JSON.parse(localStorage.getItem(SERVICE_KEY) || "[]");
-
-  const updated = services.filter((s) => s.id !== id);
-
-  localStorage.setItem(SERVICE_KEY, JSON.stringify(updated));
-
-  toast.success("Service deleted");
-  navigate(-1);
-};
-
 /* ================= UI ================= */
+if (isLoading) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center py-20">
+      <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+      <p className="text-sm font-medium text-muted-foreground animate-pulse">
+        Loading service details...
+      </p>
+    </div>
+  );
+}
+
 if (!service) return null;
 
 return (
   <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-y-auto">
 
-    {/* TOOLBAR (VIEW MODE ONLY) */}
-
-    {/* TOOLBAR (VIEW MODE ONLY) */}
     <DataToolbar
       variant="detail"
       actions={
@@ -164,34 +194,27 @@ return (
 
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <Label> Service Name</Label>
-            <p className="text-sm">{service.name}</p>
+            <Label>Service Name</Label>
+            <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">{service.name}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Category</Label>
+            <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">{service.serviceCategoryId}</p>
           </div>
 
           <div className="space-y-1">
-            <Label>Category</Label>
-            <p className="text-sm">{category?.name || "—"}</p>
-          </div>
-
-          <div className="space-y-2">
             <Label>Description</Label>
-              <div>
-                <Textarea 
-                  value={service?.description || "—"} 
-                  rows={5} 
-                  readOnly
-                  className="text-xs resize-none"
-                />
-              </div>
+            <div className="text-sm px-3 py-2 bg-muted/20 rounded-md border min-h-[100px] whitespace-pre-wrap">
+              {service?.description || "No description provided"}
+            </div>
           </div>
 
           <div className="space-y-1">
             <Label>Estimated Duration</Label>
-            <Input
-              value={durationFormatted} 
-              readOnly 
-              className="text-xs" 
-            />
+            <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">
+              {durationFormatted}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -206,44 +229,90 @@ return (
                 Indicated pricing type and price range based on vehicle size.
               </p>             
             </div>  
-            <Badge variant="outline" className="flex items-center gap-1 text-[11px] uppercase">
-              {service.pricingType === "fixed" ? (
-                <>
-                  <Tag className="w-3 h-3" />
-                  Fixed Price
-                </>
-              ) : (
-                <>
-                  <Clock className="w-3 h-3" />
-                  Hourly Rate
-                </>
-              )}
-            </Badge> 
+            <div className="inline-flex p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 backdrop-blur-sm">
+              {[
+                { id: "fixed", label: "Fixed Price", icon: <Tag className="w-3 h-3" /> },
+                { id: "hourly rate", label: "Hourly Rate", icon: <Clock className="w-3 h-3" /> },
+              ].map((type) => {
+                const isActive = (service?.pricingType || "fixed") === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={async () => {
+                      if (!service || isUpdatingType) return;
+                      const newType = type.id as "fixed" | "hourly rate";
+                      if (service.pricingType === newType) return;
+
+                      try {
+                        setIsUpdatingType(true);
+                        await api.put(`/products/service-types/${id}`, {
+                          ...service,
+                          category_name: service.category,
+                          pricing_type: newType
+                        });
+                        setService({ ...service, pricingType: newType });
+                      } catch (err) {
+                        toast.error("Failed to update pricing type");
+                      } finally {
+                        setIsUpdatingType(false);
+                      }
+                    }}
+                    disabled={isUpdatingType}
+                    className={cn(
+                      "relative flex items-center gap-2 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-all duration-200 ease-out rounded-lg",
+                      isActive 
+                        ? "bg-white text-slate-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-slate-200" 
+                        : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50",
+                      isUpdatingType && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    <span className={cn("transition-transform duration-200", isActive && "scale-110")}>
+                      {type.icon}
+                    </span>
+                    {type.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>                  
         </CardHeader>
 
-        <CardContent className="flex flex-col min-h-[200px]">
-          {servicePricing.length > 0 ? (
+        <CardContent className={cn("flex flex-col min-h-[200px] transition-opacity duration-300", isUpdatingType && "opacity-50 pointer-events-none")}>
+          {isUpdatingType ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-10">
+              <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+              <p className="text-xs text-muted-foreground animate-pulse">Updating pricing view...</p>
+            </div>
+          ) : filteredPricing.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Size</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-center">Size</TableHead>
+                  <TableHead className="text-center">Vehicle Type</TableHead>
+                  <TableHead className="text-center">
+                    {service.pricingType === "hourly rate" ? "Rate / hr" : "Price"}
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
-                {servicePricing.map((p) => {
-                  const size = vehicleSizes.find((v) => v.id === p.vehicleSizeId);
-
+                {filteredPricing.map((p, i) => {
                   return (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <Badge variant="outline">{size?.name}</Badge>
+                    <TableRow key={p.id || i}>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">{p.vehicleSizeId}</Badge>
                       </TableCell>
-                      <TableCell>{size?.description || "—"}</TableCell>
-                      <TableCell className="text-right">{p.price}</TableCell>
+                      <TableCell className="text-center">
+                        {p.vehicleTypes && p.vehicleTypes.length > 0 ? (
+                          <span className="text-sm text-muted-foreground">
+                            {p.vehicleTypes.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">{Number(p.price).toFixed(2)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -253,7 +322,10 @@ return (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <BanknoteX className="h-10 w-10 stroke-1 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                No pricing for different vehicle sizes has been set for this service.
+                No {service.pricingType === "fixed" ? "fixed prices" : "hourly rates"} have been set for this service.
+              </p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                You can add pricing for different vehicle sizes in the edit section.
               </p>
             </div>
           )}
@@ -276,11 +348,12 @@ return (
           </span>
         </>
       }
-      confirmLabel="Delete"
+      confirmLabel={isDeleting ? "Deleting..." : "Delete"}
       destructive
       onConfirm={handleDeleteService}
     />
   </div>
 );
 }
+
 export default ServiceDetail;

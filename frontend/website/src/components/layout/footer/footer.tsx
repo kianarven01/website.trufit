@@ -5,19 +5,19 @@ import ShareButtons from "@/components/ui/ShareButtons";
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-950 text-white pt-16 pb-8">
+    <footer className="bg-gray-950 text-white pt-12 pb-6">
       
       {/* main footer content */}
-      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
+      <div className="container grid grid-cols-1 md:grid-cols-4 gap-8">
 
         {/* logo */}
-        <div className="flex flex-col items-start lg:pr-8">
+        <div className="flex flex-col items-start">
           <Link href="/">
             <Image
               src="/images/logo-dark1.webp"
               alt="TruFit Auto Center"
-              width={180}
-              height={48}
+              width={150}
+              height={40}
               priority
               className="w-[180px] md:w-[200px]"
             />
@@ -150,13 +150,21 @@ export default function Footer() {
       </div>
 
       {/* copyright */}
-      <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 mt-12">
-        <div className="border-t border-gray-800 pt-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+      <div className="container mt-8">
+        {/* extra space above the border line */}
+        <div className="mb-6"></div>
+
+        <div className="border-t border-gray-800 pt-4 text-gray-500 text-sm">
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-2">
+
             {/* left: copyright */}
-            <div className="text-gray-500 text-xs">
-              © {new Date().getFullYear()} Trufit Auto Center. All rights reserved.
+            <div className="text-left md:text-left">
+              © {new Date().getFullYear()} TRUFIT Auto Center. All rights reserved.
             </div>
+
+            {/* mobile divider */}
+            <div className="block md:hidden w-full border-t border-gray-700 my-2"></div>
 
             {/* center: verse */}
             <p className="text-gray-600 text-xs text-center italic max-w-lg">
@@ -168,6 +176,7 @@ export default function Footer() {
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
             </div>
+
           </div>
 
         </div>

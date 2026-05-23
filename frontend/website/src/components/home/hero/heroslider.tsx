@@ -3,23 +3,25 @@
 import { useState, useEffect, useRef } from "react"
 import { slides } from "@/data/slides"
 import HeroSlide from "./heroslide"
-import gsap from "gsap"
 
 export default function HeroSlider() {
   const [index, setIndex] = useState(0)
-  const [nextIndex, setNextIndex] = useState<number | null>(null)
-  const [progress, setProgress] = useState(0)
-  const [isCompleting, setIsCompleting] = useState(false)
-  
   const slideCount = slides.length
-  const intervalTime = 6000
-  const containerRef = useRef<HTMLDivElement>(null)
+  const intervalTime = 5000
+  const [progress, setProgress] = useState(0)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const triggerTransition = (newTarget: number) => {
-    if (nextIndex !== null || newTarget === index) return
-    setNextIndex(newTarget)
-    setProgress(0)
-    setIsCompleting(false)
+  // touch state
+  const touchStartX = useRef(0)
+  const touchEndX = useRef(0)
+  const minSwipeDistance = 50 // minimum distance to trigger swipe
+
+  const startInterval = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    intervalRef.current = setInterval(() => {
+      setIndex((prev) => (prev + 1) % slideCount)
+      setProgress(0)
+    }, intervalTime)
   }
 
   // 1. Progress Bar Logic using requestAnimationFrame for smoothness
@@ -54,9 +56,8 @@ export default function HeroSlider() {
     if (progress >= 100 && nextIndex === null && !isCompleting) {
       setIsCompleting(true);
     }
-  }, [progress, nextIndex, isCompleting]);
+  }, [slideCount])
 
-  // 3. Trigger Transition after Ping Delay
   useEffect(() => {
     if (isCompleting) {
       const timer = setTimeout(() => {
@@ -125,12 +126,10 @@ export default function HeroSlider() {
       ref={containerRef}
       className="relative h-[calc(100vh+112px)] md:h-[calc(100vh+120px)] w-full overflow-hidden -mt-[112px] md:-mt-[120px]"
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Base Layer */}
-      <div className="absolute inset-0">
-        <HeroSlide key={`base-${index}`} slide={slides[index]} isActive={false} />
-      </div>
+      <HeroSlide slide={slides[index]} />
 
       {/* Transition Layer */}
       {nextIndex !== null && (
@@ -151,7 +150,7 @@ export default function HeroSlider() {
           <div
             key={i}
             onClick={() => handleClick(i)}
-            className="flex-1 h-2 md:h-3 bg-white/30 cursor-pointer relative overflow-hidden"
+            className="flex-1 h-3 bg-white/30 cursor-pointer hover:bg-white/50 relative"
           >
             <div
               className={`h-full bg-brand-red transition-all ${i === index && isCompleting ? 'opacity-50' : 'opacity-100'}`}
@@ -160,10 +159,9 @@ export default function HeroSlider() {
                 transition: 'none'
               }}
             />
-            {i === index && isCompleting && <div className="absolute inset-0 bg-white/80 animate-ping" />}
           </div>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

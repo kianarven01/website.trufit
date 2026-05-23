@@ -1,110 +1,88 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-const SUGGESTED_CATEGORIES = [
-  "Engine",
-  "Brakes",
-  "Suspension",
-  "Transmission",
-  "Exhaust",
-  "Electrical",
-  "Cooling",
-  "Steering",
-  "Fuel System",
-  "Body & Trim",
-  "Interior",
-  "Tyres & Wheels",
-];
-
-type Category = {
+export interface PartsCategoryFormData {
+  id?: string;
   name: string;
-};
+}
 
-type Props = {
+interface AddPartsCategoryProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  category?: Category | null;
-  onSaved: (category: Category) => void;
-};
+  category?: PartsCategoryFormData | null;
+  onSaved: (category: PartsCategoryFormData) => Promise<void> | void;
+}
 
-const AddPartsCategory: React.FC<Props> = ({
+const AddPartsCategory: React.FC<AddPartsCategoryProps> = ({
   open,
   onOpenChange,
   category,
   onSaved,
 }) => {
-  const isEdit = !!category;
-
   const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (category) {
-      setName(category.name);
+    if (open) {
+      setName(category?.name || "");
     } else {
       setName("");
     }
-  }, [category, open]);
+  }, [open, category]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
 
-    onSaved({ name });
-    onOpenChange(false);
+    try {
+      setSaving(true);
+
+      await onSaved({
+        id: category?.id,
+        name: name.trim(),
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save category:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[460px] rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Category" : "Add Category"}</DialogTitle>
+          <DialogTitle className="text-xl font-semibold">
+            {category ? "Edit Parts Category" : "Add Parts Category"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-
-          {/* Category Name */}
+        <div className="grid gap-4 py-2">
           <div className="space-y-2">
-            <Label>Category Name *</Label>
+            <label className="text-sm font-medium">Category Name</label>
             <Input
-              placeholder="e.g. Engine, Brakes..."
               value={name}
               onChange={(e) => setName(e.target.value)}
+              placeholder="Enter category name"
             />
           </div>
-
-          {/* Suggested Categories */}
-          {!isEdit && (
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTED_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setName(cat)}
-                  className="px-2 py-1.5 text-xs rounded-md border hover:bg-muted transition"
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          )}
-
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-
-          <Button disabled={!name} onClick={handleSave}>
-            {isEdit ? "Save Changes" : "Add Category"}
+          <Button onClick={handleSave} disabled={saving || !name.trim()}>
+            {saving ? "Saving..." : category ? "Save Changes" : "Add Category"}
           </Button>
         </DialogFooter>
       </DialogContent>

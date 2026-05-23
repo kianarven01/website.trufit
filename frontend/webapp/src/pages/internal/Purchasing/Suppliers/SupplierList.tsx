@@ -136,7 +136,7 @@ const filtered = suppliers.filter((s) => {
 
       {/* TABLE + PAGINATION */}
       {suppliers.length > 0 ? (
-        <div className="flex-1 flex flex-col border rounded-xl  overflow-hidden">
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
           {/* Scrollable Table */}
           <ScrollArea className="flex-1 px-3">

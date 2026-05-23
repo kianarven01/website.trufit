@@ -1,3 +1,4 @@
+// src/components/layout/Navbar/Navbar.tsx
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -42,7 +43,7 @@ export default function Navbar() {
     return () => window.removeEventListener("hideNavbar", handleHide as EventListener)
   }, [])
 
-  // handle scroll
+  // close mobile menu on outside click
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY
@@ -99,7 +100,7 @@ export default function Navbar() {
       }
     }
 
-    window.addEventListener("scroll", handleScroll, { passive: true })
+    window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [isOpen])
 
@@ -158,15 +159,13 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* navbar wrapper - hides on scroll down */}
-      <motion.nav 
-        className="overflow-hidden"
-        initial={false}
-        animate={{ 
-          y: isVisible ? 0 : "-100%",
-          opacity: isVisible ? 1 : 0
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+      {/* main navbar */}
+      <div
+        className={`w-full transition-all duration-300 ${
+          scrolled
+            ? "bg-white shadow-sm border-b"
+            : "bg-transparent border-transparent"
+        }`}
       >
         <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 py-2">
           <div className="flex items-center h-16 w-full">

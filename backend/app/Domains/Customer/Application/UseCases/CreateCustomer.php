@@ -33,6 +33,7 @@ class CreateCustomer
                 'landline' => $dto->landline,
                 'email' => $dto->email,
                 'business' => $dto->business,
+                'origin' => 'manual',
             ]);
 
             if (!empty($dto->vehicles)) {

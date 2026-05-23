@@ -59,6 +59,7 @@ interface VehicleForm {
   registrationNo: string;
   sellingDealer: string;
   _deleted?: boolean;
+  _originalPlateNo?: string; // Tracks original plate for edit mode
 }
 
 /* ================= HELPERS ================= */
@@ -210,6 +211,7 @@ const emptyVehicle = (): VehicleForm => ({
           registrationNo: v.registrationNo || "",
           sellingDealer: v.sellingDealer || "",
           _deleted: false,
+          _originalPlateNo: v.plateNo || "",
         };
       });
       setVehicles(mappedVehicles);
@@ -331,7 +333,10 @@ const emptyVehicle = (): VehicleForm => ({
         engineNo: v.engineNo,
         vin: v.vin,
         registrationNo: v.registrationNo,
-        sellingDealer: v.sellingDealer
+        sellingDealer: v.sellingDealer,
+        ...(isEdit && v._originalPlateNo && v._originalPlateNo !== v.plateNo
+          ? { oldPlateNo: v._originalPlateNo }
+          : {}),
       };
     });
 

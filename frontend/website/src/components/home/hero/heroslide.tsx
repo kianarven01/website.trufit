@@ -1,16 +1,12 @@
-"use client";
-
-import { useLayoutEffect, useRef } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRightCircle, Play } from "lucide-react";
-import { Slide } from "@/types/slide";
-import gsap from "gsap";
+// src/components/sections/HeroSlide.tsx
+import Image from "next/image"
+import Link from "next/link"
+import { ArrowRightCircle, Play } from "lucide-react"
+import { Slide } from "@/types/slide"
 
 type Props = {
-  slide: Slide;
-  isActive?: boolean;
-};
+  slide: Slide
+}
 
 export default function HeroSlide({ slide, isActive }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -134,7 +130,10 @@ export default function HeroSlide({ slide, isActive }: Props) {
       <div className="absolute inset-0 bg-black/70" />
 
       {/* left shadow */}
-      <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-black/80 to-transparent" />
+      <div className="absolute inset-y-0 left-0 w-1/4 bg-gradient-to-r from-black/70 to-transparent" />
+
+      {/* right shadow */}
+      <div className="absolute inset-y-0 right-0 w-1/4 bg-gradient-to-l from-black/70 to-transparent" />
 
       {/* content */}
       <div className="relative z-10 flex h-full items-center">
@@ -228,6 +227,7 @@ export default function HeroSlide({ slide, isActive }: Props) {
 
         </div>
       </div>
+
     </div>
-  );
+  )
 }

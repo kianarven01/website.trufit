@@ -19,6 +19,7 @@ interface Customer {
   landline?: string;
   email?: string;
   businessPhone?: string;
+  origin?: string;
 }
 
 interface VehicleModel {
@@ -85,6 +86,7 @@ const CustomersList: React.FC = () => {
           landline: c.landline || "",
           email: c.email || "",
           businessPhone: c.business || "",
+          origin: c.origin || "appointment",
           vehicles: c.vehicles || []
         }));
         setCustomers(parsed);
@@ -319,7 +321,7 @@ const toolbarFilters = [
       />
 
       {isLoading ? (
-        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden bg-card/50">
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
           <div className="flex-1 flex flex-col items-center justify-center py-20">
             <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
             <p className="text-sm font-medium text-muted-foreground animate-pulse">
@@ -328,16 +330,17 @@ const toolbarFilters = [
           </div>
         </div>
       ) : customers.length > 0 ? (
-        <div className="flex-1 flex flex-col border rounded-xl px-2 overflow-hidden">
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 px-2">
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[20%] text-center">Name</TableHead>
-                  <TableHead className="w-[40%] text-center">Address</TableHead>
-                  <TableHead className="w-[20%] text-center">Mobile</TableHead>
+                  <TableHead className="w-[30%] text-center">Address</TableHead>
+                  <TableHead className="w-[15%] text-center">Mobile</TableHead>
                   <TableHead className="w-[20%] text-center">Plate Number</TableHead>
+                  <TableHead className="w-[15%] text-center">Profile Status</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -375,11 +378,22 @@ const toolbarFilters = [
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-center">
+                        {c.origin === 'appointment' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">
+                            Incomplete
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                            Complete
+                          </span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4}>
+                    <TableCell colSpan={5}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">
@@ -396,17 +410,13 @@ const toolbarFilters = [
             </Table>
           </ScrollArea>
 
-          {filtered.length > 0 && (
-            <div className="border-t bg-background">
-              <Pagination
-                totalItems={filtered.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+          <Pagination
+            totalItems={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       ) : (
         <Card>
@@ -435,6 +445,7 @@ const toolbarFilters = [
             landline: newCustomer.landline || "",
             email: newCustomer.email || "",
             businessPhone: newCustomer.business || "",
+            origin: newCustomer.origin || "manual",
             vehicles: newCustomer.vehicles || []
           };
           setCustomers((prev) => [parsed, ...prev]);

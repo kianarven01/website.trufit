@@ -48,6 +48,7 @@ class ScheduleAppointment
                             'last_name' => $dto->lastName,
                             'email' => $dto->email,
                             'address' => '',
+                            'origin' => 'appointment',
                         ]
                     );
                     $customerID = $customer->customer_id;

@@ -1,195 +1,307 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ImagePlus, X } from "lucide-react";
-import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
 
-interface MakeOption {
+export interface VehicleModalVehicle {
+  id?: string;
+  makeId: string;
+  model: string;
+  image?: string;
+  imageFile?: File | null;
+}
+
+export interface VehicleMakerOption {
   id: string;
   name: string;
 }
 
-interface Props {
+type ManufacturerType = "vehicle" | "parts";
+
+interface VehicleModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  vehicle?: any | null;
-  makerList: MakeOption[];
-  onSaved: (vehicle: any) => void;
+  vehicle?: VehicleModalVehicle | null;
+  makerList: VehicleMakerOption[];
+  onSaved: (vehicle: VehicleModalVehicle) => Promise<void> | void;
+
+  // Vehicle page creates vehicle manufacturers automatically
+  onCreateManufacturer: (
+    name: string,
+    type: ManufacturerType
+  ) => Promise<VehicleMakerOption | null>;
 }
 
-export function VehicleModal({
+const ADD_MANUFACTURER_OPTION = "+ Add manufacturer";
+
+export const VehicleModal: React.FC<VehicleModalProps> = ({
   open,
   onOpenChange,
   vehicle,
   makerList,
   onSaved,
-}: Props) {
-  const isEdit = !!vehicle;
-  const [makeId, setMakeId] = useState(""); // stores ID or typed name temporarily
+  onCreateManufacturer,
+}) => {
+  const [makeName, setMakeName] = useState("");
   const [model, setModel] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
-  const capitalize = (str: string) =>
-    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  const [saving, setSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
+  const [newManufacturerName, setNewManufacturerName] = useState("");
+  const [creatingManufacturer, setCreatingManufacturer] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedMaker = useMemo(
+    () => makerList.find((maker) => maker.id === vehicle?.makeId) || null,
+    [makerList, vehicle]
+  );
 
   useEffect(() => {
     if (open) {
-      if (vehicle) {
-        const maker = makerList.find((m) => m.id === vehicle.makeId);
-        setMakeId(maker ? maker.id : vehicle.makeId); // display existing make ID or typed value
-        setModel(vehicle.model);
-        setImageUrl(vehicle.image || "");
-      } else {
-        setMakeId("");
-        setModel("");
-        setImageUrl("");
-      }
-    }
-  }, [open, vehicle, makerList]);
+      setMakeName(selectedMaker?.name || "");
+      setModel(vehicle?.model || "");
+      setImagePreview(vehicle?.image || "");
+      setImageFile(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setImageUrl(reader.result as string);
-    reader.readAsDataURL(file);
+      setShowAddManufacturer(false);
+      setNewManufacturerName("");
+      setCreatingManufacturer(false);
+    } else {
+      setMakeName("");
+      setModel("");
+      setImagePreview("");
+      setImageFile(null);
+      setIsDragging(false);
+
+      setShowAddManufacturer(false);
+      setNewManufacturerName("");
+      setCreatingManufacturer(false);
+    }
+  }, [open, vehicle, selectedMaker]);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleSave = () => {
-    if (!makeId || !makeId.trim()) {
-      toast.error("Please select or enter a Make");
-      return;
-    }
-    if (!model.trim()) {
-      toast.error("Model name is required");
+  const handleMakeChange = (value: string) => {
+    if (value === ADD_MANUFACTURER_OPTION) {
+      setShowAddManufacturer(true);
+      setMakeName("");
       return;
     }
 
-    setIsSaving(true);
+    setShowAddManufacturer(false);
+    setNewManufacturerName("");
+    setMakeName(value);
+  };
+
+  const handleCreateManufacturer = async () => {
+    const trimmedName = newManufacturerName.trim();
+    if (!trimmedName) return;
+
+    const existing = makerList.find(
+      (maker) => maker.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existing) {
+      setMakeName(existing.name);
+      setShowAddManufacturer(false);
+      setNewManufacturerName("");
+      return;
+    }
 
     try {
-      onSaved({
-        id: vehicle?.id || crypto.randomUUID(),
-        makeId, // temporary, will resolve in VehiclesPage
-        model: capitalize(model),
-        image: imageUrl,
-        variants: vehicle?.variants || [],
-      });
-      toast.success(isEdit ? "Vehicle updated" : "Vehicle added");
-      onOpenChange(false);
-    } catch {
-      toast.error("Failed to save vehicle");
+      setCreatingManufacturer(true);
+
+      const createdManufacturer = await onCreateManufacturer(
+        trimmedName,
+        "vehicle"
+      );
+
+      if (createdManufacturer) {
+        setMakeName(createdManufacturer.name);
+        setShowAddManufacturer(false);
+        setNewManufacturerName("");
+      }
+    } catch (error) {
+      console.error("Failed to create manufacturer:", error);
     } finally {
-      setIsSaving(false);
+      setCreatingManufacturer(false);
     }
   };
+
+  const handleSave = async () => {
+    const chosenMaker = makerList.find((maker) => maker.name === makeName);
+
+    if (!chosenMaker || !model.trim()) return;
+
+    try {
+      setSaving(true);
+
+      await onSaved({
+        id: vehicle?.id,
+        makeId: chosenMaker.id,
+        model: model.trim(),
+        image: imagePreview.trim(),
+        imageFile,
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Failed to save vehicle:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const makeOptions = [
+    ...makerList.map((maker) => maker.name),
+    ADD_MANUFACTURER_OPTION,
+  ];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="px-4 pt-6 pb-2">
-          <DialogTitle>{isEdit ? "Edit Vehicle" : "Add New Vehicle"}</DialogTitle>
+      <DialogContent className="sm:max-w-[520px] rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">
+            {vehicle ? "Edit Vehicle" : "Add Vehicle"}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 pb-4 px-4">
-          {/* Image Section */}
+        <div className="grid gap-4 py-2">
           <div className="space-y-2">
-            <Label className="text-xs font-bold text-muted-foreground uppercase">
-              Vehicle Image
-            </Label>
-            <div
-              className="relative h-32 w-full border-2 border-dashed rounded-lg bg-muted/30 flex items-center justify-center overflow-hidden group cursor-pointer"
-              onClick={() => !imageUrl && fileInputRef.current?.click()}
-            >
-              {imageUrl ? (
-                <>
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    className="h-full w-full object-contain"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setImageUrl("");
-                    }}
-                    className="absolute top-2 right-2 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-col items-center text-muted-foreground">
-                  <ImagePlus className="h-6 w-6 mb-1" />
-                  <span className="text-xs">Click to upload</span>
-                </div>
-              )}
-            </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              hidden
-              accept="image/*"
-              onChange={handleImageUpload}
-            />
-          </div>
-
-          {/* Make Selector */}
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-muted-foreground uppercase">
-              Make *
-            </Label>
+            <label className="text-sm font-medium">Make</label>
             <Combobox
-              value={makerList.find((m) => m.id === makeId)?.name || makeId}
-              onChange={(val) => {
-                const selected = makerList.find(
-                  (m) => m.name.toLowerCase() === val.toLowerCase()
-                );
-                setMakeId(selected ? selected.id : val);
-              }}
-              items={makerList.map((m) => m.name)}
-              placeholder="Select or type manufacturer..."
+              items={makeOptions}
+              value={makeName}
+              onChange={handleMakeChange}
+              placeholder="Select vehicle make"
             />
+
+            {showAddManufacturer && (
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={newManufacturerName}
+                  onChange={(e) => setNewManufacturerName(e.target.value)}
+                  placeholder="Enter manufacturer name"
+                />
+                <Button
+                  type="button"
+                  onClick={handleCreateManufacturer}
+                  disabled={creatingManufacturer || !newManufacturerName.trim()}
+                >
+                  {creatingManufacturer ? "Adding..." : "Add"}
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Model Input */}
           <div className="space-y-2">
-            <Label className="text-xs font-bold text-muted-foreground uppercase">
-              Model *
-            </Label>
+            <label className="text-sm font-medium">Model</label>
             <Input
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g. Camry, F-150"
+              placeholder="Enter vehicle model"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Vehicle Image</label>
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleFile(file);
+              }}
+              className={`flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-4 text-center transition ${
+                isDragging
+                  ? "border-primary bg-muted/50"
+                  : "border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              {imagePreview ? (
+                <div className="w-full space-y-3">
+                  <img
+                    src={imagePreview}
+                    alt="Vehicle Preview"
+                    className="mx-auto max-h-40 rounded-lg object-contain"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Click or drag another image to replace
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Drag and drop an image here
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    or click to browse
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
             />
           </div>
         </div>
 
-        <DialogFooter className="px-4 py-4 border-t bg-muted/10">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={saving || creatingManufacturer}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving
-              ? "Saving..."
-              : isEdit
-              ? "Update Vehicle"
-              : "Save Vehicle"}
+          <Button
+            onClick={handleSave}
+            disabled={
+              saving ||
+              creatingManufacturer ||
+              !makeName ||
+              !model.trim() ||
+              showAddManufacturer
+            }
+          >
+            {saving ? "Saving..." : vehicle ? "Save Changes" : "Add Vehicle"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};

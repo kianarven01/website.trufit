@@ -1,12 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scrollArea";
-import { ImagePlus, X } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2, UploadCloud, X } from "lucide-react";
+import api from "@/api/axios";
 
 import {
   Dialog,
@@ -14,325 +8,550 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+interface Option {
+  id: string;
+  name?: string;
+  CompanyName?: string;
+  company_name?: string;
+  label?: string;
+}
+
+interface ProductSupplierInput {
+  supplier_id: string;
+  supplier_cost: string;
+}
 
 interface ProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onsaved?: (data: any) => void; // ✅ optional callback when product is saved
+  categories: Option[];
+  manufacturers: Option[];
+  suppliers: Option[];
+  variantId?: string | null;
+  categoryId?: string | null;
+  onSaved: () => Promise<void> | void;
 }
 
-const ProductModal: React.FC<ProductModalProps> = ({ open, onOpenChange, onsaved }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export default function ProductModal({
+  open,
+  onOpenChange,
+  categories,
+  manufacturers,
+  suppliers,
+  variantId,
+  categoryId,
+  onSaved,
+}: ProductModalProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isOEM, setIsOEM] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [units, setUnits] = useState<Option[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  // Form states
-  const [form, setForm] = useState<any>({});
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
 
-  // Pricing states
-  const [costPrice, setCostPrice] = useState<number>(0);
-  const [markup, setMarkup] = useState<number>(0);
-  const [sellingPrice, setSellingPrice] = useState<number>(0);
+  const [form, setForm] = useState({
+    name: "",
+    SKU: "",
+    description: "",
+    category_id: categoryId || "",
+    unit: "",
+    manufacturer_id: "",
+    barcode: "",
+    part_number: "",
+    is_oem: false,
+    oem_reference_number: "",
+  });
 
-  const [costInput, setCostInput] = useState<string>("");
-  const [markupInput, setMarkupInput] = useState<string>("");
-
-  // Auto compute selling price
-  useEffect(() => {
-    const calculated = costPrice + (costPrice * markup) / 100;
-    setSellingPrice(Number.isNaN(calculated) ? 0 : Number(calculated.toFixed(2)));
-  }, [costPrice, markup]);
-
-  const formatNumber = (num: number) =>
-    num.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setForm((prev: any) => ({ ...prev, [id]: value }));
-  };
-
-  const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9.]/g, "");
-    setCostInput(raw);
-
-    const num = parseFloat(raw);
-    setCostPrice(Number.isNaN(num) ? 0 : num);
-  };
-
-  const handleCostBlur = () => {
-    if (costInput === "") return;
-    setCostInput(formatNumber(costPrice));
-  };
-
-  const handleMarkupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/[^0-9.]/g, "");
-    setMarkupInput(raw);
-
-    const num = parseFloat(raw);
-    setMarkup(Number.isNaN(num) ? 0 : num);
-  };
-
-  const handleMarkupBlur = () => {
-    if (markupInput === "") return;
-    setMarkupInput(markup.toFixed(2));
-  };
+  const [productSuppliers, setProductSuppliers] = useState<
+    ProductSupplierInput[]
+  >([]);
 
   useEffect(() => {
-    return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
-    };
-  }, [imagePreview]);
+    if (!open) return;
 
-  const handleFile = (file?: File) => {
-    if (!file) return;
+    api
+      .get("/products/units")
+      .then((res) => {
+        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+        setUnits(Array.isArray(rows) ? rows : []);
+      })
+      .catch((error) => {
+        console.error("Failed to load units:", error);
+        setUnits([]);
+      });
+
+    setForm((prev) => ({
+      ...prev,
+      category_id: categoryId || prev.category_id,
+    }));
+  }, [open, categoryId]);
+
+  const getOptionLabel = (option: Option) => {
+    return (
+      option.name ||
+      option.CompanyName ||
+      option.company_name ||
+      option.label ||
+      "Unnamed"
+    );
+  };
+
+  const updateField = (key: keyof typeof form, value: string | boolean) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  /**
+   * Supplier IDs are UUIDs in your Supabase table.
+   * So DO NOT use Number(supplier.id).
+   */
+  const validSupplierOptions = suppliers.filter((supplier) => {
+    const supplierId = String(supplier.id || "").trim();
+    return supplierId !== "" && supplierId !== "0";
+  });
+
+  const addSupplierRow = () => {
+    setProductSuppliers((prev) => [
+      ...prev,
+      {
+        supplier_id: "",
+        supplier_cost: "",
+      },
+    ]);
+  };
+
+  const removeSupplierRow = (index: number) => {
+    setProductSuppliers((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSupplierRow = (
+    index: number,
+    key: keyof ProductSupplierInput,
+    value: string
+  ) => {
+    setProductSuppliers((prev) =>
+      prev.map((supplier, i) =>
+        i === index
+          ? {
+              ...supplier,
+              [key]: value,
+            }
+          : supplier
+      )
+    );
+  };
+
+  const isSupplierAlreadySelected = (
+    supplierId: string,
+    currentIndex: number
+  ) => {
+    return productSuppliers.some(
+      (row, index) =>
+        index !== currentIndex &&
+        String(row.supplier_id).trim() === String(supplierId).trim()
+    );
+  };
+
+  const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Max 2MB only");
-      return;
-    }
-
+    setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFile(e.target.files?.[0]);
+  const resetForm = () => {
+    setForm({
+      name: "",
+      SKU: "",
+      description: "",
+      category_id: categoryId || "",
+      unit: "",
+      manufacturer_id: "",
+      barcode: "",
+      part_number: "",
+      is_oem: false,
+      oem_reference_number: "",
+    });
+
+    setProductSuppliers([]);
+    setImageFile(null);
+    setImagePreview("");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFile(e.dataTransfer.files?.[0]);
+  const handleModalChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      resetForm();
+    }
+
+    onOpenChange(nextOpen);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
+  const handleSave = async () => {
+    setSaving(true);
+
+    try {
+      const payload = new FormData();
+
+      payload.append("name", form.name.trim());
+      payload.append("SKU", form.SKU.trim());
+      payload.append("part_number", form.part_number.trim());
+      payload.append("is_oem", form.is_oem ? "1" : "0");
+
+      if (form.description.trim()) {
+        payload.append("description", form.description.trim());
+      }
+
+      if (form.category_id) {
+        payload.append("category_id", form.category_id);
+      }
+
+      if (form.unit) {
+        payload.append("unit", form.unit);
+      }
+
+      if (form.manufacturer_id) {
+        payload.append("manufacturer_id", form.manufacturer_id);
+      }
+
+      if (form.barcode.trim()) {
+        payload.append("barcode", form.barcode.trim());
+      }
+
+      if (form.oem_reference_number.trim()) {
+        payload.append("oem_reference_number", form.oem_reference_number.trim());
+      }
+
+      /**
+       * Supplier IDs are UUIDs, so keep them as strings.
+       * Only remove blank placeholder values.
+       */
+      const validSuppliers = productSuppliers.filter((supplier) => {
+        const supplierId = String(supplier.supplier_id || "").trim();
+        return supplierId !== "" && supplierId !== "0";
+      });
+
+      validSuppliers.forEach((supplier, index) => {
+        payload.append(
+          `suppliers[${index}][supplier_id]`,
+          String(supplier.supplier_id).trim()
+        );
+
+        if (supplier.supplier_cost.trim() !== "") {
+          payload.append(
+            `suppliers[${index}][supplier_cost]`,
+            supplier.supplier_cost.trim()
+          );
+        }
+      });
+
+      if (variantId) {
+        payload.append("car_variant_id", variantId);
+      }
+
+      if (imageFile) {
+        payload.append("image", imageFile);
+      }
+
+      await api.post("/products", payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      await onSaved();
+      resetForm();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Failed to save product:", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to save product.";
+
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // SAVE FUNCTION
-  const handleSave = () => {
-    const product = {
-      id: `prod-${Date.now()}`, // unique id
-      ...form,
-      image: imagePreview,
-      isOEM,
-      costPrice,
-      markup,
-      price: sellingPrice, // renamed for table display
-      createdAt: new Date().toISOString(),
-    };
-
-    const existing = JSON.parse(localStorage.getItem("products") || "[]");
-    existing.push(product);
-    localStorage.setItem("products", JSON.stringify(existing));
-
-    if (onsaved) onsaved(product); // notify parent to update state
-
-    onOpenChange(false);
-  };
+  const canSave =
+    form.name.trim() && form.SKU.trim() && form.part_number.trim();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[90vw] max-w-4xl p-4">
+    <Dialog open={open} onOpenChange={handleModalChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Product Details</DialogTitle>
+          <DialogTitle>Add Product</DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="h-[70vh] pr-4">
-          <div className="space-y-6">
-            <div
-              className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 h-52 cursor-pointer transition
-                ${isDragging ? "border-primary bg-primary/10" : "bg-muted/50 hover:border-primary hover:bg-primary/5"}`}
-              onClick={() => fileInputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  setIsDragging(false);
-                }
-              }}
-            >
-              <div className="w-45 h-40 flex items-center justify-center pointer-events-none">
-                {imagePreview ? (
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover rounded-md"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center text-sm text-muted-foreground">
-                    <ImagePlus className="mb-2 h-6 w-6" />
-                    <span>Click or drag image here</span>
-                  </div>
-                )}
-              </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div
+            className="col-span-2 border border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/30 transition"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
 
-              {imagePreview && (
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 pointer-events-auto"
+              const file = e.dataTransfer.files?.[0];
+
+              if (file) {
+                handleFile(file);
+              }
+            }}
+          >
+            {imagePreview ? (
+              <div className="relative w-full">
+                <img
+                  src={imagePreview}
+                  alt="Product preview"
+                  className="w-full h-48 object-cover rounded-lg border"
+                />
+
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 bg-background border rounded-full p-1"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setImagePreview(null);
+
+                    setImageFile(null);
+                    setImagePreview("");
+
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
                   }}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleImageChange}
-                accept="image/*"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="name">Product Name</Label>
-              <Input id="name" placeholder="Enter product name" onChange={handleChange} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>SKU</Label>
-                <Input id="sku" placeholder="Stock Keeping Unit" onChange={handleChange} />
+                  <X className="w-4 h-4" />
+                </button>
               </div>
+            ) : (
+              <>
+                <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
+                <p className="text-sm font-medium">Drop product image here</p>
+                <p className="text-xs text-muted-foreground">
+                  or click to browse
+                </p>
+              </>
+            )}
 
-              <div className="space-y-2">
-                <Label>Part No.</Label>
-                <Input id="partNumber" placeholder="Manufacturer Part #" onChange={handleChange} />
-              </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
 
-              <div className="space-y-2">
-                <Label>Part</Label>
-                <Input id="part" placeholder="Select Part" onChange={handleChange} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Input id="category" placeholder="Select Category" onChange={handleChange} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Barcode</Label>
-                <Input id="barcode" placeholder="EAN/UPC" onChange={handleChange} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Unit</Label>
-                <Input id="unit" placeholder="pcs, kg, etc." onChange={handleChange} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Manufacturer</Label>
-                <Input id="manufacturer" onChange={handleChange} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Warehouse Location</Label>
-                <Input id="location" placeholder="e.g. Aisle 3 - Rack B" onChange={handleChange} />
-              </div>
-            </div>
-
-            <div className="flex flex-col space-y-4 p-4 border rounded-lg bg-slate-50/50">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="oem"
-                  checked={isOEM}
-                  onCheckedChange={(checked) => setIsOEM(checked as boolean)}
-                />
-                <Label htmlFor="oem">OEM Product</Label>
-              </div>
-
-              {isOEM && (
-                <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
-                  <Label>OEM Reference Number</Label>
-                  <Input id="oemRef" placeholder="Enter original reference" onChange={handleChange} />
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Cost Price</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
-                  <Input
-                    type="text"
-                    value={costInput}
-                    onChange={handleCostChange}
-                    onBlur={handleCostBlur}
-                    className="pl-7"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Markup (%)</Label>
-                <Input
-                  type="text"
-                  value={markupInput}
-                  onChange={handleMarkupChange}
-                  onBlur={handleMarkupBlur}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Selling Price</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₱</span>
-                  <Input
-                    type="text"
-                    value={formatNumber(sellingPrice)}
-                    readOnly
-                    className="pl-7 bg-muted cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label>Supplier</Label>
-              <Input id="supplier" placeholder="Search suppliers..." onChange={handleChange} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Detailed product specifications..."
-                className="min-h-[100px]"
-                onChange={handleChange}
-              />
-            </div>
-
+                if (file) {
+                  handleFile(file);
+                }
+              }}
+            />
           </div>
-        </ScrollArea>
+
+          <Input
+            placeholder="Product name"
+            value={form.name}
+            onChange={(e) => updateField("name", e.target.value)}
+          />
+
+          <Input
+            placeholder="SKU"
+            value={form.SKU}
+            onChange={(e) => updateField("SKU", e.target.value)}
+          />
+
+          <Input
+            placeholder="Part number"
+            value={form.part_number}
+            onChange={(e) => updateField("part_number", e.target.value)}
+          />
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.category_id}
+            onChange={(e) => updateField("category_id", e.target.value)}
+          >
+            <option value="">Select category</option>
+
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {getOptionLabel(category)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.manufacturer_id}
+            onChange={(e) => updateField("manufacturer_id", e.target.value)}
+          >
+            <option value="">Select manufacturer</option>
+
+            {manufacturers.map((manufacturer) => (
+              <option key={manufacturer.id} value={manufacturer.id}>
+                {getOptionLabel(manufacturer)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.unit}
+            onChange={(e) => updateField("unit", e.target.value)}
+          >
+            <option value="">Select unit</option>
+
+            {units.map((unit) => (
+              <option key={unit.id} value={unit.id}>
+                {getOptionLabel(unit)}
+              </option>
+            ))}
+          </select>
+
+          <Input
+            placeholder="Barcode"
+            value={form.barcode}
+            onChange={(e) => updateField("barcode", e.target.value)}
+          />
+
+          <Input
+            className="col-span-2"
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => updateField("description", e.target.value)}
+          />
+
+          <div className="col-span-2 border rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Suppliers</p>
+                <p className="text-xs text-muted-foreground">
+                  Add one or more suppliers for this product.
+                </p>
+              </div>
+
+              <Button type="button" variant="outline" onClick={addSupplierRow}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Supplier
+              </Button>
+            </div>
+
+            {productSuppliers.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                No suppliers added yet. Click Add Supplier to link suppliers to
+                this product.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {productSuppliers.map((supplierRow, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-12 gap-3 items-center"
+                  >
+                    <select
+                      className="col-span-6 border rounded-md px-3 py-2 bg-background"
+                      value={supplierRow.supplier_id}
+                      onChange={(e) =>
+                        updateSupplierRow(index, "supplier_id", e.target.value)
+                      }
+                    >
+                      <option value="">Select supplier</option>
+
+                      {validSupplierOptions.map((supplier) => (
+                        <option
+                          key={supplier.id}
+                          value={supplier.id}
+                          disabled={isSupplierAlreadySelected(
+                            supplier.id,
+                            index
+                          )}
+                        >
+                          {getOptionLabel(supplier)}
+                        </option>
+                      ))}
+                    </select>
+
+                    <Input
+                      className="col-span-5"
+                      placeholder="Supplier cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={supplierRow.supplier_cost}
+                      onChange={(e) =>
+                        updateSupplierRow(
+                          index,
+                          "supplier_cost",
+                          e.target.value
+                        )
+                      }
+                    />
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="col-span-1 px-2"
+                      onClick={() => removeSupplierRow(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.is_oem}
+              onChange={(e) => updateField("is_oem", e.target.checked)}
+            />
+            OEM Product
+          </label>
+
+          {form.is_oem && (
+            <Input
+              className="col-span-2"
+              placeholder="OEM reference number"
+              value={form.oem_reference_number}
+              onChange={(e) =>
+                updateField("oem_reference_number", e.target.value)
+              }
+            />
+          )}
+        </div>
 
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <Button onClick={handleSave}>Save Product</Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleModalChange(false)}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !canSave}
+          >
+            {saving ? "Saving..." : "Save Product"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default ProductModal;
+}

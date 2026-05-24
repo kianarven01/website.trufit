@@ -501,7 +501,7 @@ export default function ProductModal({
 
             {units.map((unit) => (
               <option key={unit.id} value={unit.id}>
-                {getOptionLabel(unit)}
+                {unit.name || "Unnamed unit"}
               </option>
             ))}
           </select>

@@ -58,6 +58,7 @@ interface Product {
   oemRef?: string | null;
   description: string;
   unit: string;
+  unitAbbreviation?: string | null;
   price: number | null;
   category: string;
   manufacturer: string;
@@ -195,6 +196,12 @@ const normalizeProduct = (row: any): Product => ({
   oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
   unit: row.unit?.name || row.Unit?.name || row.unit_name || row.unit || "-",
+  unitAbbreviation:
+    row.unit?.abbreviation ||
+    row.Unit?.abbreviation ||
+    row.unit_abbreviation ||
+    row.unitAbbreviation ||
+    null,
   price: toNumberOrNull(row.selling_price ?? row.price ?? row.sell_price),
   category: row.category?.name || row.Category?.name || row.category_name || "-",
   manufacturer:
@@ -526,7 +533,11 @@ const ProductDetail: React.FC = () => {
                     <Separator className="col-span-2" />
 
                     <span className="text-muted-foreground">Stock Unit</span>
-                    <span>{product.unit}</span>
+                    <span>
+                      {product.unitAbbreviation
+                        ? `${product.unit} (${product.unitAbbreviation})`
+                        : product.unit}
+                    </span>
 
                     <Separator className="col-span-2" />
 

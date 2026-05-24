@@ -264,6 +264,7 @@ class ProductController extends Controller
 
             'unit' => $product->unit,
             'unit_name' => $product->unitRelation?->name,
+            'unit_abbreviation' => $product->unitRelation?->abbreviation,
 
             'manufacturer_id' => $product->manufacturer_id,
             'manufacturer_name' => $product->manufacturer?->name,

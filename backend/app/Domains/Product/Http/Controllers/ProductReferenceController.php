@@ -137,7 +137,7 @@ class ProductReferenceController extends Controller
     public function units(): JsonResponse
     {
         $units = Unit::query()
-            ->select('id', 'name')
+            ->select('id', 'name', 'abbreviation')
             ->orderBy('name')
             ->get();
 

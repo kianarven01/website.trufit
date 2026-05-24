@@ -35,6 +35,7 @@ interface Product {
   sku: string;
   partNumber: string;
   unit: string;
+  unitAbbreviation?: string | null;
   price: number;
   cost?: number;
   description?: string;
@@ -106,6 +107,12 @@ const normalizeProduct = (row: any): Product => ({
     row.unit_name ||
     row.unit ||
     "",
+  unitAbbreviation:
+    row.unit?.abbreviation ||
+    row.Unit?.abbreviation ||
+    row.unit_abbreviation ||
+    row.unitAbbreviation ||
+    null,
   price: Number(row.selling_price || row.price || row.sell_price || 0),
   cost: Number(row.cost || 0),
   description: row.description || "",
@@ -540,7 +547,7 @@ const ProductsList: React.FC = () => {
 
                       <TableCell>{product.sku || "-"}</TableCell>
                       <TableCell>{product.partNumber || "-"}</TableCell>
-                      <TableCell>{product.unit || "-"}</TableCell>
+                      <TableCell>{product.unitAbbreviation || product.unit || "-"}</TableCell>
                       <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
                     </TableRow>
                   ))

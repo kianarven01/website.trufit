@@ -139,4 +139,9 @@ class Product extends Model
     {
         return $this->hasOne(Inventory::class, 'productID', 'id');
     }
+
+    public function part()
+    {
+        return $this->belongsTo(Part::class, 'part_id', 'id');
+    }
 }

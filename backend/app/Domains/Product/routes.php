@@ -46,5 +46,9 @@ Route::prefix('products')->group(function () {
     Route::post('/{productId}/equivalents', [ProductEquivalentController::class, 'store']);
     Route::delete('/{productId}/equivalents/{equivalentProductId}', [ProductEquivalentController::class, 'destroy']);
 
+    Route::get('/parts', [ProductController::class, 'parts']);
+
     Route::get('/{id}', [ProductController::class, 'show']);
+
+
 });

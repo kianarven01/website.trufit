@@ -29,6 +29,7 @@ class ProductController extends Controller
                 'category',
                 'manufacturer',
                 'unitRelation',
+                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
@@ -220,6 +221,7 @@ class ProductController extends Controller
                 'category',
                 'manufacturer',
                 'unitRelation',
+                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'equivalentProducts',
@@ -252,6 +254,10 @@ class ProductController extends Controller
             'image_URL' => $product->image_path,
             'barcode' => $product->barcode,
             'part_number' => $product->part_number,
+
+            'part_id' => $product->part_id,
+            'part_name' => $product->part?->name,
+            'part_description' => $product->part?->description,
 
             'category_id' => $product->category_id,
             'category_name' => $product->category?->name,
@@ -366,5 +372,28 @@ class ProductController extends Controller
             'message' => 'Supplier added to product successfully.',
             'data' => $this->formatProduct($updatedProduct),
         ], 201);
+    }
+
+    public function parts(Request $request): JsonResponse
+    {
+        $categoryId = $request->query('category_id');
+
+        $parts = \App\Domains\Product\Domain\Models\Part::query()
+            ->with('category')
+            ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($part) => [
+                'id' => $part->id,
+                'name' => $part->name,
+                'description' => $part->description,
+                'category_id' => $part->category_id,
+                'category_name' => $part->category?->name,
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => $parts,
+        ]);
     }
 }

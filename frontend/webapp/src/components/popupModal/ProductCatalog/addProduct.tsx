@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import api from "@/api/axios";
 
@@ -19,6 +19,14 @@ interface Option {
   CompanyName?: string;
   company_name?: string;
   label?: string;
+}
+
+interface PartOption {
+  id: string;
+  name: string;
+  description?: string | null;
+  category_id: string;
+  category_name?: string | null;
 }
 
 interface ProductSupplierInput {
@@ -50,6 +58,7 @@ export default function ProductModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [units, setUnits] = useState<Option[]>([]);
+  const [parts, setParts] = useState<PartOption[]>([]);
   const [saving, setSaving] = useState(false);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -60,6 +69,7 @@ export default function ProductModal({
     SKU: "",
     description: "",
     category_id: categoryId || "",
+    part_id: "",
     unit: "",
     manufacturer_id: "",
     barcode: "",
@@ -86,6 +96,26 @@ export default function ProductModal({
         setUnits([]);
       });
 
+    api
+      .get("/products/parts")
+      .then((res) => {
+        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+
+        setParts(
+          (Array.isArray(rows) ? rows : []).map((row: any) => ({
+            id: String(row.id),
+            name: String(row.name || ""),
+            description: row.description ?? null,
+            category_id: String(row.category_id ?? ""),
+            category_name: row.category_name ?? null,
+          }))
+        );
+      })
+      .catch((error) => {
+        console.error("Failed to load parts:", error);
+        setParts([]);
+      });
+
     setForm((prev) => ({
       ...prev,
       category_id: categoryId || prev.category_id,
@@ -104,6 +134,48 @@ export default function ProductModal({
 
   const updateField = (key: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const filteredParts = useMemo(() => {
+    if (!form.category_id) {
+      return parts;
+    }
+
+    return parts.filter(
+      (part) => String(part.category_id) === String(form.category_id)
+    );
+  }, [parts, form.category_id]);
+
+  const handleCategoryChange = (categoryIdValue: string) => {
+    setForm((prev) => {
+      const currentPart = parts.find(
+        (part) => String(part.id) === String(prev.part_id)
+      );
+
+      const shouldClearPart =
+        currentPart &&
+        String(currentPart.category_id) !== String(categoryIdValue);
+
+      return {
+        ...prev,
+        category_id: categoryIdValue,
+        part_id: shouldClearPart ? "" : prev.part_id,
+      };
+    });
+  };
+
+  const handlePartChange = (partIdValue: string) => {
+    const selectedPart = parts.find(
+      (part) => String(part.id) === String(partIdValue)
+    );
+
+    setForm((prev) => ({
+      ...prev,
+      part_id: partIdValue,
+      category_id: selectedPart
+        ? String(selectedPart.category_id)
+        : prev.category_id,
+    }));
   };
 
   /**
@@ -170,6 +242,7 @@ export default function ProductModal({
       SKU: "",
       description: "",
       category_id: categoryId || "",
+      part_id: "",
       unit: "",
       manufacturer_id: "",
       barcode: "",
@@ -212,6 +285,10 @@ export default function ProductModal({
 
       if (form.category_id) {
         payload.append("category_id", form.category_id);
+      }
+
+      if (form.part_id) {
+        payload.append("part_id", form.part_id);
       }
 
       if (form.unit) {
@@ -371,22 +448,32 @@ export default function ProductModal({
             onChange={(e) => updateField("SKU", e.target.value)}
           />
 
-          <Input
-            placeholder="Part number"
-            value={form.part_number}
-            onChange={(e) => updateField("part_number", e.target.value)}
-          />
-
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.category_id}
-            onChange={(e) => updateField("category_id", e.target.value)}
+            onChange={(e) => handleCategoryChange(e.target.value)}
           >
             <option value="">Select category</option>
 
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {getOptionLabel(category)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            className="border rounded-md px-3 py-2 bg-background"
+            value={form.part_id}
+            onChange={(e) => handlePartChange(e.target.value)}
+          >
+            <option value="">
+              {form.category_id ? "Select part" : "Select part"}
+            </option>
+
+            {filteredParts.map((part) => (
+              <option key={part.id} value={part.id}>
+                {part.name}
               </option>
             ))}
           </select>
@@ -418,6 +505,12 @@ export default function ProductModal({
               </option>
             ))}
           </select>
+
+          <Input
+            placeholder="Part number"
+            value={form.part_number}
+            onChange={(e) => updateField("part_number", e.target.value)}
+          />
 
           <Input
             placeholder="Barcode"

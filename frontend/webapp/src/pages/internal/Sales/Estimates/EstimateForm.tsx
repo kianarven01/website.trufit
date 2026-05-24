@@ -180,13 +180,19 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   // Helper to match pricing based on selected vehicle
   const getMatchingPricing = (service: Service | null, vehicle: Vehicle | null) => {
     if (!service || !service.pricings?.length) return null;
-    if (!vehicle) return service.pricings[0];
+
+    const validPricings = service.pricings.filter((p: any) => 
+      p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed')
+    );
+
+    if (!validPricings.length) return null;
+    if (!vehicle) return validPricings[0];
 
     const make = vehicle.make?.trim().toLowerCase() || "";
     const model = vehicle.model?.trim().toLowerCase() || "";
 
     // 1) Find pricing that explicitly lists this vehicle variant or type
-    const matchedByType = service.pricings.find((p: any) => {
+    const matchedByType = validPricings.find((p: any) => {
       const types = Array.isArray(p.vehicle_types)
         ? p.vehicle_types
         : typeof p.vehicle_types === 'string'
@@ -201,13 +207,13 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     if (matchedByType) return matchedByType;
 
     // 2) Fallback to size category match
-    const matchedBySize = service.pricings.find((p: any) =>
+    const matchedBySize = validPricings.find((p: any) =>
       p.vehicle_size_name?.trim().toLowerCase() === model.toLowerCase()
     );
 
     if (matchedBySize) return matchedBySize;
 
-    return service.pricings[0];
+    return validPricings[0];
   };
 
   const getServicePrice = (
@@ -1002,11 +1008,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 <option value="" disabled={!!service?.pricings?.length}>
                                   {!service ? "Select service first" : service.pricings?.length ? "Select vehicle pricing" : "Default Rate"}
                                 </option>
-                                {service?.pricings?.map((p: any) => {
-                                  const typesStr = Array.isArray(p.vehicle_types) 
-                                    ? p.vehicle_types.join(", ") 
-                                    : p.vehicle_types || "";
-                                  const label = `${p.vehicle_size_name}${typesStr ? ` (${typesStr})` : ""} - ₱${Number(p.price).toFixed(2)}${service.pricingType === "hourly rate" ? "/hr" : ""}`;
+                                {service?.pricings
+                                  ?.filter((p: any) => p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed'))
+                                  .map((p: any) => {
+                                  const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
                                   return (
                                     <option key={p.id} value={p.id}>
                                       {label}

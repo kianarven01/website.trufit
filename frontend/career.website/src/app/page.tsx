@@ -1,6 +1,7 @@
-"use client";
-
+import Link from "next/link";
 import { ChevronDown, Eye, Target, Star } from "lucide-react";
+import { positions } from "../data/positions";
+
 export default function CareerPage() {
   const coreValues = [
     {
@@ -15,30 +16,6 @@ export default function CareerPage() {
       title: "Growth",
       desc: "Continuous learning with the latest automotive technology.",
     },
-  ];
-
-  const positions = [
-    { id: 1, title: "Administrative Officer", type: "Full-Time", location: "On-site" },
-    { id: 2, title: "HR Team Head", type: "Full-Time", location: "On-site" },
-    { id: 3, title: "Purchasing Team Head", type: "Full-Time", location: "On-site" },
-    { id: 4, title: "Accounting Team Head", type: "Full-Time", location: "On-site" },
-    { id: 5, title: "Technical Team Head", type: "Full-Time", location: "On-site" },
-    { id: 6, title: "Sales and Marketing Team Head", type: "Full-Time", location: "On-site" },
-    { id: 7, title: "Warehouse Staff", type: "Full-Time", location: "On-site" },
-    { id: 8, title: "Accounting Staff", type: "Full-Time", location: "On-site" },
-    { id: 9, title: "Service Manager", type: "Full-Time", location: "On-site" },
-    { id: 10, title:  "Service Advisor", type: "Full-Time", location: "On-site" },
-    { id: 11, title: "Customer Relations Officer", type: "Full-Time", location: "On-site" },
-    { id: 12, title: "Leadman", type: "Full-Time", location: "On-site" },
-    { id: 13, title: "Assistant Leadman", type: "Full-Time", location: "On-site" },
-    { id: 14, title: "Electrical Technician", type: "Full-Time", location: "On-site" },
-    { id: 15, title: "Transmission Technician", type: "Full-Time", location: "On-site" },
-    { id: 16, title: "Underchassis Technician", type: "Full-Time", location: "On-site" },
-    { id: 17, title: "Aircon Technician", type: "Full-Time", location: "On-site" },
-    { id: 18, title: "General Mechanic", type: "Full-Time", location: "On-site" },
-    { id: 19, title: "Mechanical Helper", type: "Full-Time", location: "On-site" },
-
-    
   ];
 
   return (
@@ -241,9 +218,10 @@ export default function CareerPage() {
 
           <div className="space-y-4">
             {positions.map((pos) => (
-              <div
+              <Link
                 key={pos.id}
-                className="bg-[#fafafa] border border-gray-200 rounded-xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between group hover:border-brand-red hover:shadow-md transition-all cursor-pointer"
+                href={`/jobs/${pos.id}`}
+                className="bg-[#fafafa] border border-gray-200 rounded-xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between group hover:border-brand-red hover:shadow-md transition-all cursor-pointer block"
               >
                 <div>
                   <h3 className="text-2xl font-bold text-brand-dark group-hover:text-brand-red transition-colors mb-2">
@@ -257,11 +235,11 @@ export default function CareerPage() {
                 </div>
 
                 <div className="mt-6 md:mt-0">
-                  <button className="border-2 border-brand-dark text-brand-dark px-8 py-3 font-bold uppercase tracking-wider text-xs hover:bg-brand-dark hover:text-white transition-colors w-full md:w-auto rounded">
-                    Apply Now
-                  </button>
+                  <span className="inline-block border-2 border-brand-dark text-brand-dark px-8 py-3 font-bold uppercase tracking-wider text-xs group-hover:bg-brand-dark group-hover:text-white transition-colors rounded text-center w-full md:w-auto">
+                    View Details
+                  </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 

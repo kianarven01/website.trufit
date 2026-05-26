@@ -21,6 +21,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Brawler:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className={`${barlow.variable} antialiased`}>
        
         <nav className="w-full bg-white border-b border-gray-200 px-6 py-3 md:py-4 relative z-50">

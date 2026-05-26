@@ -54,7 +54,7 @@ export default function CareerPage() {
             style={{ fontSize: "clamp(3.5rem, 6vw, 6rem)" }}
           >
             Drive Your Career <br />
-            <span className="text-gradient-red">Forward.</span>
+            <span className="text-gradient-red">Forward</span>
           </h1>
 
           <p

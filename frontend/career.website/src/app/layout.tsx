@@ -22,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${barlow.variable} antialiased`}>
-        {/* Kooapps-style White Navbar */}
+       
         <nav className="w-full bg-white border-b border-gray-200 px-6 py-3 md:py-4 relative z-50">
           <div className="container mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, Briefcase, User, MapPin, ArrowRight } from "lucide-react";
 import { positions } from "../../../data/positions";
+import ShareButton from "./ShareButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -17,22 +18,22 @@ export default async function JobDetailPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      {/* Dark Header Banner */}
-      <div className="bg-[#0a0a0a] py-16 px-6 border-b-4 border-brand-red">
+      {/* Light Header Banner */}
+      <div className="bg-white py-16 px-6 border-b-4 border-brand-red">
         <div className="container mx-auto max-w-6xl">
           <Link 
             href="/#open-positions"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white transition-colors mb-8 uppercase tracking-widest"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-brand-dark transition-colors mb-8 uppercase tracking-widest"
           >
             <ChevronLeft size={16} />
             Back to all jobs
           </Link>
-          <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">{position.title}</h1>
-          <div className="flex flex-wrap items-center gap-4 mt-4 text-white/60 text-sm font-medium">
+          <h1 className="text-4xl md:text-5xl font-bold text-brand-dark tracking-tight">{position.title}</h1>
+          <div className="flex flex-wrap items-center gap-4 mt-4 text-gray-500 text-sm font-medium">
             <span className="flex items-center gap-2"><Briefcase size={14} /> {position.type}</span>
-            <span className="text-white/20">|</span>
+            <span className="text-gray-300">|</span>
             <span className="flex items-center gap-2"><MapPin size={14} /> {position.location}</span>
-            <span className="text-white/20">|</span>
+            <span className="text-gray-300">|</span>
             <span className="flex items-center gap-2"><User size={14} /> Automotive</span>
           </div>
         </div>
@@ -96,7 +97,7 @@ export default async function JobDetailPage({ params }: Props) {
 
           {/* Right Column - Sidebar */}
           <div className="lg:col-span-1">
-            <div className="sticky top-8 space-y-6">
+            <div className="sticky top-8 space-y-4">
               {/* Info Card */}
               <div className="bg-white rounded-md border border-gray-200 shadow-sm p-8">
                 <div className="space-y-5 mb-8">
@@ -114,14 +115,20 @@ export default async function JobDetailPage({ params }: Props) {
                   </div>
                 </div>
 
-                <button type="button" className="w-full bg-brand-red hover:bg-red-700 text-white font-bold py-4 rounded transition-colors uppercase tracking-wider text-sm flex items-center justify-center gap-2">
+                <Link
+                  href={`/jobs/${position.id}/apply`}
+                  className="w-full bg-brand-red hover:bg-red-700 text-white font-bold py-4 rounded transition-colors uppercase tracking-wider text-sm flex items-center justify-center gap-2"
+                >
                   Apply Now <ArrowRight size={16} />
-                </button>
+                </Link>
               </div>
 
+              {/* Share Button */}
+              <ShareButton />
+
               {/* Contact Card */}
-              <div className="bg-[#0a0a0a] rounded-md p-8 text-center">
-                <p className="text-white/60 text-sm mb-3">Have questions about this role?</p>
+              <div className="bg-white border border-gray-200 rounded-md p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm mb-3">Have questions about this role?</p>
                 <a 
                   href="mailto:trufitautocenterdaet@gmail.com" 
                   className="text-brand-red font-bold text-sm hover:underline break-all"

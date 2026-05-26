@@ -1,6 +1,7 @@
 export interface Position {
   id: number;
   title: string;
+  category: "Office" | "Technical";
   type: string;
   location: string;
   responsibilities: string[];
@@ -11,6 +12,7 @@ export const positions: Position[] = [
   {
     id: 1,
     title: "Administrative Officer",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -31,6 +33,7 @@ export const positions: Position[] = [
   {
     id: 2,
     title: "HR Team Head",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -51,6 +54,7 @@ export const positions: Position[] = [
   {
     id: 3,
     title: "Purchasing Team Head",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -71,6 +75,7 @@ export const positions: Position[] = [
   {
     id: 4,
     title: "Accounting Team Head",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -91,6 +96,7 @@ export const positions: Position[] = [
   {
     id: 5,
     title: "Technical Team Head",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -111,6 +117,7 @@ export const positions: Position[] = [
   {
     id: 6,
     title: "Sales and Marketing Team Head",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -131,6 +138,7 @@ export const positions: Position[] = [
   {
     id: 7,
     title: "Warehouse Staff",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -151,6 +159,7 @@ export const positions: Position[] = [
   {
     id: 8,
     title: "Accounting Staff",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -171,6 +180,7 @@ export const positions: Position[] = [
   {
     id: 9,
     title: "Service Manager",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -191,6 +201,7 @@ export const positions: Position[] = [
   {
     id: 10,
     title: "Service Advisor",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -211,6 +222,7 @@ export const positions: Position[] = [
   {
     id: 11,
     title: "Customer Relations Officer",
+    category: "Office",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -231,6 +243,7 @@ export const positions: Position[] = [
   {
     id: 12,
     title: "Leadman",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -251,6 +264,7 @@ export const positions: Position[] = [
   {
     id: 13,
     title: "Assistant Leadman",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -271,6 +285,7 @@ export const positions: Position[] = [
   {
     id: 14,
     title: "Electrical Technician",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -291,6 +306,7 @@ export const positions: Position[] = [
   {
     id: 15,
     title: "Transmission Technician",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -311,6 +327,7 @@ export const positions: Position[] = [
   {
     id: 16,
     title: "Underchassis Technician",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -331,6 +348,7 @@ export const positions: Position[] = [
   {
     id: 17,
     title: "Aircon Technician",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -351,6 +369,7 @@ export const positions: Position[] = [
   {
     id: 18,
     title: "General Mechanic",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [
@@ -371,6 +390,7 @@ export const positions: Position[] = [
   {
     id: 19,
     title: "Mechanical Helper",
+    category: "Technical",
     type: "Full-Time",
     location: "On-site",
     responsibilities: [

@@ -100,7 +100,7 @@ const App: React.FC = () => {
                 <Route>
                   <Route path="job-orders">
                     <Route index element={<JobOrder />} />
-                    <Route path=":new-job-order" element={<JobOrderForm mode="add" />} />
+                    <Route path=":new-job-order" element={<JobOrderForm mode="create" />} />
                   </Route>
                 </Route>
 

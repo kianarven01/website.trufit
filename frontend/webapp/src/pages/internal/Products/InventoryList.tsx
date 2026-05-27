@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import DataToolbar from "@/components/DataToolbar";
@@ -30,6 +31,7 @@ interface InventoryItem {
   sku: string;
   partNumber: string;
   unit: string;
+  unitAbbreviation?: string | null;
   stock: number;
   sellPrice: number;
 }
@@ -59,6 +61,7 @@ const getStockStatus = (stock: number) => {
 
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
@@ -87,7 +90,8 @@ const Inventory: React.FC = () => {
         brand: row.manufacturer_name || "-",
         sku: String(row.SKU || row.sku || ""),
         partNumber: String(row.part_number || ""),
-        unit: row.unit_name || row.unit || "pcs",
+        unit: row.unit_name || row.unit || "-",
+        unitAbbreviation: row.unit_abbreviation || row.unitAbbreviation || row.unit?.abbreviation || null,
         stock: Number(row.quantity_on_hand ?? 0),
         sellPrice: Number(row.sell_price ?? 0),
       }));
@@ -205,8 +209,9 @@ const Inventory: React.FC = () => {
                       return (
                         <TableRow
                           key={p.id}
+                          onClick={() => navigate(`/webapp/products/inventory/${p.id}`)}
                           className={cn(
-                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md cursor-pointer",
                             "hover:bg-accent/30"
                           )}
                         >
@@ -253,7 +258,7 @@ const Inventory: React.FC = () => {
                             <span className="font-medium text-foreground text-sm">₱{p.sellPrice.toFixed(2)}</span>
                           </TableCell>
 
-                          <TableCell className="text-foreground/80 text-sm">{p.unit}</TableCell>
+                          <TableCell className="text-foreground/80 text-sm">{p.unitAbbreviation || p.unit || "-"}</TableCell>
 
                           {/* STATUS */}
                           <TableCell>
@@ -275,13 +280,17 @@ const Inventory: React.FC = () => {
                                   variant="outline"
                                   size="icon_xs"
                                   className="hover:bg-accent/40"
+                                  onClick={(event) => event.stopPropagation()}
                                 >
                                   <Ellipsis className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]">
                                 <DropdownMenuItem
-                                  onClick={() => handleOpenAdjust(p)}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleOpenAdjust(p);
+                                  }}
                                   className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
                                 >
                                   Adjust Stock

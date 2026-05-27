@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import DataToolbar from "@/components/DataToolbar";
@@ -23,6 +22,21 @@ import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 /* ================= TYPES ================= */
+interface ProductPriceRow {
+  Price?: number | string | null;
+  price?: number | string | null;
+  Markup?: number | string | null;
+  markup?: number | string | null;
+  is_active?: boolean;
+}
+
+interface ProductSupplierRow {
+  active_price?: ProductPriceRow | null;
+  activePrice?: ProductPriceRow | null;
+  price?: ProductPriceRow | number | string | null;
+  prices?: ProductPriceRow[];
+}
+
 interface InventoryItem {
   id: string;
   image?: string;
@@ -34,7 +48,94 @@ interface InventoryItem {
   unitAbbreviation?: string | null;
   stock: number;
   sellPrice: number;
+  priceLabel: string;
 }
+
+
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+};
+
+const formatPeso = (value: number) => `₱${value.toFixed(2)}`;
+
+const normalizeSuppliers = (row: any): ProductSupplierRow[] => {
+  if (Array.isArray(row.suppliers)) return row.suppliers;
+  if (Array.isArray(row.product_suppliers)) return row.product_suppliers;
+  if (Array.isArray(row.productSuppliers)) return row.productSuppliers;
+  if (Array.isArray(row.ProductSuppliers)) return row.ProductSuppliers;
+
+  return [];
+};
+
+const getSupplierSellingPrice = (supplier: ProductSupplierRow): number | null => {
+  if (supplier.active_price) {
+    return toNumberOrNull(supplier.active_price.Price ?? supplier.active_price.price);
+  }
+
+  if (supplier.activePrice) {
+    return toNumberOrNull(supplier.activePrice.Price ?? supplier.activePrice.price);
+  }
+
+  if (Array.isArray(supplier.prices)) {
+    const activePrice =
+      supplier.prices.find((price) => price.is_active) ||
+      supplier.prices[0] ||
+      null;
+
+    if (activePrice) {
+      return toNumberOrNull(activePrice.Price ?? activePrice.price);
+    }
+  }
+
+  if (supplier.price && typeof supplier.price === "object") {
+    return toNumberOrNull(supplier.price.Price ?? supplier.price.price);
+  }
+
+  if (
+    supplier.price !== null &&
+    supplier.price !== undefined &&
+    typeof supplier.price !== "object"
+  ) {
+    return toNumberOrNull(supplier.price);
+  }
+
+  return null;
+};
+
+const getSupplierPriceRange = (row: any): {
+  label: string;
+  primaryPrice: number;
+} => {
+  const prices = normalizeSuppliers(row)
+    .map(getSupplierSellingPrice)
+    .filter((price): price is number => price !== null);
+
+  if (prices.length === 0) {
+    return {
+      label: "No price set",
+      primaryPrice: 0,
+    };
+  }
+
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+
+  if (min === max) {
+    return {
+      label: formatPeso(min),
+      primaryPrice: min,
+    };
+  }
+
+  return {
+    label: `${formatPeso(min)} - ${formatPeso(max)}`,
+    primaryPrice: min,
+  };
+};
+
 
 /* ================= STOCK STATUS ================= */
 const getStockStatus = (stock: number) => {
@@ -61,7 +162,6 @@ const getStockStatus = (stock: number) => {
 
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
-  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
@@ -83,18 +183,28 @@ const Inventory: React.FC = () => {
     try {
       const res = await api.get("/products");
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
-      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map((row: any) => ({
-        id: String(row.id),
-        image: row.image_URL || row.image_path || undefined,
-        name: String(row.name || ""),
-        brand: row.manufacturer_name || "-",
-        sku: String(row.SKU || row.sku || ""),
-        partNumber: String(row.part_number || ""),
-        unit: row.unit_name || row.unit || "-",
-        unitAbbreviation: row.unit_abbreviation || row.unitAbbreviation || row.unit?.abbreviation || null,
-        stock: Number(row.quantity_on_hand ?? 0),
-        sellPrice: Number(row.sell_price ?? 0),
-      }));
+      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map((row: any) => {
+        const supplierPriceRange = getSupplierPriceRange(row);
+
+        return {
+          id: String(row.id),
+          image: row.image_URL || row.image_path || undefined,
+          name: String(row.name || ""),
+          brand: row.manufacturer_name || "-",
+          sku: String(row.SKU || row.sku || ""),
+          partNumber: String(row.part_number || ""),
+          unit: row.unit_name || row.unit || "-",
+          unitAbbreviation:
+            row.unit_abbreviation ||
+            row.unitAbbreviation ||
+            row.unit?.abbreviation ||
+            row.Unit?.abbreviation ||
+            null,
+          stock: Number(row.quantity_on_hand ?? 0),
+          sellPrice: supplierPriceRange.primaryPrice,
+          priceLabel: supplierPriceRange.label,
+        };
+      });
       setItems(normalized);
     } catch (error) {
       console.error("Failed to load inventory:", error);
@@ -209,9 +319,8 @@ const Inventory: React.FC = () => {
                       return (
                         <TableRow
                           key={p.id}
-                          onClick={() => navigate(`/webapp/products/inventory/${p.id}`)}
                           className={cn(
-                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md cursor-pointer",
+                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                             "hover:bg-accent/30"
                           )}
                         >
@@ -255,7 +364,7 @@ const Inventory: React.FC = () => {
 
                           {/* PRICE */}
                           <TableCell>
-                            <span className="font-medium text-foreground text-sm">₱{p.sellPrice.toFixed(2)}</span>
+                            <span className="font-medium text-foreground text-sm">{p.priceLabel}</span>
                           </TableCell>
 
                           <TableCell className="text-foreground/80 text-sm">{p.unitAbbreviation || p.unit || "-"}</TableCell>
@@ -280,17 +389,13 @@ const Inventory: React.FC = () => {
                                   variant="outline"
                                   size="icon_xs"
                                   className="hover:bg-accent/40"
-                                  onClick={(event) => event.stopPropagation()}
                                 >
                                   <Ellipsis className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]">
                                 <DropdownMenuItem
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    handleOpenAdjust(p);
-                                  }}
+                                  onClick={() => handleOpenAdjust(p)}
                                   className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
                                 >
                                   Adjust Stock

@@ -359,6 +359,21 @@ class ProductController extends Controller
                 'Markup' => $validated['markup'] ?? null,
             ]);
 
+            Inventory::firstOrCreate(
+                [
+                    'productID' => $product->id,
+                    'product_supplier_id' => $productSupplier->id,
+                    'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                ],
+                [
+                    'quantity_on_hand' => 0,
+                    'sell_price' => null,
+                    'reserved_quantity' => 0,
+                    'reorder_level' => 5,
+                    'reorder_qty' => 10,
+                ]
+            );
+
             return $product->fresh([
                 'category',
                 'manufacturer',
@@ -366,6 +381,8 @@ class ProductController extends Controller
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
+                'inventoryRows.productSupplier.supplier',
+                'inventoryRows.productSupplier.price',
             ]);
         });
 

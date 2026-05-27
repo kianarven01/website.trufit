@@ -10,6 +10,7 @@ class CreateInitialInventoryForProduct
     {
         return Inventory::create([
             'productID' => $productId,
+            'product_supplier_id' => null,
             'quantity_on_hand' => 0,
             'sell_price' => null,
             'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',

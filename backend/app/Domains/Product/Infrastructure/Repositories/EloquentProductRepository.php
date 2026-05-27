@@ -17,6 +17,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
         return DB::transaction(function () use ($productData, $suppliers, $compatibility) {
             $productId = (string) Str::uuid();
 
+            // Create the product
             $product = Product::create([
                 'id' => $productId,
                 'name' => $productData['name'],
@@ -40,6 +41,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
                 $productSupplierId = (string) Str::uuid();
 
+                // Create the product-supplier relationship
                 $productSupplier = ProductSupplier::create([
                     'id' => $productSupplierId,
                     'product_id' => $productId,
@@ -55,7 +57,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 if ($price === null && $markup !== null && isset($supplier['supplier_cost'])) {
                     $price = (float) $supplier['supplier_cost'] + ((float) $supplier['supplier_cost'] * ((float) $markup / 100));
                 }
-
+                // Create the product price record
                 ProductPrice::create([
                     'id' => (string) Str::uuid(),
                     'ProductID' => $productId,
@@ -67,6 +69,22 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     'effective_from' => now(),
                     'effective_until' => null,
                 ]);
+
+                Inventory::firstOrCreate(
+                    [
+                        'productID' => $productId,
+                        'product_supplier_id' => $productSupplier->id,
+                        'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                    ],
+                    [
+                        'quantity_on_hand' => 0,
+                        'sell_price' => null,
+                        'reserved_quantity' => 0,
+                        'reorder_level' => 5,
+                        'reorder_qty' => 10,
+                    ]
+                );
+
             }
 
             if ($compatibility && !empty($compatibility['car_variant_id'])) {

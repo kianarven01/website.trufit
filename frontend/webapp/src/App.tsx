@@ -20,6 +20,7 @@ import AppointmentsList from "./pages/internal/Appointment/Appointments";
 
 import JobOrder from "./pages/internal/Services/Job Order/JobOrder";
 import JobOrderForm from "./pages/internal/Services/Job Order/JobOrderForm";
+import JobOrderDetail from "./pages/internal/Services/Job Order/JobOrderDetail";
 
 import ServiceCatalog from "./pages/internal/Services/Service Catalog/ServiceCatalog";
 import TaskLibraryList from "./pages/internal/Services/Service Catalog/TaskLibrary";
@@ -100,7 +101,9 @@ const App: React.FC = () => {
                 <Route>
                   <Route path="job-orders">
                     <Route index element={<JobOrder />} />
-                    <Route path=":new-job-order" element={<JobOrderForm mode="create" />} />
+                    <Route path="new-job-order" element={<JobOrderForm mode="create" />} />
+                    <Route path=":id/edit" element={<JobOrderForm mode="edit" />} />
+                    <Route path=":id" element={<JobOrderDetail />} />
                   </Route>
                 </Route>
 
@@ -138,7 +141,6 @@ const App: React.FC = () => {
 
             </Route>
 
-            <Route path="/webapp/services/job-orders" element={<JobOrder />} />
 
             <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
               <Route index element={<VehiclesPage />} />

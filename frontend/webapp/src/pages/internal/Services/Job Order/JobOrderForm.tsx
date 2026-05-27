@@ -229,6 +229,154 @@ const genSalesOrderNo = () =>
     .slice(0, 6)
     .toUpperCase()}`;
 
+/* ================= SEED DATA ================= */
+
+const seedServices = () => {
+  const existing = localStorage.getItem(SERVICE_KEY);
+
+  if (existing) return;
+
+  const genId = () => crypto.randomUUID();
+
+  /* CATEGORIES */
+  const categories: ServiceCategory[] = [
+    { id: genId(), name: "Maintenance" },
+    { id: genId(), name: "Repair" },
+    { id: genId(), name: "Detailing" },
+    { id: genId(), name: "Inspection" },
+  ];
+
+  /* VEHICLE SIZES */
+  const vehicleSizes: VehicleSize[] = [
+    {
+      id: genId(),
+      name: "Small Vehicles",
+      abbreviation: "S",
+      vehicleTypes: ["Sedan"],
+    },
+    {
+      id: genId(),
+      name: "Medium Vehicles",
+      abbreviation: "M",
+      vehicleTypes: ["SUV"],
+    },
+    {
+      id: genId(),
+      name: "Large Vehicles",
+      abbreviation: "L",
+      vehicleTypes: ["Pickup"],
+    },
+  ];
+
+  /* SERVICES */
+  const serviceTemplates = [
+    {
+      name: "Oil Change",
+      category: "Maintenance",
+      duration: 60,
+      pricingType: "fixed" as PricingType,
+    },
+    {
+      name: "Brake Service",
+      category: "Repair",
+      duration: 120,
+      pricingType: "hourly rate" as PricingType,
+    },
+    {
+      name: "Engine Tune-up",
+      category: "Maintenance",
+      duration: 180,
+      pricingType: "hourly rate" as PricingType,
+    },
+    {
+      name: "Car Wash",
+      category: "Detailing",
+      duration: 45,
+      pricingType: "fixed" as PricingType,
+    },
+    {
+      name: "Interior Cleaning",
+      category: "Detailing",
+      duration: 90,
+      pricingType: "fixed" as PricingType,
+    },
+    {
+      name: "Battery Replacement",
+      category: "Repair",
+      duration: 30,
+      pricingType: "fixed" as PricingType,
+    },
+    {
+      name: "Wheel Alignment",
+      category: "Inspection",
+      duration: 60,
+      pricingType: "hourly rate" as PricingType,
+    },
+    {
+      name: "Aircon Cleaning",
+      category: "Maintenance",
+      duration: 120,
+      pricingType: "fixed" as PricingType,
+    },
+  ];
+
+  const services: Service[] = [];
+  const pricing: ServicePricing[] = [];
+
+  serviceTemplates.forEach((template, index) => {
+    const category = categories.find(
+      (c) => c.name === template.category
+    );
+
+    if (!category) return;
+
+    const serviceId = genId();
+
+    services.push({
+      id: serviceId,
+      name: template.name,
+      serviceCategoryId: category.id,
+      description: "Standard automotive service package",
+      duration: template.duration,
+      pricingType: template.pricingType,
+    });
+
+    vehicleSizes.forEach((size, sizeIndex) => {
+      pricing.push({
+        id: genId(),
+        serviceId,
+        vehicleSizeId: size.id,
+        price:
+          1000 +
+          index * 350 +
+          sizeIndex * 500,
+      });
+    });
+  });
+
+  localStorage.setItem(
+    CATEGORY_KEY,
+    JSON.stringify(categories)
+  );
+
+  localStorage.setItem(
+    VEHICLE_SIZE_KEY,
+    JSON.stringify(vehicleSizes)
+  );
+
+  localStorage.setItem(
+    SERVICE_KEY,
+    JSON.stringify(services)
+  );
+
+  localStorage.setItem(
+    PRICING_KEY,
+    JSON.stringify(pricing)
+  );
+};
+
+
+
 const JobOrderForm: React.FC<JobOrderProps> = ({ mode = "create" }) => {
   const { id: jobOrderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -346,6 +494,7 @@ const JobOrderForm: React.FC<JobOrderProps> = ({ mode = "create" }) => {
   /* ================= LOAD ================= */
 
   useEffect(() => {
+    seedServices();
     try {
       const storedCustomers = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
       const storedVehicles = JSON.parse(localStorage.getItem(VEHICLE_STORAGE_KEY) || "[]");

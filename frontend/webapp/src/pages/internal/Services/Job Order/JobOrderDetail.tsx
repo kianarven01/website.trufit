@@ -4,41 +4,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
-
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-
-import {
-  ArrowLeft,
-  Car,
-  User,
-  Wrench,
-  Mail,
-  Phone,
-  MapPin,
-  Edit,
-  XCircle,
-  Paperclip,
-} from "lucide-react";
-
 import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
 import { toast } from "sonner";
-
-import {
-  Pagination,
-  usePagination,
-} from "@/components/ui/pagination";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { ArrowLeft, Car, User, Wrench, Mail, Phone, MapPin, Edit, XCircle, Paperclip } from "lucide-react";
 
 /* ================= STORAGE ================= */
 
@@ -717,7 +691,7 @@ const JobOrderDetail: React.FC = () => {
                       Parts Subtotal
                     </p>
                     <span>
-                      {/* {peso(partsSubtotal)} */}
+                      {peso(partsSubtotal)}
                     </span>
                   </div>
 

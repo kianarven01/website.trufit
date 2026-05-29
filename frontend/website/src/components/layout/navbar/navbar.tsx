@@ -1,27 +1,33 @@
-"use client"
+"use client";
 
-import { useState, useEffect, useRef } from "react"
-import Image from "next/image"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Phone, Mail, Clock, Menu, X } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import BibleVerseMarquee from "./BibleVerseMarquee"
-import { useModalStore } from "@/store/useModalStore"
-import ShareButtons from "@/components/ui/ShareButtons"
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Phone, Mail, Clock, Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import BibleVerseMarquee from "./BibleVerseMarquee";
+import { useModalStore } from "@/store/useModalStore";
+import ShareButtons from "@/components/ui/ShareButtons";
 
 export default function Navbar() {
-  const pathname = usePathname()
-  const [isOpen, setIsOpen] = useState(false)
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [isVisible, setIsVisible] = useState(true)
-  
-  const openAppointment = useModalStore((s) => s.openAppointment)
-  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen)
+  const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
 
-  const isVisibleRef = useRef(true)
-  const lastScrollY = useRef(0)
-  const isLockedRef = useRef(false)
+  const openAppointment = useModalStore((s) => s.openAppointment);
+  const isAppointmentOpen = useModalStore((s) => s.isAppointmentOpen);
+
+  const isVisibleRef = useRef(true);
+  const lastScrollY = useRef(0);
+  const isLockedRef = useRef(false);
+
+  const careersUrl =
+    process.env.NEXT_PUBLIC_CAREERS_URL ||
+    (process.env.NODE_ENV === "development"
+      ? "http://localhost:3001"
+      : "https://careers.trufitautocenter.com");
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -30,99 +36,109 @@ export default function Navbar() {
     { name: "News", href: "/news" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
-  ]
+    { name: "Careers", href: careersUrl },
+  ];
 
   // handle custom hide event (e.g., from ProcessSection)
   useEffect(() => {
     const handleHide = () => {
-      setIsVisible(false)
-      isVisibleRef.current = false
-    }
-    window.addEventListener("hideNavbar", handleHide as EventListener)
-    return () => window.removeEventListener("hideNavbar", handleHide as EventListener)
-  }, [])
+      setIsVisible(false);
+      isVisibleRef.current = false;
+    };
+    window.addEventListener("hideNavbar", handleHide as EventListener);
+    return () =>
+      window.removeEventListener("hideNavbar", handleHide as EventListener);
+  }, []);
 
   // handle scroll
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY
-      
+      const currentScrollY = window.scrollY;
+
       // Always show at top (force show) and reset scrolled state
       if (currentScrollY < 60) {
-        setIsScrolled(false)
+        setIsScrolled(false);
         if (!isVisibleRef.current) {
-          setIsVisible(true)
-          isVisibleRef.current = true
+          setIsVisible(true);
+          isVisibleRef.current = true;
         }
-        lastScrollY.current = currentScrollY
-        return
+        lastScrollY.current = currentScrollY;
+        return;
       }
 
       // Early exit if locked to prevent jitter loop (only after top-check)
-      if (isLockedRef.current) return
-      
-      // Update scrolled state - threshold for changing appearance
-      setIsScrolled(currentScrollY > 20)
+      if (isLockedRef.current) return;
 
-      const diff = currentScrollY - lastScrollY.current
-      
+      // Update scrolled state - threshold for changing appearance
+      setIsScrolled(currentScrollY > 20);
+
+      const diff = currentScrollY - lastScrollY.current;
+
       // Decisions based on scroll direction and cumulative distance
       // Higher hide threshold to prevent "accidental" hiding
       if (diff > 50 && isVisibleRef.current && !isOpen) {
         // Scrolling down decisively
-        setIsVisible(false)
-        isVisibleRef.current = false
-        lastScrollY.current = currentScrollY
-        
+        setIsVisible(false);
+        isVisibleRef.current = false;
+        lastScrollY.current = currentScrollY;
+
         // Lock for 500ms to allow animation to finish and scroll to settle
-        isLockedRef.current = true
-        setTimeout(() => { isLockedRef.current = false }, 500)
+        isLockedRef.current = true;
+        setTimeout(() => {
+          isLockedRef.current = false;
+        }, 500);
       } else if (diff < -30 && !isVisibleRef.current) {
         // Prevent showing navbar if the section has requested it hidden
         if (document.body.hasAttribute("data-hide-navbar-on-scroll-up")) {
-          return
+          return;
         }
 
         // Scrolling up decisively
-        setIsVisible(true)
-        isVisibleRef.current = true
-        lastScrollY.current = currentScrollY
-        
+        setIsVisible(true);
+        isVisibleRef.current = true;
+        lastScrollY.current = currentScrollY;
+
         // Lock for 500ms
-        isLockedRef.current = true
-        setTimeout(() => { isLockedRef.current = false }, 500)
+        isLockedRef.current = true;
+        setTimeout(() => {
+          isLockedRef.current = false;
+        }, 500);
       }
-      
+
       // Periodically update last position to avoid stale anchors
       if (Math.abs(diff) > 150) {
-        lastScrollY.current = currentScrollY
+        lastScrollY.current = currentScrollY;
       }
-    }
+    };
 
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [isOpen])
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isOpen]);
 
   // disable background scroll when mobile menu is open
   useEffect(() => {
     if (isOpen || isAppointmentOpen) {
-      document.body.classList.add("overflow-hidden")
-      document.documentElement.classList.add("overflow-hidden")
+      document.body.classList.add("overflow-hidden");
+      document.documentElement.classList.add("overflow-hidden");
     } else {
-      document.body.classList.remove("overflow-hidden")
-      document.documentElement.classList.remove("overflow-hidden")
+      document.body.classList.remove("overflow-hidden");
+      document.documentElement.classList.remove("overflow-hidden");
     }
     return () => {
-      document.body.classList.remove("overflow-hidden")
-      document.documentElement.classList.remove("overflow-hidden")
-    }
-  }, [isOpen, isAppointmentOpen])
+      document.body.classList.remove("overflow-hidden");
+      document.documentElement.classList.remove("overflow-hidden");
+    };
+  }, [isOpen, isAppointmentOpen]);
 
   const getLinkStyle = (isActive: boolean) => {
-    const baseColor = isActive ? "!text-brand-red font-semibold" : isScrolled ? "text-brand-dark" : "text-white";
+    const baseColor = isActive
+      ? "!text-brand-red font-semibold"
+      : isScrolled
+        ? "text-brand-dark"
+        : "text-white";
     const underline = isActive ? "after:w-full" : "after:w-0";
     return `relative text-lg transition-all duration-300 hover:text-brand-red after:content-[''] after:absolute after:left-0 after:-bottom-1 after:h-[2px] ${underline} after:bg-brand-red after:transition-all after:duration-300 hover:after:w-full ${baseColor}`;
-  }
+  };
 
   return (
     <header
@@ -142,7 +158,10 @@ export default function Navbar() {
             </div>
             <div className="hidden sm:flex items-center gap-1.5">
               <Mail size={14} className="text-brand-red" />
-              <a href="mailto:trufitautocenter@gmail.com" className="hover:underline text-[10px] md:text-sm">
+              <a
+                href="mailto:trufitautocenter@gmail.com"
+                className="hover:underline text-[10px] md:text-sm"
+              >
                 trufitautocenter@gmail.com
               </a>
             </div>
@@ -152,19 +171,21 @@ export default function Navbar() {
 
           <div className="hidden lg:flex items-center gap-1.5 shrink-0">
             <Clock size={14} className="text-brand-red" />
-            <span className="hidden xs:inline">Mon – Sat: 8:00 AM – 5:00 PM</span>
+            <span className="hidden xs:inline">
+              Mon – Sat: 8:00 AM – 5:00 PM
+            </span>
             <span className="xs:hidden">Mon – Sat: 8:00 AM – 5:00 PM</span>
           </div>
         </div>
       </div>
 
       {/* navbar wrapper - hides on scroll down */}
-      <motion.nav 
+      <motion.nav
         className="overflow-hidden"
         initial={false}
-        animate={{ 
+        animate={{
           y: isVisible ? 0 : "-100%",
-          opacity: isVisible ? 1 : 0
+          opacity: isVisible ? 1 : 0,
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
@@ -172,8 +193,12 @@ export default function Navbar() {
           <div className="flex items-center h-16 w-full">
             {/* logo - swapped logic for user files */}
             <Link href="/" className="flex items-center">
-              <Image 
-                src={isScrolled ? "/images/logo-white1.webp" : "/images/logo-dark1.webp"}
+              <Image
+                src={
+                  isScrolled
+                    ? "/images/logo-white1.webp"
+                    : "/images/logo-dark1.webp"
+                }
                 alt="logo"
                 width={220}
                 height={58}
@@ -184,9 +209,26 @@ export default function Navbar() {
             {/* desktop nav - hidden below lg */}
             <div className="hidden lg:flex flex-1 justify-center gap-12 ml-4">
               {navLinks.map((link) => {
-                const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
-                return (
-                  <Link key={link.name} href={link.href} className={getLinkStyle(isActive ?? false)}>
+                const isActive =
+                  !link.external &&
+                  (pathname === link.href ||
+                    (link.href !== "/" && pathname?.startsWith(link.href)));
+                return link.external ? (
+                  <a
+                    key={link.name}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={getLinkStyle(false)}
+                  >
+                    {link.name}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    className={getLinkStyle(isActive ?? false)}
+                  >
                     {link.name}
                   </Link>
                 );
@@ -198,7 +240,9 @@ export default function Navbar() {
               <button
                 onClick={openAppointment}
                 className={`px-8 py-2.5 rounded-sm font-bold transition-all shadow-lg ${
-                  isScrolled ? "bg-brand-red text-white hover:bg-brand-dark" : "bg-white text-brand-dark hover:bg-brand-red hover:text-white"
+                  isScrolled
+                    ? "bg-brand-red text-white hover:bg-brand-dark"
+                    : "bg-white text-brand-dark hover:bg-brand-red hover:text-white"
                 }`}
               >
                 Book Now
@@ -235,12 +279,31 @@ export default function Navbar() {
               </button>
               <div className="flex flex-col items-center gap-6 py-20 min-h-full">
                 {navLinks.map((link) => {
-                  const isActive = pathname === link.href || (link.href !== '/' && pathname?.startsWith(link.href));
+                  const isActive =
+                    !link.external &&
+                    (pathname === link.href ||
+                      (link.href !== "/" && pathname?.startsWith(link.href)));
+
+                  if (link.external) {
+                    return (
+                      <a
+                        key={link.name}
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-3xl transition-colors text-white hover:text-brand-red"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {link.name}
+                      </a>
+                    );
+                  }
+
                   return (
                     <Link
                       key={link.name}
                       href={link.href}
-                      className={`text-3xl transition-colors ${isActive ? 'text-brand-red font-bold' : 'text-white hover:text-brand-red'}`}
+                      className={`text-3xl transition-colors ${isActive ? "text-brand-red font-bold" : "text-white hover:text-brand-red"}`}
                       onClick={() => setIsOpen(false)}
                     >
                       {link.name}
@@ -250,8 +313,8 @@ export default function Navbar() {
 
                 <button
                   onClick={() => {
-                    setIsOpen(false)
-                    openAppointment()
+                    setIsOpen(false);
+                    openAppointment();
                   }}
                   className="mt-4 px-11 py-4 bg-brand-red text-white rounded-sm text-xl font-bold hover:bg-white hover:text-brand-dark transition-all"
                 >
@@ -265,7 +328,6 @@ export default function Navbar() {
           )}
         </AnimatePresence>
       </motion.nav>
-      
     </header>
-  )
+  );
 }

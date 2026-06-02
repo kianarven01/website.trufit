@@ -168,10 +168,13 @@ class ProductController extends Controller
 
         $product->load([
             'category',
+            'part',
             'manufacturer',
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
+            'inventoryRows.productSupplier.supplier',
+            'inventoryRows.productSupplier.price',
             'inventoryRelation',
         ]);
 
@@ -376,13 +379,14 @@ class ProductController extends Controller
 
             return $product->fresh([
                 'category',
+                'part',
                 'manufacturer',
                 'unitRelation',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
-                'inventoryRelation',
                 'inventoryRows.productSupplier.supplier',
                 'inventoryRows.productSupplier.price',
+                'inventoryRelation',
             ]);
         });
 

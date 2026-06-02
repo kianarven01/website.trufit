@@ -146,39 +146,53 @@ const normalizeSuppliers = (row: any): ProductSupplier[] => {
 };
 
 const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
+  const product = row.product || {};
   const quantityOnHand = Number(row.quantity_on_hand ?? row.stock ?? 0);
   const reservedQuantity = Number(row.reserved_quantity ?? 0);
 
   return {
     id: String(row.id),
-    image: row.image_URL || row.image || row.image_path || undefined,
-    name: String(row.name || ""),
+    image: product.image_URL || product.image || product.image_path || row.image_URL || row.image || row.image_path || undefined,
+    name: String(product.name || row.name || ""),
     brand:
+      product.manufacturer_name ||
+      product.manufacturer?.name ||
       row.manufacturer_name ||
       row.manufacturer?.name ||
-      row.Manufacturer?.name ||
-      row.brand_name ||
-      row.brand?.name ||
       "-",
-    sku: String(row.SKU || row.sku || ""),
-    partNumber: String(row.part_number || row.partNumber || ""),
-    partName: row.part_name || row.part?.name || row.Part?.name || "-",
-    category: row.category_name || row.category?.name || row.Category?.name || "-",
-    unitName: row.unit_name || row.unit?.name || row.Unit?.name || row.unit || "-",
+    sku: String(product.SKU || product.sku || row.SKU || row.sku || ""),
+    partNumber: String(product.part_number || product.partNumber || row.part_number || row.partNumber || ""),
+    partName: product.part_name || product.part?.name || row.part_name || row.part?.name || "-",
+    category: product.category_name || product.category?.name || row.category_name || row.category?.name || "-",
+    unitName: product.unit_name || product.unit?.name || row.unit_name || row.unit?.name || row.unit || "-",
     unitAbbreviation:
+      product.unit_abbreviation ||
+      product.unitAbbreviation ||
+      product.unit?.abbreviation ||
       row.unit_abbreviation ||
       row.unitAbbreviation ||
       row.unit?.abbreviation ||
-      row.Unit?.abbreviation ||
       null,
     quantityOnHand,
     reservedQuantity,
-    availableQuantity: Math.max(quantityOnHand - reservedQuantity, 0),
+    availableQuantity: Number(row.available_quantity ?? Math.max(quantityOnHand - reservedQuantity, 0)),
     reorderLevel: toNumberOrNull(row.reorder_level),
     reorderQty: toNumberOrNull(row.reorder_qty),
     locationId: row.location_id || null,
-    description: row.description || "-",
-    suppliers: normalizeSuppliers(row),
+    description: product.description || row.description || "-",
+    suppliers: row.product_suppliers
+      ? normalizeSuppliers({ product_suppliers: row.product_suppliers })
+      : row.product_supplier_id
+        ? [
+            {
+              id: row.product_supplier_id,
+              supplier_cost: row.supplier_cost,
+              supplier: row.supplier,
+              active_price: row.active_price,
+              price: row.price,
+            },
+          ]
+        : normalizeSuppliers(row),
   };
 };
 
@@ -209,19 +223,19 @@ const getStockStatus = (item: InventoryDetailItem) => {
 
 const InventoryDetail: React.FC = () => {
   const navigate = useNavigate();
-  const { productId } = useParams<{ productId: string }>();
+  const { productId: inventoryId } = useParams<{ productId: string }>();
 
   const [item, setItem] = useState<InventoryDetailItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [imgError, setImgError] = useState(false);
 
   const loadInventoryDetail = async () => {
-    if (!productId) return;
+    if (!inventoryId) return;
 
     setLoading(true);
 
     try {
-      const res = await api.get(`/products/${productId}`);
+      const res = await api.get(`/inventory/${inventoryId}`);
       const row = res.data?.data ?? res.data;
 
       setItem(normalizeInventoryDetail(row));
@@ -235,7 +249,7 @@ const InventoryDetail: React.FC = () => {
 
   useEffect(() => {
     void loadInventoryDetail();
-  }, [productId]);
+  }, [inventoryId]);
 
   const supplierPriceRange = useMemo(() => {
     const prices =

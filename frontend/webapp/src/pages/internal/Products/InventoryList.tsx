@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import DataToolbar from "@/components/DataToolbar";
@@ -25,15 +24,58 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 /* ================= TYPES ================= */
 interface InventoryItem {
   id: string;
+  productId: string;
+  productSupplierId?: string | null;
   image?: string;
   name: string;
   brand: string;
+  supplierName: string;
   sku: string;
   partNumber: string;
   unit: string;
+  unitAbbreviation?: string | null;
   stock: number;
   sellPrice: number;
+  priceLabel: string;
 }
+
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+};
+
+const formatPeso = (value: number | null) => {
+  if (value === null) return "No price set";
+  return `₱${value.toFixed(2)}`;
+};
+
+const getSupplierName = (row: any) => {
+  return (
+    row.supplier?.CompanyName ||
+    row.supplier?.name ||
+    row.supplier_name ||
+    "No supplier"
+  );
+};
+
+const getInventoryPrice = (row: any): {
+  label: string;
+  primaryPrice: number;
+} => {
+  const price = toNumberOrNull(
+    row.active_price?.Price ??
+      row.active_price?.price ??
+      row.price ??
+      null
+  );
+
+  return {
+    label: formatPeso(price),
+    primaryPrice: price ?? 0,
+  };
+};
 
 /* ================= STOCK STATUS ================= */
 const getStockStatus = (stock: number) => {
@@ -60,7 +102,6 @@ const getStockStatus = (stock: number) => {
 
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
-  const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
@@ -80,19 +121,39 @@ const Inventory: React.FC = () => {
   const loadInventory = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/products");
+      const res = await api.get("/inventory", {
+        params: search ? { search } : undefined,
+      });
+
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
-      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map((row: any) => ({
-        id: String(row.id),
-        image: row.image_URL || row.image_path || undefined,
-        name: String(row.name || ""),
-        brand: row.manufacturer_name || "-",
-        sku: String(row.SKU || row.sku || ""),
-        partNumber: String(row.part_number || ""),
-        unit: row.unit_name || row.unit || "pcs",
-        stock: Number(row.quantity_on_hand ?? 0),
-        sellPrice: Number(row.sell_price ?? 0),
-      }));
+
+      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map((row: any) => {
+        const product = row.product || {};
+        const inventoryPrice = getInventoryPrice(row);
+
+        return {
+          id: String(row.id),
+          productId: String(row.product_id || product.id || ""),
+          productSupplierId: row.product_supplier_id || null,
+          image: product.image_URL || product.image || product.image_path || undefined,
+          name: String(product.name || ""),
+          brand: product.manufacturer_name || product.manufacturer?.name || "-",
+          supplierName: getSupplierName(row),
+          sku: String(product.SKU || product.sku || ""),
+          partNumber: String(product.part_number || ""),
+          unit: product.unit_name || product.unit || "-",
+          unitAbbreviation:
+            product.unit_abbreviation ||
+            product.unitAbbreviation ||
+            product.unit?.abbreviation ||
+            product.Unit?.abbreviation ||
+            null,
+          stock: Number(row.quantity_on_hand ?? 0),
+          sellPrice: inventoryPrice.primaryPrice,
+          priceLabel: inventoryPrice.label,
+        };
+      });
+
       setItems(normalized);
     } catch (error) {
       console.error("Failed to load inventory:", error);
@@ -112,7 +173,7 @@ const Inventory: React.FC = () => {
   // Adjust stock handler
   const handleOpenAdjust = (item: InventoryItem) => {
     setSelectedProductForAdjust(item);
-    setAdjustProductId(item.id);
+    setAdjustProductId(item.productId);
     setAdjustQty(item.stock);
     setAdjustPrice(item.sellPrice);
     setIsAdjustOpen(true);
@@ -120,7 +181,7 @@ const Inventory: React.FC = () => {
 
   const handleOpenAdjustNew = () => {
     setSelectedProductForAdjust(null);
-    setAdjustProductId(items[0]?.id || "");
+    setAdjustProductId(items[0]?.productId || "");
     setAdjustQty(0);
     setAdjustPrice(items[0]?.sellPrice ?? 0);
     setIsAdjustOpen(true);
@@ -128,7 +189,7 @@ const Inventory: React.FC = () => {
 
   useEffect(() => {
     if (!selectedProductForAdjust && adjustProductId) {
-      const prod = items.find((x) => x.id === adjustProductId);
+      const prod = items.find((x) => x.productId === adjustProductId);
       if (prod) {
         setAdjustQty(prod.stock);
         setAdjustPrice(prod.sellPrice);
@@ -140,9 +201,10 @@ const Inventory: React.FC = () => {
     if (!adjustProductId) return;
     setIsSavingAdjust(true);
     try {
-      await api.post(`/products/${adjustProductId}/adjust-stock`, {
+      await api.post("/inventory/adjust-stock", {
+        product_id: adjustProductId,
+        product_supplier_id: selectedProductForAdjust?.productSupplierId ?? null,
         quantity_on_hand: adjustQty,
-        sell_price: adjustPrice,
       });
       await loadInventory();
       setIsAdjustOpen(false);
@@ -155,7 +217,7 @@ const Inventory: React.FC = () => {
 
   /* ================= FILTER ================= */
   const filtered = items.filter((p) =>
-    `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
+    `${p.name} ${p.brand} ${p.supplierName} ${p.sku} ${p.partNumber}`
       .toLowerCase()
       .includes(search.toLowerCase())
   );
@@ -209,7 +271,8 @@ const Inventory: React.FC = () => {
                           key={p.id}
                           onClick={() => navigate(`/webapp/products/inventory/${p.id}`)}
                           className={cn(
-                            "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                            "cursor-pointer",
+                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                             "hover:bg-accent/30"
                           )}
                         >
@@ -238,6 +301,9 @@ const Inventory: React.FC = () => {
                                 <span className="font-medium text-foreground text-sm leading-tight">{p.name}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {p.brand}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground/80">
+                                  {p.supplierName}
                                 </span>
                               </div>
                             </div>
@@ -271,10 +337,7 @@ const Inventory: React.FC = () => {
                             </span>
                           </TableCell>
                             
-                          <TableCell
-                            className="text-right"
-                            onClick={(event) => event.stopPropagation()}
-                          >
+                          <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -366,8 +429,8 @@ const Inventory: React.FC = () => {
                 disabled={!!selectedProductForAdjust}
               >
                 {items.map((prod) => (
-                  <option key={prod.id} value={prod.id}>
-                    {prod.name} ({prod.sku})
+                  <option key={prod.id} value={prod.productId}>
+                    {prod.name} ({prod.sku}) - {prod.supplierName}
                   </option>
                 ))}
               </select>
@@ -386,18 +449,12 @@ const Inventory: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="adjust-price" className="text-right text-muted-foreground font-medium">
-                Selling Price
+              <Label className="text-right text-muted-foreground font-medium">
+                Price
               </Label>
-              <Input
-                id="adjust-price"
-                type="number"
-                min="0"
-                step="0.01"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
-                value={adjustPrice}
-                onChange={(e) => setAdjustPrice(Math.max(0, parseFloat(e.target.value) || 0))}
-              />
+              <div className="col-span-3 text-sm font-medium text-foreground">
+                {selectedProductForAdjust?.priceLabel || "No price set"}
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2 mt-2">

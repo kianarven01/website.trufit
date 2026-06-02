@@ -46,22 +46,22 @@ class Product extends Model
         'part_id' => 'integer',
         'is_oem' => 'boolean',
     ];
-    // Category relationship
+
     public function category()
     {
         return $this->belongsTo(Category::class, 'category_id', 'id');
     }
-    // Manufacturer relationship
+
     public function manufacturer()
     {
         return $this->belongsTo(Manufacturers::class, 'manufacturer_id', 'id');
     }
-    // Unit relationship
+
     public function unitRelation()
     {
         return $this->belongsTo(Unit::class, 'unit', 'id');
     }
-    // Vehicle compatibility relationships
+
     public function vehicleCompatibilities()
     {
         return $this->hasMany(
@@ -70,7 +70,7 @@ class Product extends Model
             'id'
         );
     }
-    // Supplier relationships
+
     public function productSuppliers()
     {
         return $this->hasMany(
@@ -92,7 +92,7 @@ class Product extends Model
             'supplier_cost',
         ]);
     }
-    // Equivalents relationships
+
     public function equivalentLinks()
     {
         return $this->hasMany(
@@ -134,7 +134,7 @@ class Product extends Model
             'id',
         ]);
     }
-    // Inventory relationships
+
     public function inventoryRelation()
     {
         return $this->hasOne(Inventory::class, 'productID', 'id');
@@ -142,13 +142,11 @@ class Product extends Model
 
     public function inventoryRows()
     {
-        return $this->hasMany(\App\Domains\Inventory\Domain\Models\Inventory::class, 'productID', 'id');
+        return $this->hasMany(Inventory::class, 'productID', 'id');
     }
-    // Part relationship
+
     public function part()
     {
         return $this->belongsTo(Part::class, 'part_id', 'id');
     }
-
-    
 }

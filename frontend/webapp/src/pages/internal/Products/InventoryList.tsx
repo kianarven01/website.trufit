@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import DataToolbar from "@/components/DataToolbar";
@@ -16,14 +17,25 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon, Ellipsis } from "lucide-react";
 import api from "@/api/axios";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 /* ================= TYPES ================= */
 interface InventoryItem {
-  id: string;
+  id: string; // Inventory row id
   productId: string;
   productSupplierId?: string | null;
   image?: string;
@@ -33,8 +45,10 @@ interface InventoryItem {
   sku: string;
   partNumber: string;
   unit: string;
-  unitAbbreviation?: string | null;
   stock: number;
+  reservedQuantity: number;
+  reorderLevel: number;
+  reorderQty: number;
   sellPrice: number;
   priceLabel: string;
 }
@@ -78,21 +92,23 @@ const getInventoryPrice = (row: any): {
 };
 
 /* ================= STOCK STATUS ================= */
-const getStockStatus = (stock: number) => {
-  if (stock === 0) {
+const getStockStatus = (stock: number, reorderLevel: number) => {
+  if (stock <= 0) {
     return {
       label: "Out of Stock",
       value: "out-of-stock",
       className: "bg-red-100/10 text-red-400 border border-red-500/20",
     };
   }
-  if (stock <= 5) {
+
+  if (reorderLevel > 0 && stock <= reorderLevel) {
     return {
       label: "Low Stock",
       value: "low-stock",
       className: "bg-yellow-100/10 text-yellow-400 border border-yellow-500/20",
     };
   }
+
   return {
     label: "In Stock",
     value: "in-stock",
@@ -102,6 +118,8 @@ const getStockStatus = (stock: number) => {
 
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
+  const navigate = useNavigate();
+
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
@@ -109,10 +127,13 @@ const Inventory: React.FC = () => {
 
   // Adjust stock modal state
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
-  const [selectedProductForAdjust, setSelectedProductForAdjust] = useState<InventoryItem | null>(null);
+  const [selectedInventoryForAdjust, setSelectedInventoryForAdjust] =
+    useState<InventoryItem | null>(null);
+  const [adjustInventoryId, setAdjustInventoryId] = useState<string>("");
   const [adjustQty, setAdjustQty] = useState<number>(0);
-  const [adjustPrice, setAdjustPrice] = useState<number>(0);
-  const [adjustProductId, setAdjustProductId] = useState<string>("");
+  const [adjustReservedQty, setAdjustReservedQty] = useState<number>(0);
+  const [adjustReorderLevel, setAdjustReorderLevel] = useState<number>(5);
+  const [adjustReorderQty, setAdjustReorderQty] = useState<number>(10);
   const [isSavingAdjust, setIsSavingAdjust] = useState(false);
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
@@ -120,6 +141,7 @@ const Inventory: React.FC = () => {
   /* ================= LOAD ================= */
   const loadInventory = async () => {
     setLoading(true);
+
     try {
       const res = await api.get("/inventory", {
         params: search ? { search } : undefined,
@@ -127,32 +149,50 @@ const Inventory: React.FC = () => {
 
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
-      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map((row: any) => {
-        const product = row.product || {};
-        const inventoryPrice = getInventoryPrice(row);
+      const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map(
+        (row: any) => {
+          const product = row.product || {};
+          const inventoryPrice = getInventoryPrice(row);
 
-        return {
-          id: String(row.id),
-          productId: String(row.product_id || product.id || ""),
-          productSupplierId: row.product_supplier_id || null,
-          image: product.image_URL || product.image || product.image_path || undefined,
-          name: String(product.name || ""),
-          brand: product.manufacturer_name || product.manufacturer?.name || "-",
-          supplierName: getSupplierName(row),
-          sku: String(product.SKU || product.sku || ""),
-          partNumber: String(product.part_number || ""),
-          unit: product.unit_name || product.unit || "-",
-          unitAbbreviation:
-            product.unit_abbreviation ||
-            product.unitAbbreviation ||
-            product.unit?.abbreviation ||
-            product.Unit?.abbreviation ||
-            null,
-          stock: Number(row.quantity_on_hand ?? 0),
-          sellPrice: inventoryPrice.primaryPrice,
-          priceLabel: inventoryPrice.label,
-        };
-      });
+          return {
+            id: String(row.id),
+            productId: String(row.product_id || product.id || ""),
+            productSupplierId: row.product_supplier_id || null,
+
+            image:
+              product.image_URL ||
+              product.image ||
+              product.image_path ||
+              undefined,
+
+            name: String(product.name || ""),
+            brand:
+              product.manufacturer_name ||
+              product.manufacturer?.name ||
+              "-",
+            supplierName: getSupplierName(row),
+            sku: String(product.SKU || product.sku || ""),
+            partNumber: String(product.part_number || ""),
+
+            unit:
+              product.unit_abbreviation ||
+              product.unitAbbreviation ||
+              product.unit?.abbreviation ||
+              product.Unit?.abbreviation ||
+              product.unit_name ||
+              product.unit ||
+              "-",
+
+            stock: Number(row.quantity_on_hand ?? 0),
+            reservedQuantity: Number(row.reserved_quantity ?? 0),
+            reorderLevel: Number(row.reorder_level ?? 5),
+            reorderQty: Number(row.reorder_qty ?? 10),
+
+            sellPrice: inventoryPrice.primaryPrice,
+            priceLabel: inventoryPrice.label,
+          };
+        }
+      );
 
       setItems(normalized);
     } catch (error) {
@@ -168,44 +208,68 @@ const Inventory: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, setPage]);
 
-  // Adjust stock handler
-  const handleOpenAdjust = (item: InventoryItem) => {
-    setSelectedProductForAdjust(item);
-    setAdjustProductId(item.productId);
+  /* ================= ADJUST STOCK ================= */
+  const applyAdjustValues = (item: InventoryItem) => {
+    setAdjustInventoryId(item.id);
     setAdjustQty(item.stock);
-    setAdjustPrice(item.sellPrice);
+    setAdjustReservedQty(item.reservedQuantity);
+    setAdjustReorderLevel(item.reorderLevel);
+    setAdjustReorderQty(item.reorderQty);
+  };
+
+  const handleOpenAdjust = (item: InventoryItem) => {
+    setSelectedInventoryForAdjust(item);
+    applyAdjustValues(item);
     setIsAdjustOpen(true);
   };
 
   const handleOpenAdjustNew = () => {
-    setSelectedProductForAdjust(null);
-    setAdjustProductId(items[0]?.productId || "");
-    setAdjustQty(0);
-    setAdjustPrice(items[0]?.sellPrice ?? 0);
+    const firstItem = items[0];
+
+    setSelectedInventoryForAdjust(null);
+
+    if (firstItem) {
+      applyAdjustValues(firstItem);
+    } else {
+      setAdjustInventoryId("");
+      setAdjustQty(0);
+      setAdjustReservedQty(0);
+      setAdjustReorderLevel(5);
+      setAdjustReorderQty(10);
+    }
+
     setIsAdjustOpen(true);
   };
 
-  useEffect(() => {
-    if (!selectedProductForAdjust && adjustProductId) {
-      const prod = items.find((x) => x.productId === adjustProductId);
-      if (prod) {
-        setAdjustQty(prod.stock);
-        setAdjustPrice(prod.sellPrice);
-      }
+  const handleInventorySelectChange = (inventoryId: string) => {
+    setAdjustInventoryId(inventoryId);
+
+    const selectedItem = items.find((item) => item.id === inventoryId);
+
+    if (selectedItem) {
+      applyAdjustValues(selectedItem);
     }
-  }, [adjustProductId, selectedProductForAdjust, items]);
+  };
+
+  const selectedAdjustItem = items.find((item) => item.id === adjustInventoryId);
 
   const handleSaveAdjust = async () => {
-    if (!adjustProductId) return;
+    if (!selectedAdjustItem) return;
+
     setIsSavingAdjust(true);
+
     try {
       await api.post("/inventory/adjust-stock", {
-        product_id: adjustProductId,
-        product_supplier_id: selectedProductForAdjust?.productSupplierId ?? null,
+        product_id: selectedAdjustItem.productId,
+        product_supplier_id: selectedAdjustItem.productSupplierId ?? null,
         quantity_on_hand: adjustQty,
+        reserved_quantity: adjustReservedQty,
+        reorder_level: adjustReorderLevel,
+        reorder_qty: adjustReorderQty,
       });
+
       await loadInventory();
       setIsAdjustOpen(false);
     } catch (error) {
@@ -227,7 +291,6 @@ const Inventory: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-4 p-4 h-full w-full">
-        
         {/* toolbar */}
         <DataToolbar
           searchPlaceholder="Search inventory..."
@@ -240,23 +303,38 @@ const Inventory: React.FC = () => {
         {loading ? (
           <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
             <CardContent className="py-20 flex flex-col items-center justify-center">
-              <p className="text-muted-foreground text-sm font-medium">Loading inventory...</p>
+              <p className="text-muted-foreground text-sm font-medium">
+                Loading inventory...
+              </p>
             </CardContent>
           </Card>
         ) : items.length > 0 ? (
           <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
             <div className="flex-1 overflow-auto">
               <Table className="table-fixed w-full border-separate border-spacing-y-2">
-                
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="w-4/12 text-muted-foreground font-semibold">Product</TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">SKU</TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">Part No.</TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">Stock</TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">Price</TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">Unit</TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">Status</TableHead>
+                    <TableHead className="w-4/12 text-muted-foreground font-semibold">
+                      Product
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      SKU
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      Part No.
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      Price
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      Stock
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      Unit
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      Status
+                    </TableHead>
                     <TableHead className="w-[8%] text-muted-foreground font-semibold" />
                   </TableRow>
                 </TableHeader>
@@ -264,15 +342,16 @@ const Inventory: React.FC = () => {
                 <TableBody>
                   {filtered.length > 0 ? (
                     paginated.map((p) => {
-                      const status = getStockStatus(p.stock);
+                      const status = getStockStatus(p.stock, p.reorderLevel);
 
                       return (
                         <TableRow
                           key={p.id}
-                          onClick={() => navigate(`/webapp/products/inventory/${p.id}`)}
+                          onClick={() =>
+                            navigate(`/webapp/products/inventory/${p.id}`)
+                          }
                           className={cn(
-                            "cursor-pointer",
-                            "transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                            "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
                             "hover:bg-accent/30"
                           )}
                         >
@@ -298,7 +377,9 @@ const Inventory: React.FC = () => {
                               )}
 
                               <div className="flex flex-col">
-                                <span className="font-medium text-foreground text-sm leading-tight">{p.name}</span>
+                                <span className="font-medium text-foreground text-sm leading-tight">
+                                  {p.name}
+                                </span>
                                 <span className="text-xs text-muted-foreground">
                                   {p.brand}
                                 </span>
@@ -309,20 +390,31 @@ const Inventory: React.FC = () => {
                             </div>
                           </TableCell>
 
-                          <TableCell className="text-foreground/80 text-sm">{p.sku}</TableCell>
-                          <TableCell className="text-foreground/80 text-sm">{p.partNumber}</TableCell>
+                          <TableCell className="text-foreground/80 text-sm">
+                            {p.sku}
+                          </TableCell>
 
-                          {/* STOCK */}
-                          <TableCell>
-                            <span className="font-semibold text-foreground text-sm">{p.stock}</span>
+                          <TableCell className="text-foreground/80 text-sm">
+                            {p.partNumber}
                           </TableCell>
 
                           {/* PRICE */}
                           <TableCell>
-                            <span className="font-medium text-foreground text-sm">₱{p.sellPrice.toFixed(2)}</span>
+                            <span className="font-medium text-foreground text-sm">
+                              {p.priceLabel}
+                            </span>
                           </TableCell>
 
-                          <TableCell className="text-foreground/80 text-sm">{p.unit}</TableCell>
+                          {/* STOCK */}
+                          <TableCell>
+                            <span className="font-semibold text-foreground text-sm">
+                              {p.stock}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="text-foreground/80 text-sm">
+                            {p.unit}
+                          </TableCell>
 
                           {/* STATUS */}
                           <TableCell>
@@ -336,8 +428,11 @@ const Inventory: React.FC = () => {
                               {status.label}
                             </span>
                           </TableCell>
-                            
-                          <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+
+                          <TableCell
+                            className="text-right"
+                            onClick={(event) => event.stopPropagation()}
+                          >
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -348,7 +443,10 @@ const Inventory: React.FC = () => {
                                   <Ellipsis className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]">
+                              <DropdownMenuContent
+                                align="end"
+                                className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]"
+                              >
                                 <DropdownMenuItem
                                   onClick={() => handleOpenAdjust(p)}
                                   className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
@@ -401,7 +499,7 @@ const Inventory: React.FC = () => {
                 No inventory available
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Adjust stock to populate inventory items
+                Add suppliers to products to create inventory rows
               </p>
             </CardContent>
           </Card>
@@ -410,33 +508,41 @@ const Inventory: React.FC = () => {
 
       {/* ================= ADJUST STOCK MODAL ================= */}
       <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-card border border-border/40 shadow-2xl rounded-2xl p-6 backdrop-blur-xl">
+        <DialogContent className="sm:max-w-[475px] bg-card border border-border/40 shadow-2xl rounded-2xl p-6 backdrop-blur-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
               Adjust Inventory Stock
             </DialogTitle>
           </DialogHeader>
+
           <div className="grid gap-5 py-4 text-sm">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="adjust-product" className="text-right text-muted-foreground font-medium">
-                Product
+              <Label
+                htmlFor="adjust-product"
+                className="text-right text-muted-foreground font-medium"
+              >
+                Inventory Row
               </Label>
               <select
                 id="adjust-product"
                 className="col-span-3 border border-border/80 rounded-lg px-3 py-2 bg-background text-foreground focus:ring-1 focus:ring-blue-900 transition text-sm"
-                value={adjustProductId}
-                onChange={(e) => setAdjustProductId(e.target.value)}
-                disabled={!!selectedProductForAdjust}
+                value={adjustInventoryId}
+                onChange={(e) => handleInventorySelectChange(e.target.value)}
+                disabled={!!selectedInventoryForAdjust}
               >
-                {items.map((prod) => (
-                  <option key={prod.id} value={prod.productId}>
-                    {prod.name} ({prod.sku}) - {prod.supplierName}
+                {items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.sku}) - {item.supplierName}
                   </option>
                 ))}
               </select>
             </div>
+
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="adjust-qty" className="text-right text-muted-foreground font-medium">
+              <Label
+                htmlFor="adjust-qty"
+                className="text-right text-muted-foreground font-medium"
+              >
                 Stock Count
               </Label>
               <Input
@@ -445,18 +551,76 @@ const Inventory: React.FC = () => {
                 min="0"
                 className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
                 value={adjustQty}
-                onChange={(e) => setAdjustQty(Math.max(0, parseInt(e.target.value) || 0))}
+                onChange={(e) =>
+                  setAdjustQty(Math.max(0, parseInt(e.target.value) || 0))
+                }
               />
             </div>
+
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right text-muted-foreground font-medium">
-                Price
+              <Label
+                htmlFor="adjust-reserved"
+                className="text-right text-muted-foreground font-medium"
+              >
+                Reserved
               </Label>
-              <div className="col-span-3 text-sm font-medium text-foreground">
-                {selectedProductForAdjust?.priceLabel || "No price set"}
-              </div>
+              <Input
+                id="adjust-reserved"
+                type="number"
+                min="0"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={adjustReservedQty}
+                onChange={(e) =>
+                  setAdjustReservedQty(
+                    Math.max(0, parseInt(e.target.value) || 0)
+                  )
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label
+                htmlFor="adjust-reorder-level"
+                className="text-right text-muted-foreground font-medium"
+              >
+                Reorder Level
+              </Label>
+              <Input
+                id="adjust-reorder-level"
+                type="number"
+                min="0"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={adjustReorderLevel}
+                onChange={(e) =>
+                  setAdjustReorderLevel(
+                    Math.max(0, parseInt(e.target.value) || 0)
+                  )
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label
+                htmlFor="adjust-reorder-qty"
+                className="text-right text-muted-foreground font-medium"
+              >
+                Reorder Qty
+              </Label>
+              <Input
+                id="adjust-reorder-qty"
+                type="number"
+                min="0"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={adjustReorderQty}
+                onChange={(e) =>
+                  setAdjustReorderQty(
+                    Math.max(0, parseInt(e.target.value) || 0)
+                  )
+                }
+              />
             </div>
           </div>
+
           <DialogFooter className="gap-2 mt-2">
             <Button
               variant="outline"
@@ -466,9 +630,10 @@ const Inventory: React.FC = () => {
             >
               Cancel
             </Button>
+
             <Button
               onClick={handleSaveAdjust}
-              disabled={isSavingAdjust || !adjustProductId}
+              disabled={isSavingAdjust || !selectedAdjustItem}
               className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSavingAdjust ? "Saving..." : "Save Adjustments"}

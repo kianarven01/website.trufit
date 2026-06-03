@@ -59,6 +59,10 @@ interface Product {
   description: string;
   unit: string;
   unitAbbreviation?: string | null;
+  quantityOnHand?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+  stockStatus?: "In Stock" | "Low Stock" | "Out of Stock" | string;
   price: number | null;
   category: string;
   manufacturer: string;
@@ -215,12 +219,40 @@ const normalizeProduct = (row: any): Product => ({
   location: row.location || row.warehouse_location || "-",
   barcode: row.barcode || "",
   categoryId: row.category_id ?? row.categoryId ?? null,
+  quantityOnHand: toNumberOrNull(row.quantity_on_hand) ?? 0,
+  reservedQuantity: toNumberOrNull(row.reserved_quantity) ?? 0,
+  availableQuantity:
+    toNumberOrNull(row.available_quantity) ??
+    Math.max(
+      (toNumberOrNull(row.quantity_on_hand) ?? 0) -
+        (toNumberOrNull(row.reserved_quantity) ?? 0),
+      0
+    ),
+  stockStatus:
+    row.stock_status ||
+    row.stockStatus ||
+    ((toNumberOrNull(row.available_quantity ?? row.quantity_on_hand) ?? 0) > 0
+      ? "In Stock"
+      : "Out of Stock"),
   suppliers: normalizeSuppliers(row),
   compatibleVehicles: Array.isArray(row.compatibleVehicles)
     ? row.compatibleVehicles
     : [],
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
+
+
+const getStockBadgeClass = (status?: string) => {
+  if (status === "In Stock") {
+    return "bg-green-100 text-green-700";
+  }
+
+  if (status === "Low Stock") {
+    return "bg-yellow-100 text-yellow-700";
+  }
+
+  return "bg-red-100 text-red-700";
+};
 
 const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -418,8 +450,11 @@ const ProductDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  In Stock
+                <Badge
+                  variant="secondary"
+                  className={getStockBadgeClass(product.stockStatus)}
+                >
+                  {product.stockStatus || "Out of Stock"}
                 </Badge>
               </div>
 
@@ -529,6 +564,16 @@ const ProductDetail: React.FC = () => {
                     <span className="font-semibold">
                       {formatPeso(selectedSellingPrice)}
                     </span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Total Stock</span>
+                    <span>{product.quantityOnHand ?? 0}</span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Available Stock</span>
+                    <span>{product.availableQuantity ?? 0}</span>
 
                     <Separator className="col-span-2" />
 

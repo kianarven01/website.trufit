@@ -45,6 +45,8 @@ interface ProductModalProps {
   onSaved: () => Promise<void> | void;
 }
 
+type ProductNameMode = "auto" | "manual";
+
 export default function ProductModal({
   open,
   onOpenChange,
@@ -60,6 +62,7 @@ export default function ProductModal({
   const [units, setUnits] = useState<Option[]>([]);
   const [parts, setParts] = useState<PartOption[]>([]);
   const [saving, setSaving] = useState(false);
+  const [productNameMode, setProductNameMode] = useState<ProductNameMode>("auto");
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -132,8 +135,82 @@ export default function ProductModal({
     );
   };
 
+  const getOptionName = (option?: Option | null) => {
+    if (!option) return "";
+
+    return (
+      option.name ||
+      option.CompanyName ||
+      option.company_name ||
+      option.label ||
+      ""
+    ).trim();
+  };
+
   const updateField = (key: keyof typeof form, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const selectedManufacturerName = useMemo(() => {
+    const selectedManufacturer = manufacturers.find(
+      (manufacturer) =>
+        String(manufacturer.id) === String(form.manufacturer_id)
+    );
+
+    return getOptionName(selectedManufacturer);
+  }, [manufacturers, form.manufacturer_id]);
+
+  const selectedPartName = useMemo(() => {
+    const selectedPart = parts.find(
+      (part) => String(part.id) === String(form.part_id)
+    );
+
+    return selectedPart?.name?.trim() || "";
+  }, [parts, form.part_id]);
+
+  const generatedProductName = useMemo(() => {
+    const baseName = [selectedManufacturerName, selectedPartName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const partNumber = form.part_number.trim();
+
+    if (baseName && partNumber) {
+      return `${baseName} - ${partNumber}`;
+    }
+
+    if (baseName) {
+      return baseName;
+    }
+
+    return partNumber;
+  }, [selectedManufacturerName, selectedPartName, form.part_number]);
+
+  useEffect(() => {
+    if (!open || productNameMode !== "auto") return;
+
+    setForm((prev) => {
+      if (prev.name === generatedProductName) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        name: generatedProductName,
+      };
+    });
+  }, [open, productNameMode, generatedProductName]);
+
+  const handleProductNameModeChange = (mode: ProductNameMode) => {
+    setProductNameMode(mode);
+
+    if (mode === "auto") {
+      setForm((prev) => ({
+        ...prev,
+        name: generatedProductName,
+      }));
+    }
   };
 
   const filteredParts = useMemo(() => {
@@ -252,6 +329,7 @@ export default function ProductModal({
     });
 
     setProductSuppliers([]);
+    setProductNameMode("auto");
     setImageFile(null);
     setImagePreview("");
 
@@ -436,11 +514,50 @@ export default function ProductModal({
             />
           </div>
 
-          <Input
-            placeholder="Product name"
-            value={form.name}
-            onChange={(e) => updateField("name", e.target.value)}
-          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">
+                Product name
+              </span>
+
+              <div className="flex overflow-hidden rounded-md border text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleProductNameModeChange("auto")}
+                  className={`px-2 py-1 transition ${
+                    productNameMode === "auto"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Auto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleProductNameModeChange("manual")}
+                  className={`border-l px-2 py-1 transition ${
+                    productNameMode === "manual"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <Input
+              placeholder={
+                productNameMode === "auto"
+                  ? "Auto: Manufacturer + Part - Part number"
+                  : "Product name"
+              }
+              value={form.name}
+              readOnly={productNameMode === "auto"}
+              onChange={(e) => updateField("name", e.target.value)}
+              className={productNameMode === "auto" ? "opacity-80" : ""}
+            />
+          </div>
 
           <Input
             placeholder="SKU"

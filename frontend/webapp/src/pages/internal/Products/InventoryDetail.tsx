@@ -152,47 +152,83 @@ const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
 
   return {
     id: String(row.id),
-    image: product.image_URL || product.image || product.image_path || row.image_URL || row.image || row.image_path || undefined,
+
+    // Image comes from the related product returned by GET /api/inventory/{id}
+    image:
+      product.image_URL ||
+      product.image_url ||
+      product.image_path ||
+      product.image ||
+      row.image_URL ||
+      row.image_url ||
+      row.image_path ||
+      row.image ||
+      undefined,
+
     name: String(product.name || row.name || ""),
     brand:
       product.manufacturer_name ||
       product.manufacturer?.name ||
+      product.Manufacturer?.name ||
       row.manufacturer_name ||
       row.manufacturer?.name ||
+      row.Manufacturer?.name ||
+      row.brand_name ||
+      row.brand?.name ||
       "-",
     sku: String(product.SKU || product.sku || row.SKU || row.sku || ""),
-    partNumber: String(product.part_number || product.partNumber || row.part_number || row.partNumber || ""),
-    partName: product.part_name || product.part?.name || row.part_name || row.part?.name || "-",
-    category: product.category_name || product.category?.name || row.category_name || row.category?.name || "-",
-    unitName: product.unit_name || product.unit?.name || row.unit_name || row.unit?.name || row.unit || "-",
+    partNumber: String(
+      product.part_number ||
+        product.partNumber ||
+        row.part_number ||
+        row.partNumber ||
+        ""
+    ),
+    partName:
+      product.part_name ||
+      product.part?.name ||
+      product.Part?.name ||
+      row.part_name ||
+      row.part?.name ||
+      row.Part?.name ||
+      "-",
+    category:
+      product.category_name ||
+      product.category?.name ||
+      product.Category?.name ||
+      row.category_name ||
+      row.category?.name ||
+      row.Category?.name ||
+      "-",
+    unitName:
+      product.unit_name ||
+      product.unit?.name ||
+      product.Unit?.name ||
+      row.unit_name ||
+      row.unit?.name ||
+      row.Unit?.name ||
+      row.unit ||
+      "-",
     unitAbbreviation:
       product.unit_abbreviation ||
       product.unitAbbreviation ||
       product.unit?.abbreviation ||
+      product.Unit?.abbreviation ||
       row.unit_abbreviation ||
       row.unitAbbreviation ||
       row.unit?.abbreviation ||
+      row.Unit?.abbreviation ||
       null,
     quantityOnHand,
     reservedQuantity,
-    availableQuantity: Number(row.available_quantity ?? Math.max(quantityOnHand - reservedQuantity, 0)),
+    availableQuantity: Number(
+      row.available_quantity ?? Math.max(quantityOnHand - reservedQuantity, 0)
+    ),
     reorderLevel: toNumberOrNull(row.reorder_level),
     reorderQty: toNumberOrNull(row.reorder_qty),
     locationId: row.location_id || null,
     description: product.description || row.description || "-",
-    suppliers: row.product_suppliers
-      ? normalizeSuppliers({ product_suppliers: row.product_suppliers })
-      : row.product_supplier_id
-        ? [
-            {
-              id: row.product_supplier_id,
-              supplier_cost: row.supplier_cost,
-              supplier: row.supplier,
-              active_price: row.active_price,
-              price: row.price,
-            },
-          ]
-        : normalizeSuppliers(row),
+    suppliers: normalizeSuppliers(row),
   };
 };
 
@@ -239,6 +275,7 @@ const InventoryDetail: React.FC = () => {
       const row = res.data?.data ?? res.data;
 
       setItem(normalizeInventoryDetail(row));
+      setImgError(false);
     } catch (error) {
       console.error("Failed to load inventory detail:", error);
       setItem(null);

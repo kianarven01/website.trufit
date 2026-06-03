@@ -27,12 +27,13 @@ class ProductController extends Controller
         $baseQuery = Product::query()
             ->with([
                 'category',
+                'part',
                 'manufacturer',
                 'unitRelation',
-                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
+                'inventoryRows',
             ]);
 
         if ($categoryId) {
@@ -91,11 +92,13 @@ class ProductController extends Controller
             $equivalentProducts = Product::query()
                 ->with([
                     'category',
+                    'part',
                     'manufacturer',
                     'unitRelation',
                     'productSuppliers.supplier',
                     'productSuppliers.price',
                     'inventoryRelation',
+                    'inventoryRows',
                 ])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
@@ -173,9 +176,8 @@ class ProductController extends Controller
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
-            'inventoryRows.productSupplier.supplier',
-            'inventoryRows.productSupplier.price',
             'inventoryRelation',
+            'inventoryRows',
         ]);
 
         return response()->json([
@@ -204,11 +206,13 @@ class ProductController extends Controller
 
         $freshProduct = $product->fresh([
             'category',
+            'part',
             'manufacturer',
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
             'inventoryRelation',
+            'inventoryRows',
         ]);
 
         return response()->json([
@@ -222,14 +226,15 @@ class ProductController extends Controller
         $product = Product::query()
             ->with([
                 'category',
+                'part',
                 'manufacturer',
                 'unitRelation',
-                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'equivalentProducts',
                 'equivalentToProducts',
                 'inventoryRelation',
+                'inventoryRows',
             ])
             ->where('id', $id)
             ->firstOrFail();
@@ -248,6 +253,21 @@ class ProductController extends Controller
     ): array {
         $productSuppliers = $product->productSuppliers ?? collect();
         $firstProductSupplier = $productSuppliers->first();
+
+        $inventoryRows = $product->relationLoaded('inventoryRows')
+            ? $product->inventoryRows
+            : $product->inventoryRows()->get();
+
+        $totalStock = $inventoryRows->sum(fn ($inventory) => (int) $inventory->quantity_on_hand);
+        $totalReserved = $inventoryRows->sum(fn ($inventory) => (int) $inventory->reserved_quantity);
+        $availableStock = max($totalStock - $totalReserved, 0);
+        $maxReorderLevel = $inventoryRows->max('reorder_level') ?? 0;
+
+        $stockStatus = match (true) {
+            $availableStock <= 0 => 'Out of Stock',
+            $maxReorderLevel > 0 && $availableStock <= $maxReorderLevel => 'Low Stock',
+            default => 'In Stock',
+        };
 
         return [
             'id' => $product->id,
@@ -285,11 +305,13 @@ class ProductController extends Controller
              * Inventory should now be stock-focused.
              * sell_price is intentionally not treated as the product's true selling price.
              */
-            'quantity_on_hand' => $product->inventoryRelation?->quantity_on_hand,
-            'reserved_quantity' => $product->inventoryRelation?->reserved_quantity,
-            'reorder_level' => $product->inventoryRelation?->reorder_level,
+            'quantity_on_hand' => $totalStock,
+            'reserved_quantity' => $totalReserved,
+            'available_quantity' => $availableStock,
+            'reorder_level' => $maxReorderLevel,
             'reorder_qty' => $product->inventoryRelation?->reorder_qty,
             'location_id' => $product->inventoryRelation?->location_id,
+            'stock_status' => $stockStatus,
             'sell_price' => null,
 
             /*
@@ -384,9 +406,9 @@ class ProductController extends Controller
                 'unitRelation',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
+                'inventoryRelation',
                 'inventoryRows.productSupplier.supplier',
                 'inventoryRows.productSupplier.price',
-                'inventoryRelation',
             ]);
         });
 

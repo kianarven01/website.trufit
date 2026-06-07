@@ -8,12 +8,25 @@ class Unit extends Model
 {
     protected $table = 'Main.UnitOfMeasure';
 
+    protected $primaryKey = 'id';
+
+    public $incrementing = true;
+
+    protected $keyType = 'int';
+
+    public $timestamps = false;
+
     protected $fillable = [
-        'name'
+        'name',
+        'abbreviation',
+    ];
+
+    protected $casts = [
+        'id' => 'integer',
     ];
 
     public function products()
     {
-        return $this->hasMany(Product::class, 'unit');
+        return $this->hasMany(Product::class, 'unit', 'id');
     }
 }

@@ -120,7 +120,6 @@ class Product extends Model
             'equivalent_product_id'
         )->withPivot([
             'id',
-            'notes',
         ]);
     }
 
@@ -133,12 +132,21 @@ class Product extends Model
             'base_product_id'
         )->withPivot([
             'id',
-            'notes',
         ]);
     }
 
     public function inventoryRelation()
     {
         return $this->hasOne(Inventory::class, 'productID', 'id');
+    }
+
+    public function inventoryRows()
+    {
+        return $this->hasMany(Inventory::class, 'productID', 'id');
+    }
+
+    public function part()
+    {
+        return $this->belongsTo(Part::class, 'part_id', 'id');
     }
 }

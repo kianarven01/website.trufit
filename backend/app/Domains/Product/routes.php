@@ -8,6 +8,7 @@ use App\Domains\Supplier\Http\Controllers\SupplierController;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Infrastructure\Repositories\EloquentProductRepository;
 
+
 app()->bind(
     ProductRepositoryInterface::class,
     EloquentProductRepository::class
@@ -39,17 +40,15 @@ Route::prefix('products')->group(function () {
     Route::delete('/service-types/{id}', [ProductReferenceController::class, 'destroyServiceType']);
 
     Route::get('/suppliers', [SupplierController::class, 'index']);
-    Route::post('/suppliers', [SupplierController::class, 'store']);
-    Route::get('/suppliers/{id}', [SupplierController::class, 'show']);
-    Route::put('/suppliers/{id}', [SupplierController::class, 'update']);
-    Route::delete('/suppliers/{id}', [SupplierController::class, 'destroy']);
-    Route::post('/suppliers/{id}/products', [SupplierController::class, 'linkProduct']);
-    Route::delete('/suppliers/{id}/products/{productId}', [SupplierController::class, 'unlinkProduct']);
-    Route::put('/suppliers/{id}/products/{productId}', [SupplierController::class, 'updateProductCost']);
+    Route::post('/{product}/suppliers', [ProductController::class, 'addSupplier']);
 
     Route::get('/{productId}/equivalents', [ProductEquivalentController::class, 'index']);
     Route::post('/{productId}/equivalents', [ProductEquivalentController::class, 'store']);
     Route::delete('/{productId}/equivalents/{equivalentProductId}', [ProductEquivalentController::class, 'destroy']);
 
+    Route::get('/parts', [ProductController::class, 'parts']);
+
     Route::get('/{id}', [ProductController::class, 'show']);
+
+
 });

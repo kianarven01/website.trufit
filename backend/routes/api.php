@@ -12,6 +12,10 @@ require app_path('Domains/Product/routes.php');
 // Vehicle routes
 require app_path('Domains/Vehicle/routes.php');
 
+// Inventory routes
+require app_path('Domains/Inventory/routes.php');
+
+
 /*
 |--------------------------------------------------------------------------
 | Supplier Reference Routes

@@ -5,13 +5,11 @@ namespace App\Domains\Product\Application\UseCases;
 use App\Domains\Product\Application\DTO\CreateProductDTO;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
-use App\Domains\Inventory\Application\UseCases\CreateInitialInventoryForProduct;
 
 class CreateProduct
 {
     public function __construct(
-        private ProductRepositoryInterface $repository,
-        private CreateInitialInventoryForProduct $createInitialInventoryForProduct
+        private ProductRepositoryInterface $repository
     ) {}
 
     public function execute(CreateProductDTO $dto): Product
@@ -22,15 +20,16 @@ class CreateProduct
             compatibility: $dto->compatibility,
         );
 
-        $this->createInitialInventoryForProduct->execute($product->id);
-
         return $product->fresh([
             'category',
+            'part',
             'manufacturer',
             'unitRelation',
-            'suppliers',
+            'productSuppliers.supplier',
+            'productSuppliers.price',
+            'inventoryRows.productSupplier.supplier',
+            'inventoryRows.productSupplier.price',
             'vehicleCompatibilities',
-            'inventoryRelation',
         ]);
     }
 }

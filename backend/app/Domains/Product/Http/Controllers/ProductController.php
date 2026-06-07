@@ -9,6 +9,11 @@ use App\Domains\Product\Application\DTO\CreateProductDTO;
 use App\Domains\Product\Application\UseCases\CreateProduct;
 use App\Domains\Product\Http\Requests\StoreProductRequest;
 use App\Domains\Product\Application\Services\ProductImageUploader;
+use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\ProductPrice;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -20,7 +25,16 @@ class ProductController extends Controller
         $categoryId = $request->query('category_id');
 
         $baseQuery = Product::query()
-            ->with(['category', 'manufacturer', 'unitRelation', 'suppliers', 'inventoryRelation']);
+            ->with([
+                'category',
+                'part',
+                'manufacturer',
+                'unitRelation',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
+                'inventoryRelation',
+                'inventoryRows',
+            ]);
 
         if ($categoryId) {
             $baseQuery->where('category_id', $categoryId);
@@ -76,7 +90,16 @@ class ProductController extends Controller
 
         if ($equivalentProductIds->isNotEmpty()) {
             $equivalentProducts = Product::query()
-                ->with(['category', 'manufacturer', 'unitRelation', 'suppliers', 'inventoryRelation'])
+                ->with([
+                    'category',
+                    'part',
+                    'manufacturer',
+                    'unitRelation',
+                    'productSuppliers.supplier',
+                    'productSuppliers.price',
+                    'inventoryRelation',
+                    'inventoryRows',
+                ])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
                 ->orderBy('name')
@@ -142,15 +165,24 @@ class ProductController extends Controller
             }
         }
 
-        // Do NOT unset car_variant_id.
-        // CreateProductDTO uses it to create ProductVehicleCompatibility.
         $dto = CreateProductDTO::fromArray($validated);
 
         $product = $createProduct->execute($dto);
 
+        $product->load([
+            'category',
+            'part',
+            'manufacturer',
+            'unitRelation',
+            'productSuppliers.supplier',
+            'productSuppliers.price',
+            'inventoryRelation',
+            'inventoryRows',
+        ]);
+
         return response()->json([
             'message' => 'Product created successfully.',
-            'data' => $product,
+            'data' => $this->formatProduct($product),
         ], 201);
     }
 
@@ -158,23 +190,34 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'quantity_on_hand' => 'required|integer|min:0',
-            'sell_price' => 'required|numeric|min:0',
+            'sell_price' => 'nullable|numeric|min:0',
         ]);
 
         $product = Product::findOrFail($id);
 
-        $inventory = \App\Domains\Product\Domain\Models\Inventory::updateOrCreate(
+        Inventory::updateOrCreate(
             ['productID' => $product->id],
             [
                 'quantity_on_hand' => $validated['quantity_on_hand'],
-                'sell_price' => $validated['sell_price'],
+                'sell_price' => $validated['sell_price'] ?? null,
                 'location_id' => $request->input('location_id') ?? 'd3b07384-d113-4ec6-a55d-752007414777',
             ]
         );
 
+        $freshProduct = $product->fresh([
+            'category',
+            'part',
+            'manufacturer',
+            'unitRelation',
+            'productSuppliers.supplier',
+            'productSuppliers.price',
+            'inventoryRelation',
+            'inventoryRows',
+        ]);
+
         return response()->json([
             'message' => 'Stock adjusted successfully.',
-            'data' => $this->formatProduct($product->fresh(['inventoryRelation'])),
+            'data' => $this->formatProduct($freshProduct),
         ]);
     }
 
@@ -183,12 +226,15 @@ class ProductController extends Controller
         $product = Product::query()
             ->with([
                 'category',
+                'part',
                 'manufacturer',
                 'unitRelation',
-                'suppliers',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
                 'equivalentProducts',
                 'equivalentToProducts',
                 'inventoryRelation',
+                'inventoryRows',
             ])
             ->where('id', $id)
             ->firstOrFail();
@@ -205,7 +251,23 @@ class ProductController extends Controller
         ?string $equivalentToProductName = null,
         ?string $equivalenceNotes = null
     ): array {
-        $firstSupplier = $product->suppliers->first();
+        $productSuppliers = $product->productSuppliers ?? collect();
+        $firstProductSupplier = $productSuppliers->first();
+
+        $inventoryRows = $product->relationLoaded('inventoryRows')
+            ? $product->inventoryRows
+            : $product->inventoryRows()->get();
+
+        $totalStock = $inventoryRows->sum(fn ($inventory) => (int) $inventory->quantity_on_hand);
+        $totalReserved = $inventoryRows->sum(fn ($inventory) => (int) $inventory->reserved_quantity);
+        $availableStock = max($totalStock - $totalReserved, 0);
+        $maxReorderLevel = $inventoryRows->max('reorder_level') ?? 0;
+
+        $stockStatus = match (true) {
+            $availableStock <= 0 => 'Out of Stock',
+            $maxReorderLevel > 0 && $availableStock <= $maxReorderLevel => 'Low Stock',
+            default => 'In Stock',
+        };
 
         return [
             'id' => $product->id,
@@ -216,21 +278,71 @@ class ProductController extends Controller
             'barcode' => $product->barcode,
             'part_number' => $product->part_number,
 
+            'part_id' => $product->part_id,
+            'part_name' => $product->part?->name,
+            'part_description' => $product->part?->description,
+
             'category_id' => $product->category_id,
             'category_name' => $product->category?->name,
 
             'unit' => $product->unit,
             'unit_name' => $product->unitRelation?->name,
+            'unit_abbreviation' => $product->unitRelation?->abbreviation,
 
             'manufacturer_id' => $product->manufacturer_id,
             'manufacturer_name' => $product->manufacturer?->name,
 
-            'supplier_name' => $firstSupplier?->CompanyName,
-            'supplier_code' => $firstSupplier?->supplier_code,
-            'cost' => $firstSupplier?->pivot?->supplier_cost,
+            /*
+             * Summary supplier fields.
+             * These are kept for old frontend compatibility.
+             * The real supplier pricing data is in the "suppliers" array below.
+             */
+            'supplier_name' => $firstProductSupplier?->supplier?->CompanyName,
+            'supplier_code' => $firstProductSupplier?->supplier?->supplier_code,
+            'cost' => $firstProductSupplier?->supplier_cost,
 
-            'quantity_on_hand' => $product->inventoryRelation?->quantity_on_hand,
-            'sell_price' => $product->inventoryRelation?->sell_price,
+            /*
+             * Inventory should now be stock-focused.
+             * sell_price is intentionally not treated as the product's true selling price.
+             */
+            'quantity_on_hand' => $totalStock,
+            'reserved_quantity' => $totalReserved,
+            'available_quantity' => $availableStock,
+            'reorder_level' => $maxReorderLevel,
+            'reorder_qty' => $product->inventoryRelation?->reorder_qty,
+            'location_id' => $product->inventoryRelation?->location_id,
+            'stock_status' => $stockStatus,
+            'sell_price' => null,
+
+            /*
+             * Dynamic supplier-based pricing.
+             * ProductPrice belongs to ProductSupplier through product_supplier_id.
+             */
+            'suppliers' => $productSuppliers
+                ->map(function ($productSupplier) {
+                    return [
+                        'id' => $productSupplier->id,
+                        'supplier_id' => $productSupplier->supplier_id,
+                        'supplier_cost' => $productSupplier->supplier_cost,
+                        'is_vat' => $productSupplier->is_vat,
+                        'vat_percent' => $productSupplier->vat_percent,
+
+                        'supplier' => $productSupplier->supplier ? [
+                            'id' => $productSupplier->supplier->id,
+                            'CompanyName' => $productSupplier->supplier->CompanyName,
+                            'name' => $productSupplier->supplier->CompanyName,
+                            'supplier_code' => $productSupplier->supplier->supplier_code,
+                        ] : null,
+
+                        'active_price' => $productSupplier->price ? [
+                            'id' => $productSupplier->price->id,
+                            'product_supplier_id' => $productSupplier->price->product_supplier_id,
+                            'Price' => $productSupplier->price->Price,
+                            'Markup' => $productSupplier->price->Markup,
+                        ] : null,
+                    ];
+                })
+                ->values(),
 
             'is_oem' => $product->is_oem,
             'oem_reference_number' => $product->oem_reference_number,
@@ -240,5 +352,92 @@ class ProductController extends Controller
             'equivalent_to_product_name' => $equivalentToProductName,
             'equivalence_notes' => $equivalenceNotes,
         ];
+    }
+
+    public function addSupplier(Request $request, string $productId): JsonResponse
+    {
+        $validated = $request->validate([
+            'supplier_id' => ['required', 'uuid'],
+            'supplier_cost' => ['nullable', 'numeric', 'min:0'],
+            'markup' => ['nullable', 'numeric'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+            'is_vat' => ['nullable', 'boolean'],
+            'vat_percent' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $product = Product::findOrFail($productId);
+
+        $updatedProduct = DB::transaction(function () use ($product, $validated) {
+            $productSupplier = ProductSupplier::create([
+                'id' => (string) Str::uuid(),
+                'product_id' => $product->id,
+                'supplier_id' => $validated['supplier_id'],
+                'supplier_cost' => $validated['supplier_cost'] ?? null,
+                'is_vat' => $validated['is_vat'] ?? false,
+                'vat_percent' => $validated['vat_percent'] ?? null,
+            ]);
+
+            ProductPrice::create([
+                'id' => (string) Str::uuid(),
+                'product_supplier_id' => $productSupplier->id,
+                'Price' => $validated['price'] ?? null,
+                'Markup' => $validated['markup'] ?? null,
+            ]);
+
+            Inventory::firstOrCreate(
+                [
+                    'productID' => $product->id,
+                    'product_supplier_id' => $productSupplier->id,
+                    'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                ],
+                [
+                    'quantity_on_hand' => 0,
+                    'sell_price' => null,
+                    'reserved_quantity' => 0,
+                    'reorder_level' => 5,
+                    'reorder_qty' => 10,
+                ]
+            );
+
+            return $product->fresh([
+                'category',
+                'part',
+                'manufacturer',
+                'unitRelation',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
+                'inventoryRelation',
+                'inventoryRows.productSupplier.supplier',
+                'inventoryRows.productSupplier.price',
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Supplier added to product successfully.',
+            'data' => $this->formatProduct($updatedProduct),
+        ], 201);
+    }
+
+    public function parts(Request $request): JsonResponse
+    {
+        $categoryId = $request->query('category_id');
+
+        $parts = \App\Domains\Product\Domain\Models\Part::query()
+            ->with('category')
+            ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($part) => [
+                'id' => $part->id,
+                'name' => $part->name,
+                'description' => $part->description,
+                'category_id' => $part->category_id,
+                'category_name' => $part->category?->name,
+            ])
+            ->values();
+
+        return response()->json([
+            'data' => $parts,
+        ]);
     }
 }

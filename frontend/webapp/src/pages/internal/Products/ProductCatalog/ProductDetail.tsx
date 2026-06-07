@@ -2,37 +2,48 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import { Trash2, Pencil, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
 import api from "@/api/axios";
+
+interface ProductPrice {
+  id?: string;
+  product_supplier_id?: string;
+  Price?: number | string | null;
+  price?: number | string | null;
+  Markup?: number | string | null;
+  markup?: number | string | null;
+  is_active?: boolean;
+}
 
 interface ProductSupplier {
   id?: string;
   supplier_id: string | number;
   supplier_cost?: number | string | null;
   is_preferred?: boolean;
+
+  active_price?: ProductPrice | null;
+  activePrice?: ProductPrice | null;
+  price?: ProductPrice | number | string | null;
+  prices?: ProductPrice[];
+
   supplier?: {
     id?: string | number;
     CompanyName?: string;
     name?: string;
     supplier_code?: string;
   };
+
   Supplier?: {
     id?: string | number;
     CompanyName?: string;
     name?: string;
     supplier_code?: string;
   };
+
   supplier_name?: string;
   CompanyName?: string;
 }
@@ -47,7 +58,12 @@ interface Product {
   oemRef?: string | null;
   description: string;
   unit: string;
-  price: number;
+  unitAbbreviation?: string | null;
+  quantityOnHand?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+  stockStatus?: "In Stock" | "Low Stock" | "Out of Stock" | string;
+  price: number | null;
   category: string;
   manufacturer: string;
   location?: string;
@@ -78,14 +94,13 @@ interface SupplierOption {
   supplier_code?: string;
 }
 
-const slugify = (str: string) =>
-  str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-
 const fromSlug = (slug?: string) =>
   slug
     ?.split("-")
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
+
+
 
 const normalizeSuppliers = (row: any): ProductSupplier[] => {
   if (Array.isArray(row.suppliers)) return row.suppliers;
@@ -94,6 +109,85 @@ const normalizeSuppliers = (row: any): ProductSupplier[] => {
   if (Array.isArray(row.ProductSuppliers)) return row.ProductSuppliers;
 
   return [];
+};
+
+const getSupplierRowId = (supplier: ProductSupplier) =>
+  String(supplier.id || supplier.supplier_id);
+
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const formatPeso = (value: number | null) => {
+  if (value === null) return "No price set";
+  return `₱${value.toFixed(2)}`;
+};
+
+const getSupplierName = (supplier: ProductSupplier) => {
+  return (
+    supplier.supplier?.CompanyName ||
+    supplier.supplier?.name ||
+    supplier.Supplier?.CompanyName ||
+    supplier.Supplier?.name ||
+    supplier.supplier_name ||
+    supplier.CompanyName ||
+    `Supplier #${supplier.supplier_id}`
+  );
+};
+
+const getActivePrice = (supplier?: ProductSupplier | null): ProductPrice | null => {
+  if (!supplier) return null;
+
+  if (supplier.active_price) return supplier.active_price;
+  if (supplier.activePrice) return supplier.activePrice;
+
+  if (Array.isArray(supplier.prices)) {
+    return (
+      supplier.prices.find((price) => price.is_active) ||
+      supplier.prices[0] ||
+      null
+    );
+  }
+
+  if (supplier.price && typeof supplier.price === "object") {
+    return supplier.price as ProductPrice;
+  }
+
+  return null;
+};
+
+const getSupplierSellingPrice = (
+  supplier?: ProductSupplier | null
+): number | null => {
+  if (!supplier) return null;
+
+  const activePrice = getActivePrice(supplier);
+
+  if (activePrice) {
+    return toNumberOrNull(activePrice.Price ?? activePrice.price);
+  }
+
+  if (
+    supplier.price !== null &&
+    supplier.price !== undefined &&
+    typeof supplier.price !== "object"
+  ) {
+    return toNumberOrNull(supplier.price);
+  }
+
+  return null;
+};
+
+const getSupplierMarkup = (supplier?: ProductSupplier | null): number | null => {
+  if (!supplier) return null;
+
+  const activePrice = getActivePrice(supplier);
+  return activePrice
+    ? toNumberOrNull(activePrice.Markup ?? activePrice.markup)
+    : null;
 };
 
 const normalizeProduct = (row: any): Product => ({
@@ -106,7 +200,13 @@ const normalizeProduct = (row: any): Product => ({
   oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
   unit: row.unit?.name || row.Unit?.name || row.unit_name || row.unit || "-",
-  price: Number(row.selling_price || row.price || row.sell_price || 0),
+  unitAbbreviation:
+    row.unit?.abbreviation ||
+    row.Unit?.abbreviation ||
+    row.unit_abbreviation ||
+    row.unitAbbreviation ||
+    null,
+  price: toNumberOrNull(row.selling_price ?? row.price ?? row.sell_price),
   category: row.category?.name || row.Category?.name || row.category_name || "-",
   manufacturer:
     row.manufacturer?.name ||
@@ -119,6 +219,21 @@ const normalizeProduct = (row: any): Product => ({
   location: row.location || row.warehouse_location || "-",
   barcode: row.barcode || "",
   categoryId: row.category_id ?? row.categoryId ?? null,
+  quantityOnHand: toNumberOrNull(row.quantity_on_hand) ?? 0,
+  reservedQuantity: toNumberOrNull(row.reserved_quantity) ?? 0,
+  availableQuantity:
+    toNumberOrNull(row.available_quantity) ??
+    Math.max(
+      (toNumberOrNull(row.quantity_on_hand) ?? 0) -
+        (toNumberOrNull(row.reserved_quantity) ?? 0),
+      0
+    ),
+  stockStatus:
+    row.stock_status ||
+    row.stockStatus ||
+    ((toNumberOrNull(row.available_quantity ?? row.quantity_on_hand) ?? 0) > 0
+      ? "In Stock"
+      : "Out of Stock"),
   suppliers: normalizeSuppliers(row),
   compatibleVehicles: Array.isArray(row.compatibleVehicles)
     ? row.compatibleVehicles
@@ -126,10 +241,24 @@ const normalizeProduct = (row: any): Product => ({
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
 
+
+const getStockBadgeClass = (status?: string) => {
+  if (status === "In Stock") {
+    return "bg-green-100 text-green-700";
+  }
+
+  if (status === "Low Stock") {
+    return "bg-yellow-100 text-yellow-700";
+  }
+
+  return "bg-red-100 text-red-700";
+};
+
 const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
 
   const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
@@ -269,7 +398,7 @@ const ProductDetail: React.FC = () => {
       product.suppliers.find((supplier) => supplier.is_preferred) ||
       product.suppliers[0];
 
-    setSelectedSupplierId(String(preferredSupplier.supplier_id));
+    setSelectedSupplierId(getSupplierRowId(preferredSupplier));
   }, [product]);
 
   const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "All Vehicles";
@@ -306,33 +435,26 @@ const ProductDetail: React.FC = () => {
   }
 
   const selectedSupplier = product.suppliers?.find(
-    (supplier) => String(supplier.supplier_id) === selectedSupplierId
+    (supplier) => getSupplierRowId(supplier) === selectedSupplierId
   );
 
-  const selectedSupplierCost = selectedSupplier?.supplier_cost ?? null;
-
-  const getSupplierName = (supplier: ProductSupplier) => {
-    return (
-      supplier.supplier?.CompanyName ||
-      supplier.supplier?.name ||
-      supplier.Supplier?.CompanyName ||
-      supplier.Supplier?.name ||
-      supplier.supplier_name ||
-      supplier.CompanyName ||
-      `Supplier #${supplier.supplier_id}`
-    );
-  };
+  const selectedSupplierCost = toNumberOrNull(selectedSupplier?.supplier_cost);
+  const selectedMarkup = getSupplierMarkup(selectedSupplier);
+  const selectedSellingPrice = getSupplierSellingPrice(selectedSupplier);
 
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+        <div className="lg:col-span-2">
+          <Card className="p-6 space-y-6 min-h-[620px] h-full">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  In Stock
+                <Badge
+                  variant="secondary"
+                  className={getStockBadgeClass(product.stockStatus)}
+                >
+                  {product.stockStatus || "Out of Stock"}
                 </Badge>
               </div>
 
@@ -375,7 +497,7 @@ const ProductDetail: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-stretch">
               <div className="md:col-span-2 flex flex-col h-full gap-4">
-                <div className="bg-muted rounded-xl flex-1 min-h-[200px] flex items-center justify-center overflow-hidden">
+                <div className="bg-muted rounded-xl flex-1 min-h-[300px] flex items-center justify-center overflow-hidden">
                   {product.image ? (
                     <img
                       src={product.image}
@@ -404,50 +526,63 @@ const ProductDetail: React.FC = () => {
                 </div>
               </div>
 
-              <Card className="md:col-span-3 p-4 h-full flex flex-col">
+              <Card className="md:col-span-3 p-4 h-full min-h-[440px] flex flex-col">
                 <CardContent className="p-0 flex flex-col h-full space-y-4">
                   <h2 className="font-semibold">Product Details</h2>
 
                   <div className="grid grid-cols-2 gap-y-3 text-sm flex-1">
-                    <span className="text-muted-foreground">Supplier</span>
-                    <select
-                      className="border rounded-md px-2 py-1 bg-background"
-                      value={selectedSupplierId}
-                      onChange={(e) => setSelectedSupplierId(e.target.value)}
-                    >
-                      {product.suppliers && product.suppliers.length > 0 ? (
-                        product.suppliers.map((supplier) => (
-                          <option
-                            key={String(supplier.supplier_id)}
-                            value={String(supplier.supplier_id)}
-                          >
-                            {getSupplierName(supplier)}
-                          </option>
-                        ))
-                      ) : (
-                        <option value="">No suppliers</option>
-                      )}
-                    </select>
+                    <span className="text-muted-foreground">
+                      Selected Supplier
+                    </span>
+                    <span className="font-medium">
+                      {selectedSupplier
+                        ? getSupplierName(selectedSupplier)
+                        : "No supplier selected"}
+                    </span>
 
                     <Separator className="col-span-2" />
 
                     <span className="text-muted-foreground">Supplier Cost</span>
                     <span>
-                      {selectedSupplierCost !== null &&
-                      selectedSupplierCost !== undefined
-                        ? `₱${Number(selectedSupplierCost).toFixed(2)}`
+                      {selectedSupplierCost !== null
+                        ? `₱${selectedSupplierCost.toFixed(2)}`
+                        : "-"}
+                    </span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Markup</span>
+                    <span>
+                      {selectedMarkup !== null
+                        ? `${selectedMarkup.toFixed(2)}%`
                         : "-"}
                     </span>
 
                     <Separator className="col-span-2" />
 
                     <span className="text-muted-foreground">Selling Price</span>
-                    <span>₱{product.price?.toFixed(2) ?? "0.00"}</span>
+                    <span className="font-semibold">
+                      {formatPeso(selectedSellingPrice)}
+                    </span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Total Stock</span>
+                    <span>{product.quantityOnHand ?? 0}</span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Available Stock</span>
+                    <span>{product.availableQuantity ?? 0}</span>
 
                     <Separator className="col-span-2" />
 
                     <span className="text-muted-foreground">Stock Unit</span>
-                    <span>{product.unit}</span>
+                    <span>
+                      {product.unitAbbreviation
+                        ? `${product.unit} (${product.unitAbbreviation})`
+                        : product.unit}
+                    </span>
 
                     <Separator className="col-span-2" />
 
@@ -461,7 +596,7 @@ const ProductDetail: React.FC = () => {
                     <div className="col-span-2 flex flex-col gap-1 mt-auto">
                       <span className="text-muted-foreground">Description</span>
                       <textarea
-                        className="w-full border rounded p-2 text-sm h-28 resize-none overflow-auto"
+                        className="w-full border rounded p-2 text-sm h-32 resize-none overflow-auto"
                         value={product.description}
                         readOnly
                       />
@@ -473,9 +608,77 @@ const ProductDetail: React.FC = () => {
           </Card>
         </div>
 
-        <div className="space-y-6 flex flex-col">
-          <Card className="flex-1 p-4">
-            <CardContent className="p-0 space-y-4">
+        <div className="flex flex-col gap-4 min-h-[620px] h-full">
+          <Card className="p-4 flex-1 min-h-0">
+            <CardContent className="p-0 space-y-4 h-full flex flex-col">
+              <div className="flex justify-between items-center">
+                <h2 className="font-semibold">Suppliers</h2>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsAddSupplierOpen(true)}
+                >
+                  + Add Supplier
+                </Button>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-auto">
+                {product.suppliers && product.suppliers.length > 0 ? (
+                  <div className="space-y-2">
+                    {product.suppliers.map((supplier) => {
+                      const supplierRowId = getSupplierRowId(supplier);
+                      const isSelected = supplierRowId === selectedSupplierId;
+                      const supplierCost = toNumberOrNull(supplier.supplier_cost);
+                      const sellingPrice = getSupplierSellingPrice(supplier);
+
+                      return (
+                        <button
+                          type="button"
+                          key={supplierRowId}
+                          onClick={() => setSelectedSupplierId(supplierRowId)}
+                          className={`w-full rounded-lg border p-3 text-left transition ${
+                            isSelected
+                              ? "border-primary bg-primary/10"
+                              : "border-border hover:bg-muted"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium">
+                                {getSupplierName(supplier)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Cost:{" "}
+                                {supplierCost !== null
+                                  ? `₱${supplierCost.toFixed(2)}`
+                                  : "-"}
+                              </p>
+                            </div>
+
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">
+                                Selling Price
+                              </p>
+                              <p className="text-sm font-semibold">
+                                {formatPeso(sellingPrice)}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground text-xs italic">
+                    No suppliers added yet.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="p-4 flex-1 min-h-0">
+            <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold">Compatible Vehicles</h2>
                 <Button size="sm" variant="outline">
@@ -483,7 +686,7 @@ const ProductDetail: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="text-sm space-y-2">
+              <div className="text-sm space-y-2 flex-1 min-h-0 overflow-auto">
                 {product.compatibleVehicles &&
                 product.compatibleVehicles.length > 0 ? (
                   product.compatibleVehicles.map((vehicle, idx) => (
@@ -506,8 +709,8 @@ const ProductDetail: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="flex-1 p-4">
-            <CardContent className="p-0 space-y-4">
+          <Card className="p-4 flex-1 min-h-0">
+            <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold">Cross References</h2>
                 <Button size="sm" variant="outline">
@@ -515,7 +718,7 @@ const ProductDetail: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm flex-1 min-h-0 overflow-auto">
                 {product.crossReferences && product.crossReferences.length > 0 ? (
                   product.crossReferences.map((ref, idx) => (
                     <div
@@ -551,6 +754,16 @@ const ProductDetail: React.FC = () => {
           routeState?.categoryId ||
           (product.categoryId ? String(product.categoryId) : null)
         }
+        onSaved={async () => {
+          await loadProduct();
+        }}
+      />
+
+      <AddProductSupplierModal
+        open={isAddSupplierOpen}
+        onOpenChange={setIsAddSupplierOpen}
+        productId={product.id}
+        suppliers={suppliers}
         onSaved={async () => {
           await loadProduct();
         }}

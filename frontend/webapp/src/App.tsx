@@ -48,6 +48,7 @@ import ProductDetail from "./pages/internal/Products/ProductCatalog/ProductDetai
 
 
 import InventoryList from "./pages/internal/Products/InventoryList";
+import InventoryDetail from "./pages/internal/Products/InventoryDetail";
 
 import Employees from "./pages/internal/HR/Employees"
 import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
@@ -158,6 +159,7 @@ const App: React.FC = () => {
             </Route>
 
             <Route path="/webapp/products/inventory" element={<InventoryList />} />
+            <Route path="/webapp/products/inventory/:productId" element={<InventoryDetail />} />
 
           </Route>
 

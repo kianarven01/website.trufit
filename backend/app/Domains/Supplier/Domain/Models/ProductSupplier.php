@@ -2,21 +2,24 @@
 
 namespace App\Domains\Supplier\Domain\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Domains\Product\Domain\Models\Product;
-use App\Domains\Supplier\Domain\Models\Supplier;
+use App\Domains\Product\Domain\Models\ProductPrice;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
 
 class ProductSupplier extends Model
 {
+    use HasUuids;
+
     protected $table = 'Main.ProductSuppliers';
+
+    public $timestamps = false;
 
     protected $primaryKey = 'id';
 
     public $incrementing = false;
 
     protected $keyType = 'string';
-
-    public $timestamps = false;
 
     protected $fillable = [
         'id',
@@ -41,5 +44,15 @@ class ProductSupplier extends Model
     public function supplier()
     {
         return $this->belongsTo(Supplier::class, 'supplier_id', 'id');
+    }
+
+    public function price()
+    {
+        return $this->hasOne(ProductPrice::class, 'product_supplier_id', 'id');
+    }
+
+    public function activePrice()
+    {
+        return $this->hasOne(ProductPrice::class, 'product_supplier_id', 'id');
     }
 }

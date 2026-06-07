@@ -12,6 +12,8 @@ use App\Domains\Product\Application\Services\ProductImageUploader;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductPrice;
+use App\Domains\Product\Domain\Models\Part;
+use App\Domains\Product\Domain\Models\Manufacturers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -19,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 
 class ProductController extends Controller
 {
+    // The index method retrieves a list of products, optionally filtered by vehicle variant and/or category. It includes related data and computes stock status for each product, returning the results in a structured format suitable for the frontend.
     public function index(Request $request): JsonResponse
     {
         $variantId = $request->query('variant_id');
@@ -148,12 +151,24 @@ class ProductController extends Controller
         );
     }
 
+    // The store method handles the creation of a new product. It validates the incoming request, uploads the product image if provided, creates the product using a service class, and returns the newly created product with all related data formatted for the frontend.
     public function store(
         StoreProductRequest $request,
         CreateProduct $createProduct,
         ProductImageUploader $imageUploader
     ): JsonResponse {
         $validated = $request->validated();
+
+        if (
+            empty($validated['SKU']) &&
+            !empty($validated['manufacturer_id']) &&
+            !empty($validated['part_id'])
+        ) {
+            $validated['SKU'] = $this->generateSku(
+                (int) $validated['manufacturer_id'],
+                (int) $validated['part_id']
+            );
+        }
 
         if ($request->hasFile('image')) {
             try {
@@ -186,6 +201,7 @@ class ProductController extends Controller
         ], 201);
     }
 
+    // This endpoint allows adjusting stock levels for a product, which is a common inventory management operation. It updates or creates an inventory record for the product and returns the updated product data with the new stock information.
     public function adjustStock(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
@@ -221,6 +237,7 @@ class ProductController extends Controller
         ]);
     }
 
+    // The show method retrieves a single product by its ID, including all related entities and computed stock status, and returns it in a structured format suitable for the frontend.
     public function show(string $id): JsonResponse
     {
         $product = Product::query()
@@ -244,6 +261,7 @@ class ProductController extends Controller
         ]);
     }
 
+    // The formatProduct method is responsible for transforming the Product model into a structured array that includes all necessary details for the frontend, including related entities and computed stock status.
     private function formatProduct(
         Product $product,
         string $fitmentType = 'unfiltered',
@@ -354,6 +372,7 @@ class ProductController extends Controller
         ];
     }
 
+    // This endpoint is for the "Add Supplier" flow in the frontend, which allows adding a supplier to an existing product without needing to go through the full product update flow.
     public function addSupplier(Request $request, string $productId): JsonResponse
     {
         $validated = $request->validate([
@@ -418,6 +437,7 @@ class ProductController extends Controller
         ], 201);
     }
 
+    // This endpoint is for the "Add Part" flow in the frontend, which requires a simple list of parts with their categories.
     public function parts(Request $request): JsonResponse
     {
         $categoryId = $request->query('category_id');
@@ -439,5 +459,81 @@ class ProductController extends Controller
         return response()->json([
             'data' => $parts,
         ]);
+    }
+
+    //generate a SKU preview based on manufacturer_id and part_id
+    public function skuPreview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'manufacturer_id' => ['required', 'integer'],
+            'part_id' => ['required', 'integer'],
+        ]);
+
+        $sku = $this->generateSku(
+            (int) $validated['manufacturer_id'],
+            (int) $validated['part_id']
+        );
+
+        return response()->json([
+            'sku' => $sku,
+        ]);
+    }
+
+    private function generateSku(int $manufacturerId, int $partId): string
+    {
+        $manufacturer = Manufacturers::query()->findOrFail($manufacturerId);
+        $part = Part::query()->findOrFail($partId);
+
+        $manufacturerCode = $this->normalizeSkuCode(
+            $manufacturer->code ?: $manufacturer->name,
+            3
+        );
+
+        $partCode = $this->normalizeSkuCode(
+            $part->code ?: $part->name,
+            4
+        );
+
+        $prefix = "{$manufacturerCode}-{$partCode}";
+
+        $existingSkus = Product::query()
+            ->where('SKU', 'like', "{$prefix}-%")
+            ->pluck('SKU');
+
+        $maxSequence = 0;
+
+        foreach ($existingSkus as $sku) {
+            if (preg_match('/^' . preg_quote($prefix, '/') . '-(\d+)$/i', $sku, $matches)) {
+                $maxSequence = max($maxSequence, (int) $matches[1]);
+            }
+        }
+
+        $nextSequence = $maxSequence + 1;
+
+        return sprintf('%s-%03d', $prefix, $nextSequence);
+    }
+
+    private function normalizeSkuCode(?string $value, int $fallbackLength = 3): string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return 'GEN';
+        }
+
+        $words = preg_split('/[\s\-_]+/', strtoupper($value));
+
+        if (count($words) > 1) {
+            $code = collect($words)
+                ->filter()
+                ->map(fn ($word) => substr($word, 0, 1))
+                ->join('');
+        } else {
+            $code = strtoupper(substr($value, 0, $fallbackLength));
+        }
+
+        $code = preg_replace('/[^A-Z0-9]/', '', $code);
+
+        return $code ?: 'GEN';
     }
 }

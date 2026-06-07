@@ -20,11 +20,12 @@ class Part extends Model
         'name',
         'description',
         'category_id',
+        'code',
     ];
-
     protected $casts = [
         'id' => 'integer',
         'category_id' => 'integer',
+        'code' => 'string',
     ];
 
     public function category()

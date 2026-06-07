@@ -15,10 +15,12 @@ app()->bind(
 );
 
 Route::prefix('products')->group(function () {
+    // Product routes
     Route::get('/', [ProductController::class, 'index']);
     Route::post('/', [ProductController::class, 'store']);
     Route::post('/{id}/adjust-stock', [ProductController::class, 'adjustStock']);
 
+    // Category routes
     Route::get('/categories', [ProductReferenceController::class, 'categories']);
     Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories']);
     Route::post('/service-categories', [ProductReferenceController::class, 'storeServiceCategory']);
@@ -28,26 +30,35 @@ Route::prefix('products')->group(function () {
     Route::put('/categories/{id}', [ProductReferenceController::class, 'updateCategory']);
     Route::delete('/categories/{id}', [ProductReferenceController::class, 'deleteCategory']);
 
+    // Reference data routes
     Route::get('/units', [ProductReferenceController::class, 'units']);
     Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
     Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
     Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);
 
+    // Service types routes
     Route::get('/service-types', [ProductReferenceController::class, 'serviceTypes']);
     Route::get('/service-types/{id}', [ProductReferenceController::class, 'showServiceType']);
     Route::post('/service-types', [ProductReferenceController::class, 'storeServiceType']);
     Route::put('/service-types/{id}', [ProductReferenceController::class, 'updateServiceType']);
     Route::delete('/service-types/{id}', [ProductReferenceController::class, 'destroyServiceType']);
 
+    // Supplier routes
     Route::get('/suppliers', [SupplierController::class, 'index']);
     Route::post('/{product}/suppliers', [ProductController::class, 'addSupplier']);
 
+    // Product equivalents routes
     Route::get('/{productId}/equivalents', [ProductEquivalentController::class, 'index']);
     Route::post('/{productId}/equivalents', [ProductEquivalentController::class, 'store']);
     Route::delete('/{productId}/equivalents/{equivalentProductId}', [ProductEquivalentController::class, 'destroy']);
 
+    // Product details routes
     Route::get('/parts', [ProductController::class, 'parts']);
 
+    // SKU preview route
+    Route::get('/sku-preview', [ProductController::class, 'skuPreview']);
+
+    // Product details route
     Route::get('/{id}', [ProductController::class, 'show']);
 
 

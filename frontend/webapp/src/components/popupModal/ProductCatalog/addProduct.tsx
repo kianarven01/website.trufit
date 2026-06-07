@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 interface Option {
   id: string;
   name?: string;
+  code?: string;
   CompanyName?: string;
   company_name?: string;
   label?: string;
@@ -24,6 +25,7 @@ interface Option {
 interface PartOption {
   id: string;
   name: string;
+  code?: string | null;
   description?: string | null;
   category_id: string;
   category_name?: string | null;
@@ -32,8 +34,6 @@ interface PartOption {
 interface ProductSupplierInput {
   supplier_id: string;
   supplier_cost: string;
-  is_vat?: boolean;
-  vat_percent?: string;
 }
 
 interface ProductModalProps {
@@ -48,6 +48,7 @@ interface ProductModalProps {
 }
 
 type ProductNameMode = "auto" | "manual";
+type ProductSkuMode = "auto" | "manual";
 
 export default function ProductModal({
   open,
@@ -65,6 +66,8 @@ export default function ProductModal({
   const [parts, setParts] = useState<PartOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [productNameMode, setProductNameMode] = useState<ProductNameMode>("auto");
+  const [productSkuMode, setProductSkuMode] = useState<ProductSkuMode>("auto");
+  const [skuLoading, setSkuLoading] = useState(false);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -110,6 +113,7 @@ export default function ProductModal({
           (Array.isArray(rows) ? rows : []).map((row: any) => ({
             id: String(row.id),
             name: String(row.name || ""),
+            code: row.code ?? null,
             description: row.description ?? null,
             category_id: String(row.category_id ?? ""),
             category_name: row.category_name ?? null,
@@ -204,6 +208,61 @@ export default function ProductModal({
     });
   }, [open, productNameMode, generatedProductName]);
 
+  useEffect(() => {
+    if (!open || productSkuMode !== "auto") return;
+
+    if (!form.manufacturer_id || !form.part_id) {
+      setForm((prev) => ({
+        ...prev,
+        SKU: "",
+      }));
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSkuPreview = async () => {
+      setSkuLoading(true);
+
+      try {
+        const res = await api.get("/products/sku-preview", {
+          params: {
+            manufacturer_id: form.manufacturer_id,
+            part_id: form.part_id,
+          },
+        });
+
+        const generatedSku = String(res.data?.sku || "");
+
+        if (!cancelled) {
+          setForm((prev) => ({
+            ...prev,
+            SKU: generatedSku,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to generate SKU preview:", error);
+
+        if (!cancelled) {
+          setForm((prev) => ({
+            ...prev,
+            SKU: "",
+          }));
+        }
+      } finally {
+        if (!cancelled) {
+          setSkuLoading(false);
+        }
+      }
+    };
+
+    void loadSkuPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, productSkuMode, form.manufacturer_id, form.part_id]);
+
   const handleProductNameModeChange = (mode: ProductNameMode) => {
     setProductNameMode(mode);
 
@@ -211,6 +270,22 @@ export default function ProductModal({
       setForm((prev) => ({
         ...prev,
         name: generatedProductName,
+      }));
+    }
+  };
+
+  const handleProductSkuModeChange = (mode: ProductSkuMode) => {
+    setProductSkuMode(mode);
+
+    if (mode === "manual") {
+      setSkuLoading(false);
+      return;
+    }
+
+    if (!form.manufacturer_id || !form.part_id) {
+      setForm((prev) => ({
+        ...prev,
+        SKU: "",
       }));
     }
   };
@@ -272,8 +347,6 @@ export default function ProductModal({
       {
         supplier_id: "",
         supplier_cost: "",
-        is_vat: false,
-        vat_percent: "12",
       },
     ]);
   };
@@ -285,7 +358,7 @@ export default function ProductModal({
   const updateSupplierRow = (
     index: number,
     key: keyof ProductSupplierInput,
-    value: any
+    value: string
   ) => {
     setProductSuppliers((prev) =>
       prev.map((supplier, i) =>
@@ -334,6 +407,8 @@ export default function ProductModal({
 
     setProductSuppliers([]);
     setProductNameMode("auto");
+    setProductSkuMode("auto");
+    setSkuLoading(false);
     setImageFile(null);
     setImagePreview("");
 
@@ -357,7 +432,11 @@ export default function ProductModal({
       const payload = new FormData();
 
       payload.append("name", form.name.trim());
-      payload.append("SKU", form.SKU.trim());
+
+      if (form.SKU.trim()) {
+        payload.append("SKU", form.SKU.trim());
+      }
+
       payload.append("part_number", form.part_number.trim());
       payload.append("is_oem", form.is_oem ? "1" : "0");
 
@@ -410,18 +489,6 @@ export default function ProductModal({
             supplier.supplier_cost.trim()
           );
         }
-
-        payload.append(
-          `suppliers[${index}][is_vat]`,
-          supplier.is_vat ? "1" : "0"
-        );
-
-        if (supplier.is_vat && supplier.vat_percent) {
-          payload.append(
-            `suppliers[${index}][vat_percent]`,
-            String(supplier.vat_percent).trim()
-          );
-        }
       });
 
       if (variantId) {
@@ -455,8 +522,7 @@ export default function ProductModal({
     }
   };
 
-  const canSave =
-    form.name.trim() && form.SKU.trim() && form.part_number.trim();
+  const canSave = form.name.trim() && form.part_number.trim();
 
   return (
     <Dialog open={open} onOpenChange={handleModalChange}>
@@ -575,11 +641,50 @@ export default function ProductModal({
             />
           </div>
 
-          <Input
-            placeholder="SKU"
-            value={form.SKU}
-            onChange={(e) => updateField("SKU", e.target.value)}
-          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">SKU</span>
+
+              <div className="flex overflow-hidden rounded-md border text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleProductSkuModeChange("auto")}
+                  className={`px-2 py-1 transition ${
+                    productSkuMode === "auto"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Auto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleProductSkuModeChange("manual")}
+                  className={`border-l px-2 py-1 transition ${
+                    productSkuMode === "manual"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <Input
+              placeholder={
+                productSkuMode === "auto"
+                  ? skuLoading
+                    ? "Generating SKU..."
+                    : "Auto: Brand code + Part code + sequence"
+                  : "SKU"
+              }
+              value={form.SKU}
+              readOnly={productSkuMode === "auto"}
+              onChange={(e) => updateField("SKU", e.target.value.toUpperCase())}
+              className={productSkuMode === "auto" ? "opacity-80" : ""}
+            />
+          </div>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
@@ -683,103 +788,55 @@ export default function ProductModal({
                 {productSuppliers.map((supplierRow, index) => (
                   <div
                     key={index}
-                    className="border rounded-lg p-3 space-y-3 bg-muted/30"
+                    className="grid grid-cols-12 gap-3 items-center"
                   >
-                    <div className="grid grid-cols-12 gap-3 items-center">
-                      <select
-                        className="col-span-6 border rounded-md px-3 py-2 bg-background text-sm"
-                        value={supplierRow.supplier_id}
-                        onChange={(e) =>
-                          updateSupplierRow(index, "supplier_id", e.target.value)
-                        }
-                      >
-                        <option value="">Select supplier</option>
+                    <select
+                      className="col-span-6 border rounded-md px-3 py-2 bg-background"
+                      value={supplierRow.supplier_id}
+                      onChange={(e) =>
+                        updateSupplierRow(index, "supplier_id", e.target.value)
+                      }
+                    >
+                      <option value="">Select supplier</option>
 
-                        {validSupplierOptions.map((supplier) => (
-                          <option
-                            key={supplier.id}
-                            value={supplier.id}
-                            disabled={isSupplierAlreadySelected(
-                              supplier.id,
-                              index
-                            )}
-                          >
-                            {getOptionLabel(supplier)}
-                          </option>
-                        ))}
-                      </select>
+                      {validSupplierOptions.map((supplier) => (
+                        <option
+                          key={supplier.id}
+                          value={supplier.id}
+                          disabled={isSupplierAlreadySelected(
+                            supplier.id,
+                            index
+                          )}
+                        >
+                          {getOptionLabel(supplier)}
+                        </option>
+                      ))}
+                    </select>
 
-                      <Input
-                        className="col-span-5"
-                        placeholder="Supplier cost"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={supplierRow.supplier_cost}
-                        onChange={(e) =>
-                          updateSupplierRow(
-                            index,
-                            "supplier_cost",
-                            e.target.value
-                          )
-                        }
-                      />
+                    <Input
+                      className="col-span-5"
+                      placeholder="Supplier cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={supplierRow.supplier_cost}
+                      onChange={(e) =>
+                        updateSupplierRow(
+                          index,
+                          "supplier_cost",
+                          e.target.value
+                        )
+                      }
+                    />
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="col-span-1 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-input"
-                        onClick={() => removeSupplierRow(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-4 items-center pl-1 text-xs">
-                      <span className="text-muted-foreground font-medium">Tax Type:</span>
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input
-                            type="radio"
-                            name={`isVat-${index}`}
-                            checked={!supplierRow.is_vat}
-                            onChange={() => updateSupplierRow(index, "is_vat", false)}
-                            className="accent-primary"
-                          />
-                          Non-VAT
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input
-                            type="radio"
-                            name={`isVat-${index}`}
-                            checked={supplierRow.is_vat}
-                            onChange={() => updateSupplierRow(index, "is_vat", true)}
-                            className="accent-primary"
-                          />
-                          VAT
-                        </label>
-                      </div>
-
-                      {supplierRow.is_vat && (
-                        <div className="flex items-center gap-1.5 ml-4">
-                          <span className="text-muted-foreground font-medium">Percent (%):</span>
-                          <Input
-                            type="number"
-                            placeholder="12"
-                            className="h-7 w-16 text-xs px-2"
-                            value={supplierRow.vat_percent || ""}
-                            onChange={(e) =>
-                              updateSupplierRow(
-                                index,
-                                "vat_percent",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="col-span-1 px-2"
+                      onClick={() => removeSupplierRow(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 ))}
               </div>

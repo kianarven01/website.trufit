@@ -117,7 +117,7 @@ export default function ChapterThree() {
 
       <div className="max-w-[1820px] mx-auto px-6 sm:px-10 lg:px-16 relative z-10">
         {/* Header */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-end mb-12 md:mb-16">
+        <div className="flex flex-col gap-12 lg:gap-24 items-start mb-12 md:mb-16">
           <div>
             <div className="ch3-reveal section-label">
               <div className="section-label-line" />
@@ -134,79 +134,6 @@ export default function ChapterThree() {
               triathlon events — swimming, cycling, and running alongside the
               community we serve.
             </p>
-          </div>
-
-          <div className="hidden lg:block">
-            <p className="ch3-reveal text-gray-500 text-sm leading-relaxed max-w-md">
-              Triathlon demands endurance, precision, and teamwork — the same
-              values we bring to every vehicle in our workshop. It&apos;s more
-              than competition; it&apos;s a philosophy of pushing limits and
-              never settling for less.
-            </p>
-
-            {/* Sport Stats */}
-            <div className="ch3-reveal flex gap-8 mt-8">
-              <div className="flex items-center gap-3">
-                <Trophy className="text-brand-red" size={20} />
-                <div>
-                  <p className="text-brand-dark font-semibold text-lg">
-                    Active
-                  </p>
-                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
-                    Competitors
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Flame className="text-brand-red" size={20} />
-                <div>
-                  <p className="text-brand-dark font-semibold text-lg">Local</p>
-                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
-                    Triathlon Events
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Users className="text-brand-red" size={20} />
-                <div>
-                  <p className="text-brand-dark font-semibold text-lg">Team</p>
-                  <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
-                    Spirit Driven
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Achievements */}
-            <div className="ch3-reveal mt-10 p-5 bg-gray-50 border-l-4 border-brand-red rounded-sm">
-              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-3">
-                Recent Achievements
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <Trophy className="text-brand-red mt-0.5" size={16} />
-                  <div>
-                    <p className="text-brand-dark font-bold text-sm leading-tight">
-                      3rd Place — Men&apos;s Elite
-                    </p>
-                    <p className="text-gray-500 text-[10px] font-medium">
-                      Bantayog Talisay Triathlon Year 5
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Trophy className="text-brand-red mt-0.5" size={16} />
-                  <div>
-                    <p className="text-brand-dark font-bold text-sm leading-tight">
-                      2nd Place — Mixed Relay
-                    </p>
-                    <p className="text-gray-500 text-[10px] font-medium">
-                      Bantayog Talisay Triathlon Year 5
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -243,6 +170,82 @@ export default function ChapterThree() {
           ))}
         </div>
 
+        <div className="hidden lg:block">
+          <div className="grid grid-cols-2 gap-12 items-start">
+            <div>
+              <p className="ch3-reveal text-gray-500 text-sm leading-relaxed max-w-md mt-6">
+                Triathlon demands endurance, precision, and teamwork — the same
+                values we bring to every vehicle in our workshop. It&apos;s more
+                than competition; it&apos;s a philosophy of pushing limits and
+                never settling for less.
+              </p>
+              {/* Sport Stats */}
+              <div className="ch3-reveal flex gap-8 mt-8">
+                <div className="flex items-center gap-3">
+                  <Trophy className="text-brand-red" size={20} />
+                  <div>
+                    <p className="text-brand-dark font-semibold text-lg">
+                      Active
+                    </p>
+                    <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                      Competitors
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Flame className="text-brand-red" size={20} />
+                  <div>
+                    <p className="text-brand-dark font-semibold text-lg">Local</p>
+                    <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                      Triathlon Events
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Users className="text-brand-red" size={20} />
+                  <div>
+                    <p className="text-brand-dark font-semibold text-lg">Team</p>
+                    <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+                      Spirit Driven
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Achievements */}
+            <div className="ch3-reveal mt-10 p-5 bg-gray-50 border-l-4 border-brand-red rounded-sm">
+              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-3">
+                Recent Achievements
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <Trophy className="text-brand-red mt-0.5" size={16} />
+                  <div>
+                    <p className="text-brand-dark font-bold text-sm leading-tight">
+                      3rd Place — Men&apos;s Elite
+                    </p>
+                    <p className="text-gray-500 text-[10px] font-medium">
+                      Bantayog Talisay Triathlon Year 5
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Trophy className="text-brand-red mt-0.5" size={16} />
+                  <div>
+                    <p className="text-brand-dark font-bold text-sm leading-tight">
+                      2nd Place — Mixed Relay
+                    </p>
+                    <p className="text-gray-500 text-[10px] font-medium">
+                      Bantayog Talisay Triathlon Year 5
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         {/* Mobile sport stats */}
         <div className="lg:hidden mt-10">
           <p className="ch3-reveal text-gray-500 text-sm leading-relaxed mb-6">
@@ -268,6 +271,39 @@ export default function ChapterThree() {
               <span className="text-brand-dark font-semibold text-sm">
                 Team Spirit
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Achievements (mobile) */}
+        <div className="lg:hidden mt-10 p-5 bg-gray-50 border-l-4 border-brand-red rounded-sm">
+          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-3">
+            Recent Achievements
+          </p>
+
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <Trophy className="text-brand-red mt-0.5" size={16} />
+              <div>
+                <p className="text-brand-dark font-bold text-sm leading-tight">
+                  3rd Place — Men&apos;s Elite
+                </p>
+                <p className="text-gray-500 text-[10px] font-medium">
+                  Bantayog Talisay Triathlon Year 5
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <Trophy className="text-brand-red mt-0.5" size={16} />
+              <div>
+                <p className="text-brand-dark font-bold text-sm leading-tight">
+                  2nd Place — Mixed Relay
+                </p>
+                <p className="text-gray-500 text-[10px] font-medium">
+                  Bantayog Talisay Triathlon Year 5
+                </p>
+              </div>
             </div>
           </div>
         </div>

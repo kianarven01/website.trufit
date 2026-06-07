@@ -26,6 +26,19 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+function row(label: string, value: string) {
+  return `
+    <tr>
+      <td style="padding: 12px 18px; border-bottom: 1px solid #f0f0f0; width: 38%; vertical-align:top;">
+        <span style="font-size: 12px; font-weight: 400; color: #999999; font-family: 'Barlow', Arial, sans-serif;">${label}</span>
+      </td>
+      <td style="padding: 12px 18px; border-bottom: 1px solid #f0f0f0;">
+        <span style="font-size: 15px; color: #1a1a1a; font-weight: 400; font-family: 'Barlow', Arial, sans-serif;">${value}</span>
+      </td>
+    </tr>
+  `;
+}
+
 export async function POST(req: Request) {
   try {
     const data = await req.json();
@@ -34,6 +47,7 @@ export async function POST(req: Request) {
       lastName,
       email,
       phone,
+      plateNumber,
       date,
       service,
       vehicleMake,
@@ -68,20 +82,22 @@ export async function POST(req: Request) {
     }
     // -----------------------
 
-    // Map service ID to name
+    const host = req.headers.get("host") || "trufitauto.com";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+    const logoUrl = `${baseUrl}/images/logo-dark1.webp`;
+
     const serviceName = services.find((s) => s.id === service)?.name || service;
 
-    // Create a Nodemailer transporter using Gmail SMTP
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
-        // Replace potential quotes from the env var just in case
+
         pass: process.env.EMAIL_PASS?.replace(/"/g, ""),
       },
     });
 
-    // Format the date if it exists
     const formattedDate = date
       ? new Date(date).toLocaleString("en-US", {
           weekday: "long",
@@ -93,52 +109,213 @@ export async function POST(req: Request) {
         })
       : "Not Specified";
 
-    // Format Vehicle Info
     const vehicleInfo =
       [vehicleYear, vehicleMake, vehicleModel].filter(Boolean).join(" ") ||
       "Not Specified";
 
+    // ─── ADMIN EMAIL ─────────────────────────────────────────────────────────
+    const adminHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>New Appointment Request</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:'Barlow',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+
+        <!-- HEADER -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f1115 0%,#1a1f2e 100%);padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:0.14em;color:#9ca3af;font-family:'Barlow',Arial,sans-serif;">Trufit Auto Center</p>
+            <p style="margin:10px 0 0;font-size:18px;font-weight:600;color:#ffffff;font-family:'Barlow',Arial,sans-serif;">New Appointment Request</p>
+          </td>
+        </tr>
+
+        <!-- ALERT BANNER -->
+        <tr>
+          <td style="background-color:#fff8f8;border-left:4px solid #E31B23;padding:14px 40px;">
+            <p style="margin:0;font-size:14px;color:#c0392b;font-weight:400;font-family:'Barlow',Arial,sans-serif;">
+              A new appointment request has been submitted and requires your attention.
+            </p>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style="background-color:#ffffff;padding:32px 40px;">
+
+            <!-- CUSTOMER INFO -->
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Customer Information</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eeeeee;border-radius:8px;overflow:hidden;margin-bottom:28px;">
+              ${row("Full Name", `${firstName} ${lastName}`)}
+              ${row("Email Address", email)}
+              ${row("Phone Number", phone)}
+            </table>
+
+            <!-- APPOINTMENT DETAILS -->
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Appointment Details</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eeeeee;border-radius:8px;overflow:hidden;margin-bottom:28px;">
+              ${row("Service Needed", serviceName)}
+              ${row("Requested Date & Time", formattedDate)}
+            </table>
+
+            <!-- VEHICLE DETAILS -->
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Vehicle Details</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eeeeee;border-radius:8px;overflow:hidden;margin-bottom:28px;">
+              ${row("Vehicle", vehicleInfo)}
+              ${row("Plate Number", plateNumber || "Not Specified")}
+            </table>
+
+            <!-- MESSAGE -->
+            ${
+              message
+                ? `
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Additional Message</p>
+            <div style="background-color:#f9f9f9;border-radius:8px;padding:18px;border:1px solid #eeeeee;margin-bottom:28px;">
+              <p style="margin:0;font-size:15px;color:#444444;line-height:1.8;font-family:'Barlow',Arial,sans-serif;font-weight:400;">${message}</p>
+            </div>
+            `
+                : `
+            <div style="background-color:#f9f9f9;border-radius:8px;padding:16px 18px;border:1px solid #eeeeee;margin-bottom:28px;">
+              <p style="margin:0;font-size:14px;color:#aaaaaa;font-style:italic;font-family:'Barlow',Arial,sans-serif;">No additional message provided.</p>
+            </div>
+            `
+            }
+
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background-color:#0f1115;padding:24px 40px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:13px;color:#666666;font-family:'Barlow',Arial,sans-serif;">This notification was sent via the Trufit Auto Center website.</p>
+            <p style="margin:0;font-size:13px;color:#444444;font-family:'Barlow',Arial,sans-serif;">
+              <a href="https://trufitautocenter.com" style="color:#E31B23;text-decoration:none;">trufitautocenter.com</a>
+              &nbsp;·&nbsp;
+              <span style="color:#555555;">0918-774-7788</span>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    // ─── CUSTOMER EMAIL ───────────────────────────────────────────────────────
+    const customerHtml = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Appointment Request Received</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:'Barlow',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+
+        <!-- HEADER -->
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f1115 0%,#1a1f2e 100%);padding:36px 40px;text-align:center;">
+            <p style="margin:0;font-size:13px;font-weight:500;text-transform:uppercase;letter-spacing:0.14em;color:#9ca3af;font-family:'Barlow',Arial,sans-serif;">Trufit Auto Center</p>
+            <p style="margin:10px 0 4px;font-size:22px;font-weight:600;color:#ffffff;font-family:'Barlow',Arial,sans-serif;">Request Received!</p>
+            <p style="margin:6px 0 0;font-size:15px;color:#9ca3af;font-weight:400;font-family:'Barlow',Arial,sans-serif;">We've got your appointment booking, ${firstName}.</p>
+          </td>
+        </tr>
+
+        <!-- STATUS BAR -->
+        <tr>
+          <td style="background-color:#E31B23;padding:13px 40px;text-align:center;">
+            <p style="margin:0;font-size:13px;font-weight:500;color:#ffffff;font-family:'Barlow',Arial,sans-serif;">
+              Pending Confirmation — Our team will reach out shortly
+            </p>
+          </td>
+        </tr>
+
+        <!-- BODY -->
+        <tr>
+          <td style="background-color:#ffffff;padding:36px 40px;">
+
+            <p style="margin:0 0 28px;font-size:15px;color:#555555;line-height:1.8;font-family:'Barlow',Arial,sans-serif;font-weight:400;">
+              Thank you for choosing Trufit Auto Center. We have received your appointment request and our team is reviewing it. We will contact you at ${phone} to confirm the details.
+            </p>
+
+            <!-- APPOINTMENT SUMMARY -->
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Appointment Summary</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eeeeee;border-radius:8px;overflow:hidden;margin-bottom:28px;">
+              ${row("Service", serviceName)}
+              ${row("Scheduled Date & Time", formattedDate)}
+            </table>
+
+            <!-- VEHICLE DETAILS -->
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Your Vehicle</p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #eeeeee;border-radius:8px;overflow:hidden;margin-bottom:28px;">
+              ${row("Vehicle", vehicleInfo)}
+              ${row("Plate Number", plateNumber || "Not Specified")}
+            </table>
+
+            ${
+              message
+                ? `
+            <!-- YOUR MESSAGE -->
+            <p style="margin:0 0 12px;font-size:13px;font-weight:500;color:#E31B23;font-family:'Barlow',Arial,sans-serif;">Your Message</p>
+            <div style="background-color:#f9f9f9;border-radius:8px;padding:18px;border:1px solid #eeeeee;margin-bottom:28px;">
+              <p style="margin:0;font-size:15px;color:#444444;line-height:1.8;font-family:'Barlow',Arial,sans-serif;font-weight:400;">${message}</p>
+            </div>
+            `
+                : ""
+            }
+
+            <!-- CONTACT CTA -->
+            <div style="background:linear-gradient(135deg,#0f1115 0%,#1a1f2e 100%);border-radius:10px;padding:24px 28px;text-align:center;margin-top:8px;">
+              <p style="margin:0 0 8px;font-size:14px;color:#9ca3af;font-family:'Barlow',Arial,sans-serif;font-weight:400;">Have an immediate question?</p>
+              <p style="margin:0;font-size:20px;font-weight:500;color:#ffffff;font-family:'Barlow',Arial,sans-serif;">
+                <a href="tel:09187747788" style="color:#E31B23;text-decoration:none;">0918-774-7788</a>
+              </p>
+              <p style="margin:8px 0 0;font-size:13px;color:#6b7280;font-family:'Barlow',Arial,sans-serif;font-weight:400;">Mon – Sat &nbsp;|&nbsp; 8:00 AM – 5:00 PM</p>
+            </div>
+
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background-color:#0f1115;padding:24px 40px;text-align:center;border-top:3px solid #E31B23;">
+            <p style="margin:0 0 6px;font-size:14px;font-weight:500;color:#ffffff;font-family:'Barlow',Arial,sans-serif;">Trufit Auto Center</p>
+            <p style="margin:0 0 6px;font-size:13px;color:#6b7280;font-family:'Barlow',Arial,sans-serif;font-weight:400;">1042 Brgy. Gahonon, Vinzons Ave, Daet, Camarines Norte, Philippines</p>
+            <p style="margin:0;font-size:13px;color:#6b7280;font-family:'Barlow',Arial,sans-serif;font-weight:400;">
+              <a href="mailto:trufitautocenter@gmail.com" style="color:#E31B23;text-decoration:none;">trufitautocenter@gmail.com</a>
+              &nbsp;·&nbsp;
+              <a href="https://trufitautocenter.com" style="color:#E31B23;text-decoration:none;">trufitautocenter.com</a>
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
     // Email options for Trufit
     const mailOptions = {
       from: `"${firstName} ${lastName}" <${email}>`,
-      to: process.env.EMAIL_USER, // Send to the auto center
+      to: process.env.EMAIL_USER,
       subject: `New Appointment Request - Trufit Auto Center (${serviceName})`,
-      html: `
-        <h2 style="color: #E31B23;">New Appointment Request</h2>
-        <p><strong>Name:</strong> ${firstName} ${lastName}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone}</p>
-        <p><strong>Requested Date & Time:</strong> ${formattedDate}</p>
-        <p><strong>Vehicle:</strong> ${vehicleInfo}</p>
-        <p><strong>Service Needed:</strong> ${serviceName}</p>
-        <br />
-        <p><strong>Additional Message:</strong></p>
-        <p>${message || "<i>No additional message provided.</i>"}</p>
-        <br />
-        <hr />
-        <p><small>This email was sent via the Trufit Website Appointment Form.</small></p>
-      `,
+      html: adminHtml,
     };
 
     // Email options for the Customer (Confirmation)
     const customerMailOptions = {
       from: `"Trufit Auto Center" <${process.env.EMAIL_USER}>`,
-      to: email, // Send to the customer
+      to: email,
       subject: `Appointment Request Received - Trufit Auto Center`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #000000ff;">Hello ${firstName},</h2>
-          <p>Thank you for choosing Trufit Auto Center. We have received your appointment request for <strong>${serviceName}</strong> on <strong>${formattedDate}</strong>.</p>
-          <p>Our team is reviewing your request and will contact you shortly at <strong>${phone}</strong> to confirm your appointment and discuss any further details.</p>
-          <br />
-          <p><strong>Your Vehicle Info:</strong> ${vehicleInfo}</p>
-          ${message ? `<p><strong>Your Message:</strong> ${message}</p>` : ""}
-          <br />
-          <p>If you have any immediate questions, please don't hesitate to call us at 0918-774-7788.</p>
-          <p>Best regards,</p>
-          <p><strong>The Trufit Auto Center Team</strong></p>
-        </div>
-      `,
+      html: customerHtml,
     };
 
     // Send both emails

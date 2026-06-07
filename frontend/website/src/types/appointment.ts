@@ -3,7 +3,8 @@ export type Appointment = {
   lastName: string
   email: string
   phone: string
-  date: string
+  plateNumber: string
+  date: Date | null
   service: string
   vehicleMake?: string
   vehicleModel?: string

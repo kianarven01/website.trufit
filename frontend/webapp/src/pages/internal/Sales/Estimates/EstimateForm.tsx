@@ -59,7 +59,7 @@ interface Service {
   id: string;
   name: string;
   serviceCategoryId: string;
-  description?: string;
+  tasks?: string[];
   duration?: number;
   pricingType: "fixed" | "hourly rate";
   pricings?: ServicePricing[];
@@ -350,7 +350,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           id: s.id,
           name: s.name,
           serviceCategoryId: s.service_category_id || "",
-          description: s.description || "",
+          tasks: s.tasks || [],
           duration: s.duration || 0,
           pricingType: s.pricing_type || "fixed",
           pricings: s.pricings || [],
@@ -993,6 +993,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                     };
                                   })}
                               />
+                              {service?.tasks && service.tasks.length > 0 && (
+                                <div className="mt-2 text-xs text-muted-foreground">
+                                  <ul className="list-disc pl-4 space-y-0.5">
+                                    {service.tasks.map((task, i) => (
+                                      <li key={i}>{task}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </TableCell>
 
                             <TableCell>

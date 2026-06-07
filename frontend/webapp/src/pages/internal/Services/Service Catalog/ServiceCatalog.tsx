@@ -21,7 +21,7 @@ interface Service {
   name: string;
   serviceCategoryId: string;
   category?: string; // from backend ServiceType.category
-  description?: string;
+  tasks?: string[];
   pricingType: "fixed" | "hourly rate";
 }
 
@@ -53,7 +53,7 @@ const ServiceCatalogList: React.FC = () => {
           name: s.name,
           category: s.service_category?.name || s.category,
           serviceCategoryId: s.service_category_id ? s.service_category_id.toString() : null,
-          description: s.description || "No description provided",
+          tasks: s.tasks || [],
           pricingType: s.pricing_type || "fixed"
         }));
         setServices(data);
@@ -101,7 +101,7 @@ const ServiceCatalogList: React.FC = () => {
 
       const textBlob = normalize(`
         ${s.name}
-        ${s.description}
+        ${s.tasks?.join(', ')}
         ${category?.name}
       `);
 
@@ -162,7 +162,7 @@ const ServiceCatalogList: React.FC = () => {
               <TableRow>
                 <TableHead className="w-1/4 text-center">Service</TableHead>
                 <TableHead className="w-1/4 text-center">Category</TableHead>
-                <TableHead className="text-center">Description</TableHead>
+                <TableHead className="text-center">Tasks</TableHead>
                 <TableHead className="w-[15%] text-center">Pricing</TableHead>
               </TableRow>
             </TableHeader>
@@ -201,7 +201,7 @@ const ServiceCatalogList: React.FC = () => {
                     >
                       <TableCell className="font-medium text-center">{s.name}</TableCell>
                       <TableCell className="text-center">{s.category || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground truncate text-center">{s.description}</TableCell>
+                      <TableCell className="text-muted-foreground truncate text-center">{s.tasks && s.tasks.length > 0 ? s.tasks.join(', ') : "No tasks"}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">
                           {s.pricingType === "hourly rate" ? "Hourly Rate" : "Fixed Price"}

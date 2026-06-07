@@ -16,9 +16,13 @@ class ServiceType extends Model
         'category',
         'service_category_id',
         'price',
-        'description',
+        'tasks',
         'pricing_type',
         'duration'
+    ];
+
+    protected $casts = [
+        'tasks' => 'array',
     ];
 
     public function pricings()

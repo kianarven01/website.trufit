@@ -22,7 +22,7 @@ interface Service {
   service_category?: { name: string };
   service_category_id?: number;
   serviceCategoryId: string;
-  description?: string;
+  tasks?: string[];
   duration?: number;
   pricingType: "fixed" | "hourly rate";
 }
@@ -203,10 +203,18 @@ return (
             <p className="text-sm px-3 py-2 bg-muted/20 rounded-md border">{service.serviceCategoryId}</p>
           </div>
 
-          <div className="space-y-1">
-            <Label>Description</Label>
-            <div className="text-sm px-3 py-2 bg-muted/20 rounded-md border min-h-[100px] whitespace-pre-wrap">
-              {service?.description || "No description provided"}
+          <div className="space-y-1.5">
+            <Label>Tasks</Label>
+            <div className="text-sm px-3 py-2 bg-muted/20 rounded-md border min-h-[100px] flex flex-wrap gap-2 items-start content-start">
+              {service?.tasks && service.tasks.length > 0 ? (
+                service.tasks.map((task, i) => (
+                  <span key={i} className="px-3 py-1.5 bg-secondary text-secondary-foreground rounded-md text-[11px] font-medium border">
+                    {task}
+                  </span>
+                ))
+              ) : (
+                <span className="text-muted-foreground">No tasks provided</span>
+              )}
             </div>
           </div>
 

@@ -96,7 +96,7 @@ interface Service {
   id: string;
   name: string;
   serviceCategoryId: string;
-  description?: string;
+  tasks?: string[];
   pricingType: "fixed" | "hourly rate";
 }
 

@@ -42,7 +42,7 @@ interface Service {
   id: string;
   name: string;
   serviceCategoryId: string;
-  description?: string;
+  tasks?: string[];
   duration?: number;
   pricingType: PricingType;
 }
@@ -88,7 +88,7 @@ const [name, setName] = useState("");
 const [categoryName, setCategoryName] = useState("");
 const [serviceCategoryId, setServiceCategoryId] = useState<number | null>(null);
 const [isManageModalOpen, setIsManageModalOpen] = useState(false);
-const [description, setDescription] = useState("");
+const [tasks, setTasks] = useState<string[]>([]);
 const [pricingType, setPricingType] = useState<PricingType>("fixed");
 
 const [vehicleTypeInput, setVehicleTypeInput] = useState("");
@@ -146,7 +146,7 @@ useEffect(() => {
         setName(s.name);
         setCategoryName(s.category || "");
         setServiceCategoryId(s.service_category_id || null);
-        setDescription(s.description || "");
+        setTasks(s.tasks || []);
         setPricingType(s.pricing_type || "fixed");
         setDuration(s.duration || 0);
 
@@ -415,7 +415,7 @@ const handleSubmit = async () => {
     name,
     category_name: categoryName,
     service_category_id: serviceCategoryId,
-    description,
+    tasks,
     duration,
     pricing_type: pricingType,
     pricing: pricingData
@@ -580,14 +580,40 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                   />                  
               </div>
               <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Textarea 
-                  placeholder="Description" 
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)} 
-                  rows={5} 
-                  className="text-xs bg-background max-h-[240px] resize-none"
-                />
+                <Label>Tasks</Label>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    {tasks.map((task, index) => (
+                      <span
+                        key={index}
+                        className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium border rounded-md bg-secondary text-secondary-foreground"
+                      >
+                        {task}
+                        <button
+                          type="button"
+                          onClick={() => setTasks(tasks.filter((_, i) => i !== index))}
+                          className="text-muted-foreground hover:text-red-500 ml-1"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <Input
+                    className="text-xs bg-background"
+                    placeholder="Type a task and press enter"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = e.currentTarget.value.trim();
+                        if (val && !tasks.includes(val)) {
+                          setTasks([...tasks, capitalize(val)]);
+                        }
+                        e.currentTarget.value = '';
+                      }
+                    }}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Estimated Duration</Label>

@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Car, Wrench, Box, Calculator } from "lucide-react";
+import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel } from "lucide-react";
 import api from "@/api/axios";
 
 /* ================= TYPES ================= */
@@ -93,6 +93,13 @@ interface SOPartLine {
   amount: number;
 }
 
+interface SPOLLine {
+  id: string;
+  ProductId: string;
+  quantity: number | "";
+  amount: number;
+}
+
 interface AddEstimateProps {
   mode?: "create" | "edit";
 }
@@ -121,6 +128,13 @@ const emptySOLine = (): SOPartLine => ({
   amount: 0,
 });
 
+const emptySPOLLine = (): SPOLLine => ({
+  id: genLineId(),
+  ProductId: "",
+  quantity: 1,
+  amount: 0,
+});
+
 const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const { id: estimateId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -140,6 +154,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [joLines, setJoLines] = useState<JOServiceLine[]>([emptyJOLine()]);
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
+  const [spolLines, setSpolLines] = useState<SPOLLine[]>([emptySPOLLine()]);
+  const [expandedTaskRows, setExpandedTaskRows] = useState<Set<string>>(new Set());
 
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
@@ -161,6 +177,9 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
   const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
   const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
+
+  const addSPOLLine = () => setSpolLines((p) => [...p, emptySPOLLine()]);
+  const removeSPOLLine = (i: number) => setSpolLines((p) => p.filter((_, idx) => idx !== i));
 
   const customerVehicles = useMemo(() => {
     return vehicles.filter(v => String(v.customerId) === String(selectedCustomer?.id));
@@ -606,39 +625,34 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const totals = useMemo(() => {
     const validJO = joLines.filter((l) => l.ServiceTypeId);
     const validSO = soLines.filter((l) => l.ProductId);
+    const validSPOL = spolLines.filter((l) => l.ProductId);
 
-    const totalServices = validJO.reduce(
-      (s, l) => s + l.amount,
-      0
-    );
-
-    const totalParts = validSO.reduce(
-      (s, l) => s + l.amount,
-      0
-    );
+    const totalServices = validJO.reduce((s, l) => s + l.amount, 0);
+    const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
+    const totalSupplies = validSPOL.reduce((s, l) => s + l.amount, 0);
 
     const estimatedMinutes = validJO.reduce(
       (sum, l) => {
         const service = servicesMap[l.ServiceTypeId];
-
         if (!service?.duration) return sum;
-
         return sum + service.duration;
       },
       0
     );
 
-    const total = totalServices + totalParts;
+    const total = totalServices + totalParts + totalSupplies;
 
     return {
       totalServices,
       totalParts,
+      totalSupplies,
       total,
       estimatedMinutes,
       validJO,
       validSO,
+      validSPOL,
     };
-  }, [joLines, soLines, servicesMap]);
+  }, [joLines, soLines, spolLines, servicesMap]);
 
   const peso = (n: number) =>
     `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -658,7 +672,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       return;
     }
 
-    if (totals.validJO.length === 0 && totals.validSO.length === 0) {
+    if (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) {
       toast.error("Add at least one service or part.");
       return;
     }
@@ -946,11 +960,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs w-[30%]">Service</TableHead>
-                        <TableHead className="text-xs w-[25%]">Pricing</TableHead>
-                        <TableHead className="text-xs w-[14%]">Est. Duration</TableHead>
-                        <TableHead className="text-xs w-[13%]">Rate (₱)</TableHead>
-                        <TableHead className="text-xs w-[13%]">Amount</TableHead>
+                        <TableHead className="text-xs w-[30%] text-center">Service</TableHead>
+                        <TableHead className="text-xs w-[25%] text-center">Pricing</TableHead>
+                        <TableHead className="text-xs w-[14%] text-center">Est. Duration</TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">Rate</TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">Amount</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -961,8 +975,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                         const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
 
                         return (
-                          <TableRow key={l.id}>
-                            <TableCell className="relative overflow-visible">
+                          <TableRow key={l.id} className="hover:bg-transparent">
+                            <TableCell className="relative overflow-visible align-top">
                               <Combobox
                                 showGroupSeparator
                                 value={l.ServiceTypeId}
@@ -994,17 +1008,31 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                   })}
                               />
                               {service?.tasks && service.tasks.length > 0 && (
-                                <div className="mt-2 text-xs text-muted-foreground">
-                                  <ul className="list-disc pl-4 space-y-0.5">
-                                    {service.tasks.map((task, i) => (
-                                      <li key={i}>{task}</li>
-                                    ))}
-                                  </ul>
-                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedTaskRows(prev => {
+                                    const next = new Set(prev);
+                                    next.has(l.id) ? next.delete(l.id) : next.add(l.id);
+                                    return next;
+                                  })}
+                                  className="mt-3 pt-2 border-t border-border/50 w-full flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  {expandedTaskRows.has(l.id)
+                                    ? <ChevronUp className="w-3 h-3" />
+                                    : <ChevronDown className="w-3 h-3" />}
+                                  {service.tasks.length} task{service.tasks.length !== 1 ? 's' : ''}
+                                </button>
+                              )}
+                              {expandedTaskRows.has(l.id) && service?.tasks && service.tasks.length > 0 && (
+                                <ul className="mt-1.5 list-disc pl-4 space-y-0.5 text-[10px] text-muted-foreground">
+                                  {service.tasks.map((task, i) => (
+                                    <li key={i}>{task}</li>
+                                  ))}
+                                </ul>
                               )}
                             </TableCell>
 
-                            <TableCell>
+                            <TableCell className="align-top text-center">
                               <select
                                 className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-40 disabled:pointer-events-none"
                                 value={l.pricingId || ""}
@@ -1030,28 +1058,23 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               </select>
                             </TableCell>
 
-                            <TableCell>
-                              {formatDuration(service?.duration)}
+                            <TableCell className="align-top text-center">
+                              {service?.duration ? formatDuration(service.duration) : "No Duration"}
                             </TableCell>
 
-                            <TableCell>
-                              <div className="flex flex-col gap-0.5">
-                                <CurrencyInput
-                                  value={l.manualRate !== undefined ? l.manualRate : (service ? rate : 0)}
-                                  onChange={(newRate) => updateJORate(idx, String(newRate))}
-                                  className={!service ? "opacity-40 pointer-events-none" : ""}
-                                />
-                                <span className="text-[10px] text-muted-foreground">
-                                  {service ? (service.pricingType === "fixed" ? "Fixed" : "Per hr") : ""}
-                                </span>
-                              </div>
+                            <TableCell className="align-top">
+                              <CurrencyInput
+                                value={l.manualRate !== undefined ? l.manualRate : (service ? rate : 0)}
+                                onChange={(newRate) => updateJORate(idx, String(newRate))}
+                                className={!service ? "opacity-40 pointer-events-none" : ""}
+                              />
                             </TableCell>
 
-                            <TableCell>
-                              {service ? peso(l.amount) : "—"}
+                            <TableCell className="align-top text-center">
+                              {peso(l.amount)}
                             </TableCell>
 
-                            <TableCell>
+                            <TableCell className="align-top">
                               {joLines.length > 1 && (
                                 <Button
                                   size="icon_xs"
@@ -1085,10 +1108,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs">Item Name</TableHead>
-                        <TableHead className="text-xs w-[20%]">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[15%]">Qty</TableHead>
-                        <TableHead className="text-xs w-[20%]">Amount</TableHead>
+                        <TableHead className="text-xs text-center">Item Name</TableHead>
+                        <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
+                        <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1096,7 +1119,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     <TableBody>
                       {soLines.map((l, idx) => {
                         return (
-                          <TableRow key={l.id}>
+                          <TableRow key={l.id} className="hover:bg-transparent">
                             <TableCell>
                               <Combobox
                                 value={l.ProductId}
@@ -1111,7 +1134,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               />
                             </TableCell>
 
-                            <TableCell>
+                            <TableCell className="text-center">
                               {peso(partsMap[l.ProductId]?.price || 0)}
                             </TableCell>
 
@@ -1131,7 +1154,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               />
                             </TableCell>
 
-                            <TableCell>
+                            <TableCell className="text-center">
                               {peso(l.amount)}
                             </TableCell>
 
@@ -1142,6 +1165,96 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                   variant="ghost"
                                   onClick={() => removeSOLine(idx)}
                                 >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+
+            {/* SUPPLIES, PETROL, OILS & LUBRICANTS */}
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Fuel className="size-5 text-green-600"/>
+                  <h2 className="text-sm font-semibold text-foreground">Supplies, Petrol, Oils, and Lubricants</h2>
+                </div>
+                <Button size="sm" onClick={addSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Item</Button>
+              </div>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-[420px] overflow-y-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs text-center">Item Name</TableHead>
+                        <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
+                        <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs w-[5%]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {spolLines.map((l, idx) => {
+                        return (
+                          <TableRow key={l.id} className="hover:bg-transparent">
+                            <TableCell>
+                              <Combobox
+                                value={l.ProductId}
+                                onChange={(val) => {
+                                  const found = partsMap[val];
+                                  setSpolLines(prev => prev.map((line, i) =>
+                                    i !== idx ? line : {
+                                      ...line,
+                                      ProductId: val,
+                                      amount: found ? (Number(line.quantity) || 0) * found.price : 0
+                                    }
+                                  ));
+                                }}
+                                items={partsCatalog.map((p) => ({
+                                  label: `${p.name} - SKU: ${p.sku}`,
+                                  value: p.id,
+                                }))}
+                                placeholder="Select supply / oil / lubricant"
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {peso(partsMap[l.ProductId]?.price || 0)}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={l.quantity === 0 || l.quantity === "" ? "" : String(l.quantity)}
+                                placeholder="0"
+                                onFocus={() => { if (!l.quantity) setSpolLines(prev => prev.map((line, i) => i !== idx ? line : { ...line, quantity: "" })); }}
+                                onBlur={(e) => { if (e.target.value === "") setSpolLines(prev => prev.map((line, i) => i !== idx ? line : { ...line, quantity: 0 })); }}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (!/^\d*$/.test(val)) return;
+                                  const qty = val === "" ? "" : Number(val);
+                                  const found = partsMap[l.ProductId];
+                                  setSpolLines(prev => prev.map((line, i) =>
+                                    i !== idx ? line : {
+                                      ...line,
+                                      quantity: qty,
+                                      amount: found && qty !== "" ? Number(qty) * found.price : 0
+                                    }
+                                  ));
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {peso(l.amount)}
+                            </TableCell>
+                            <TableCell>
+                              {spolLines.length > 1 && (
+                                <Button size="icon_xs" variant="ghost" onClick={() => removeSPOLLine(idx)}>
                                   <Trash2 className="h-4 w-4 text-destructive" />
                                 </Button>
                               )}
@@ -1180,6 +1293,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Parts Subtotal</span>
                       <span>{peso(totals.totalParts)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Supplies Subtotal</span>
+                      <span>{peso(totals.totalSupplies)}</span>
                     </div>
                   </div>
 

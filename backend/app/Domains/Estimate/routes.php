@@ -9,4 +9,5 @@ Route::prefix('estimates')->group(function () {
     Route::get('/{id}', [EstimateController::class, 'show']);
     Route::put('/{id}', [EstimateController::class, 'update']);
     Route::delete('/{id}', [EstimateController::class, 'destroy']);
+    Route::get('/{id}/download-pdf', [EstimateController::class, 'downloadPdf']);
 });

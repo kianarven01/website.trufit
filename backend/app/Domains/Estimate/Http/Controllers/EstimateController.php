@@ -69,8 +69,8 @@ class EstimateController extends Controller
     {
         try {
             $validated = $request->validate([
-                'customer_id' => 'required|exists:Main.Customers,customer_id',
-                'vehicle_id' => 'required|exists:Main.CustomerVehicles,id',
+                'customer_id' => 'required|exists:App\Domains\Customer\Domain\Models\Customer,customer_id',
+                'vehicle_id' => 'required|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
                 'status' => 'nullable|string',
                 'total_amount' => 'required|numeric',
                 'items' => 'required|array',
@@ -104,8 +104,8 @@ class EstimateController extends Controller
     {
         try {
             $validated = $request->validate([
-                'customer_id' => 'nullable|exists:Main.Customers,customer_id',
-                'vehicle_id' => 'nullable|exists:Main.CustomerVehicles,id',
+                'customer_id' => 'nullable|exists:App\Domains\Customer\Domain\Models\Customer,customer_id',
+                'vehicle_id' => 'nullable|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
                 'status' => 'nullable|string',
                 'total_amount' => 'nullable|numeric',
                 'items' => 'nullable|array',
@@ -156,6 +156,37 @@ class EstimateController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to delete estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    /**
+     * Download Estimate as PDF.
+     */
+    public function downloadPdf($id)
+    {
+        try {
+            $estimate = $this->estimateRepo->findById($id);
+
+            if (!$estimate) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Estimate not found',
+                ], 404);
+            }
+
+            // Load relations if not already loaded
+            if (!$estimate->relationLoaded('customer')) {
+                $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product']);
+            }
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.estimate', ['estimate' => $estimate]);
+
+            return $pdf->stream('estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT) . '.pdf');
+        } catch (\Exception $e) {
+            Log::error('Failed to generate estimate PDF: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to generate estimate PDF: ' . $e->getMessage(),
             ], 500);
         }
     }

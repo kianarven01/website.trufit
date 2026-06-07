@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel } from "lucide-react";
+import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download } from "lucide-react";
 import api from "@/api/axios";
 
 /* ================= TYPES ================= */
@@ -736,6 +736,25 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (!estimateId) return;
+    try {
+      const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `estimate-${estimateId.substring(0,8)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      toast.error("Failed to download PDF.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center py-20 bg-background text-foreground">
@@ -1331,6 +1350,16 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     >
                       {mode === "edit" ? "Save Changes" : "Issue Estimate"}
                     </Button>
+                    {mode === "edit" && (
+                      <Button
+                        variant="outline"
+                        className="w-full shadow-sm"
+                        onClick={handleDownloadPDF}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download PDF
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="sm" 

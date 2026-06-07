@@ -32,6 +32,8 @@ interface PartOption {
 interface ProductSupplierInput {
   supplier_id: string;
   supplier_cost: string;
+  is_vat?: boolean;
+  vat_percent?: string;
 }
 
 interface ProductModalProps {
@@ -270,6 +272,8 @@ export default function ProductModal({
       {
         supplier_id: "",
         supplier_cost: "",
+        is_vat: false,
+        vat_percent: "12",
       },
     ]);
   };
@@ -281,7 +285,7 @@ export default function ProductModal({
   const updateSupplierRow = (
     index: number,
     key: keyof ProductSupplierInput,
-    value: string
+    value: any
   ) => {
     setProductSuppliers((prev) =>
       prev.map((supplier, i) =>
@@ -404,6 +408,18 @@ export default function ProductModal({
           payload.append(
             `suppliers[${index}][supplier_cost]`,
             supplier.supplier_cost.trim()
+          );
+        }
+
+        payload.append(
+          `suppliers[${index}][is_vat]`,
+          supplier.is_vat ? "1" : "0"
+        );
+
+        if (supplier.is_vat && supplier.vat_percent) {
+          payload.append(
+            `suppliers[${index}][vat_percent]`,
+            String(supplier.vat_percent).trim()
           );
         }
       });
@@ -667,55 +683,103 @@ export default function ProductModal({
                 {productSuppliers.map((supplierRow, index) => (
                   <div
                     key={index}
-                    className="grid grid-cols-12 gap-3 items-center"
+                    className="border rounded-lg p-3 space-y-3 bg-muted/30"
                   >
-                    <select
-                      className="col-span-6 border rounded-md px-3 py-2 bg-background"
-                      value={supplierRow.supplier_id}
-                      onChange={(e) =>
-                        updateSupplierRow(index, "supplier_id", e.target.value)
-                      }
-                    >
-                      <option value="">Select supplier</option>
+                    <div className="grid grid-cols-12 gap-3 items-center">
+                      <select
+                        className="col-span-6 border rounded-md px-3 py-2 bg-background text-sm"
+                        value={supplierRow.supplier_id}
+                        onChange={(e) =>
+                          updateSupplierRow(index, "supplier_id", e.target.value)
+                        }
+                      >
+                        <option value="">Select supplier</option>
 
-                      {validSupplierOptions.map((supplier) => (
-                        <option
-                          key={supplier.id}
-                          value={supplier.id}
-                          disabled={isSupplierAlreadySelected(
-                            supplier.id,
-                            index
-                          )}
-                        >
-                          {getOptionLabel(supplier)}
-                        </option>
-                      ))}
-                    </select>
+                        {validSupplierOptions.map((supplier) => (
+                          <option
+                            key={supplier.id}
+                            value={supplier.id}
+                            disabled={isSupplierAlreadySelected(
+                              supplier.id,
+                              index
+                            )}
+                          >
+                            {getOptionLabel(supplier)}
+                          </option>
+                        ))}
+                      </select>
 
-                    <Input
-                      className="col-span-5"
-                      placeholder="Supplier cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={supplierRow.supplier_cost}
-                      onChange={(e) =>
-                        updateSupplierRow(
-                          index,
-                          "supplier_cost",
-                          e.target.value
-                        )
-                      }
-                    />
+                      <Input
+                        className="col-span-5"
+                        placeholder="Supplier cost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={supplierRow.supplier_cost}
+                        onChange={(e) =>
+                          updateSupplierRow(
+                            index,
+                            "supplier_cost",
+                            e.target.value
+                          )
+                        }
+                      />
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="col-span-1 px-2"
-                      onClick={() => removeSupplierRow(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="col-span-1 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-input"
+                        onClick={() => removeSupplierRow(index)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="flex gap-4 items-center pl-1 text-xs">
+                      <span className="text-muted-foreground font-medium">Tax Type:</span>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name={`isVat-${index}`}
+                            checked={!supplierRow.is_vat}
+                            onChange={() => updateSupplierRow(index, "is_vat", false)}
+                            className="accent-primary"
+                          />
+                          Non-VAT
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name={`isVat-${index}`}
+                            checked={supplierRow.is_vat}
+                            onChange={() => updateSupplierRow(index, "is_vat", true)}
+                            className="accent-primary"
+                          />
+                          VAT
+                        </label>
+                      </div>
+
+                      {supplierRow.is_vat && (
+                        <div className="flex items-center gap-1.5 ml-4">
+                          <span className="text-muted-foreground font-medium">Percent (%):</span>
+                          <Input
+                            type="number"
+                            placeholder="12"
+                            className="h-7 w-16 text-xs px-2"
+                            value={supplierRow.vat_percent || ""}
+                            onChange={(e) =>
+                              updateSupplierRow(
+                                index,
+                                "vat_percent",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 ))}
               </div>

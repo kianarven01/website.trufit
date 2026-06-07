@@ -6,6 +6,7 @@ import { Appointment } from "@/types/appointment"
 import DatePicker from "react-datepicker"
 import { Calendar, ChevronDown, X } from "lucide-react"
 import "react-datepicker/dist/react-datepicker.css"
+import { toast } from "sonner"
 
 // --- custom date input ---
 const CustomDateInput = forwardRef<HTMLInputElement, { value?: string; onClick?: () => void; placeholder?: string }>(({ value, onClick, placeholder }, ref) => (
@@ -46,7 +47,8 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     lastName: "",
     email: "",
     phone: "",
-    date: "",
+    plateNumber: "",
+    date: null,
     service: "",
     vehicleMake: "",
     vehicleModel: "",
@@ -59,17 +61,38 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
   const [otherVehicleMake, setOtherVehicleMake] = useState("")
   const [sending, setSending] = useState(false)
   const [showTermsModal, setShowTermsModal] = useState(false)
+  const [serviceOpen, setServiceOpen] = useState(false)
+  const [selectedServices, setSelectedServices] = useState<string[]>([])
 
   // Generate years from current year down to 1990
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
 
+  const toggleService = (id: string) => {
+    setSelectedServices(prev => {
+      const updated = prev.includes(id)
+        ? prev.filter(s => s !== id)
+        : [...prev, id]
+      return updated
+    })
+  }
+
+  const removeService = (id: string) => {
+    setSelectedServices(prev => prev.filter(s => s !== id))
+  }
   // Common vehicle makes in the Philippines
   const commonMakes = [
     "Toyota", "Mitsubishi", "Nissan", "Honda", "Ford", 
     "Suzuki", "Isuzu", "Hyundai", "Kia", "Mazda", 
     "Chevrolet", "Subaru", "Geely", "MG", "Changan"
   ];
+
+  // auto clear other
+  useEffect(() => {
+    if (!selectedServices.includes("other")) {
+      setOtherService("")
+    }
+  }, [selectedServices])
 
   useEffect(() => {
     const handleClaim = (e: any) => {
@@ -103,6 +126,14 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     };
   }, []);
 
+  const capitalize = (str: string) =>
+    str.replace(/\b\w/g, (c) => c.toUpperCase())
+
+  const sentenceCase = (str: string) =>
+  str
+    .toLowerCase()
+    .replace(/(^\s*\w|[.!?]\s*\w)/g, (c) => c.toUpperCase())
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => setForm({ ...form, [e.target.name]: e.target.value })
@@ -119,8 +150,43 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     setForm({ ...form, phone: formatted });
   }
 
+  const handlePlateNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").substring(0, 7);
+    setForm({ ...form, plateNumber: val });
+  }
+
   const handleDateChange = (date: Date | null) => {
-    if (date) setForm({ ...form, date: date.toISOString() })
+    if (!date) {
+      setForm({ ...form, date: null })
+      return
+    }
+
+    const prev = form.date
+    const selected = new Date(date)
+
+    const isSameDay =
+      prev &&
+      new Date(prev).toDateString() === selected.toDateString()
+
+    // 👉 ONLY set default time if user changed the DAY
+    if (!isSameDay) {
+      const now = new Date()
+      const isToday =
+        selected.toDateString() === now.toDateString()
+
+      if (isToday) {
+        const nextInterval = Math.ceil(now.getMinutes() / 5) * 5
+        selected.setHours(now.getHours(), nextInterval, 0, 0)
+      } else {
+        selected.setHours(8, 0, 0, 0)
+      }
+    }
+
+    // 👉 if same day → user is changing time → KEEP it
+    setForm(prevState => ({
+      ...prevState,
+      date: selected
+    }))
   }
 
   const inputClass = `
@@ -134,16 +200,48 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
     absolute left-4 top-2 text-white/60 text-[10px] uppercase font-semibold tracking-wider transition-all
     peer-focus:text-brand-red
   `
+  const [dateError, setDateError] = useState(false)
+  const [serviceError, setServiceError] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+
+    let valid = true
+
+    if (!form.date) {
+      setDateError(true)
+      valid = false
+    }
+
+    if (selectedServices.length === 0) {
+      setServiceError(true)
+      valid = false
+    }
+
+    if (!valid) return
+
+    setDateError(false)
+    setServiceError(false)
     setShowTermsModal(true)
   }
 
   const handleConfirmSubmit = async () => {
     setShowTermsModal(false)
     setSending(true)
-    const finalService = form.service === "other" ? otherService : form.service
+    let finalService = ""
+
+    if (selectedServices.length > 0) {
+      const parts = selectedServices.map(id => {
+        if (id === "other") return otherService ? `Other (${otherService})` : "Other"
+        return services.find(s => s.id === id)?.name || id
+      })
+      finalService = parts.join(", ")
+    } else {
+      finalService =
+        form.service === "other"
+          ? otherService
+          : services.find(s => s.id === form.service)?.name || form.service
+    }
     const finalVehicleMake = form.vehicleMake === "other" ? otherVehicleMake : form.vehicleMake
     
     try {
@@ -159,7 +257,7 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         throw new Error("Failed to send appointment request")
       }
 
-      alert("Appointment request sent successfully! We'll contact you soon.")
+      toast.success("Appointment request sent successfully! We'll contact you soon.")
 
       window.dispatchEvent(new Event("appointmentSuccess")) // ✨ close modal
       setForm({
@@ -167,7 +265,8 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         lastName: "",
         email: "",
         phone: "",
-        date: "",
+        plateNumber: "",
+        date: null,
         service: "",
         vehicleMake: "",
         vehicleModel: "",
@@ -177,13 +276,61 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
       })
       setOtherService("")
       setOtherVehicleMake("")
+      setSelectedServices([])
     } catch (error) {
       console.error(error)
-      alert("Failed to send request. Please try again or call us directly.")
+      toast.error("Failed to send request. Please try again or call us directly.")
     } finally {
       setSending(false)
     }
   }
+
+  // 1. Helper to filter allowed times
+  const filterPassedTime = (time: Date) => {
+    const currentDate = new Date();
+    const selectedDate = new Date(time);
+
+    // If they picked today, hide times in the past
+    if (currentDate.toDateString() === selectedDate.toDateString()) {
+      return currentDate.getTime() < selectedDate.getTime();
+    }
+    return true;
+  };
+
+  // 2. Define the Business Hours (8:00 AM to 4:30 PM)
+  const minTime = new Date(new Date().setHours(8, 0, 0));
+  const maxTime = new Date(new Date().setHours(16, 30, 0));
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!serviceOpen) return
+
+      const target = e.target as HTMLElement
+
+      // close only if click is NOT inside dropdown or trigger
+      const isInsideDropdown =
+        target.closest(".service-dropdown")
+
+      if (!isInsideDropdown) {
+        setServiceOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [serviceOpen])
+
+  useEffect(() => {
+    if (selectedServices.length > 0) {
+      setServiceError(false)
+    }
+  }, [selectedServices])
+
+  useEffect(() => {
+    if (form.date) {
+      setDateError(false)
+    }
+  }, [form.date])
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
@@ -202,13 +349,21 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
 
       {/* FIRST NAME */}
       <div className="relative">
-        <input type="text" name="firstName" placeholder="" value={form.firstName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="firstName" placeholder="" value={form.firstName} onChange={handleChange} required 
+        onBlur={(e) =>
+          setForm({ ...form, firstName: capitalize(e.target.value) })
+        }
+        className={inputClass} />
         <label className={labelClass}>First Name</label>
       </div>
 
       {/* LAST NAME */}
       <div className="relative">
-        <input type="text" name="lastName" placeholder="" value={form.lastName} onChange={handleChange} required className={inputClass} />
+        <input type="text" name="lastName" placeholder="" value={form.lastName} onChange={handleChange} required 
+        onBlur={(e) =>
+          setForm({ ...form, lastName: capitalize(e.target.value) })
+        }
+        className={inputClass} />
         <label className={labelClass}>Last Name</label>
       </div>
 
@@ -224,86 +379,157 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <label className={labelClass}>Phone</label>
       </div>
 
-      {/* DATE */}
-      <div className="w-full relative">
+
+
+      {/* SERVICE + SPECIFY — side by side in a full-width wrapper */}
+      <div className="md:col-span-2 grid grid-cols-2 gap-4 service-dropdown">
+
+        {/* SERVICE DROPDOWN (left half) */}
+        <div className="relative">
+          <div
+            className={`${inputClass} cursor-pointer`}
+            onClick={() => setServiceOpen(prev => !prev)}
+          >
+            <div className="flex flex-wrap gap-2 h-7 overflow-y-auto pr-2">
+              {selectedServices.length === 0 ? (
+                <span className="text-white/40">Select service(s)</span>
+              ) : (
+                selectedServices.map(id => {
+                  const s = services.find(x => x.id === id)
+                  const label = id === "other" ? "Other" : s?.name
+
+                  return (
+                    <span
+                      key={id}
+                      className="flex items-center gap-2 bg-white/10 px-2 py-1 text-xs rounded-sm"
+                    >
+                      {label}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeService(id)
+                        }}
+                        className="text-white/60 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <label className={labelClass}>Service Needed</label>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60" />
+
+          {serviceOpen && (
+            <div className="absolute z-50 mt-2 w-full bg-white border border-white/10 rounded-sm shadow-lg h-60 overflow-y-auto">
+              {[...services, { id: "other", name: "Other" }].map(s => (
+                <label
+                  key={s.id}
+                  className="flex gap-2 px-4 py-2 text-sm cursor-pointer transition-colors hover:bg-brand-red hover:text-white"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedServices.includes(s.id)}
+                    onChange={() => toggleService(s.id)}
+                    className="w-4 h-4 accent-brand-red cursor-pointer"
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          )}
+
+          {serviceError && (
+            <p className="text-red-500 text-xs mt-1">
+              Please select at least one service
+            </p>
+          )}
+        </div>
+
+        {/* SPECIFY OTHER SERVICE (right half) */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Specify service"
+            value={otherService}
+            onChange={(e) => setOtherService(e.target.value)}
+            required={selectedServices.includes("other")}
+            disabled={!selectedServices.includes("other")}
+            onBlur={(e) => setOtherService(capitalize(e.target.value))}
+            className={`
+              peer w-full
+              ${!selectedServices.includes("other")
+                ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10"
+                : "bg-white/15 text-white border-white/30"}
+              border rounded-sm
+              px-4 pt-6 pb-2
+              focus:outline-none focus:ring-1 focus:ring-brand-red
+              transition duration-300
+            `}
+          />
+          <label className={`
+            absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
+            ${!selectedServices.includes("other")
+              ? "text-white/30"
+              : "text-white/60 peer-focus:text-brand-red"}
+          `}>
+            Specify Other Service
+          </label>
+        </div>
+
+      </div>
+
+      {/* DATE | VEHICLE YEAR */}
+      <div className={`w-full relative`}>
         <DatePicker
-          selected={form.date ? new Date(form.date) : null}
+          selected={form.date}
           onChange={handleDateChange}
+          filterDate={(date) => {
+            // disable Sundays
+            if (date.getDay() === 0) return false
+
+            const now = new Date()
+
+            // if selected date is today
+            const isToday =
+              date.toDateString() === now.toDateString()
+
+            if (isToday) {
+              // business closing time today (4:30 PM)
+              const closingTime = new Date()
+              closingTime.setHours(16, 30, 0, 0)
+
+              // if current time is already past 4:30 PM
+              if (now >= closingTime) {
+                return false
+              }
+            }
+
+            return true
+          }}
+          focusSelectedMonth={false}
+          selectsStart
           showTimeSelect
+          timeIntervals={5}
+          minDate={new Date()}
+          minTime={minTime}
+          maxTime={maxTime}
+          filterTime={filterPassedTime}
           dateFormat="MMMM d, yyyy h:mm aa"
           placeholderText="Select date & time"
           customInput={<CustomDateInput />}
           wrapperClassName="w-full"
+          calendarClassName="modern-calendar"
         />
-      </div>
-
-      {/* SERVICE */}
-      <div className="relative">
-        <select
-          name="service"
-          value={form.service}
-          onChange={handleChange}
-          required
-          className={`${inputClass} appearance-none pr-10`}
-        >
-          <option value="" disabled hidden className="text-gray-900">Select a service</option>
-          {services.map((s) => (
-            <option key={s.id} value={s.id} className="text-gray-900">{s.name}</option>
-          ))}
-          <option value="other" className="text-gray-900">Other</option>
-        </select>
-        <label className={labelClass}>Service Needed</label>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
-      </div>
-
-      {/* VEHICLE MAKE */}
-      <div className="relative">
-        <select
-          name="vehicleMake"
-          value={form.vehicleMake || ""}
-          onChange={handleChange}
-          className={`${inputClass} appearance-none pr-10`}
-        >
-          <option value="" disabled hidden className="text-gray-900">Select Make</option>
-          {commonMakes.map((make) => (
-            <option key={make} value={make} className="text-gray-900">{make}</option>
-          ))}
-          <option value="other" className="text-gray-900">Other</option>
-        </select>
-        <label className={labelClass}>Vehicle Make</label>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
-      </div>
-
-      {/* OTHER VEHICLE MAKE INPUT */}
-      <div className="relative">
-        <input
-          type="text"
-          placeholder="Specify make"
-          value={otherVehicleMake}
-          onChange={(e) => setOtherVehicleMake(e.target.value)}
-          required={form.vehicleMake === "other"}
-          disabled={form.vehicleMake !== "other"}
-          className={`
-            peer w-full
-            ${form.vehicleMake !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
-            border rounded-sm
-            px-4 pt-6 pb-2
-            focus:outline-none focus:ring-1 focus:ring-brand-red
-            transition duration-300
-          `}
-        />
-        <label className={`
-          absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
-          ${form.vehicleMake !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
-        `}>
-          Specify Make
-        </label>
-      </div>
-
-      {/* VEHICLE MODEL */}
-      <div className="relative">
-        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange} className={inputClass} />
-        <label className={labelClass}>Vehicle Model</label>
+        {dateError && (
+          <p className="text-red-500 text-xs mt-1">
+            Please select a date & time
+          </p>
+        )}
       </div>
 
       {/* VEHICLE YEAR */}
@@ -323,18 +549,37 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
       </div>
 
-      {/* OTHER SERVICE INPUT */}
-      <div className="relative md:col-span-2">
+      {/* VEHICLE MAKE | SPECIFY MAKE */}
+      <div className="relative">
+        <select
+          name="vehicleMake"
+          value={form.vehicleMake || ""}
+          onChange={handleChange}
+          className={`${inputClass} appearance-none pr-10`}
+        >
+          <option value="" disabled hidden className="text-gray-900">Select Make</option>
+          {commonMakes.map((make) => (
+            <option key={make} value={make} className="text-gray-900">{make}</option>
+          ))}
+          <option value="other" className="text-gray-900">Other</option>
+        </select>
+        <label className={labelClass}>Vehicle Make</label>
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
+      </div>
+
+      {/* SPECIFY MAKE */}
+      <div className="relative">
         <input
           type="text"
-          placeholder="Specify service"
-          value={otherService}
-          onChange={(e) => setOtherService(e.target.value)}
-          required={form.service === "other"}
-          disabled={form.service !== "other"}
+          placeholder="Specify make"
+          value={otherVehicleMake}
+          onChange={(e) => setOtherVehicleMake(e.target.value)}
+          required={form.vehicleMake === "other"}
+          disabled={form.vehicleMake !== "other"}
+          onBlur={(e) => setOtherVehicleMake(capitalize(e.target.value))}
           className={`
             peer w-full
-            ${form.service !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
+            ${form.vehicleMake !== "other" ? "bg-white/5 text-white/30 cursor-not-allowed border-white/10" : "bg-white/15 text-white border-white/30"}
             border rounded-sm
             px-4 pt-6 pb-2
             focus:outline-none focus:ring-1 focus:ring-brand-red
@@ -343,10 +588,36 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
         />
         <label className={`
           absolute left-4 top-2 text-[10px] uppercase font-semibold tracking-wider transition-all
-          ${form.service !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
+          ${form.vehicleMake !== "other" ? "text-white/30" : "text-white/60 peer-focus:text-brand-red"}
         `}>
-          Specify Service
+          Specify Make
         </label>
+      </div>
+
+      {/* VEHICLE MODEL | PLATE NUMBER */}
+      <div className="relative">
+        <input type="text" name="vehicleModel" placeholder="" value={form.vehicleModel || ""} onChange={handleChange}
+        onBlur={(e) =>
+          setForm({ ...form, vehicleModel: capitalize(e.target.value) })
+        }
+        className={inputClass} />
+        <label className={labelClass}>Vehicle Model</label>
+      </div>
+
+      {/* PLATE NUMBER */}
+      <div className="relative">
+        <input
+          type="text"
+          name="plateNumber"
+          placeholder=""
+          value={form.plateNumber}
+          onChange={handlePlateNumberChange}
+          required
+          maxLength={7}
+          className={inputClass}
+          style={{ textTransform: "uppercase", letterSpacing: "0.1em" }}
+        />
+        <label className={labelClass}>Plate Number</label>
       </div>
 
       {/* MESSAGE */}
@@ -356,6 +627,9 @@ export default function AppointmentForm({ initialData }: AppointmentFormProps = 
           placeholder="Your message"
           value={form.message}
           onChange={handleChange}
+          onBlur={(e) =>
+            setForm({ ...form, message: sentenceCase(e.target.value) })
+          }
           className={`${inputClass} resize-none h-24`}
         />
         <label className={labelClass}>Additional Message</label>

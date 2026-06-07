@@ -15,6 +15,7 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   updateUser: (userData: any) => void;
+  refreshUser: () => Promise<void>;
   finalizeLogin: (authPayload: any) => void;
 }
 
@@ -114,6 +115,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem("trufit_user", JSON.stringify(userData));
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await api.get("/auth/verify");
+      if (
+        response.data.status === "success" ||
+        response.data.status === "authenticated"
+      ) {
+        const serverUser = response.data.data.user;
+        const userData = {
+          ...serverUser,
+          role: serverUser.role || "Admin",
+        };
+        setUser(userData);
+        localStorage.setItem("trufit_user", JSON.stringify(userData));
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data", error);
+    }
+  };
+
   const finalizeLogin = (authPayload: any) => {
     const userData = {
       ...authPayload.user,
@@ -133,6 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login,
         logout,
         updateUser,
+        refreshUser,
         finalizeLogin,
         loading,
       }}

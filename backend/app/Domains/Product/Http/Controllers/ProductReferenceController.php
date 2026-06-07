@@ -205,7 +205,7 @@ class ProductReferenceController extends Controller
 
     public function serviceTypes()
     {
-        $services = ServiceType::with('serviceCategory')->get();
+        $services = ServiceType::with(['serviceCategory', 'pricings'])->get();
         return response()->json([
             'data' => $services,
         ]);

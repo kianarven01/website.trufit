@@ -154,7 +154,7 @@ const emptyVehicle = (): VehicleForm => ({
     const fetchManufacturers = async () => {
       setIsLoadingManufacturers(true);
       try {
-        const res = await api.get('/products/manufacturers');
+        const res = await api.get('/vehicles/manufacturers');
         setManufacturers(res.data.data || []);
       } catch (error) {
         console.error("Failed to load manufacturers:", error);

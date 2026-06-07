@@ -165,21 +165,22 @@ CREATE TABLE Main.EstimateItems (
 CREATE TABLE Main.Estimates (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   vehicle_id_old character varying NOT NULL,
-  customer_id uuid NOT NULL,
   status character varying DEFAULT 'DRAFT'::character varying,
   total_amount numeric DEFAULT 0.00,
   created_at timestamp without time zone DEFAULT now(),
   updated_at timestamp without time zone DEFAULT now(),
   vehicle_id bigint,
+  customer_id bigint,
   CONSTRAINT Estimates_pkey PRIMARY KEY (id),
-  CONSTRAINT estimates_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES Main.CustomerVehicles(id)
+  CONSTRAINT estimates_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES Main.CustomerVehicles(id),
+  CONSTRAINT estimates_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES Main.Customers(customer_id)
 );
 CREATE TABLE Main.Inventory (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   productID uuid NOT NULL,
   quantity_on_hand integer NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
   reorder_level integer DEFAULT 0 CHECK (reorder_level IS NULL OR reorder_level >= 0),
-  sell_price numeric NOT NULL,
+  sell_price numeric,
   location_id uuid NOT NULL,
   reserved_quantity integer NOT NULL DEFAULT 0 CHECK (reserved_quantity >= 0),
   reorder_qty integer CHECK (reorder_qty IS NULL OR reorder_qty >= 0),
@@ -281,17 +282,19 @@ CREATE TABLE Main.ProductEquivalents (
 );
 CREATE TABLE Main.ProductPrice (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  ProductID uuid NOT NULL,
+  product_supplier_id uuid NOT NULL,
   Price numeric DEFAULT 0 CHECK ("Price" >= 0::numeric),
   Markup numeric DEFAULT 0 CHECK ("Markup" >= 0::numeric),
   CONSTRAINT ProductPrice_pkey PRIMARY KEY (id),
-  CONSTRAINT productprice_productid_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id)
+  CONSTRAINT ProductPrice_product_supplier_id_fkey FOREIGN KEY (product_supplier_id) REFERENCES Main.ProductSuppliers(id)
 );
 CREATE TABLE Main.ProductSuppliers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   product_id uuid NOT NULL,
   supplier_id uuid NOT NULL,
   supplier_cost numeric DEFAULT 0 CHECK (supplier_cost >= 0::numeric),
+  is_vat boolean NOT NULL DEFAULT false,
+  vat_percent numeric,
   CONSTRAINT ProductSuppliers_pkey PRIMARY KEY (id),
   CONSTRAINT productsuppliers_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
   CONSTRAINT productsuppliers_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES Main.Suppliers(id)

@@ -134,6 +134,16 @@ const App: React.FC = () => {
                 </Route>
               </Route>
 
+              <Route path="employee-management">
+                <Route path="current-employees" element={<Employees />} />
+                <Route path="onboarding-employees" element={<OnboardingEmployees />} />
+              </Route>
+
+              <Route path="settings">
+                <Route path="roles-and-permissions" element={<RolesandPermissions />} />
+                <Route path="account" element={<AccountSettings />} />
+              </Route>
+
             </Route>
 
             <Route path="/webapp/services/job-orders" element={<JobOrder />} />
@@ -150,12 +160,6 @@ const App: React.FC = () => {
 
             <Route path="/webapp/products/inventory" element={<InventoryList />} />
             <Route path="/webapp/products/inventory/:productId" element={<InventoryDetail />} />
-
-            <Route path="/webapp/employee-management/current-employees" element={<Employees />} />
-            <Route path="/webapp/employee-management/onboarding-employees" element={<OnboardingEmployees />} />
-            <Route path="/webapp/settings/roles-and-permissions" element={<RolesandPermissions />} />
-
-            <Route path="/webapp/settings/account" element={<AccountSettings />} />
 
           </Route>
 

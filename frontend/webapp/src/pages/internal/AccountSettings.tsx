@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DashboardLayout } from "@/components/DashboardLayout";
+// Removed DashboardLayout import
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -255,8 +255,8 @@ const AccountSettings: React.FC = function () {
   };
 
   return (
-    <DashboardLayout>
-      <div className="flex h-full flex-col overflow-hidden">
+    <>
+      <div className="flex h-full w-full flex-col overflow-hidden">
         {/* Header */}
         <div className="shrink-0 px-6 pt-5 pb-4">
           <h1 className="text-xl font-bold text-foreground">Account Settings</h1>
@@ -653,7 +653,7 @@ const AccountSettings: React.FC = function () {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 }
 

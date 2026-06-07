@@ -15,9 +15,9 @@ export default function Footer() {
           <Link href="/">
             <Image
               src="/images/logo-dark1.webp"
-              alt="TruFit Auto Center"
-              width={150}
-              height={40}
+              alt="Trufit Auto Center"
+              width={180} 
+              height={48}
               priority
               className="w-[180px] md:w-[200px]"
             />

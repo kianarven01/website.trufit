@@ -6,6 +6,7 @@ import Footer from "@/components/layout/footer/footer";
 import ScrollToTopButton from "@/components/ui/scrolltotopbutton";
 import PromoPopup from "@/components/ui/promopopup";
 import GlobalModals from "@/components/global/GlobalModals";
+import { Toaster } from "sonner";
 
 import "@/styles/globals.css";
 
@@ -48,11 +49,20 @@ export const metadata: Metadata = {
     siteName: "Trufit Auto Center",
     locale: "en_PH",
     type: "website",
+    images: [
+      {
+      url: "https://trufitautocenter.com/images/home-og.jpg",
+      width: 1200,
+      height:630,
+      alt: "Trufit Auto Center Workshop and Automotive Service Center",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Trufit Auto Center | Quality Automotive Service",
     description: "Professional vehicle diagnostics and repair services.",
+    images: ["https://trufitautocenter.com/images/home-og.jpg"],
   },
 };
 
@@ -193,6 +203,7 @@ export default function RootLayout({
         {/* scroll-to-top button */}
         <ScrollToTopButton />
         <GlobalModals />
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

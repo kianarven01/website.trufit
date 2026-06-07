@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { ImageIcon } from "lucide-react";
+import api from "@/api/axios";
 
 /* TYPES */
 interface Supplier {
@@ -26,26 +27,7 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
-  isVAT: boolean;
-  vatRate: number;
 }
-
-const STORAGE_KEY = "suppliers";
-
-/* DUMMY DATA */
-const generateDummySuppliers = (): Supplier[] => {
-  return Array.from({ length: 30 }, (_, i) => ({
-    id: `sup-${i + 1}`,
-    name: `Supplier ${i + 1}`,
-    supplierCode: `SUP-${String(i + 1).padStart(3, "0")}`,
-    email: `supplier${i + 1}@example.com`,
-    phone: `0917${String(1000000 + i)}`,
-    contactPerson: `Contact ${i + 1}`,
-    viber: `0917${String(2000000 + i)}`,
-    isVAT: i % 2 === 0,
-    vatRate: i % 2 === 0 ? 12 : 0,
-  }));
-};
 
 const SupplierList: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -57,31 +39,26 @@ const SupplierList: React.FC = () => {
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
+  const [isLoading, setIsLoading] = useState(true);
+
   /* LOAD */
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-
-    if (stored) {
-      const parsed: Supplier[] = JSON.parse(stored);
-
-      if (parsed.length === 0) {
-        const dummy = generateDummySuppliers();
-        setSuppliers(dummy);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
-      } else {
-        setSuppliers(parsed);
-      }
-    } else {
-      const dummy = generateDummySuppliers();
-      setSuppliers(dummy);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dummy));
+  const loadSuppliers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/products/suppliers');
+      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      setSuppliers(rows);
+    } catch (error) {
+      console.error("Failed to load suppliers:", error);
+      setSuppliers([]);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  };
 
-  /* SAVE */
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(suppliers));
-  }, [suppliers]);
+    void loadSuppliers();
+  }, []);
 
   useEffect(() => {
     setPage(1);
@@ -105,18 +82,17 @@ const filtered = suppliers.filter((s) => {
   const paginated = paginate(filtered);
 
   /* SAVE / UPDATE */
-  const handleSaveSupplier = (newSupplier: Supplier) => {
-    setSuppliers((prev) => {
-      const exists = prev.find((s) => s.id === newSupplier.id);
-
-      if (exists) {
-        return prev.map((s) =>
-          s.id === newSupplier.id ? newSupplier : s
-        );
+  const handleSaveSupplier = async (newSupplier: Supplier) => {
+    try {
+      if (editingSupplier) {
+        await api.put(`/products/suppliers/${newSupplier.id}`, newSupplier);
+      } else {
+        await api.post('/products/suppliers', newSupplier);
       }
-
-      return [newSupplier, ...prev];
-    });
+      await loadSuppliers();
+    } catch (error) {
+      console.error("Failed to save supplier:", error);
+    }
   };
 
   return (
@@ -135,7 +111,16 @@ const filtered = suppliers.filter((s) => {
       />
 
       {/* TABLE + PAGINATION */}
-      {suppliers.length > 0 ? (
+      {isLoading ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading suppliers...
+            </p>
+          </div>
+        </div>
+      ) : suppliers.length > 0 ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
           {/* Scrollable Table */}

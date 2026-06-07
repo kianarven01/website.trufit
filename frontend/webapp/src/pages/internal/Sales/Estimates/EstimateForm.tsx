@@ -672,6 +672,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       return;
     }
 
+    if (!mileage || Number(mileage) <= 0) {
+      toast.error("Mileage is mandatory and must be greater than zero.");
+      return;
+    }
+
     if (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) {
       toast.error("Add at least one service or part.");
       return;
@@ -715,8 +720,9 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     const payload = {
       customer_id: Number(selectedCustomer.id),
       vehicle_id: Number(selectedVehicle.id),
-      status: mode === "edit" ? undefined : "issued",
+      status: mode === "edit" ? undefined : "FOR APPROVAL",
       total_amount: totals.total,
+      mileage: Number(mileage),
       items: payloadItems,
     };
 
@@ -947,7 +953,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   />
                 </div>
                 <div>
-                  <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
+                  <Label className="text-muted-foreground font-normal text-xs">Mileage <span className="text-destructive">*</span></Label>
                   <Input
                     type="number"
                     min={0}
@@ -1345,10 +1351,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                       disabled= {
                         !selectedCustomer || 
                         !selectedVehicle ||
+                        !mileage || Number(mileage) <= 0 ||
                         (totals.validJO.length === 0 && totals.validSO.length === 0) 
                       }
                     >
-                      {mode === "edit" ? "Save Changes" : "Issue Estimate"}
+                      {mode === "edit" ? "Save Changes" : "Create Estimate"}
                     </Button>
                     {mode === "edit" && (
                       <Button

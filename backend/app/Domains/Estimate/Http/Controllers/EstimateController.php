@@ -73,6 +73,7 @@ class EstimateController extends Controller
                 'vehicle_id' => 'required|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
                 'status' => 'nullable|string',
                 'total_amount' => 'required|numeric',
+                'mileage' => 'required|numeric|min:0',
                 'items' => 'required|array',
                 'items.*.item_type' => 'required|string|in:service,part',
                 'items.*.product_id' => 'nullable|uuid',
@@ -108,6 +109,7 @@ class EstimateController extends Controller
                 'vehicle_id' => 'nullable|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
                 'status' => 'nullable|string',
                 'total_amount' => 'nullable|numeric',
+                'mileage' => 'nullable|numeric|min:0',
                 'items' => 'nullable|array',
                 'items.*.item_type' => 'required|string|in:service,part',
                 'items.*.product_id' => 'nullable|uuid',
@@ -179,7 +181,16 @@ class EstimateController extends Controller
                 $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product']);
             }
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.estimate', ['estimate' => $estimate]);
+            $user = auth()->user() ?? auth('sanctum')->user();
+            $employee = $user ? $user->employee : null;
+            if ($employee) {
+                $employee->load('role');
+            }
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.estimate', [
+                'estimate' => $estimate,
+                'employee' => $employee,
+            ]);
 
             return $pdf->stream('estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT) . '.pdf');
         } catch (\Exception $e) {

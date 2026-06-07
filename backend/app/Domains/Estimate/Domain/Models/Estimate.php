@@ -22,6 +22,7 @@ class Estimate extends Model
         'vehicle_id_old',
         'status',
         'total_amount',
+        'mileage',
     ];
 
     protected $casts = [

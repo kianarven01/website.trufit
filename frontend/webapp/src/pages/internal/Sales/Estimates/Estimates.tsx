@@ -32,7 +32,7 @@ interface Estimate {
   parts: any[];
   createdAt?: string;
   updatedAt?: string;
-  status: "approved" | "issued" | "DRAFT" | "APPROVED" | "ISSUED";
+  status: "approved" | "issued" | "DRAFT" | "APPROVED" | "ISSUED" | "FOR APPROVAL" | "for approval" | "for_approval";
   total: number;
 }
 
@@ -44,6 +44,9 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   DRAFT: { label: "Draft", variant: "default" as const },
   APPROVED: { label: "Approved", variant: "approved" as const },
   ISSUED: { label: "Issued", variant: "received" as const },
+  "FOR APPROVAL": { label: "For Approval", variant: "for-approval" as const },
+  "for approval": { label: "For Approval", variant: "for-approval" as const },
+  "for_approval": { label: "For Approval", variant: "for-approval" as const },
 };
 
 /* ================= FILTER ================= */
@@ -55,6 +58,7 @@ const statusFilterOptions: FilterOption[] = [
     options: [
       { label: "Draft", value: "DRAFT" },
       { label: "Approved", value: "APPROVED" },
+      { label: "For Approval", value: "FOR APPROVAL" },
       { label: "Issued", value: "ISSUED" },
     ],
   },

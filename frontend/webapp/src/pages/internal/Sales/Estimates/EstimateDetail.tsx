@@ -12,6 +12,18 @@ import DataToolbar from "@/components/DataToolbar";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
 import api from "@/api/axios";
+import { useAuth } from "@/context/AuthContext";
+
+const statusConfig: Record<string, { label: string; variant: any }> = {
+  approved: { label: "Approved", variant: "approved" as const },
+  issued: { label: "Issued", variant: "received" as const },
+  DRAFT: { label: "Draft", variant: "default" as const },
+  APPROVED: { label: "Approved", variant: "approved" as const },
+  ISSUED: { label: "Issued", variant: "received" as const },
+  "FOR APPROVAL": { label: "For Approval", variant: "for-approval" as const },
+  "for approval": { label: "For Approval", variant: "for-approval" as const },
+  "for_approval": { label: "For Approval", variant: "for-approval" as const },
+};
 
 import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download } from "lucide-react";
 
@@ -73,6 +85,10 @@ const formatDuration = (minutes?: number) => {
 const EstimateDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
+
+  const userRole = role?.toLowerCase() || "";
+  const isSupervisorOrAdmin = userRole === "supervisor" || userRole === "admin";
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [estimate, setEstimate] = useState<any>(null);
@@ -191,6 +207,19 @@ const EstimateDetail: React.FC = () => {
     navigate(`/webapp/sales/estimates/${estimate?.id}/edit`);
   };
 
+  const handleApproveEstimate = async () => {
+    try {
+      await api.put(`/estimates/${estimate?.id}`, {
+        status: "APPROVED"
+      });
+      setEstimate((prev: any) => prev ? { ...prev, status: "APPROVED" } : null);
+      toast.success("Estimate approved successfully!");
+    } catch (err) {
+      console.error("Failed to approve estimate", err);
+      toast.error("Failed to approve estimate.");
+    }
+  };
+
   const handleRemoveEstimate = async () => {
     try {
       await api.delete(`/estimates/${estimate?.id}`);
@@ -277,16 +306,30 @@ const EstimateDetail: React.FC = () => {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
-            <Button size="sm" onClick={handleEditEstimate}>
-              Edit Estimate
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setConfirmOpen(true)}
-            >
-              Remove Estimate
-            </Button>
+            {isSupervisorOrAdmin && (
+              <>
+                {(estimate.status?.toUpperCase() === "FOR APPROVAL" ||
+                  estimate.status?.toUpperCase() === "FOR_APPROVAL") && (
+                  <Button
+                    size="sm"
+                    onClick={handleApproveEstimate}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    Approve Estimate
+                  </Button>
+                )}
+                <Button size="sm" onClick={handleEditEstimate}>
+                  Edit Estimate
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  Remove Estimate
+                </Button>
+              </>
+            )}
           </div>
         }
       />
@@ -605,7 +648,18 @@ const EstimateDetail: React.FC = () => {
                     <Separator />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Status</span>
-                      <Badge className="capitalize">{estimate.status}</Badge>
+                      <Badge
+                        variant={
+                          statusConfig[estimate.status]?.variant ||
+                          statusConfig[estimate.status?.toUpperCase()]?.variant ||
+                          "default"
+                        }
+                        className="capitalize"
+                      >
+                        {statusConfig[estimate.status]?.label ||
+                          statusConfig[estimate.status?.toUpperCase()]?.label ||
+                          estimate.status}
+                      </Badge>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Created</span>
@@ -618,6 +672,17 @@ const EstimateDetail: React.FC = () => {
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
+                    {isSupervisorOrAdmin &&
+                      (estimate.status?.toUpperCase() === "FOR APPROVAL" ||
+                        estimate.status?.toUpperCase() === "FOR_APPROVAL") && (
+                        <Button
+                          className="w-full shadow-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+                          size="lg"
+                          onClick={handleApproveEstimate}
+                        >
+                          Approve Estimate
+                        </Button>
+                      )}
                     <Button
                       className="w-full shadow-md"
                       size="lg"

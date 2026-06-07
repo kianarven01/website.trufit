@@ -166,7 +166,7 @@
         <tr>
             <td width="15%">
                 <span class="label">Plate No.:</span>
-                <span class="value">{{ $estimate->vehicle->license_plate ?? '' }}</span>
+                <span class="value">{{ $estimate->vehicle->plate_number ?? '' }}</span>
             </td>
             <td width="30%" rowspan="3">
                 <span class="label">Customer Name & Address</span>
@@ -175,6 +175,7 @@
             </td>
             <td width="15%">
                 <span class="label">Home Phone No.</span>
+                <span class="value">{{ $estimate->customer->landline ?? '' }}</span>
             </td>
             <td width="15%">
                 <span class="label">Color</span>
@@ -198,14 +199,15 @@
             </td>
             <td>
                 <span class="label">Business Phone No:</span>
-                <span class="value">{{ $estimate->customer->phone_number ?? '' }}</span>
+                <span class="value">{{ $estimate->customer->business ?? '' }}</span>
             </td>
             <td rowspan="2">
                 <span class="label">Year / Make / Model</span>
-                <span class="value">{{ $estimate->vehicle->year ?? '' }} / {{ $estimate->vehicle->make ?? '' }} / {{ $estimate->vehicle->model ?? '' }}</span>
+                <span class="value">{{ $estimate->vehicle->year_model ?? '' }} / {{ $estimate->vehicle->make ?? '' }} / {{ $estimate->vehicle->model ?? '' }}</span>
             </td>
             <td>
                 <span class="label">Selling Dealer</span>
+                <span class="value">{{ $estimate->vehicle->selling_dealer ?? '' }}</span>
             </td>
         </tr>
         <tr>
@@ -215,7 +217,7 @@
             </td>
             <td>
                 <span class="label">Mobile No.</span>
-                <span class="value">{{ $estimate->customer->phone_number ?? '' }}</span>
+                <span class="value">{{ $estimate->customer->mobile_number ?? '' }}</span>
             </td>
             <td>
                 <span class="label">Warr. Exp. Date</span>
@@ -228,7 +230,10 @@
             <td>
                 <table style="width:100%;margin:0;padding:0;">
                     <tr>
-                        <td style="border:none;border-right:1px solid #0033a0;padding:0;width:50%;"><span class="label">Department/Team</span></td>
+                        <td style="border:none;border-right:1px solid #0033a0;padding:0;width:50%;">
+                            <span class="label">Department/Team</span>
+                            <span class="value">{{ $employee->role->name ?? '' }}</span>
+                        </td>
                         <td style="border:none;padding:0;padding-left:5px;"><span class="label">Maint. Code</span></td>
                     </tr>
                 </table>
@@ -238,7 +243,7 @@
             </td>
             <td>
                 <span class="label">VIN / Serial No.</span>
-                <span class="value">{{ $estimate->vehicle->vin ?? '' }}</span>
+                <span class="value">{{ $estimate->vehicle->VIN ?? '' }}</span>
             </td>
             <td>
                 <span class="label">Stock No.</span>
@@ -247,19 +252,22 @@
         <tr>
             <td>
                 <span class="label">Service Advisor No.</span>
+                <span class="value">{{ $employee->id ?? '' }}</span>
             </td>
             <td colspan="2">
                 <span class="label">Service Advisor Name</span>
+                <span class="value">{{ $employee->first_name ?? '' }} {{ $employee->last_name ?? '' }}</span>
             </td>
             <td>
                 <span class="label">Date Finished:</span>
             </td>
             <td>
                 <span class="label">Kilometers</span>
-                <span class="value">{{ $estimate->vehicle->mileage ?? '' }}</span>
+                <span class="value">{{ $estimate->mileage ?? '' }}</span>
             </td>
             <td>
                 <span class="label">Engine No.</span>
+                <span class="value">{{ $estimate->vehicle->engine_number ?? '' }}</span>
             </td>
         </tr>
     </table>

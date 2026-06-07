@@ -36,6 +36,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'vehicle_id_old' => $vehicleOld,
                 'status' => $data['status'] ?? 'DRAFT',
                 'total_amount' => $data['total_amount'] ?? 0.00,
+                'mileage' => $data['mileage'] ?? null,
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {
@@ -71,6 +72,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'vehicle_id_old' => $vehicleOld,
                 'status' => $data['status'] ?? $estimate->status,
                 'total_amount' => $data['total_amount'] ?? $estimate->total_amount,
+                'mileage' => $data['mileage'] ?? $estimate->mileage,
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import { Trash2, Pencil, Printer } from "lucide-react";
+import Barcode from "react-barcode";
 import { Separator } from "@/components/ui/separator";
 import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
 import api from "@/api/axios";
@@ -59,10 +60,6 @@ interface Product {
   description: string;
   unit: string;
   unitAbbreviation?: string | null;
-  quantityOnHand?: number;
-  reservedQuantity?: number;
-  availableQuantity?: number;
-  stockStatus?: "In Stock" | "Low Stock" | "Out of Stock" | string;
   price: number | null;
   category: string;
   manufacturer: string;
@@ -219,40 +216,12 @@ const normalizeProduct = (row: any): Product => ({
   location: row.location || row.warehouse_location || "-",
   barcode: row.barcode || "",
   categoryId: row.category_id ?? row.categoryId ?? null,
-  quantityOnHand: toNumberOrNull(row.quantity_on_hand) ?? 0,
-  reservedQuantity: toNumberOrNull(row.reserved_quantity) ?? 0,
-  availableQuantity:
-    toNumberOrNull(row.available_quantity) ??
-    Math.max(
-      (toNumberOrNull(row.quantity_on_hand) ?? 0) -
-        (toNumberOrNull(row.reserved_quantity) ?? 0),
-      0
-    ),
-  stockStatus:
-    row.stock_status ||
-    row.stockStatus ||
-    ((toNumberOrNull(row.available_quantity ?? row.quantity_on_hand) ?? 0) > 0
-      ? "In Stock"
-      : "Out of Stock"),
   suppliers: normalizeSuppliers(row),
   compatibleVehicles: Array.isArray(row.compatibleVehicles)
     ? row.compatibleVehicles
     : [],
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
-
-
-const getStockBadgeClass = (status?: string) => {
-  if (status === "In Stock") {
-    return "bg-green-100 text-green-700";
-  }
-
-  if (status === "Low Stock") {
-    return "bg-yellow-100 text-yellow-700";
-  }
-
-  return "bg-red-100 text-red-700";
-};
 
 const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -450,11 +419,8 @@ const ProductDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
-                <Badge
-                  variant="secondary"
-                  className={getStockBadgeClass(product.stockStatus)}
-                >
-                  {product.stockStatus || "Out of Stock"}
+                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                  In Stock
                 </Badge>
               </div>
 
@@ -509,18 +475,28 @@ const ProductDetail: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4">
-                  <div className="flex flex-col items-center">
-                    <img
-                      src="/images/placeholder.png"
-                      alt="barcode"
-                      className="border w-44 h-12 object-contain"
-                    />
-                    <span className="text-sm text-muted-foreground tracking-widest">
-                      {product.barcode || "N/A"}
-                    </span>
+                <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4 gap-3">
+                  <div className="flex flex-col items-center justify-center min-w-0 flex-1">
+                    {product.barcode ? (
+                      <div className="bg-white rounded-md border px-3 py-2 max-w-full overflow-hidden">
+                        <Barcode
+                          value={product.barcode}
+                          format="CODE128"
+                          width={1.4}
+                          height={45}
+                          displayValue={true}
+                          fontSize={12}
+                          margin={4}
+                        />
+                      </div>
+                    ) : (
+                      <div className="border border-dashed rounded-md w-44 h-16 flex items-center justify-center text-xs text-muted-foreground">
+                        No barcode saved
+                      </div>
+                    )}
                   </div>
-                  <Button variant="outline" size="icon">
+
+                  <Button variant="outline" size="icon" title="Print barcode label">
                     <Printer />
                   </Button>
                 </div>
@@ -564,16 +540,6 @@ const ProductDetail: React.FC = () => {
                     <span className="font-semibold">
                       {formatPeso(selectedSellingPrice)}
                     </span>
-
-                    <Separator className="col-span-2" />
-
-                    <span className="text-muted-foreground">Total Stock</span>
-                    <span>{product.quantityOnHand ?? 0}</span>
-
-                    <Separator className="col-span-2" />
-
-                    <span className="text-muted-foreground">Available Stock</span>
-                    <span>{product.availableQuantity ?? 0}</span>
 
                     <Separator className="col-span-2" />
 

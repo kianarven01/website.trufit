@@ -7,7 +7,6 @@ use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Domain\Models\ProductPrice;
-use App\Domains\Inventory\Domain\Models\Inventory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -26,7 +25,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'description' => $productData['description'] ?? null,
                 'image_path' => $productData['image_path'] ?? null,
                 'category_id' => $productData['category_id'] ?? null,
-                'barcode' => $productData['barcode'] ?? null,
+                'barcode' => $productData['barcode'] ?? $productData['SKU'] ?? $productData['sku'] ?? null,
                 'part_number' => $productData['part_number'] ?? null,
                 'is_oem' => $productData['is_oem'] ?? false,
                 'oem_reference_number' => $productData['oem_reference_number'] ?? null,
@@ -61,9 +60,14 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 // Create the product price record
                 ProductPrice::create([
                     'id' => (string) Str::uuid(),
+                    'ProductID' => $productId,
                     'product_supplier_id' => $productSupplier->id,
+                    'supplier_id' => $supplier['supplier_id'],
                     'Price' => $price,
                     'Markup' => $markup,
+                    'is_active' => true,
+                    'effective_from' => now(),
+                    'effective_until' => null,
                 ]);
 
                 Inventory::firstOrCreate(

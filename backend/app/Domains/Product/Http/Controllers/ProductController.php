@@ -12,16 +12,15 @@ use App\Domains\Product\Application\Services\ProductImageUploader;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductPrice;
-use App\Domains\Product\Domain\Models\Part;
-use App\Domains\Product\Domain\Models\Manufacturers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Domains\Product\Domain\Models\Part;
+use App\Domains\Product\Domain\Models\Manufacturers;
 
 class ProductController extends Controller
 {
-    // The index method retrieves a list of products, optionally filtered by vehicle variant and/or category. It includes related data and computes stock status for each product, returning the results in a structured format suitable for the frontend.
     public function index(Request $request): JsonResponse
     {
         $variantId = $request->query('variant_id');
@@ -30,13 +29,12 @@ class ProductController extends Controller
         $baseQuery = Product::query()
             ->with([
                 'category',
-                'part',
                 'manufacturer',
                 'unitRelation',
+                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
-                'inventoryRows',
             ]);
 
         if ($categoryId) {
@@ -95,13 +93,11 @@ class ProductController extends Controller
             $equivalentProducts = Product::query()
                 ->with([
                     'category',
-                    'part',
                     'manufacturer',
                     'unitRelation',
                     'productSuppliers.supplier',
                     'productSuppliers.price',
                     'inventoryRelation',
-                    'inventoryRows',
                 ])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
@@ -151,7 +147,6 @@ class ProductController extends Controller
         );
     }
 
-    // The store method handles the creation of a new product. It validates the incoming request, uploads the product image if provided, creates the product using a service class, and returns the newly created product with all related data formatted for the frontend.
     public function store(
         StoreProductRequest $request,
         CreateProduct $createProduct,
@@ -170,6 +165,29 @@ class ProductController extends Controller
             );
         }
 
+        if (empty($validated['barcode']) && !empty($validated['SKU'])) {
+            $validated['barcode'] = $validated['SKU'];
+        }
+
+        if (empty($validated['barcode']) && !empty($validated['SKU'])) {
+            $validated['barcode'] = $validated['SKU'];
+        }
+
+        if (!empty($validated['barcode'])) {
+            $barcodeExists = Product::query()
+                ->where('barcode', $validated['barcode'])
+                ->exists();
+
+            if ($barcodeExists) {
+                return response()->json([
+                    'message' => 'The barcode has already been taken.',
+                    'errors' => [
+                        'barcode' => ['The barcode has already been taken.'],
+                    ],
+                ], 422);
+            }
+        }
+
         if ($request->hasFile('image')) {
             try {
                 $validated['image_path'] = $imageUploader->upload($request->file('image'));
@@ -186,13 +204,11 @@ class ProductController extends Controller
 
         $product->load([
             'category',
-            'part',
             'manufacturer',
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
             'inventoryRelation',
-            'inventoryRows',
         ]);
 
         return response()->json([
@@ -201,7 +217,6 @@ class ProductController extends Controller
         ], 201);
     }
 
-    // This endpoint allows adjusting stock levels for a product, which is a common inventory management operation. It updates or creates an inventory record for the product and returns the updated product data with the new stock information.
     public function adjustStock(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
@@ -222,13 +237,11 @@ class ProductController extends Controller
 
         $freshProduct = $product->fresh([
             'category',
-            'part',
             'manufacturer',
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
             'inventoryRelation',
-            'inventoryRows',
         ]);
 
         return response()->json([
@@ -237,21 +250,19 @@ class ProductController extends Controller
         ]);
     }
 
-    // The show method retrieves a single product by its ID, including all related entities and computed stock status, and returns it in a structured format suitable for the frontend.
     public function show(string $id): JsonResponse
     {
         $product = Product::query()
             ->with([
                 'category',
-                'part',
                 'manufacturer',
                 'unitRelation',
+                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'equivalentProducts',
                 'equivalentToProducts',
                 'inventoryRelation',
-                'inventoryRows',
             ])
             ->where('id', $id)
             ->firstOrFail();
@@ -261,7 +272,6 @@ class ProductController extends Controller
         ]);
     }
 
-    // The formatProduct method is responsible for transforming the Product model into a structured array that includes all necessary details for the frontend, including related entities and computed stock status.
     private function formatProduct(
         Product $product,
         string $fitmentType = 'unfiltered',
@@ -271,21 +281,6 @@ class ProductController extends Controller
     ): array {
         $productSuppliers = $product->productSuppliers ?? collect();
         $firstProductSupplier = $productSuppliers->first();
-
-        $inventoryRows = $product->relationLoaded('inventoryRows')
-            ? $product->inventoryRows
-            : $product->inventoryRows()->get();
-
-        $totalStock = $inventoryRows->sum(fn ($inventory) => (int) $inventory->quantity_on_hand);
-        $totalReserved = $inventoryRows->sum(fn ($inventory) => (int) $inventory->reserved_quantity);
-        $availableStock = max($totalStock - $totalReserved, 0);
-        $maxReorderLevel = $inventoryRows->max('reorder_level') ?? 0;
-
-        $stockStatus = match (true) {
-            $availableStock <= 0 => 'Out of Stock',
-            $maxReorderLevel > 0 && $availableStock <= $maxReorderLevel => 'Low Stock',
-            default => 'In Stock',
-        };
 
         return [
             'id' => $product->id,
@@ -323,13 +318,11 @@ class ProductController extends Controller
              * Inventory should now be stock-focused.
              * sell_price is intentionally not treated as the product's true selling price.
              */
-            'quantity_on_hand' => $totalStock,
-            'reserved_quantity' => $totalReserved,
-            'available_quantity' => $availableStock,
-            'reorder_level' => $maxReorderLevel,
+            'quantity_on_hand' => $product->inventoryRelation?->quantity_on_hand,
+            'reserved_quantity' => $product->inventoryRelation?->reserved_quantity,
+            'reorder_level' => $product->inventoryRelation?->reorder_level,
             'reorder_qty' => $product->inventoryRelation?->reorder_qty,
             'location_id' => $product->inventoryRelation?->location_id,
-            'stock_status' => $stockStatus,
             'sell_price' => null,
 
             /*
@@ -372,7 +365,6 @@ class ProductController extends Controller
         ];
     }
 
-    // This endpoint is for the "Add Supplier" flow in the frontend, which allows adding a supplier to an existing product without needing to go through the full product update flow.
     public function addSupplier(Request $request, string $productId): JsonResponse
     {
         $validated = $request->validate([
@@ -420,7 +412,6 @@ class ProductController extends Controller
 
             return $product->fresh([
                 'category',
-                'part',
                 'manufacturer',
                 'unitRelation',
                 'productSuppliers.supplier',
@@ -437,7 +428,6 @@ class ProductController extends Controller
         ], 201);
     }
 
-    // This endpoint is for the "Add Part" flow in the frontend, which requires a simple list of parts with their categories.
     public function parts(Request $request): JsonResponse
     {
         $categoryId = $request->query('category_id');
@@ -461,7 +451,6 @@ class ProductController extends Controller
         ]);
     }
 
-    //generate a SKU preview based on manufacturer_id and part_id
     public function skuPreview(Request $request): JsonResponse
     {
         $validated = $request->validate([

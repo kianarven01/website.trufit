@@ -32,7 +32,11 @@ Route::prefix('products')->group(function () {
 
     // Reference data routes
     Route::get('/units', [ProductReferenceController::class, 'units']);
+    Route::post('/units', [ProductReferenceController::class, 'storeUnit']);
+
     Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
+    Route::post('/manufacturers', [ProductReferenceController::class, 'storeManufacturer']);
+
     Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
     Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);
 
@@ -52,8 +56,9 @@ Route::prefix('products')->group(function () {
     Route::post('/{productId}/equivalents', [ProductEquivalentController::class, 'store']);
     Route::delete('/{productId}/equivalents/{equivalentProductId}', [ProductEquivalentController::class, 'destroy']);
 
-    // Product details routes
+    // Parts routes
     Route::get('/parts', [ProductController::class, 'parts']);
+    Route::post('/parts', [ProductReferenceController::class, 'storePart']);
 
     // SKU preview route
     Route::get('/sku-preview', [ProductController::class, 'skuPreview']);

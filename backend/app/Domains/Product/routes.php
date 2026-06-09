@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Domains\Product\Http\Controllers\ProductController;
 use App\Domains\Product\Http\Controllers\ProductReferenceController;
-use App\Domains\Product\Http\Controllers\ProductEquivalentController;
+use App\Domains\Product\Http\Controllers\ProductEquivalentGroupController;
 use App\Domains\Supplier\Http\Controllers\SupplierController;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Infrastructure\Repositories\EloquentProductRepository;
@@ -51,10 +51,12 @@ Route::prefix('products')->group(function () {
     Route::get('/suppliers', [SupplierController::class, 'index']);
     Route::post('/{product}/suppliers', [ProductController::class, 'addSupplier']);
 
-    // Product equivalents routes
-    Route::get('/{productId}/equivalents', [ProductEquivalentController::class, 'index']);
-    Route::post('/{productId}/equivalents', [ProductEquivalentController::class, 'store']);
-    Route::delete('/{productId}/equivalents/{equivalentProductId}', [ProductEquivalentController::class, 'destroy']);
+    
+    // Product equivalent group routes
+    Route::get('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'index']);
+    Route::post('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'store']);
+    Route::post('/equivalent-groups/{groupId}/items', [ProductEquivalentGroupController::class, 'addItem']);
+    Route::delete('/equivalent-groups/{groupId}/items/{productId}', [ProductEquivalentGroupController::class, 'removeItem']);
 
     // Parts routes
     Route::get('/parts', [ProductController::class, 'parts']);

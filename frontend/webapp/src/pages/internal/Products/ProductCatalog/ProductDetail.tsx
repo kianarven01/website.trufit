@@ -693,7 +693,7 @@ const ProductDetail: React.FC = () => {
           <Card className="p-4 flex-1 min-h-0">
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
-                <h2 className="font-semibold">Cross References</h2>
+                <h2 className="font-semibold">Equivalent Products</h2>
                 <Button size="sm" variant="outline">
                   + Add Reference
                 </Button>
@@ -715,7 +715,7 @@ const ProductDetail: React.FC = () => {
                   ))
                 ) : (
                   <div className="text-muted-foreground text-xs italic">
-                    No cross references added yet.
+                    No equivalent products added yet.
                   </div>
                 )}
               </div>

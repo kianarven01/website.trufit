@@ -410,6 +410,12 @@ const ProductDetail: React.FC = () => {
   const selectedSupplierCost = toNumberOrNull(selectedSupplier?.supplier_cost);
   const selectedMarkup = getSupplierMarkup(selectedSupplier);
   const selectedSellingPrice = getSupplierSellingPrice(selectedSupplier);
+  const printableBarcodeValue = product.barcode || product.sku || "";
+
+  const handlePrintBarcodeLabel = () => {
+    if (!printableBarcodeValue) return;
+    window.print();
+  };
 
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
@@ -477,10 +483,10 @@ const ProductDetail: React.FC = () => {
 
                 <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4 gap-3">
                   <div className="flex flex-col items-center justify-center min-w-0 flex-1">
-                    {product.barcode ? (
+                    {printableBarcodeValue ? (
                       <div className="bg-white rounded-md border px-3 py-2 max-w-full overflow-hidden">
                         <Barcode
-                          value={product.barcode}
+                          value={printableBarcodeValue}
                           format="CODE128"
                           width={1.4}
                           height={45}
@@ -496,7 +502,13 @@ const ProductDetail: React.FC = () => {
                     )}
                   </div>
 
-                  <Button variant="outline" size="icon" title="Print barcode label">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Print barcode label"
+                    disabled={!printableBarcodeValue}
+                    onClick={handlePrintBarcodeLabel}
+                  >
                     <Printer />
                   </Button>
                 </div>
@@ -559,13 +571,16 @@ const ProductDetail: React.FC = () => {
 
                     <Separator className="col-span-2" />
 
-                    <div className="col-span-2 flex flex-col gap-1 mt-auto">
+                    <div className="col-span-2 flex flex-col gap-2 mt-auto">
                       <span className="text-muted-foreground">Description</span>
-                      <textarea
-                        className="w-full border rounded p-2 text-sm h-32 resize-none overflow-auto"
-                        value={product.description}
-                        readOnly
-                      />
+
+                      <div className="rounded-xl border border-border bg-muted/20 p-4 min-h-[90px]">
+                        <p className="text-sm whitespace-pre-wrap text-foreground">
+                          {product.description && product.description.trim()
+                            ? product.description
+                            : "-"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -706,6 +721,115 @@ const ProductDetail: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+      </div>
+
+      <style>
+        {`
+          .barcode-print-area {
+            display: none;
+          }
+
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
+
+            .barcode-print-area,
+            .barcode-print-area * {
+              visibility: visible !important;
+            }
+
+            .barcode-print-area {
+              display: flex !important;
+              position: fixed;
+              inset: 0;
+              align-items: flex-start;
+              justify-content: flex-start;
+              background: #ffffff !important;
+              color: #000000 !important;
+              padding: 12mm;
+              z-index: 999999;
+            }
+
+            .barcode-print-label {
+              width: 58mm;
+              min-height: 38mm;
+              border: 1px solid #000000;
+              border-radius: 2mm;
+              padding: 4mm;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              gap: 2mm;
+              font-family: Arial, sans-serif;
+              page-break-inside: avoid;
+            }
+
+            .barcode-print-product-name {
+              font-size: 10pt;
+              font-weight: 700;
+              text-align: center;
+              line-height: 1.15;
+              max-width: 100%;
+            }
+
+            .barcode-print-meta {
+              width: 100%;
+              display: flex;
+              flex-direction: column;
+              gap: 1mm;
+              font-size: 7pt;
+              line-height: 1.1;
+            }
+
+            .barcode-print-barcode {
+              max-width: 100%;
+              overflow: hidden;
+            }
+
+            .barcode-print-barcode svg {
+              max-width: 100%;
+              height: auto;
+            }
+
+            @page {
+              size: auto;
+              margin: 0;
+            }
+          }
+        `}
+      </style>
+
+      <div className="barcode-print-area">
+        <div className="barcode-print-label">
+          <div className="barcode-print-product-name">
+            {product.name || "Unnamed Product"}
+          </div>
+
+          <div className="barcode-print-meta">
+            <div>
+              <strong>SKU:</strong> {product.sku || "-"}
+            </div>
+            <div>
+              <strong>Part No:</strong> {product.partNumber || "-"}
+            </div>
+          </div>
+
+          {printableBarcodeValue && (
+            <div className="barcode-print-barcode">
+              <Barcode
+                value={printableBarcodeValue}
+                format="CODE128"
+                width={1.2}
+                height={42}
+                displayValue={true}
+                fontSize={10}
+                margin={2}
+              />
+            </div>
+          )}
         </div>
       </div>
 

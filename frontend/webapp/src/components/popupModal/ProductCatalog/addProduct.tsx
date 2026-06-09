@@ -49,6 +49,12 @@ interface ProductModalProps {
 
 type ProductNameMode = "auto" | "manual";
 type ProductSkuMode = "auto" | "manual";
+type ReferenceModalType = "category" | "part" | "manufacturer" | "unit" | null;
+
+const ADD_NEW_CATEGORY = "__add_new_category__";
+const ADD_NEW_PART = "__add_new_part__";
+const ADD_NEW_MANUFACTURER = "__add_new_manufacturer__";
+const ADD_NEW_UNIT = "__add_new_unit__";
 
 export default function ProductModal({
   open,
@@ -61,6 +67,18 @@ export default function ProductModal({
   onSaved,
 }: ProductModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [localCategories, setLocalCategories] = useState<Option[]>(categories);
+  const [localManufacturers, setLocalManufacturers] = useState<Option[]>(manufacturers);
+  const [referenceModalType, setReferenceModalType] = useState<ReferenceModalType>(null);
+  const [savingReference, setSavingReference] = useState(false);
+  const [referenceForm, setReferenceForm] = useState({
+    name: "",
+    code: "",
+    abbreviation: "",
+    category_id: "",
+    description: "",
+  });
 
   const [units, setUnits] = useState<Option[]>([]);
   const [parts, setParts] = useState<PartOption[]>([]);
@@ -89,6 +107,14 @@ export default function ProductModal({
   const [productSuppliers, setProductSuppliers] = useState<
     ProductSupplierInput[]
   >([]);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    setLocalManufacturers(manufacturers);
+  }, [manufacturers]);
 
   useEffect(() => {
     if (!open) return;
@@ -158,13 +184,13 @@ export default function ProductModal({
   };
 
   const selectedManufacturerName = useMemo(() => {
-    const selectedManufacturer = manufacturers.find(
+    const selectedManufacturer = localManufacturers.find(
       (manufacturer) =>
         String(manufacturer.id) === String(form.manufacturer_id)
     );
 
     return getOptionName(selectedManufacturer);
-  }, [manufacturers, form.manufacturer_id]);
+  }, [localManufacturers, form.manufacturer_id]);
 
   const selectedPartName = useMemo(() => {
     const selectedPart = parts.find(
@@ -411,6 +437,15 @@ export default function ProductModal({
     setSkuLoading(false);
     setImageFile(null);
     setImagePreview("");
+    setReferenceModalType(null);
+    setSavingReference(false);
+    setReferenceForm({
+      name: "",
+      code: "",
+      abbreviation: "",
+      category_id: "",
+      description: "",
+    });
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -423,6 +458,143 @@ export default function ProductModal({
     }
 
     onOpenChange(nextOpen);
+  };
+
+  const openReferenceModal = (type: ReferenceModalType) => {
+    if (!type) return;
+
+    setReferenceModalType(type);
+    setReferenceForm({
+      name: "",
+      code: "",
+      abbreviation: "",
+      category_id: type === "part" ? form.category_id : "",
+      description: "",
+    });
+  };
+
+  const closeReferenceModal = () => {
+    setReferenceModalType(null);
+    setSavingReference(false);
+    setReferenceForm({
+      name: "",
+      code: "",
+      abbreviation: "",
+      category_id: "",
+      description: "",
+    });
+  };
+
+  const handleSaveReference = async () => {
+    if (!referenceModalType) return;
+
+    const name = referenceForm.name.trim();
+
+    if (!name) {
+      alert("Name is required.");
+      return;
+    }
+
+    setSavingReference(true);
+
+    try {
+      if (referenceModalType === "category") {
+        const res = await api.post("/products/categories", {
+          name,
+          code: referenceForm.code.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.category || res.data;
+        const newCategory: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || undefined),
+        };
+
+        setLocalCategories((prev) => [...prev, newCategory]);
+        updateField("category_id", newCategory.id);
+      }
+
+      if (referenceModalType === "manufacturer") {
+        const res = await api.post("/products/manufacturers", {
+          name,
+          code: referenceForm.code.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.manufacturer || res.data;
+        const newManufacturer: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || undefined),
+        };
+
+        setLocalManufacturers((prev) => [...prev, newManufacturer]);
+        updateField("manufacturer_id", newManufacturer.id);
+      }
+
+      if (referenceModalType === "unit") {
+        const res = await api.post("/products/units", {
+          name,
+          abbreviation: referenceForm.abbreviation.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.unit || res.data;
+        const newUnit: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          label: created.abbreviation || referenceForm.abbreviation.trim() || undefined,
+        };
+
+        setUnits((prev) => [...prev, newUnit]);
+        updateField("unit", newUnit.id);
+      }
+
+      if (referenceModalType === "part") {
+        const selectedCategoryId = referenceForm.category_id || form.category_id;
+
+        if (!selectedCategoryId) {
+          alert("Please select a category for the new part.");
+          return;
+        }
+
+        const res = await api.post("/products/parts", {
+          name,
+          category_id: selectedCategoryId,
+          code: referenceForm.code.trim() || undefined,
+          description: referenceForm.description.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.part || res.data;
+        const newPart: PartOption = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || null),
+          description: created.description ?? (referenceForm.description.trim() || null),
+          category_id: String(created.category_id || selectedCategoryId),
+          category_name: created.category_name ?? null,
+        };
+
+        setParts((prev) => [...prev, newPart]);
+        setForm((prev) => ({
+          ...prev,
+          category_id: newPart.category_id,
+          part_id: newPart.id,
+        }));
+      }
+
+      closeReferenceModal();
+    } catch (error: any) {
+      console.error("Failed to save reference:", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to save reference item.";
+
+      alert(message);
+    } finally {
+      setSavingReference(false);
+    }
   };
 
   const handleSave = async () => {
@@ -525,6 +697,7 @@ export default function ProductModal({
   const canSave = form.name.trim() && form.part_number.trim();
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleModalChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -689,51 +862,91 @@ export default function ProductModal({
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.category_id}
-            onChange={(e) => handleCategoryChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_CATEGORY) {
+                openReferenceModal("category");
+                return;
+              }
+
+              handleCategoryChange(value);
+            }}
           >
             <option value="">Select category</option>
 
-            {categories.map((category) => (
+            {localCategories.map((category) => (
               <option key={category.id} value={category.id}>
                 {getOptionLabel(category)}
               </option>
             ))}
+
+            <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
           </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.part_id}
-            onChange={(e) => handlePartChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_PART) {
+                openReferenceModal("part");
+                return;
+              }
+
+              handlePartChange(value);
+            }}
           >
-            <option value="">
-              {form.category_id ? "Select part" : "Select part"}
-            </option>
+            <option value="">Select part</option>
 
             {filteredParts.map((part) => (
               <option key={part.id} value={part.id}>
                 {part.name}
               </option>
             ))}
+
+            <option value={ADD_NEW_PART}>+ Add new part</option>
           </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.manufacturer_id}
-            onChange={(e) => updateField("manufacturer_id", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_MANUFACTURER) {
+                openReferenceModal("manufacturer");
+                return;
+              }
+
+              updateField("manufacturer_id", value);
+            }}
           >
             <option value="">Select manufacturer</option>
 
-            {manufacturers.map((manufacturer) => (
+            {localManufacturers.map((manufacturer) => (
               <option key={manufacturer.id} value={manufacturer.id}>
                 {getOptionLabel(manufacturer)}
               </option>
             ))}
+
+            <option value={ADD_NEW_MANUFACTURER}>+ Add new manufacturer</option>
           </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.unit}
-            onChange={(e) => updateField("unit", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_UNIT) {
+                openReferenceModal("unit");
+                return;
+              }
+
+              updateField("unit", value);
+            }}
           >
             <option value="">Select unit</option>
 
@@ -742,6 +955,8 @@ export default function ProductModal({
                 {unit.name || "Unnamed unit"}
               </option>
             ))}
+
+            <option value={ADD_NEW_UNIT}>+ Add new unit</option>
           </select>
 
           <Input
@@ -884,5 +1099,112 @@ export default function ProductModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {
+      if (!nextOpen) {
+        closeReferenceModal();
+      }
+    }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {referenceModalType === "category" && "Add Category"}
+            {referenceModalType === "part" && "Add Part"}
+            {referenceModalType === "manufacturer" && "Add Manufacturer"}
+            {referenceModalType === "unit" && "Add Unit"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <Input
+            placeholder="Name"
+            value={referenceForm.name}
+            onChange={(e) =>
+              setReferenceForm((prev) => ({ ...prev, name: e.target.value }))
+            }
+          />
+
+          {(referenceModalType === "category" ||
+            referenceModalType === "part" ||
+            referenceModalType === "manufacturer") && (
+            <Input
+              placeholder="Code (optional)"
+              value={referenceForm.code}
+              onChange={(e) =>
+                setReferenceForm((prev) => ({
+                  ...prev,
+                  code: e.target.value.toUpperCase(),
+                }))
+              }
+            />
+          )}
+
+          {referenceModalType === "unit" && (
+            <Input
+              placeholder="Abbreviation, example: pcs"
+              value={referenceForm.abbreviation}
+              onChange={(e) =>
+                setReferenceForm((prev) => ({
+                  ...prev,
+                  abbreviation: e.target.value,
+                }))
+              }
+            />
+          )}
+
+          {referenceModalType === "part" && (
+            <>
+              <select
+                className="w-full border rounded-md px-3 py-2 bg-background"
+                value={referenceForm.category_id}
+                onChange={(e) =>
+                  setReferenceForm((prev) => ({
+                    ...prev,
+                    category_id: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select category for this part</option>
+                {localCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getOptionLabel(category)}
+                  </option>
+                ))}
+              </select>
+
+              <Input
+                placeholder="Description (optional)"
+                value={referenceForm.description}
+                onChange={(e) =>
+                  setReferenceForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+              />
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={closeReferenceModal}
+            disabled={savingReference}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveReference}
+            disabled={savingReference}
+          >
+            {savingReference ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

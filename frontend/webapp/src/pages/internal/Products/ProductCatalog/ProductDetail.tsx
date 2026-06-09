@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import { Trash2, Pencil, Printer } from "lucide-react";
-import Barcode from "react-barcode";
 import { Separator } from "@/components/ui/separator";
 import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
 import api from "@/api/axios";
@@ -60,6 +59,10 @@ interface Product {
   description: string;
   unit: string;
   unitAbbreviation?: string | null;
+  quantityOnHand?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number;
+  stockStatus?: "In Stock" | "Low Stock" | "Out of Stock" | string;
   price: number | null;
   category: string;
   manufacturer: string;
@@ -77,6 +80,25 @@ interface Product {
     type: string;
     reference: string;
   }[];
+}
+
+interface EquivalentProduct {
+  id: string;
+  name: string;
+  sku: string;
+  partNumber: string;
+  manufacturer: string;
+  stockStatus: string;
+  quantityOnHand: number;
+}
+
+interface EquivalentGroup {
+  id: string;
+  name: string;
+  partId?: string | number | null;
+  notes?: string | null;
+  products: EquivalentProduct[];
+  equivalentProducts: EquivalentProduct[];
 }
 
 interface CategoryOption {
@@ -216,12 +238,74 @@ const normalizeProduct = (row: any): Product => ({
   location: row.location || row.warehouse_location || "-",
   barcode: row.barcode || "",
   categoryId: row.category_id ?? row.categoryId ?? null,
+  quantityOnHand: toNumberOrNull(row.quantity_on_hand) ?? 0,
+  reservedQuantity: toNumberOrNull(row.reserved_quantity) ?? 0,
+  availableQuantity:
+    toNumberOrNull(row.available_quantity) ??
+    Math.max(
+      (toNumberOrNull(row.quantity_on_hand) ?? 0) -
+        (toNumberOrNull(row.reserved_quantity) ?? 0),
+      0
+    ),
+  stockStatus:
+    row.stock_status ||
+    row.stockStatus ||
+    ((toNumberOrNull(row.available_quantity ?? row.quantity_on_hand) ?? 0) > 0
+      ? "In Stock"
+      : "Out of Stock"),
   suppliers: normalizeSuppliers(row),
   compatibleVehicles: Array.isArray(row.compatibleVehicles)
     ? row.compatibleVehicles
     : [],
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
+
+const normalizeEquivalentProduct = (row: any): EquivalentProduct => ({
+  id: String(row.id),
+  name: String(row.name || ""),
+  sku: String(row.SKU || row.sku || ""),
+  partNumber: String(row.part_number || row.partNumber || ""),
+  manufacturer:
+    row.manufacturer ||
+    row.manufacturer_name ||
+    row.Manufacturer?.name ||
+    row.brand?.name ||
+    row.Brand?.name ||
+    "-",
+  stockStatus: String(row.stock_status || row.stockStatus || "Out of Stock"),
+  quantityOnHand: Number(row.quantity_on_hand || row.quantityOnHand || 0),
+});
+
+const normalizeEquivalentGroup = (row: any): EquivalentGroup => {
+  const equivalentRows = Array.isArray(row.equivalent_products)
+    ? row.equivalent_products
+    : Array.isArray(row.equivalentProducts)
+    ? row.equivalentProducts
+    : [];
+
+  const productRows = Array.isArray(row.products) ? row.products : [];
+
+  return {
+    id: String(row.id),
+    name: String(row.name || "Equivalent Group"),
+    partId: row.part_id ?? row.partId ?? null,
+    notes: row.notes || null,
+    products: productRows.map(normalizeEquivalentProduct),
+    equivalentProducts: equivalentRows.map(normalizeEquivalentProduct),
+  };
+};
+
+const getStockBadgeClass = (status?: string) => {
+  if (status === "In Stock") {
+    return "bg-green-100 text-green-700";
+  }
+
+  if (status === "Low Stock") {
+    return "bg-yellow-100 text-yellow-700";
+  }
+
+  return "bg-red-100 text-red-700";
+};
 
 const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -254,6 +338,15 @@ const ProductDetail: React.FC = () => {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [loading, setLoading] = useState(!routeState?.product);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [equivalentGroups, setEquivalentGroups] = useState<EquivalentGroup[]>([]);
+  const [equivalentCandidates, setEquivalentCandidates] = useState<EquivalentProduct[]>([]);
+  const [isEquivalentOpen, setIsEquivalentOpen] = useState(false);
+  const [equivalentSearch, setEquivalentSearch] = useState("");
+  const [equivalentGroupName, setEquivalentGroupName] = useState("");
+  const [equivalentNotes, setEquivalentNotes] = useState("");
+  const [selectedEquivalentIds, setSelectedEquivalentIds] = useState<string[]>([]);
+  const [equivalentSaving, setEquivalentSaving] = useState(false);
+  const [equivalentLoading, setEquivalentLoading] = useState(false);
 
   const loadCategories = async () => {
     const res = await api.get("/products/categories");
@@ -352,10 +445,124 @@ const ProductDetail: React.FC = () => {
     }
   };
 
+  const loadEquivalentGroups = async (id: string) => {
+    try {
+      const res = await api.get(`/products/${id}/equivalent-groups`);
+      const rows = Array.isArray(res.data?.groups) ? res.data.groups : [];
+      setEquivalentGroups(rows.map(normalizeEquivalentGroup));
+    } catch (error) {
+      console.error("Failed to load equivalent groups:", error);
+      setEquivalentGroups([]);
+    }
+  };
+
+  const loadEquivalentCandidates = async () => {
+    if (!product?.id) return;
+
+    setEquivalentLoading(true);
+
+    try {
+      const res = await api.get(`/products/${product.id}/equivalent-candidates`, {
+        params: { search: equivalentSearch || undefined },
+      });
+
+      const rows = Array.isArray(res.data?.products) ? res.data.products : [];
+      const alreadyLinkedIds = new Set(
+        equivalentGroups.flatMap((group) =>
+          group.products.map((equivalentProduct) => equivalentProduct.id)
+        )
+      );
+
+      const normalizedCandidates: EquivalentProduct[] = rows.map(normalizeEquivalentProduct);
+
+      setEquivalentCandidates(
+        normalizedCandidates.filter((candidate: EquivalentProduct) => {
+          return !alreadyLinkedIds.has(candidate.id);
+        })
+      );
+    } catch (error) {
+      console.error("Failed to load equivalent candidates:", error);
+      setEquivalentCandidates([]);
+    } finally {
+      setEquivalentLoading(false);
+    }
+  };
+
+  const openEquivalentModal = () => {
+    setEquivalentGroupName(product ? `${product.name} Equivalent Group` : "");
+    setEquivalentNotes("");
+    setEquivalentSearch("");
+    setSelectedEquivalentIds([]);
+    setIsEquivalentOpen(true);
+  };
+
+  const toggleEquivalentSelection = (id: string) => {
+    setSelectedEquivalentIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id]
+    );
+  };
+
+  const handleCreateEquivalentGroup = async () => {
+    if (!product?.id) return;
+
+    setEquivalentSaving(true);
+
+    try {
+      await api.post(`/products/${product.id}/equivalent-groups`, {
+        name: equivalentGroupName.trim() || `${product.name} Equivalent Group`,
+        notes: equivalentNotes.trim() || null,
+        equivalent_product_ids: selectedEquivalentIds,
+      });
+
+      setIsEquivalentOpen(false);
+      await loadEquivalentGroups(product.id);
+    } catch (error: any) {
+      console.error("Failed to create equivalent group:", error);
+      alert(
+        error?.response?.data?.message ||
+          "Failed to save equivalent products. Please check the selected products."
+      );
+    } finally {
+      setEquivalentSaving(false);
+    }
+  };
+
+  const handleRemoveEquivalent = async (groupId: string, equivalentProductId: string) => {
+    if (!product?.id) return;
+
+    try {
+      await api.delete(
+        `/products/equivalent-groups/${groupId}/items/${equivalentProductId}`
+      );
+
+      await loadEquivalentGroups(product.id);
+    } catch (error: any) {
+      console.error("Failed to remove equivalent product:", error);
+      alert(error?.response?.data?.message || "Failed to remove equivalent product.");
+    }
+  };
+
   useEffect(() => {
     void Promise.all([loadCategories(), loadManufacturers(), loadSuppliers()]);
     void loadProduct();
   }, [routeState?.productId, productId]);
+
+  useEffect(() => {
+    if (!product?.id) {
+      setEquivalentGroups([]);
+      return;
+    }
+
+    void loadEquivalentGroups(product.id);
+  }, [product?.id]);
+
+  useEffect(() => {
+    if (!isEquivalentOpen || !product?.id) return;
+
+    void loadEquivalentCandidates();
+  }, [isEquivalentOpen, product?.id, equivalentSearch]);
 
   useEffect(() => {
     if (!product?.suppliers?.length) {
@@ -410,12 +617,6 @@ const ProductDetail: React.FC = () => {
   const selectedSupplierCost = toNumberOrNull(selectedSupplier?.supplier_cost);
   const selectedMarkup = getSupplierMarkup(selectedSupplier);
   const selectedSellingPrice = getSupplierSellingPrice(selectedSupplier);
-  const printableBarcodeValue = product.barcode || product.sku || "";
-
-  const handlePrintBarcodeLabel = () => {
-    if (!printableBarcodeValue) return;
-    window.print();
-  };
 
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
@@ -425,8 +626,11 @@ const ProductDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">
-                  In Stock
+                <Badge
+                  variant="secondary"
+                  className={getStockBadgeClass(product.stockStatus)}
+                >
+                  {product.stockStatus || "Out of Stock"}
                 </Badge>
               </div>
 
@@ -481,34 +685,18 @@ const ProductDetail: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4 gap-3">
-                  <div className="flex flex-col items-center justify-center min-w-0 flex-1">
-                    {printableBarcodeValue ? (
-                      <div className="bg-white rounded-md border px-3 py-2 max-w-full overflow-hidden">
-                        <Barcode
-                          value={printableBarcodeValue}
-                          format="CODE128"
-                          width={1.4}
-                          height={45}
-                          displayValue={true}
-                          fontSize={12}
-                          margin={4}
-                        />
-                      </div>
-                    ) : (
-                      <div className="border border-dashed rounded-md w-44 h-16 flex items-center justify-center text-xs text-muted-foreground">
-                        No barcode saved
-                      </div>
-                    )}
+                <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4">
+                  <div className="flex flex-col items-center">
+                    <img
+                      src="/images/placeholder.png"
+                      alt="barcode"
+                      className="border w-44 h-12 object-contain"
+                    />
+                    <span className="text-sm text-muted-foreground tracking-widest">
+                      {product.barcode || "N/A"}
+                    </span>
                   </div>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    title="Print barcode label"
-                    disabled={!printableBarcodeValue}
-                    onClick={handlePrintBarcodeLabel}
-                  >
+                  <Button variant="outline" size="icon">
                     <Printer />
                   </Button>
                 </div>
@@ -552,6 +740,16 @@ const ProductDetail: React.FC = () => {
                     <span className="font-semibold">
                       {formatPeso(selectedSellingPrice)}
                     </span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Total Stock</span>
+                    <span>{product.quantityOnHand ?? 0}</span>
+
+                    <Separator className="col-span-2" />
+
+                    <span className="text-muted-foreground">Available Stock</span>
+                    <span>{product.availableQuantity ?? 0}</span>
 
                     <Separator className="col-span-2" />
 
@@ -694,25 +892,75 @@ const ProductDetail: React.FC = () => {
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold">Equivalent Products</h2>
-                <Button size="sm" variant="outline">
-                  + Add Reference
+                <Button size="sm" variant="outline" onClick={openEquivalentModal}>
+                  + Add Equivalent
                 </Button>
               </div>
 
-              <div className="space-y-2 text-sm flex-1 min-h-0 overflow-auto">
-                {product.crossReferences && product.crossReferences.length > 0 ? (
-                  product.crossReferences.map((ref, idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center border-b pb-2"
-                    >
-                      <div className="flex gap-6 text-xs">
-                        <span className="w-24">{ref.type}</span>
-                        <span>{ref.reference}</span>
+              <div className="space-y-3 text-sm flex-1 min-h-0 overflow-auto">
+                {equivalentGroups.length > 0 ? (
+                  equivalentGroups.map((group) => {
+                    const equivalentProducts = group.equivalentProducts.length
+                      ? group.equivalentProducts
+                      : group.products.filter(
+                          (equivalentProduct) => equivalentProduct.id !== product.id
+                        );
+
+                    return (
+                      <div key={group.id} className="rounded-lg border border-border p-3 space-y-2">
+                        <div>
+                          <p className="text-sm font-medium">{group.name}</p>
+                          {group.notes && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {group.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        {equivalentProducts.length > 0 ? (
+                          <div className="space-y-2">
+                            {equivalentProducts.map((equivalentProduct) => (
+                              <div
+                                key={equivalentProduct.id}
+                                className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">
+                                    {equivalentProduct.name}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    SKU: {equivalentProduct.sku || "-"} • Part No: {equivalentProduct.partNumber || "-"}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    Brand: {equivalentProduct.manufacturer || "-"} • Stock: {equivalentProduct.quantityOnHand}
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {equivalentProduct.stockStatus}
+                                  </Badge>
+                                  <button
+                                    type="button"
+                                    title="Remove equivalent product"
+                                    onClick={() =>
+                                      handleRemoveEquivalent(group.id, equivalentProduct.id)
+                                    }
+                                  >
+                                    <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground text-xs italic">
+                            This group has no other equivalent products yet.
+                          </div>
+                        )}
                       </div>
-                      <Trash2 className="w-4 h-4 text-muted-foreground cursor-pointer" />
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-muted-foreground text-xs italic">
                     No equivalent products added yet.
@@ -724,114 +972,125 @@ const ProductDetail: React.FC = () => {
         </div>
       </div>
 
-      <style>
-        {`
-          .barcode-print-area {
-            display: none;
-          }
 
-          @media print {
-            body * {
-              visibility: hidden !important;
-            }
+      {isEquivalentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-background p-5 shadow-xl space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Add Equivalent Products</h2>
+                <p className="text-sm text-muted-foreground">
+                  Only products with the same part type can be added.
+                </p>
+              </div>
 
-            .barcode-print-area,
-            .barcode-print-area * {
-              visibility: visible !important;
-            }
-
-            .barcode-print-area {
-              display: flex !important;
-              position: fixed;
-              inset: 0;
-              align-items: flex-start;
-              justify-content: flex-start;
-              background: #ffffff !important;
-              color: #000000 !important;
-              padding: 12mm;
-              z-index: 999999;
-            }
-
-            .barcode-print-label {
-              width: 58mm;
-              min-height: 38mm;
-              border: 1px solid #000000;
-              border-radius: 2mm;
-              padding: 4mm;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              gap: 2mm;
-              font-family: Arial, sans-serif;
-              page-break-inside: avoid;
-            }
-
-            .barcode-print-product-name {
-              font-size: 10pt;
-              font-weight: 700;
-              text-align: center;
-              line-height: 1.15;
-              max-width: 100%;
-            }
-
-            .barcode-print-meta {
-              width: 100%;
-              display: flex;
-              flex-direction: column;
-              gap: 1mm;
-              font-size: 7pt;
-              line-height: 1.1;
-            }
-
-            .barcode-print-barcode {
-              max-width: 100%;
-              overflow: hidden;
-            }
-
-            .barcode-print-barcode svg {
-              max-width: 100%;
-              height: auto;
-            }
-
-            @page {
-              size: auto;
-              margin: 0;
-            }
-          }
-        `}
-      </style>
-
-      <div className="barcode-print-area">
-        <div className="barcode-print-label">
-          <div className="barcode-print-product-name">
-            {product.name || "Unnamed Product"}
-          </div>
-
-          <div className="barcode-print-meta">
-            <div>
-              <strong>SKU:</strong> {product.sku || "-"}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEquivalentOpen(false)}
+              >
+                Close
+              </Button>
             </div>
-            <div>
-              <strong>Part No:</strong> {product.partNumber || "-"}
-            </div>
-          </div>
 
-          {printableBarcodeValue && (
-            <div className="barcode-print-barcode">
-              <Barcode
-                value={printableBarcodeValue}
-                format="CODE128"
-                width={1.2}
-                height={42}
-                displayValue={true}
-                fontSize={10}
-                margin={2}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Group Name</label>
+                <input
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                  value={equivalentGroupName}
+                  onChange={(event) => setEquivalentGroupName(event.target.value)}
+                  placeholder="Example: Toyota Vios Oil Filter Group"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Search Products</label>
+                <input
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                  value={equivalentSearch}
+                  onChange={(event) => setEquivalentSearch(event.target.value)}
+                  placeholder="Search name, SKU, part no, barcode"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Notes</label>
+              <textarea
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none min-h-[70px] resize-none"
+                value={equivalentNotes}
+                onChange={(event) => setEquivalentNotes(event.target.value)}
+                placeholder="Optional notes about fitment or engine series"
               />
             </div>
-          )}
+
+            <div className="rounded-lg border border-border max-h-72 overflow-auto">
+              {equivalentLoading ? (
+                <div className="p-4 text-sm text-muted-foreground">
+                  Loading matching products...
+                </div>
+              ) : equivalentCandidates.length > 0 ? (
+                equivalentCandidates.map((candidate) => {
+                  const selected = selectedEquivalentIds.includes(candidate.id);
+
+                  return (
+                    <button
+                      type="button"
+                      key={candidate.id}
+                      onClick={() => toggleEquivalentSelection(candidate.id)}
+                      className={`w-full text-left px-4 py-3 border-b border-border last:border-b-0 transition ${
+                        selected ? "bg-primary/10" : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {candidate.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            SKU: {candidate.sku || "-"} • Part No: {candidate.partNumber || "-"} • Brand: {candidate.manufacturer || "-"}
+                          </p>
+                        </div>
+
+                        <Badge variant={selected ? "default" : "secondary"}>
+                          {selected ? "Selected" : candidate.stockStatus}
+                        </Badge>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-4 text-sm text-muted-foreground">
+                  No matching equivalent products found. Add another product with the same part type first.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Selected products: {selectedEquivalentIds.length}
+              </p>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEquivalentOpen(false)}
+                  disabled={equivalentSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateEquivalentGroup}
+                  disabled={equivalentSaving || selectedEquivalentIds.length === 0}
+                >
+                  {equivalentSaving ? "Saving..." : "Save Equivalents"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       <ProductModal
         open={isEditOpen}

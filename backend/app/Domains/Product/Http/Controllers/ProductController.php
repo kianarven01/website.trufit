@@ -260,8 +260,6 @@ class ProductController extends Controller
                 'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
-                'equivalentProducts',
-                'equivalentToProducts',
                 'inventoryRelation',
             ])
             ->where('id', $id)

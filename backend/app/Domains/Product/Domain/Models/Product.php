@@ -113,29 +113,7 @@ class Product extends Model
         );
     }
 
-    public function equivalentProducts()
-    {
-        return $this->belongsToMany(
-            Product::class,
-            'Main.ProductEquivalents',
-            'base_product_id',
-            'equivalent_product_id'
-        )->withPivot([
-            'id',
-        ]);
-    }
-
-    public function equivalentToProducts()
-    {
-        return $this->belongsToMany(
-            Product::class,
-            'Main.ProductEquivalents',
-            'equivalent_product_id',
-            'base_product_id'
-        )->withPivot([
-            'id',
-        ]);
-    }
+   
 
     public function inventoryRelation()
     {

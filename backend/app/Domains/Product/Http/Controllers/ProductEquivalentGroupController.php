@@ -42,7 +42,7 @@ class ProductEquivalentGroupController extends Controller
             'name' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'equivalent_product_ids' => ['nullable', 'array'],
-            'equivalent_product_ids.*' => ['uuid', 'exists:Main.Products,id'],
+            'equivalent_product_ids.*' => ['uuid'],
         ]);
 
         $baseProduct = Product::findOrFail($productId);
@@ -154,7 +154,7 @@ class ProductEquivalentGroupController extends Controller
     public function addItem(Request $request, string $groupId): JsonResponse
     {
         $validated = $request->validate([
-            'product_id' => ['required', 'uuid', 'exists:Main.Products,id'],
+            'product_id' => ['required', 'uuid'],
         ]);
 
         $group = ProductEquivalentGroup::findOrFail($groupId);

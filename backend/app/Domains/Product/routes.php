@@ -54,6 +54,7 @@ Route::prefix('products')->group(function () {
     
     // Product equivalent group routes
     Route::get('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'index']);
+    Route::get('/{productId}/equivalent-candidates', [ProductEquivalentGroupController::class, 'candidates']);
     Route::post('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'store']);
     Route::post('/equivalent-groups/{groupId}/items', [ProductEquivalentGroupController::class, 'addItem']);
     Route::delete('/equivalent-groups/{groupId}/items/{productId}', [ProductEquivalentGroupController::class, 'removeItem']);

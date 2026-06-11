@@ -19,6 +19,9 @@ use Illuminate\Http\JsonResponse;
 use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Product\Domain\Models\Manufacturers;
 
+use App\Domains\Product\Domain\Models\ProductEquivalentGroupItem;
+use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
+
 class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
@@ -35,6 +38,7 @@ class ProductController extends Controller
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
+                
             ]);
 
         if ($categoryId) {
@@ -98,6 +102,7 @@ class ProductController extends Controller
                     'productSuppliers.supplier',
                     'productSuppliers.price',
                     'inventoryRelation',
+
                 ])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
@@ -261,6 +266,7 @@ class ProductController extends Controller
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
+                'vehicleCompatibilities.vehicleVariant',
             ])
             ->where('id', $id)
             ->firstOrFail();
@@ -522,5 +528,133 @@ class ProductController extends Controller
         $code = preg_replace('/[^A-Z0-9]/', '', $code);
 
         return $code ?: 'GEN';
+    }
+
+    public function addVehicleCompatibility(Request $request, string $productId): JsonResponse
+    {
+        $validated = $request->validate([
+            'car_variant_id' => ['required', 'integer'],
+            'notes' => ['nullable', 'string'],
+            'apply_to_equivalents' => ['nullable', 'boolean'],
+        ]);
+
+        $product = Product::findOrFail($productId);
+
+        $result = DB::transaction(function () use ($product, $validated) {
+            $createdCount = 0;
+
+            $mainCompatibility = ProductVehicleCompatibility::firstOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'car_variant_id' => $validated['car_variant_id'],
+                ],
+                [
+                    'notes' => $validated['notes'] ?? null,
+                ]
+            );
+
+            if ($mainCompatibility->wasRecentlyCreated) {
+                $createdCount++;
+            }
+
+            $equivalentCreatedCount = 0;
+
+            if (!empty($validated['apply_to_equivalents'])) {
+                $equivalentProductIds = $this->getEquivalentProductIds($product->id);
+
+                foreach ($equivalentProductIds as $equivalentProductId) {
+                    $compatibility = ProductVehicleCompatibility::firstOrCreate(
+                        [
+                            'product_id' => $equivalentProductId,
+                            'car_variant_id' => $validated['car_variant_id'],
+                        ],
+                        [
+                            'notes' => $validated['notes'] ?? null,
+                        ]
+                    );
+
+                    if ($compatibility->wasRecentlyCreated) {
+                        $equivalentCreatedCount++;
+                    }
+                }
+            }
+
+            return [
+                'created_count' => $createdCount,
+                'equivalent_created_count' => $equivalentCreatedCount,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Vehicle compatibility saved successfully.',
+            'created_count' => $result['created_count'],
+            'equivalent_created_count' => $result['equivalent_created_count'],
+        ]);
+    }
+
+    public function syncVehicleCompatibilityToEquivalents(string $productId): JsonResponse
+    {
+        $product = Product::findOrFail($productId);
+
+        $sourceCompatibilities = ProductVehicleCompatibility::where('product_id', $product->id)->get();
+
+        if ($sourceCompatibilities->isEmpty()) {
+            return response()->json([
+                'message' => 'This product has no vehicle compatibility records to sync.',
+                'synced_count' => 0,
+            ]);
+        }
+
+        $equivalentProductIds = $this->getEquivalentProductIds($product->id);
+
+        if ($equivalentProductIds->isEmpty()) {
+            return response()->json([
+                'message' => 'This product has no equivalent products to sync with.',
+                'synced_count' => 0,
+            ]);
+        }
+
+        $syncedCount = 0;
+
+        DB::transaction(function () use ($sourceCompatibilities, $equivalentProductIds, &$syncedCount) {
+            foreach ($equivalentProductIds as $equivalentProductId) {
+                foreach ($sourceCompatibilities as $compatibility) {
+                    $newCompatibility = ProductVehicleCompatibility::firstOrCreate(
+                        [
+                            'product_id' => $equivalentProductId,
+                            'car_variant_id' => $compatibility->car_variant_id,
+                        ],
+                        [
+                            'notes' => $compatibility->notes,
+                        ]
+                    );
+
+                    if ($newCompatibility->wasRecentlyCreated) {
+                        $syncedCount++;
+                    }
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => "Vehicle compatibility synced successfully.",
+            'synced_count' => $syncedCount,
+        ]);
+    }
+
+    private function getEquivalentProductIds(string $productId)
+    {
+        $groupIds = ProductEquivalentGroupItem::where('product_id', $productId)
+            ->pluck('group_id');
+
+        if ($groupIds->isEmpty()) {
+            return collect();
+        }
+
+        return ProductEquivalentGroupItem::whereIn('group_id', $groupIds)
+            ->where('product_id', '!=', $productId)
+            ->pluck('product_id')
+            ->unique()
+            ->values();
     }
 }

@@ -63,6 +63,10 @@ Route::prefix('products')->group(function () {
     Route::get('/parts', [ProductController::class, 'parts']);
     Route::post('/parts', [ProductReferenceController::class, 'storePart']);
 
+    // Vehicle compatibility routes
+    Route::post('/{productId}/vehicle-compatibilities', [ProductController::class, 'addVehicleCompatibility']);
+    Route::post('/{productId}/vehicle-compatibilities/sync-equivalents', [ProductController::class, 'syncVehicleCompatibilityToEquivalents']);
+
     // SKU preview route
     Route::get('/sku-preview', [ProductController::class, 'skuPreview']);
 

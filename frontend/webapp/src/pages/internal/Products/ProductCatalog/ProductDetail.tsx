@@ -7,6 +7,7 @@ import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import { Trash2, Pencil, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
+import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addVehicleCompatibility";
 import api from "@/api/axios";
 
 interface ProductPrice {
@@ -312,6 +313,7 @@ const ProductDetail: React.FC = () => {
   const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
 
   const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
@@ -860,7 +862,7 @@ const ProductDetail: React.FC = () => {
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold">Compatible Vehicles</h2>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => setIsAddVehicleOpen(true)}>
                   + Add Vehicle
                 </Button>
               </div>
@@ -1115,6 +1117,16 @@ const ProductDetail: React.FC = () => {
         suppliers={suppliers}
         onSaved={async () => {
           await loadProduct();
+        }}
+      />
+
+      <AddVehicleCompatibility
+        open={isAddVehicleOpen}
+        onOpenChange={setIsAddVehicleOpen}
+        productId={product.id}
+        onSaved={async () => {
+          await loadProduct();
+          await loadEquivalentGroups(product.id);
         }}
       />
     </div>

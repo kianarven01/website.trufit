@@ -11,6 +11,8 @@ use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Models\ProductEquivalent;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Product\Domain\Models\ProductEquivalentGroupItem;
+use App\Domains\Product\Domain\Models\ProductEquivalentGroup;
 
 class Product extends Model
 {
@@ -111,29 +113,7 @@ class Product extends Model
         );
     }
 
-    public function equivalentProducts()
-    {
-        return $this->belongsToMany(
-            Product::class,
-            'Main.ProductEquivalents',
-            'base_product_id',
-            'equivalent_product_id'
-        )->withPivot([
-            'id',
-        ]);
-    }
-
-    public function equivalentToProducts()
-    {
-        return $this->belongsToMany(
-            Product::class,
-            'Main.ProductEquivalents',
-            'equivalent_product_id',
-            'base_product_id'
-        )->withPivot([
-            'id',
-        ]);
-    }
+   
 
     public function inventoryRelation()
     {
@@ -149,4 +129,23 @@ class Product extends Model
     {
         return $this->belongsTo(Part::class, 'part_id', 'id');
     }
-}
+
+    public function equivalentGroupItems()
+    {
+        return $this->hasMany(
+            ProductEquivalentGroupItem::class,
+            'product_id',
+            'id'
+        );
+    }
+
+    public function equivalentGroups()
+    {
+        return $this->belongsToMany(
+            ProductEquivalentGroup::class,
+            'Main.ProductEquivalentGroupItems',
+            'product_id',
+            'group_id'
+        )->withPivot(['id']);
+    }
+    }

@@ -20,12 +20,13 @@ class Manufacturers extends Model
     protected $fillable = [
         'name',
         'type',
+        'code',
     ];
 
     protected $casts = [
         'id' => 'integer',
+        'code' => 'string',
     ];
-
     public function vehicleModels()
     {
         return $this->hasMany(VehicleModel::class, 'manufacturer_id', 'id');

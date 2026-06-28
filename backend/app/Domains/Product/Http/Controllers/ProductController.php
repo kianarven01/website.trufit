@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use App\Domains\Product\Domain\Models\Part;
+use App\Domains\Product\Domain\Models\Manufacturers;
+
+use App\Domains\Product\Domain\Models\ProductEquivalentGroupItem;
+use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 
 class ProductController extends Controller
 {
@@ -27,13 +32,13 @@ class ProductController extends Controller
         $baseQuery = Product::query()
             ->with([
                 'category',
-                'part',
                 'manufacturer',
                 'unitRelation',
+                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
                 'inventoryRelation',
-                'inventoryRows',
+                
             ]);
 
         if ($categoryId) {
@@ -92,13 +97,12 @@ class ProductController extends Controller
             $equivalentProducts = Product::query()
                 ->with([
                     'category',
-                    'part',
                     'manufacturer',
                     'unitRelation',
                     'productSuppliers.supplier',
                     'productSuppliers.price',
                     'inventoryRelation',
-                    'inventoryRows',
+
                 ])
                 ->whereIn('id', $equivalentProductIds)
                 ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
@@ -155,6 +159,40 @@ class ProductController extends Controller
     ): JsonResponse {
         $validated = $request->validated();
 
+        if (
+            empty($validated['SKU']) &&
+            !empty($validated['manufacturer_id']) &&
+            !empty($validated['part_id'])
+        ) {
+            $validated['SKU'] = $this->generateSku(
+                (int) $validated['manufacturer_id'],
+                (int) $validated['part_id']
+            );
+        }
+
+        if (empty($validated['barcode']) && !empty($validated['SKU'])) {
+            $validated['barcode'] = $validated['SKU'];
+        }
+
+        if (empty($validated['barcode']) && !empty($validated['SKU'])) {
+            $validated['barcode'] = $validated['SKU'];
+        }
+
+        if (!empty($validated['barcode'])) {
+            $barcodeExists = Product::query()
+                ->where('barcode', $validated['barcode'])
+                ->exists();
+
+            if ($barcodeExists) {
+                return response()->json([
+                    'message' => 'The barcode has already been taken.',
+                    'errors' => [
+                        'barcode' => ['The barcode has already been taken.'],
+                    ],
+                ], 422);
+            }
+        }
+
         if ($request->hasFile('image')) {
             try {
                 $validated['image_path'] = $imageUploader->upload($request->file('image'));
@@ -171,13 +209,11 @@ class ProductController extends Controller
 
         $product->load([
             'category',
-            'part',
             'manufacturer',
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
             'inventoryRelation',
-            'inventoryRows',
         ]);
 
         return response()->json([
@@ -206,13 +242,11 @@ class ProductController extends Controller
 
         $freshProduct = $product->fresh([
             'category',
-            'part',
             'manufacturer',
             'unitRelation',
             'productSuppliers.supplier',
             'productSuppliers.price',
             'inventoryRelation',
-            'inventoryRows',
         ]);
 
         return response()->json([
@@ -226,15 +260,13 @@ class ProductController extends Controller
         $product = Product::query()
             ->with([
                 'category',
-                'part',
                 'manufacturer',
                 'unitRelation',
+                'part',
                 'productSuppliers.supplier',
                 'productSuppliers.price',
-                'equivalentProducts',
-                'equivalentToProducts',
                 'inventoryRelation',
-                'inventoryRows',
+                'vehicleCompatibilities.vehicleVariant',
             ])
             ->where('id', $id)
             ->firstOrFail();
@@ -253,21 +285,6 @@ class ProductController extends Controller
     ): array {
         $productSuppliers = $product->productSuppliers ?? collect();
         $firstProductSupplier = $productSuppliers->first();
-
-        $inventoryRows = $product->relationLoaded('inventoryRows')
-            ? $product->inventoryRows
-            : $product->inventoryRows()->get();
-
-        $totalStock = $inventoryRows->sum(fn ($inventory) => (int) $inventory->quantity_on_hand);
-        $totalReserved = $inventoryRows->sum(fn ($inventory) => (int) $inventory->reserved_quantity);
-        $availableStock = max($totalStock - $totalReserved, 0);
-        $maxReorderLevel = $inventoryRows->max('reorder_level') ?? 0;
-
-        $stockStatus = match (true) {
-            $availableStock <= 0 => 'Out of Stock',
-            $maxReorderLevel > 0 && $availableStock <= $maxReorderLevel => 'Low Stock',
-            default => 'In Stock',
-        };
 
         return [
             'id' => $product->id,
@@ -305,13 +322,11 @@ class ProductController extends Controller
              * Inventory should now be stock-focused.
              * sell_price is intentionally not treated as the product's true selling price.
              */
-            'quantity_on_hand' => $totalStock,
-            'reserved_quantity' => $totalReserved,
-            'available_quantity' => $availableStock,
-            'reorder_level' => $maxReorderLevel,
+            'quantity_on_hand' => $product->inventoryRelation?->quantity_on_hand,
+            'reserved_quantity' => $product->inventoryRelation?->reserved_quantity,
+            'reorder_level' => $product->inventoryRelation?->reorder_level,
             'reorder_qty' => $product->inventoryRelation?->reorder_qty,
             'location_id' => $product->inventoryRelation?->location_id,
-            'stock_status' => $stockStatus,
             'sell_price' => null,
 
             /*
@@ -401,7 +416,6 @@ class ProductController extends Controller
 
             return $product->fresh([
                 'category',
-                'part',
                 'manufacturer',
                 'unitRelation',
                 'productSuppliers.supplier',
@@ -439,5 +453,208 @@ class ProductController extends Controller
         return response()->json([
             'data' => $parts,
         ]);
+    }
+
+    public function skuPreview(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'manufacturer_id' => ['required', 'integer'],
+            'part_id' => ['required', 'integer'],
+        ]);
+
+        $sku = $this->generateSku(
+            (int) $validated['manufacturer_id'],
+            (int) $validated['part_id']
+        );
+
+        return response()->json([
+            'sku' => $sku,
+        ]);
+    }
+
+    private function generateSku(int $manufacturerId, int $partId): string
+    {
+        $manufacturer = Manufacturers::query()->findOrFail($manufacturerId);
+        $part = Part::query()->findOrFail($partId);
+
+        $manufacturerCode = $this->normalizeSkuCode(
+            $manufacturer->code ?: $manufacturer->name,
+            3
+        );
+
+        $partCode = $this->normalizeSkuCode(
+            $part->code ?: $part->name,
+            4
+        );
+
+        $prefix = "{$manufacturerCode}-{$partCode}";
+
+        $existingSkus = Product::query()
+            ->where('SKU', 'like', "{$prefix}-%")
+            ->pluck('SKU');
+
+        $maxSequence = 0;
+
+        foreach ($existingSkus as $sku) {
+            if (preg_match('/^' . preg_quote($prefix, '/') . '-(\d+)$/i', $sku, $matches)) {
+                $maxSequence = max($maxSequence, (int) $matches[1]);
+            }
+        }
+
+        $nextSequence = $maxSequence + 1;
+
+        return sprintf('%s-%03d', $prefix, $nextSequence);
+    }
+
+    private function normalizeSkuCode(?string $value, int $fallbackLength = 3): string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return 'GEN';
+        }
+
+        $words = preg_split('/[\s\-_]+/', strtoupper($value));
+
+        if (count($words) > 1) {
+            $code = collect($words)
+                ->filter()
+                ->map(fn ($word) => substr($word, 0, 1))
+                ->join('');
+        } else {
+            $code = strtoupper(substr($value, 0, $fallbackLength));
+        }
+
+        $code = preg_replace('/[^A-Z0-9]/', '', $code);
+
+        return $code ?: 'GEN';
+    }
+
+    public function addVehicleCompatibility(Request $request, string $productId): JsonResponse
+    {
+        $validated = $request->validate([
+            'car_variant_id' => ['required', 'integer'],
+            'notes' => ['nullable', 'string'],
+            'apply_to_equivalents' => ['nullable', 'boolean'],
+        ]);
+
+        $product = Product::findOrFail($productId);
+
+        $result = DB::transaction(function () use ($product, $validated) {
+            $createdCount = 0;
+
+            $mainCompatibility = ProductVehicleCompatibility::firstOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'car_variant_id' => $validated['car_variant_id'],
+                ],
+                [
+                    'notes' => $validated['notes'] ?? null,
+                ]
+            );
+
+            if ($mainCompatibility->wasRecentlyCreated) {
+                $createdCount++;
+            }
+
+            $equivalentCreatedCount = 0;
+
+            if (!empty($validated['apply_to_equivalents'])) {
+                $equivalentProductIds = $this->getEquivalentProductIds($product->id);
+
+                foreach ($equivalentProductIds as $equivalentProductId) {
+                    $compatibility = ProductVehicleCompatibility::firstOrCreate(
+                        [
+                            'product_id' => $equivalentProductId,
+                            'car_variant_id' => $validated['car_variant_id'],
+                        ],
+                        [
+                            'notes' => $validated['notes'] ?? null,
+                        ]
+                    );
+
+                    if ($compatibility->wasRecentlyCreated) {
+                        $equivalentCreatedCount++;
+                    }
+                }
+            }
+
+            return [
+                'created_count' => $createdCount,
+                'equivalent_created_count' => $equivalentCreatedCount,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Vehicle compatibility saved successfully.',
+            'created_count' => $result['created_count'],
+            'equivalent_created_count' => $result['equivalent_created_count'],
+        ]);
+    }
+
+    public function syncVehicleCompatibilityToEquivalents(string $productId): JsonResponse
+    {
+        $product = Product::findOrFail($productId);
+
+        $sourceCompatibilities = ProductVehicleCompatibility::where('product_id', $product->id)->get();
+
+        if ($sourceCompatibilities->isEmpty()) {
+            return response()->json([
+                'message' => 'This product has no vehicle compatibility records to sync.',
+                'synced_count' => 0,
+            ]);
+        }
+
+        $equivalentProductIds = $this->getEquivalentProductIds($product->id);
+
+        if ($equivalentProductIds->isEmpty()) {
+            return response()->json([
+                'message' => 'This product has no equivalent products to sync with.',
+                'synced_count' => 0,
+            ]);
+        }
+
+        $syncedCount = 0;
+
+        DB::transaction(function () use ($sourceCompatibilities, $equivalentProductIds, &$syncedCount) {
+            foreach ($equivalentProductIds as $equivalentProductId) {
+                foreach ($sourceCompatibilities as $compatibility) {
+                    $newCompatibility = ProductVehicleCompatibility::firstOrCreate(
+                        [
+                            'product_id' => $equivalentProductId,
+                            'car_variant_id' => $compatibility->car_variant_id,
+                        ],
+                        [
+                            'notes' => $compatibility->notes,
+                        ]
+                    );
+
+                    if ($newCompatibility->wasRecentlyCreated) {
+                        $syncedCount++;
+                    }
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => "Vehicle compatibility synced successfully.",
+            'synced_count' => $syncedCount,
+        ]);
+    }
+
+    private function getEquivalentProductIds(string $productId)
+    {
+        $groupIds = ProductEquivalentGroupItem::where('product_id', $productId)
+            ->pluck('group_id');
+
+        if ($groupIds->isEmpty()) {
+            return collect();
+        }
+
+        return ProductEquivalentGroupItem::whereIn('group_id', $groupIds)
+            ->where('product_id', '!=', $productId)
+            ->pluck('product_id')
+            ->unique()
+            ->values();
     }
 }

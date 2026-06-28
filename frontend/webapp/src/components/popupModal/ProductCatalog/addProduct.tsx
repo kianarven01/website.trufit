@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 interface Option {
   id: string;
   name?: string;
+  code?: string;
   CompanyName?: string;
   company_name?: string;
   label?: string;
@@ -24,6 +25,7 @@ interface Option {
 interface PartOption {
   id: string;
   name: string;
+  code?: string | null;
   description?: string | null;
   category_id: string;
   category_name?: string | null;
@@ -32,8 +34,6 @@ interface PartOption {
 interface ProductSupplierInput {
   supplier_id: string;
   supplier_cost: string;
-  is_vat?: boolean;
-  vat_percent?: string;
 }
 
 interface ProductModalProps {
@@ -48,6 +48,13 @@ interface ProductModalProps {
 }
 
 type ProductNameMode = "auto" | "manual";
+type ProductSkuMode = "auto" | "manual";
+type ReferenceModalType = "category" | "part" | "manufacturer" | "unit" | null;
+
+const ADD_NEW_CATEGORY = "__add_new_category__";
+const ADD_NEW_PART = "__add_new_part__";
+const ADD_NEW_MANUFACTURER = "__add_new_manufacturer__";
+const ADD_NEW_UNIT = "__add_new_unit__";
 
 export default function ProductModal({
   open,
@@ -61,10 +68,24 @@ export default function ProductModal({
 }: ProductModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [localCategories, setLocalCategories] = useState<Option[]>(categories);
+  const [localManufacturers, setLocalManufacturers] = useState<Option[]>(manufacturers);
+  const [referenceModalType, setReferenceModalType] = useState<ReferenceModalType>(null);
+  const [savingReference, setSavingReference] = useState(false);
+  const [referenceForm, setReferenceForm] = useState({
+    name: "",
+    code: "",
+    abbreviation: "",
+    category_id: "",
+    description: "",
+  });
+
   const [units, setUnits] = useState<Option[]>([]);
   const [parts, setParts] = useState<PartOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [productNameMode, setProductNameMode] = useState<ProductNameMode>("auto");
+  const [productSkuMode, setProductSkuMode] = useState<ProductSkuMode>("auto");
+  const [skuLoading, setSkuLoading] = useState(false);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -86,6 +107,14 @@ export default function ProductModal({
   const [productSuppliers, setProductSuppliers] = useState<
     ProductSupplierInput[]
   >([]);
+
+  useEffect(() => {
+    setLocalCategories(categories);
+  }, [categories]);
+
+  useEffect(() => {
+    setLocalManufacturers(manufacturers);
+  }, [manufacturers]);
 
   useEffect(() => {
     if (!open) return;
@@ -110,6 +139,7 @@ export default function ProductModal({
           (Array.isArray(rows) ? rows : []).map((row: any) => ({
             id: String(row.id),
             name: String(row.name || ""),
+            code: row.code ?? null,
             description: row.description ?? null,
             category_id: String(row.category_id ?? ""),
             category_name: row.category_name ?? null,
@@ -154,13 +184,13 @@ export default function ProductModal({
   };
 
   const selectedManufacturerName = useMemo(() => {
-    const selectedManufacturer = manufacturers.find(
+    const selectedManufacturer = localManufacturers.find(
       (manufacturer) =>
         String(manufacturer.id) === String(form.manufacturer_id)
     );
 
     return getOptionName(selectedManufacturer);
-  }, [manufacturers, form.manufacturer_id]);
+  }, [localManufacturers, form.manufacturer_id]);
 
   const selectedPartName = useMemo(() => {
     const selectedPart = parts.find(
@@ -204,6 +234,61 @@ export default function ProductModal({
     });
   }, [open, productNameMode, generatedProductName]);
 
+  useEffect(() => {
+    if (!open || productSkuMode !== "auto") return;
+
+    if (!form.manufacturer_id || !form.part_id) {
+      setForm((prev) => ({
+        ...prev,
+        SKU: "",
+      }));
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSkuPreview = async () => {
+      setSkuLoading(true);
+
+      try {
+        const res = await api.get("/products/sku-preview", {
+          params: {
+            manufacturer_id: form.manufacturer_id,
+            part_id: form.part_id,
+          },
+        });
+
+        const generatedSku = String(res.data?.sku || "");
+
+        if (!cancelled) {
+          setForm((prev) => ({
+            ...prev,
+            SKU: generatedSku,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to generate SKU preview:", error);
+
+        if (!cancelled) {
+          setForm((prev) => ({
+            ...prev,
+            SKU: "",
+          }));
+        }
+      } finally {
+        if (!cancelled) {
+          setSkuLoading(false);
+        }
+      }
+    };
+
+    void loadSkuPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, productSkuMode, form.manufacturer_id, form.part_id]);
+
   const handleProductNameModeChange = (mode: ProductNameMode) => {
     setProductNameMode(mode);
 
@@ -211,6 +296,22 @@ export default function ProductModal({
       setForm((prev) => ({
         ...prev,
         name: generatedProductName,
+      }));
+    }
+  };
+
+  const handleProductSkuModeChange = (mode: ProductSkuMode) => {
+    setProductSkuMode(mode);
+
+    if (mode === "manual") {
+      setSkuLoading(false);
+      return;
+    }
+
+    if (!form.manufacturer_id || !form.part_id) {
+      setForm((prev) => ({
+        ...prev,
+        SKU: "",
       }));
     }
   };
@@ -272,8 +373,6 @@ export default function ProductModal({
       {
         supplier_id: "",
         supplier_cost: "",
-        is_vat: false,
-        vat_percent: "12",
       },
     ]);
   };
@@ -285,7 +384,7 @@ export default function ProductModal({
   const updateSupplierRow = (
     index: number,
     key: keyof ProductSupplierInput,
-    value: any
+    value: string
   ) => {
     setProductSuppliers((prev) =>
       prev.map((supplier, i) =>
@@ -334,8 +433,19 @@ export default function ProductModal({
 
     setProductSuppliers([]);
     setProductNameMode("auto");
+    setProductSkuMode("auto");
+    setSkuLoading(false);
     setImageFile(null);
     setImagePreview("");
+    setReferenceModalType(null);
+    setSavingReference(false);
+    setReferenceForm({
+      name: "",
+      code: "",
+      abbreviation: "",
+      category_id: "",
+      description: "",
+    });
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -350,6 +460,143 @@ export default function ProductModal({
     onOpenChange(nextOpen);
   };
 
+  const openReferenceModal = (type: ReferenceModalType) => {
+    if (!type) return;
+
+    setReferenceModalType(type);
+    setReferenceForm({
+      name: "",
+      code: "",
+      abbreviation: "",
+      category_id: type === "part" ? form.category_id : "",
+      description: "",
+    });
+  };
+
+  const closeReferenceModal = () => {
+    setReferenceModalType(null);
+    setSavingReference(false);
+    setReferenceForm({
+      name: "",
+      code: "",
+      abbreviation: "",
+      category_id: "",
+      description: "",
+    });
+  };
+
+  const handleSaveReference = async () => {
+    if (!referenceModalType) return;
+
+    const name = referenceForm.name.trim();
+
+    if (!name) {
+      alert("Name is required.");
+      return;
+    }
+
+    setSavingReference(true);
+
+    try {
+      if (referenceModalType === "category") {
+        const res = await api.post("/products/categories", {
+          name,
+          code: referenceForm.code.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.category || res.data;
+        const newCategory: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || undefined),
+        };
+
+        setLocalCategories((prev) => [...prev, newCategory]);
+        updateField("category_id", newCategory.id);
+      }
+
+      if (referenceModalType === "manufacturer") {
+        const res = await api.post("/products/manufacturers", {
+          name,
+          code: referenceForm.code.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.manufacturer || res.data;
+        const newManufacturer: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || undefined),
+        };
+
+        setLocalManufacturers((prev) => [...prev, newManufacturer]);
+        updateField("manufacturer_id", newManufacturer.id);
+      }
+
+      if (referenceModalType === "unit") {
+        const res = await api.post("/products/units", {
+          name,
+          abbreviation: referenceForm.abbreviation.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.unit || res.data;
+        const newUnit: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          label: created.abbreviation || referenceForm.abbreviation.trim() || undefined,
+        };
+
+        setUnits((prev) => [...prev, newUnit]);
+        updateField("unit", newUnit.id);
+      }
+
+      if (referenceModalType === "part") {
+        const selectedCategoryId = referenceForm.category_id || form.category_id;
+
+        if (!selectedCategoryId) {
+          alert("Please select a category for the new part.");
+          return;
+        }
+
+        const res = await api.post("/products/parts", {
+          name,
+          category_id: selectedCategoryId,
+          code: referenceForm.code.trim() || undefined,
+          description: referenceForm.description.trim() || undefined,
+        });
+
+        const created = res.data?.data || res.data?.part || res.data;
+        const newPart: PartOption = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || null),
+          description: created.description ?? (referenceForm.description.trim() || null),
+          category_id: String(created.category_id || selectedCategoryId),
+          category_name: created.category_name ?? null,
+        };
+
+        setParts((prev) => [...prev, newPart]);
+        setForm((prev) => ({
+          ...prev,
+          category_id: newPart.category_id,
+          part_id: newPart.id,
+        }));
+      }
+
+      closeReferenceModal();
+    } catch (error: any) {
+      console.error("Failed to save reference:", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to save reference item.";
+
+      alert(message);
+    } finally {
+      setSavingReference(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
 
@@ -357,7 +604,11 @@ export default function ProductModal({
       const payload = new FormData();
 
       payload.append("name", form.name.trim());
-      payload.append("SKU", form.SKU.trim());
+
+      if (form.SKU.trim()) {
+        payload.append("SKU", form.SKU.trim());
+      }
+
       payload.append("part_number", form.part_number.trim());
       payload.append("is_oem", form.is_oem ? "1" : "0");
 
@@ -410,18 +661,6 @@ export default function ProductModal({
             supplier.supplier_cost.trim()
           );
         }
-
-        payload.append(
-          `suppliers[${index}][is_vat]`,
-          supplier.is_vat ? "1" : "0"
-        );
-
-        if (supplier.is_vat && supplier.vat_percent) {
-          payload.append(
-            `suppliers[${index}][vat_percent]`,
-            String(supplier.vat_percent).trim()
-          );
-        }
       });
 
       if (variantId) {
@@ -455,10 +694,10 @@ export default function ProductModal({
     }
   };
 
-  const canSave =
-    form.name.trim() && form.SKU.trim() && form.part_number.trim();
+  const canSave = form.name.trim() && form.part_number.trim();
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleModalChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -575,60 +814,139 @@ export default function ProductModal({
             />
           </div>
 
-          <Input
-            placeholder="SKU"
-            value={form.SKU}
-            onChange={(e) => updateField("SKU", e.target.value)}
-          />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">SKU</span>
+
+              <div className="flex overflow-hidden rounded-md border text-xs">
+                <button
+                  type="button"
+                  onClick={() => handleProductSkuModeChange("auto")}
+                  className={`px-2 py-1 transition ${
+                    productSkuMode === "auto"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Auto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleProductSkuModeChange("manual")}
+                  className={`border-l px-2 py-1 transition ${
+                    productSkuMode === "manual"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                  }`}
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <Input
+              placeholder={
+                productSkuMode === "auto"
+                  ? skuLoading
+                    ? "Generating SKU..."
+                    : "Auto: Brand code + Part code + sequence"
+                  : "SKU"
+              }
+              value={form.SKU}
+              readOnly={productSkuMode === "auto"}
+              onChange={(e) => updateField("SKU", e.target.value.toUpperCase())}
+              className={productSkuMode === "auto" ? "opacity-80" : ""}
+            />
+          </div>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.category_id}
-            onChange={(e) => handleCategoryChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_CATEGORY) {
+                openReferenceModal("category");
+                return;
+              }
+
+              handleCategoryChange(value);
+            }}
           >
             <option value="">Select category</option>
 
-            {categories.map((category) => (
+            {localCategories.map((category) => (
               <option key={category.id} value={category.id}>
                 {getOptionLabel(category)}
               </option>
             ))}
+
+            <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
           </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.part_id}
-            onChange={(e) => handlePartChange(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_PART) {
+                openReferenceModal("part");
+                return;
+              }
+
+              handlePartChange(value);
+            }}
           >
-            <option value="">
-              {form.category_id ? "Select part" : "Select part"}
-            </option>
+            <option value="">Select part</option>
 
             {filteredParts.map((part) => (
               <option key={part.id} value={part.id}>
                 {part.name}
               </option>
             ))}
+
+            <option value={ADD_NEW_PART}>+ Add new part</option>
           </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.manufacturer_id}
-            onChange={(e) => updateField("manufacturer_id", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_MANUFACTURER) {
+                openReferenceModal("manufacturer");
+                return;
+              }
+
+              updateField("manufacturer_id", value);
+            }}
           >
             <option value="">Select manufacturer</option>
 
-            {manufacturers.map((manufacturer) => (
+            {localManufacturers.map((manufacturer) => (
               <option key={manufacturer.id} value={manufacturer.id}>
                 {getOptionLabel(manufacturer)}
               </option>
             ))}
+
+            <option value={ADD_NEW_MANUFACTURER}>+ Add new manufacturer</option>
           </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
             value={form.unit}
-            onChange={(e) => updateField("unit", e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+
+              if (value === ADD_NEW_UNIT) {
+                openReferenceModal("unit");
+                return;
+              }
+
+              updateField("unit", value);
+            }}
           >
             <option value="">Select unit</option>
 
@@ -637,6 +955,8 @@ export default function ProductModal({
                 {unit.name || "Unnamed unit"}
               </option>
             ))}
+
+            <option value={ADD_NEW_UNIT}>+ Add new unit</option>
           </select>
 
           <Input
@@ -646,7 +966,7 @@ export default function ProductModal({
           />
 
           <Input
-            placeholder="Barcode"
+            placeholder="Barcode (optional - defaults to SKU)"
             value={form.barcode}
             onChange={(e) => updateField("barcode", e.target.value)}
           />
@@ -683,103 +1003,55 @@ export default function ProductModal({
                 {productSuppliers.map((supplierRow, index) => (
                   <div
                     key={index}
-                    className="border rounded-lg p-3 space-y-3 bg-muted/30"
+                    className="grid grid-cols-12 gap-3 items-center"
                   >
-                    <div className="grid grid-cols-12 gap-3 items-center">
-                      <select
-                        className="col-span-6 border rounded-md px-3 py-2 bg-background text-sm"
-                        value={supplierRow.supplier_id}
-                        onChange={(e) =>
-                          updateSupplierRow(index, "supplier_id", e.target.value)
-                        }
-                      >
-                        <option value="">Select supplier</option>
+                    <select
+                      className="col-span-6 border rounded-md px-3 py-2 bg-background"
+                      value={supplierRow.supplier_id}
+                      onChange={(e) =>
+                        updateSupplierRow(index, "supplier_id", e.target.value)
+                      }
+                    >
+                      <option value="">Select supplier</option>
 
-                        {validSupplierOptions.map((supplier) => (
-                          <option
-                            key={supplier.id}
-                            value={supplier.id}
-                            disabled={isSupplierAlreadySelected(
-                              supplier.id,
-                              index
-                            )}
-                          >
-                            {getOptionLabel(supplier)}
-                          </option>
-                        ))}
-                      </select>
+                      {validSupplierOptions.map((supplier) => (
+                        <option
+                          key={supplier.id}
+                          value={supplier.id}
+                          disabled={isSupplierAlreadySelected(
+                            supplier.id,
+                            index
+                          )}
+                        >
+                          {getOptionLabel(supplier)}
+                        </option>
+                      ))}
+                    </select>
 
-                      <Input
-                        className="col-span-5"
-                        placeholder="Supplier cost"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={supplierRow.supplier_cost}
-                        onChange={(e) =>
-                          updateSupplierRow(
-                            index,
-                            "supplier_cost",
-                            e.target.value
-                          )
-                        }
-                      />
+                    <Input
+                      className="col-span-5"
+                      placeholder="Supplier cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={supplierRow.supplier_cost}
+                      onChange={(e) =>
+                        updateSupplierRow(
+                          index,
+                          "supplier_cost",
+                          e.target.value
+                        )
+                      }
+                    />
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="col-span-1 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 border-input"
-                        onClick={() => removeSupplierRow(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-4 items-center pl-1 text-xs">
-                      <span className="text-muted-foreground font-medium">Tax Type:</span>
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input
-                            type="radio"
-                            name={`isVat-${index}`}
-                            checked={!supplierRow.is_vat}
-                            onChange={() => updateSupplierRow(index, "is_vat", false)}
-                            className="accent-primary"
-                          />
-                          Non-VAT
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                          <input
-                            type="radio"
-                            name={`isVat-${index}`}
-                            checked={supplierRow.is_vat}
-                            onChange={() => updateSupplierRow(index, "is_vat", true)}
-                            className="accent-primary"
-                          />
-                          VAT
-                        </label>
-                      </div>
-
-                      {supplierRow.is_vat && (
-                        <div className="flex items-center gap-1.5 ml-4">
-                          <span className="text-muted-foreground font-medium">Percent (%):</span>
-                          <Input
-                            type="number"
-                            placeholder="12"
-                            className="h-7 w-16 text-xs px-2"
-                            value={supplierRow.vat_percent || ""}
-                            onChange={(e) =>
-                              updateSupplierRow(
-                                index,
-                                "vat_percent",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="col-span-1 px-2"
+                      onClick={() => removeSupplierRow(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -827,5 +1099,112 @@ export default function ProductModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {
+      if (!nextOpen) {
+        closeReferenceModal();
+      }
+    }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {referenceModalType === "category" && "Add Category"}
+            {referenceModalType === "part" && "Add Part"}
+            {referenceModalType === "manufacturer" && "Add Manufacturer"}
+            {referenceModalType === "unit" && "Add Unit"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <Input
+            placeholder="Name"
+            value={referenceForm.name}
+            onChange={(e) =>
+              setReferenceForm((prev) => ({ ...prev, name: e.target.value }))
+            }
+          />
+
+          {(referenceModalType === "category" ||
+            referenceModalType === "part" ||
+            referenceModalType === "manufacturer") && (
+            <Input
+              placeholder="Code (optional)"
+              value={referenceForm.code}
+              onChange={(e) =>
+                setReferenceForm((prev) => ({
+                  ...prev,
+                  code: e.target.value.toUpperCase(),
+                }))
+              }
+            />
+          )}
+
+          {referenceModalType === "unit" && (
+            <Input
+              placeholder="Abbreviation, example: pcs"
+              value={referenceForm.abbreviation}
+              onChange={(e) =>
+                setReferenceForm((prev) => ({
+                  ...prev,
+                  abbreviation: e.target.value,
+                }))
+              }
+            />
+          )}
+
+          {referenceModalType === "part" && (
+            <>
+              <select
+                className="w-full border rounded-md px-3 py-2 bg-background"
+                value={referenceForm.category_id}
+                onChange={(e) =>
+                  setReferenceForm((prev) => ({
+                    ...prev,
+                    category_id: e.target.value,
+                  }))
+                }
+              >
+                <option value="">Select category for this part</option>
+                {localCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getOptionLabel(category)}
+                  </option>
+                ))}
+              </select>
+
+              <Input
+                placeholder="Description (optional)"
+                value={referenceForm.description}
+                onChange={(e) =>
+                  setReferenceForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+              />
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={closeReferenceModal}
+            disabled={savingReference}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSaveReference}
+            disabled={savingReference}
+          >
+            {savingReference ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

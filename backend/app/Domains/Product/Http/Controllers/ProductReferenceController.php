@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 
 class ProductReferenceController extends Controller
 {
+    // New method to retrieve all product categories for product association
     public function categories(): JsonResponse
     {
         $categories = Category::query()
@@ -31,6 +32,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to retrieve all service categories for product association
     public function serviceCategories(): JsonResponse
     {
         $categories = ServiceCategory::query()
@@ -42,6 +44,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // Create with auto-generated code if not provided, and ensure code uniqueness to prevent conflicts
     public function storeServiceCategory(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -56,6 +59,7 @@ class ProductReferenceController extends Controller
         ], 201);
     }
 
+    // Update with option to change name, but if not provided, keep existing name to avoid breaking references
     public function updateServiceCategory(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
@@ -71,6 +75,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // Soft delete to preserve historical data integrity, and clear redundant string category column for associated services to prevent orphaned references
     public function deleteServiceCategory($id): JsonResponse
     {
         $category = ServiceCategory::findOrFail($id);
@@ -85,6 +90,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // Create with auto-generated code if not provided, and ensure code uniqueness to prevent conflicts
     public function storeCategory(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -103,6 +109,7 @@ class ProductReferenceController extends Controller
         ], 201);
     }
 
+    // Update with option to change code, but if not provided, keep existing code to avoid breaking references
     public function updateCategory(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
@@ -123,6 +130,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // Soft delete to preserve historical data integrity
     public function deleteCategory(string $id): JsonResponse
     {
         $category = Category::query()->where('id', $id)->firstOrFail();
@@ -134,6 +142,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to retrieve all units of measurement for products
     public function units(): JsonResponse
     {
         $units = Unit::query()
@@ -146,10 +155,43 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to create units of measurement for products
+    public function storeUnit(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'abbreviation' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $unit = Unit::query()
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->first();
+
+        if ($unit) {
+            return response()->json([
+                'message' => 'Unit already exists.',
+                'data' => $unit,
+            ], 409);
+        }
+
+        $unit = Unit::create([
+            'name' => trim($validated['name']),
+            'abbreviation' => isset($validated['abbreviation'])
+                ? trim($validated['abbreviation'])
+                : null,
+        ]);
+
+        return response()->json([
+            'message' => 'Unit created successfully.',
+            'data' => $unit,
+        ], 201);
+    }
+
+    // New method to create units of measurement for products
     public function manufacturers(): JsonResponse
     {
         $manufacturers = Manufacturers::query()
-            ->select('id', 'name', 'type')
+            ->select('id', 'name', 'type', 'code')
             ->where('type', 'Part')
             ->orderBy('name')
             ->get();
@@ -159,6 +201,89 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to create manufacturers for products with type 'Part'
+    public function storeManufacturer(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $manufacturer = Manufacturers::query()
+            ->where('type', 'Part')
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->first();
+
+        if ($manufacturer) {
+            return response()->json([
+                'message' => 'Manufacturer already exists.',
+                'data' => $manufacturer,
+            ], 409);
+        }
+
+        $manufacturer = Manufacturers::create([
+            'name' => trim($validated['name']),
+            'type' => 'Part',
+            'code' => !empty($validated['code'])
+                ? strtoupper(trim($validated['code']))
+                : $this->generateReferenceCode($validated['name']),
+        ]);
+
+        return response()->json([
+            'message' => 'Manufacturer created successfully.',
+            'data' => $manufacturer,
+        ], 201);
+    }
+
+    // New method to generate unique reference code based on name, with fallback to random string to ensure uniqueness
+    public function storePart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'integer'],
+            'code' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $category = Category::query()
+            ->where('id', $validated['category_id'])
+            ->firstOrFail();
+
+        $part = Part::query()
+            ->where('category_id', $category->id)
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->first();
+
+        if ($part) {
+            return response()->json([
+                'message' => 'Part already exists in this category.',
+                'data' => $part->load('category'),
+            ], 409);
+        }
+
+        $part = Part::create([
+            'name' => trim($validated['name']),
+            'category_id' => $category->id,
+            'code' => !empty($validated['code'])
+                ? strtoupper(trim($validated['code']))
+                : $this->generateReferenceCode($validated['name']),
+            'description' => $validated['description'] ?? null,
+        ]);
+
+        return response()->json([
+            'message' => 'Part created successfully.',
+            'data' => [
+                'id' => $part->id,
+                'name' => $part->name,
+                'description' => $part->description,
+                'category_id' => $part->category_id,
+                'category_name' => $category->name,
+                'code' => $part->code,
+            ],
+        ], 201);
+    }
+
+    // New method to retrieve all vehicles (manufacturers of type 'Vehicle') for product association
     public function vehicles(): JsonResponse
     {
         $vehicles = Manufacturers::query()
@@ -172,6 +297,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to handle custom vehicle creation with dynamic manufacturer and model handling
     public function storeCustomVehicle(Request $request)
     {
         $request->validate([
@@ -203,6 +329,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to retrieve all service types with their pricings and categories
     public function serviceTypes()
     {
         $services = ServiceType::with(['serviceCategory', 'pricings'])->get();
@@ -211,6 +338,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // New method to retrieve a single service type with its pricings and category
     public function showServiceType($id)
     {
         $service = ServiceType::with(['pricings', 'serviceCategory'])->find($id);
@@ -220,6 +348,7 @@ class ProductReferenceController extends Controller
         return response()->json(['data' => $service]);
     }
 
+    // Create with option to assign existing category or create new one on the fly, and handle associated pricings
     public function storeServiceType(Request $request)
     {
         $data = $request->validate([
@@ -266,6 +395,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // Update with option to change category and handle associated pricings
     public function updateServiceType(Request $request, $id)
     {
         $service = ServiceType::find($id);
@@ -318,6 +448,7 @@ class ProductReferenceController extends Controller
         ]);
     }
 
+    // Soft delete to preserve historical data integrity
     public function destroyServiceType($id)
     {
         $service = ServiceType::find($id);
@@ -326,5 +457,26 @@ class ProductReferenceController extends Controller
         }
         $service->delete();
         return response()->json(['message' => 'Service deleted successfully']);
+    }
+
+    // Helper method to generate a reference code based on the name, ensuring it is unique and consistent
+    private function generateReferenceCode(string $name): string
+    {
+        $words = preg_split('/[\s\-_]+/', strtoupper(trim($name)));
+
+        if (!$words || count($words) === 0) {
+            return 'GEN';
+        }
+
+        if (count($words) === 1) {
+            return substr(preg_replace('/[^A-Z0-9]/', '', $words[0]), 0, 3) ?: 'GEN';
+        }
+
+        $code = collect($words)
+            ->filter()
+            ->map(fn ($word) => substr(preg_replace('/[^A-Z0-9]/', '', $word), 0, 1))
+            ->join('');
+
+        return $code ?: 'GEN';
     }
 }

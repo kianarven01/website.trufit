@@ -7,6 +7,7 @@ import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import { Trash2, Pencil, Printer } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
+import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addVehicleCompatibility";
 import api from "@/api/axios";
 
 interface ProductPrice {
@@ -80,6 +81,25 @@ interface Product {
     type: string;
     reference: string;
   }[];
+}
+
+interface EquivalentProduct {
+  id: string;
+  name: string;
+  sku: string;
+  partNumber: string;
+  manufacturer: string;
+  stockStatus: string;
+  quantityOnHand: number;
+}
+
+interface EquivalentGroup {
+  id: string;
+  name: string;
+  partId?: string | number | null;
+  notes?: string | null;
+  products: EquivalentProduct[];
+  equivalentProducts: EquivalentProduct[];
 }
 
 interface CategoryOption {
@@ -241,6 +261,40 @@ const normalizeProduct = (row: any): Product => ({
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
 
+const normalizeEquivalentProduct = (row: any): EquivalentProduct => ({
+  id: String(row.id),
+  name: String(row.name || ""),
+  sku: String(row.SKU || row.sku || ""),
+  partNumber: String(row.part_number || row.partNumber || ""),
+  manufacturer:
+    row.manufacturer ||
+    row.manufacturer_name ||
+    row.Manufacturer?.name ||
+    row.brand?.name ||
+    row.Brand?.name ||
+    "-",
+  stockStatus: String(row.stock_status || row.stockStatus || "Out of Stock"),
+  quantityOnHand: Number(row.quantity_on_hand || row.quantityOnHand || 0),
+});
+
+const normalizeEquivalentGroup = (row: any): EquivalentGroup => {
+  const equivalentRows = Array.isArray(row.equivalent_products)
+    ? row.equivalent_products
+    : Array.isArray(row.equivalentProducts)
+    ? row.equivalentProducts
+    : [];
+
+  const productRows = Array.isArray(row.products) ? row.products : [];
+
+  return {
+    id: String(row.id),
+    name: String(row.name || "Equivalent Group"),
+    partId: row.part_id ?? row.partId ?? null,
+    notes: row.notes || null,
+    products: productRows.map(normalizeEquivalentProduct),
+    equivalentProducts: equivalentRows.map(normalizeEquivalentProduct),
+  };
+};
 
 const getStockBadgeClass = (status?: string) => {
   if (status === "In Stock") {
@@ -259,6 +313,7 @@ const ProductDetail: React.FC = () => {
   const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
+  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
 
   const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
@@ -285,6 +340,15 @@ const ProductDetail: React.FC = () => {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [loading, setLoading] = useState(!routeState?.product);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [equivalentGroups, setEquivalentGroups] = useState<EquivalentGroup[]>([]);
+  const [equivalentCandidates, setEquivalentCandidates] = useState<EquivalentProduct[]>([]);
+  const [isEquivalentOpen, setIsEquivalentOpen] = useState(false);
+  const [equivalentSearch, setEquivalentSearch] = useState("");
+  const [equivalentGroupName, setEquivalentGroupName] = useState("");
+  const [equivalentNotes, setEquivalentNotes] = useState("");
+  const [selectedEquivalentIds, setSelectedEquivalentIds] = useState<string[]>([]);
+  const [equivalentSaving, setEquivalentSaving] = useState(false);
+  const [equivalentLoading, setEquivalentLoading] = useState(false);
 
   const loadCategories = async () => {
     const res = await api.get("/products/categories");
@@ -383,10 +447,124 @@ const ProductDetail: React.FC = () => {
     }
   };
 
+  const loadEquivalentGroups = async (id: string) => {
+    try {
+      const res = await api.get(`/products/${id}/equivalent-groups`);
+      const rows = Array.isArray(res.data?.groups) ? res.data.groups : [];
+      setEquivalentGroups(rows.map(normalizeEquivalentGroup));
+    } catch (error) {
+      console.error("Failed to load equivalent groups:", error);
+      setEquivalentGroups([]);
+    }
+  };
+
+  const loadEquivalentCandidates = async () => {
+    if (!product?.id) return;
+
+    setEquivalentLoading(true);
+
+    try {
+      const res = await api.get(`/products/${product.id}/equivalent-candidates`, {
+        params: { search: equivalentSearch || undefined },
+      });
+
+      const rows = Array.isArray(res.data?.products) ? res.data.products : [];
+      const alreadyLinkedIds = new Set(
+        equivalentGroups.flatMap((group) =>
+          group.products.map((equivalentProduct) => equivalentProduct.id)
+        )
+      );
+
+      const normalizedCandidates: EquivalentProduct[] = rows.map(normalizeEquivalentProduct);
+
+      setEquivalentCandidates(
+        normalizedCandidates.filter((candidate: EquivalentProduct) => {
+          return !alreadyLinkedIds.has(candidate.id);
+        })
+      );
+    } catch (error) {
+      console.error("Failed to load equivalent candidates:", error);
+      setEquivalentCandidates([]);
+    } finally {
+      setEquivalentLoading(false);
+    }
+  };
+
+  const openEquivalentModal = () => {
+    setEquivalentGroupName(product ? `${product.name} Equivalent Group` : "");
+    setEquivalentNotes("");
+    setEquivalentSearch("");
+    setSelectedEquivalentIds([]);
+    setIsEquivalentOpen(true);
+  };
+
+  const toggleEquivalentSelection = (id: string) => {
+    setSelectedEquivalentIds((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id]
+    );
+  };
+
+  const handleCreateEquivalentGroup = async () => {
+    if (!product?.id) return;
+
+    setEquivalentSaving(true);
+
+    try {
+      await api.post(`/products/${product.id}/equivalent-groups`, {
+        name: equivalentGroupName.trim() || `${product.name} Equivalent Group`,
+        notes: equivalentNotes.trim() || null,
+        equivalent_product_ids: selectedEquivalentIds,
+      });
+
+      setIsEquivalentOpen(false);
+      await loadEquivalentGroups(product.id);
+    } catch (error: any) {
+      console.error("Failed to create equivalent group:", error);
+      alert(
+        error?.response?.data?.message ||
+          "Failed to save equivalent products. Please check the selected products."
+      );
+    } finally {
+      setEquivalentSaving(false);
+    }
+  };
+
+  const handleRemoveEquivalent = async (groupId: string, equivalentProductId: string) => {
+    if (!product?.id) return;
+
+    try {
+      await api.delete(
+        `/products/equivalent-groups/${groupId}/items/${equivalentProductId}`
+      );
+
+      await loadEquivalentGroups(product.id);
+    } catch (error: any) {
+      console.error("Failed to remove equivalent product:", error);
+      alert(error?.response?.data?.message || "Failed to remove equivalent product.");
+    }
+  };
+
   useEffect(() => {
     void Promise.all([loadCategories(), loadManufacturers(), loadSuppliers()]);
     void loadProduct();
   }, [routeState?.productId, productId]);
+
+  useEffect(() => {
+    if (!product?.id) {
+      setEquivalentGroups([]);
+      return;
+    }
+
+    void loadEquivalentGroups(product.id);
+  }, [product?.id]);
+
+  useEffect(() => {
+    if (!isEquivalentOpen || !product?.id) return;
+
+    void loadEquivalentCandidates();
+  }, [isEquivalentOpen, product?.id, equivalentSearch]);
 
   useEffect(() => {
     if (!product?.suppliers?.length) {
@@ -593,13 +771,16 @@ const ProductDetail: React.FC = () => {
 
                     <Separator className="col-span-2" />
 
-                    <div className="col-span-2 flex flex-col gap-1 mt-auto">
+                    <div className="col-span-2 flex flex-col gap-2 mt-auto">
                       <span className="text-muted-foreground">Description</span>
-                      <textarea
-                        className="w-full border rounded p-2 text-sm h-32 resize-none overflow-auto"
-                        value={product.description}
-                        readOnly
-                      />
+
+                      <div className="rounded-xl border border-border bg-muted/20 p-4 min-h-[90px]">
+                        <p className="text-sm whitespace-pre-wrap text-foreground">
+                          {product.description && product.description.trim()
+                            ? product.description
+                            : "-"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -681,7 +862,7 @@ const ProductDetail: React.FC = () => {
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold">Compatible Vehicles</h2>
-                <Button size="sm" variant="outline">
+                <Button size="sm" variant="outline" onClick={() => setIsAddVehicleOpen(true)}>
                   + Add Vehicle
                 </Button>
               </div>
@@ -712,29 +893,79 @@ const ProductDetail: React.FC = () => {
           <Card className="p-4 flex-1 min-h-0">
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
-                <h2 className="font-semibold">Cross References</h2>
-                <Button size="sm" variant="outline">
-                  + Add Reference
+                <h2 className="font-semibold">Equivalent Products</h2>
+                <Button size="sm" variant="outline" onClick={openEquivalentModal}>
+                  + Add Equivalent
                 </Button>
               </div>
 
-              <div className="space-y-2 text-sm flex-1 min-h-0 overflow-auto">
-                {product.crossReferences && product.crossReferences.length > 0 ? (
-                  product.crossReferences.map((ref, idx) => (
-                    <div
-                      key={idx}
-                      className="flex justify-between items-center border-b pb-2"
-                    >
-                      <div className="flex gap-6 text-xs">
-                        <span className="w-24">{ref.type}</span>
-                        <span>{ref.reference}</span>
+              <div className="space-y-3 text-sm flex-1 min-h-0 overflow-auto">
+                {equivalentGroups.length > 0 ? (
+                  equivalentGroups.map((group) => {
+                    const equivalentProducts = group.equivalentProducts.length
+                      ? group.equivalentProducts
+                      : group.products.filter(
+                          (equivalentProduct) => equivalentProduct.id !== product.id
+                        );
+
+                    return (
+                      <div key={group.id} className="rounded-lg border border-border p-3 space-y-2">
+                        <div>
+                          <p className="text-sm font-medium">{group.name}</p>
+                          {group.notes && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {group.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        {equivalentProducts.length > 0 ? (
+                          <div className="space-y-2">
+                            {equivalentProducts.map((equivalentProduct) => (
+                              <div
+                                key={equivalentProduct.id}
+                                className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-3 py-2"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">
+                                    {equivalentProduct.name}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    SKU: {equivalentProduct.sku || "-"} • Part No: {equivalentProduct.partNumber || "-"}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    Brand: {equivalentProduct.manufacturer || "-"} • Stock: {equivalentProduct.quantityOnHand}
+                                  </p>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {equivalentProduct.stockStatus}
+                                  </Badge>
+                                  <button
+                                    type="button"
+                                    title="Remove equivalent product"
+                                    onClick={() =>
+                                      handleRemoveEquivalent(group.id, equivalentProduct.id)
+                                    }
+                                  >
+                                    <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-muted-foreground text-xs italic">
+                            This group has no other equivalent products yet.
+                          </div>
+                        )}
                       </div>
-                      <Trash2 className="w-4 h-4 text-muted-foreground cursor-pointer" />
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-muted-foreground text-xs italic">
-                    No cross references added yet.
+                    No equivalent products added yet.
                   </div>
                 )}
               </div>
@@ -742,6 +973,126 @@ const ProductDetail: React.FC = () => {
           </Card>
         </div>
       </div>
+
+
+      {isEquivalentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-background p-5 shadow-xl space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Add Equivalent Products</h2>
+                <p className="text-sm text-muted-foreground">
+                  Only products with the same part type can be added.
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEquivalentOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Group Name</label>
+                <input
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                  value={equivalentGroupName}
+                  onChange={(event) => setEquivalentGroupName(event.target.value)}
+                  placeholder="Example: Toyota Vios Oil Filter Group"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Search Products</label>
+                <input
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                  value={equivalentSearch}
+                  onChange={(event) => setEquivalentSearch(event.target.value)}
+                  placeholder="Search name, SKU, part no, barcode"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Notes</label>
+              <textarea
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none min-h-[70px] resize-none"
+                value={equivalentNotes}
+                onChange={(event) => setEquivalentNotes(event.target.value)}
+                placeholder="Optional notes about fitment or engine series"
+              />
+            </div>
+
+            <div className="rounded-lg border border-border max-h-72 overflow-auto">
+              {equivalentLoading ? (
+                <div className="p-4 text-sm text-muted-foreground">
+                  Loading matching products...
+                </div>
+              ) : equivalentCandidates.length > 0 ? (
+                equivalentCandidates.map((candidate) => {
+                  const selected = selectedEquivalentIds.includes(candidate.id);
+
+                  return (
+                    <button
+                      type="button"
+                      key={candidate.id}
+                      onClick={() => toggleEquivalentSelection(candidate.id)}
+                      className={`w-full text-left px-4 py-3 border-b border-border last:border-b-0 transition ${
+                        selected ? "bg-primary/10" : "hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {candidate.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            SKU: {candidate.sku || "-"} • Part No: {candidate.partNumber || "-"} • Brand: {candidate.manufacturer || "-"}
+                          </p>
+                        </div>
+
+                        <Badge variant={selected ? "default" : "secondary"}>
+                          {selected ? "Selected" : candidate.stockStatus}
+                        </Badge>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="p-4 text-sm text-muted-foreground">
+                  No matching equivalent products found. Add another product with the same part type first.
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                Selected products: {selectedEquivalentIds.length}
+              </p>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEquivalentOpen(false)}
+                  disabled={equivalentSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateEquivalentGroup}
+                  disabled={equivalentSaving || selectedEquivalentIds.length === 0}
+                >
+                  {equivalentSaving ? "Saving..." : "Save Equivalents"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ProductModal
         open={isEditOpen}
@@ -766,6 +1117,16 @@ const ProductDetail: React.FC = () => {
         suppliers={suppliers}
         onSaved={async () => {
           await loadProduct();
+        }}
+      />
+
+      <AddVehicleCompatibility
+        open={isAddVehicleOpen}
+        onOpenChange={setIsAddVehicleOpen}
+        productId={product.id}
+        onSaved={async () => {
+          await loadProduct();
+          await loadEquivalentGroups(product.id);
         }}
       />
     </div>

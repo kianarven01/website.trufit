@@ -4,6 +4,8 @@ namespace App\Domains\Estimate\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Domains\Product\Domain\Models\ServiceType;
+use App\Domains\Product\Domain\Models\Product;
 
 class EstimateItem extends Model
 {
@@ -35,5 +37,15 @@ class EstimateItem extends Model
     public function estimate()
     {
         return $this->belongsTo(Estimate::class, 'estimate_id', 'id');
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(ServiceType::class, 'service_id', 'id');
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id', 'id');
     }
 }

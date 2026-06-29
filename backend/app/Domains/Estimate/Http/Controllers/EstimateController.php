@@ -187,12 +187,14 @@ class EstimateController extends Controller
                 $employee->load('role');
             }
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.estimate', [
+            $filename = 'estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT) . '.pdf';
+
+            return \Spatie\LaravelPdf\Facades\Pdf::view('pdfs.estimate', [
                 'estimate' => $estimate,
                 'employee' => $employee,
-            ]);
-
-            return $pdf->stream('estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT) . '.pdf');
+            ])
+            ->format('a4')
+            ->inline($filename);
         } catch (\Exception $e) {
             Log::error('Failed to generate estimate PDF: ' . $e->getMessage());
             return response()->json([
@@ -201,4 +203,5 @@ class EstimateController extends Controller
             ], 500);
         }
     }
+
 }

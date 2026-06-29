@@ -45,7 +45,7 @@ const SupplierList: React.FC = () => {
   const loadSuppliers = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/products/suppliers');
+      const res = await api.get('/suppliers');
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
       setSuppliers(rows);
     } catch (error) {
@@ -85,9 +85,9 @@ const filtered = suppliers.filter((s) => {
   const handleSaveSupplier = async (newSupplier: Supplier) => {
     try {
       if (editingSupplier) {
-        await api.put(`/products/suppliers/${newSupplier.id}`, newSupplier);
+        await api.put(`/suppliers/${newSupplier.id}`, newSupplier);
       } else {
-        await api.post('/products/suppliers', newSupplier);
+        await api.post('/suppliers', newSupplier);
       }
       await loadSuppliers();
     } catch (error) {

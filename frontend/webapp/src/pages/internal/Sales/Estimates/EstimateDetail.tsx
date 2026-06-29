@@ -127,7 +127,13 @@ const EstimateDetail: React.FC = () => {
           api.get('/products'),
         ]);
 
-        setEstimate(estimateRes.data.data);
+        const estData = estimateRes.data.data;
+        setEstimate(estData);
+
+        if (estData?.estimate_number) {
+          sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${id}`, estData.estimate_number);
+          window.dispatchEvent(new Event('breadcrumb-update'));
+        }
 
         const dbServiceTypes = serviceTypesRes.data.data || [];
         setServicesCatalog(dbServiceTypes.map((s: any) => ({
@@ -158,6 +164,9 @@ const EstimateDetail: React.FC = () => {
       }
     };
     if (id) fetchData();
+    return () => {
+      sessionStorage.removeItem(`breadcrumb-/webapp/sales/estimates/${id}`);
+    };
   }, [id]);
 
   /* ================= DERIVED ================= */
@@ -240,7 +249,10 @@ const EstimateDetail: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `estimate-${estimate.id.substring(0,8)}.pdf`);
+      const fileName = estimate.estimate_number 
+        ? `${estimate.estimate_number}.pdf` 
+        : `estimate-${estimate.id.substring(0,8)}.pdf`;
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
@@ -308,16 +320,6 @@ const EstimateDetail: React.FC = () => {
             </Button>
             {isSupervisorOrAdmin && (
               <>
-                {(estimate.status?.toUpperCase() === "FOR APPROVAL" ||
-                  estimate.status?.toUpperCase() === "FOR_APPROVAL") && (
-                  <Button
-                    size="sm"
-                    onClick={handleApproveEstimate}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    Approve Estimate
-                  </Button>
-                )}
                 <Button size="sm" onClick={handleEditEstimate}>
                   Edit Estimate
                 </Button>

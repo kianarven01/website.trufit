@@ -145,6 +145,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [mileage, setMileage] = useState<number>(0);
+  const [estimateNumber, setEstimateNumber] = useState<string>("");
   
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
@@ -415,6 +416,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           return;
         }
 
+        if (found.estimate_number) {
+          setEstimateNumber(found.estimate_number);
+          sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`, found.estimate_number);
+          window.dispatchEvent(new Event('breadcrumb-update'));
+        }
+
         const cust = found.customer;
         const normalizedCust = cust ? {
           id: String(cust.customer_id),
@@ -490,6 +497,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       }
     };
     fetchEstimate();
+    return () => {
+      if (estimateId) {
+        sessionStorage.removeItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`);
+      }
+    };
   }, [mode, estimateId, servicesCatalog]);
 
   const updateJO = (idx: number, serviceId: string) => {
@@ -751,7 +763,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `estimate-${estimateId.substring(0,8)}.pdf`);
+      const fileName = estimateNumber 
+        ? `${estimateNumber}.pdf` 
+        : `estimate-${estimateId.substring(0,8)}.pdf`;
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);

@@ -23,6 +23,7 @@ class Estimate extends Model
         'status',
         'total_amount',
         'mileage',
+        'estimate_number',
     ];
 
     protected $casts = [

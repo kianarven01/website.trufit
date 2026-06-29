@@ -29,6 +29,22 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             $vehicle = CustomerVehicle::find($data['vehicle_id']);
             $vehicleOld = $vehicle ? $vehicle->plate_number : '';
 
+            // Generate estimate number like EST-YYMMDD-XXX
+            $today = now();
+            $dateStr = $today->format('ymd');
+            $prefix = 'EST-' . $dateStr . '-';
+
+            $lastEstimate = Estimate::where('estimate_number', 'like', $prefix . '%')
+                ->orderBy('estimate_number', 'desc')
+                ->first();
+
+            $nextSequence = 1;
+            if ($lastEstimate && preg_match('/-(\d+)$/', $lastEstimate->estimate_number, $matches)) {
+                $nextSequence = ((int) $matches[1]) + 1;
+            }
+
+            $estimateNumber = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+
             $estimate = Estimate::create([
                 'id' => (string) Str::uuid(),
                 'customer_id' => $data['customer_id'],
@@ -37,6 +53,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'status' => $data['status'] ?? 'DRAFT',
                 'total_amount' => $data['total_amount'] ?? 0.00,
                 'mileage' => $data['mileage'] ?? null,
+                'estimate_number' => $estimateNumber,
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {

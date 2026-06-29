@@ -184,7 +184,7 @@
                 <!-- Page header bar -->
                 <div style="border-bottom: 1px solid #00008b; padding: 3px 5px; font-size: 8px; font-weight: bold;">
                     <span style="float:left;">Page 1 of 1</span>
-                    <span style="float:right;">Estimate No. estimate-{{ str_pad($estimate->id, 5, '0', STR_PAD_LEFT) }}</span>
+                    <span style="float:right;">Estimate No. {{ $estimate->estimate_number ?? ('estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT)) }}</span>
                     <div style="clear:both;"></div>
                 </div>
 

@@ -187,7 +187,7 @@ class EstimateController extends Controller
                 $employee->load('role');
             }
 
-            $filename = 'estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT) . '.pdf';
+            $filename = ($estimate->estimate_number ?: 'estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT)) . '.pdf';
 
             return \Spatie\LaravelPdf\Facades\Pdf::view('pdfs.estimate', [
                 'estimate' => $estimate,

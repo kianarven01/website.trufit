@@ -25,6 +25,7 @@ import api from "@/api/axios";
 interface Estimate {
   id: string;
   estimateNo?: string;
+  estimate_number?: string;
   customer?: any;
   vehicle?: any;
   items?: any[];
@@ -107,7 +108,8 @@ const Estimates: React.FC = () => {
 
           return {
             id: e.id,
-            estimateNo: e.id?.substring(0, 8)?.toUpperCase(),
+            estimateNo: e.estimate_number || e.id?.substring(0, 8)?.toUpperCase(),
+            estimate_number: e.estimate_number,
             customer,
             vehicle: e.vehicle || null,
             items,
@@ -140,7 +142,7 @@ const Estimates: React.FC = () => {
         : "";
 
       const searchMatch =
-        `${e.id} ${e.estimateNo || ""} ${customerName} ${e.status}`
+        `${e.id} ${e.estimate_number || ""} ${e.estimateNo || ""} ${customerName} ${e.status}`
           .toLowerCase()
           .includes(search.toLowerCase());
 

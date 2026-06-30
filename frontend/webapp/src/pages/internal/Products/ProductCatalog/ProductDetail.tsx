@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
 import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addVehicleCompatibility";
 import api from "@/api/axios";
+import Barcode from "react-barcode";
 
 interface ProductPrice {
   id?: string;
@@ -120,7 +121,7 @@ const fromSlug = (slug?: string) =>
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
-
+const BARCODE_LABEL_COUNT = 40;
 
 const normalizeSuppliers = (row: any): ProductSupplier[] => {
   if (Array.isArray(row.suppliers)) return row.suppliers;
@@ -314,6 +315,7 @@ const ProductDetail: React.FC = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
+  const [isPrintingBarcodeLabels, setIsPrintingBarcodeLabels] = useState(false);
 
   const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
@@ -567,6 +569,18 @@ const ProductDetail: React.FC = () => {
   }, [isEquivalentOpen, product?.id, equivalentSearch]);
 
   useEffect(() => {
+    const handleAfterPrint = () => {
+      setIsPrintingBarcodeLabels(false);
+    };
+
+    window.addEventListener("afterprint", handleAfterPrint);
+
+    return () => {
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!product?.suppliers?.length) {
       setSelectedSupplierId("");
       return;
@@ -619,9 +633,132 @@ const ProductDetail: React.FC = () => {
   const selectedSupplierCost = toNumberOrNull(selectedSupplier?.supplier_cost);
   const selectedMarkup = getSupplierMarkup(selectedSupplier);
   const selectedSellingPrice = getSupplierSellingPrice(selectedSupplier);
+  const barcodeValue = product.barcode || product.sku || "";
+
+  const handlePrintBarcodeLabels = () => {
+    if (!barcodeValue) {
+      alert("No barcode or SKU available to print.");
+      return;
+    }
+
+    setIsPrintingBarcodeLabels(true);
+
+    window.setTimeout(() => {
+      window.print();
+    }, 150);
+  };
 
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
+      <style>{`
+        @media screen {
+          #barcode-label-sheet {
+            display: none;
+          }
+        }
+
+        @media print {
+          @page {
+            size: A4;
+            margin: 8mm;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          #barcode-label-sheet,
+          #barcode-label-sheet * {
+            visibility: visible !important;
+          }
+
+          #barcode-label-sheet {
+            display: block !important;
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 100% !important;
+            min-height: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+          }
+
+          .barcode-label-page {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr);
+            grid-auto-rows: 25mm;
+            gap: 3mm;
+            width: 100%;
+            box-sizing: border-box;
+            page-break-inside: avoid;
+          }
+
+          .barcode-sticker {
+            box-sizing: border-box;
+            border: 1px dashed #bdbdbd;
+            border-radius: 3mm;
+            padding: 2mm;
+            overflow: hidden;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background: #ffffff !important;
+            color: #000000 !important;
+          }
+
+          .barcode-sticker-title {
+            width: 100%;
+            font-size: 8px;
+            line-height: 1.1;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .barcode-sticker-meta {
+            width: 100%;
+            font-size: 7px;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .barcode-sticker svg {
+            max-width: 100%;
+            height: auto;
+          }
+        }
+      `}</style>
+
+      {isPrintingBarcodeLabels && barcodeValue && (
+        <div id="barcode-label-sheet">
+          <div className="barcode-label-page">
+            {Array.from({ length: BARCODE_LABEL_COUNT }).map((_, index) => (
+              <div className="barcode-sticker" key={`barcode-label-${index}`}>
+                <div className="barcode-sticker-title">{product.name}</div>
+                <div className="barcode-sticker-meta">
+                  SKU: {product.sku || "-"} • Part No: {product.partNumber || "-"}
+                </div>
+                <Barcode
+                  value={barcodeValue}
+                  format="CODE128"
+                  width={1}
+                  height={28}
+                  displayValue={true}
+                  fontSize={8}
+                  margin={1}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         <div className="lg:col-span-2">
           <Card className="p-6 space-y-6 min-h-[620px] h-full">
@@ -687,18 +824,34 @@ const ProductDetail: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4">
-                  <div className="flex flex-col items-center">
-                    <img
-                      src="/images/placeholder.png"
-                      alt="barcode"
-                      className="border w-44 h-12 object-contain"
-                    />
-                    <span className="text-sm text-muted-foreground tracking-widest">
-                      {product.barcode || "N/A"}
-                    </span>
+                <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4 gap-3">
+                  <div className="flex flex-1 justify-center overflow-hidden">
+                    {barcodeValue ? (
+                      <div className="bg-white rounded-md border px-3 py-2 max-w-full overflow-hidden flex justify-center">
+                        <Barcode
+                          value={barcodeValue}
+                          format="CODE128"
+                          width={1.4}
+                          height={45}
+                          displayValue={true}
+                          fontSize={12}
+                          margin={4}
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed px-4 py-3 text-xs text-muted-foreground">
+                        No barcode saved
+                      </div>
+                    )}
                   </div>
-                  <Button variant="outline" size="icon">
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    onClick={handlePrintBarcodeLabels}
+                    title="Print barcode labels"
+                  >
                     <Printer />
                   </Button>
                 </div>

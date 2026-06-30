@@ -402,8 +402,12 @@
     <table class="items-table" style="border:none;">
         <thead>
             <tr style="border-bottom: none;">
+                @if(empty($hidePartNumber))
                 <th width="20%" style="text-align: left;">Parts Number</th>
                 <th width="40%" style="text-align: left;">Description</th>
+                @else
+                <th width="60%" style="text-align: left;">Description</th>
+                @endif
                 <th width="10%" class="text-center">Qty</th>
                 <th width="15%" class="text-right">Unit Price</th>
                 <th width="15%" class="text-right">Amount</th>
@@ -412,15 +416,25 @@
         <tbody>
             @foreach($partItems as $item)
             <tr>
-                <td style="text-align: left;">{{ $item->product->SKU ?? '' }}</td>
-                <td style="text-align: left;">{{ $item->product->name ?? 'Unknown Part' }}</td>
+                @if(empty($hidePartNumber))
+                <td style="text-align: left;">{{ $item->custom_name ? '—' : ($item->product->part_number ?? $item->product->SKU ?? '—') }}</td>
+                @endif
+                <td style="text-align: left;">{{ $item->custom_name ?? $item->product->name ?? 'Unknown Part' }}</td>
                 <td class="text-center">{{ intval($item->quantity) }}</td>
                 <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
                 <td class="text-right">{{ number_format($item->subtotal, 2) }}</td>
             </tr>
             @endforeach
             @for($i = 0; $i < max(5 - $partItems->count(), 1); $i++)
-            <tr><td><br></td><td></td><td></td><td></td><td></td></tr>
+            <tr>
+                @if(empty($hidePartNumber))
+                <td><br></td>
+                @endif
+                <td><br></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
             @endfor
         </tbody>
     </table>

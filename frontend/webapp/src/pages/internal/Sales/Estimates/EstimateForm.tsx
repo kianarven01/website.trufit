@@ -11,6 +11,7 @@ import CurrencyInput from "@/components/ui/currencyInput";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
@@ -188,6 +189,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [customerSearch, setCustomerSearch] = useState("");
 
   const [notes, setNotes] = useState("");
+  const [downpayment, setDownpayment] = useState<number>(0);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [joLines, setJoLines] = useState<JOServiceLine[]>([emptyJOLine()]);
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
@@ -195,6 +197,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [expandedTaskRows, setExpandedTaskRows] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [includePartNumbers, setIncludePartNumbers] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [shortageItems, setShortageItems] = useState<string[]>([]);
 
@@ -518,6 +521,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           setSelectedVehicle(normalizedVeh);
           setMileage(found.mileage ?? 0);
           setNotes(found.notes ?? "");
+          setDownpayment(Number(found.downpayment_amount) ?? 0);
 
           const dbItems = found.items || [];
           const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
@@ -970,6 +974,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       total_amount: totals.total,
       mileage: Number(mileage),
       notes: notes,
+      downpayment_amount: mode === "edit" ? downpayment : undefined,
       items: payloadItems,
     };
 
@@ -1053,6 +1058,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     setIsDownloading(true);
     try {
       const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
+        params: { hide_part_number: !includePartNumbers },
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -1721,11 +1727,33 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     </div>
                   </div>
 
-                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
+                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2">
                     <div className="flex justify-between items-end text-primary">
                       <span className="text-xs font-bold uppercase">Grand Total</span>
                       <span className="text-2xl font-bold tracking-wide">{peso(totals.total)}</span>
                     </div>
+                    {mode === "edit" && (
+                      <>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                          <span>Downpayment</span>
+                          <div className="w-32">
+                            <CurrencyInput
+                              value={downpayment}
+                              onChange={(val) => setDownpayment(val ?? 0)}
+                              className="h-8 text-right bg-background border border-primary/20"
+                            />
+                          </div>
+                        </div>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-end text-primary">
+                          <span className="text-xs font-bold uppercase">Balance Due</span>
+                          <span className="text-2xl font-bold tracking-wide">
+                            {peso(Math.max(0, totals.total - downpayment))}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-2">
@@ -1755,15 +1783,27 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                       {isSaving ? "Saving..." : mode === "edit" ? "Save Changes" : "Create Estimate"}
                     </Button>
                     {mode === "edit" && (
-                      <Button
-                        variant="outline"
-                        className="w-full shadow-sm"
-                        onClick={handleDownloadPDF}
-                        disabled={isDownloading}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        {isDownloading ? "Downloading..." : "Download PDF"}
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full shadow-sm"
+                          onClick={handleDownloadPDF}
+                          disabled={isDownloading}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          {isDownloading ? "Downloading..." : "Download PDF"}
+                        </Button>
+                        <div className="flex items-center space-x-2 justify-center mt-1 py-1">
+                          <Checkbox 
+                            id="include-part-numbers-form" 
+                            checked={includePartNumbers}
+                            onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
+                          />
+                          <label htmlFor="include-part-numbers-form" className="text-xs text-muted-foreground cursor-pointer select-none">
+                            Include Part Numbers in PDF
+                          </label>
+                        </div>
+                      </>
                     )}
                     <Button 
                       variant="ghost" 

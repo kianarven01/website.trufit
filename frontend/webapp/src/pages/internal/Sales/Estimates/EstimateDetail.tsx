@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import api from "@/api/axios";
 import { useAuth } from "@/context/AuthContext";
 import CurrencyInput from "@/components/ui/currencyInput";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   approved: { label: "Approved", variant: "approved" as const },
@@ -104,6 +105,7 @@ const EstimateDetail: React.FC = () => {
   const [downpayment, setDownpayment] = useState<number>(0);
   const [isApproving, setIsApproving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [includePartNumbers, setIncludePartNumbers] = useState(false);
 
   // Catalog data for resolving IDs to names
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
@@ -307,6 +309,7 @@ const EstimateDetail: React.FC = () => {
     setIsDownloading(true);
     try {
       const response = await api.get(`/estimates/${estimate.id}/download-pdf`, {
+        params: { hide_part_number: !includePartNumbers },
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -830,6 +833,17 @@ const EstimateDetail: React.FC = () => {
                       <Download className="w-4 h-4 mr-2" />
                       {isDownloading ? "Downloading..." : "Download PDF"}
                     </Button>
+
+                    <div className="flex items-center space-x-2 justify-center mt-1 py-1">
+                      <Checkbox 
+                        id="include-part-numbers" 
+                        checked={includePartNumbers}
+                        onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
+                      />
+                      <label htmlFor="include-part-numbers" className="text-xs text-muted-foreground cursor-pointer select-none">
+                        Include Part Numbers in PDF
+                      </label>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

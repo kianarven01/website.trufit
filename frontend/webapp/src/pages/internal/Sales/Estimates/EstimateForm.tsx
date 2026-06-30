@@ -16,6 +16,7 @@ import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
 import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download } from "lucide-react";
 import api from "@/api/axios";
+import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
 /* ================= TYPES ================= */
 
@@ -76,6 +77,8 @@ interface Product {
   sku: string;
   price: number;
   unit: string;
+  quantityOnHand: number | null;
+  reorderLevel: number | null;
 }
 
 interface JOServiceLine {
@@ -91,6 +94,9 @@ interface SOPartLine {
   ProductId: string;
   quantity: number | "";
   amount: number;
+  needsOrdering: boolean;
+  customName?: string;
+  manualPrice?: number;
 }
 
 interface SPOLLine {
@@ -98,7 +104,12 @@ interface SPOLLine {
   ProductId: string;
   quantity: number | "";
   amount: number;
+  needsOrdering: boolean;
+  customName?: string;
+  manualPrice?: number;
 }
+
+
 
 interface AddEstimateProps {
   mode?: "create" | "edit";
@@ -126,6 +137,17 @@ const emptySOLine = (): SOPartLine => ({
   ProductId: "",
   quantity: 1,
   amount: 0,
+  needsOrdering: false,
+});
+
+const emptyCustomSOLine = (): SOPartLine => ({
+  id: genLineId(),
+  ProductId: "",
+  quantity: 1,
+  amount: 0,
+  needsOrdering: true,
+  customName: "",
+  manualPrice: 0,
 });
 
 const emptySPOLLine = (): SPOLLine => ({
@@ -133,6 +155,17 @@ const emptySPOLLine = (): SPOLLine => ({
   ProductId: "",
   quantity: 1,
   amount: 0,
+  needsOrdering: false,
+});
+
+const emptyCustomSPOLLine = (): SPOLLine => ({
+  id: genLineId(),
+  ProductId: "",
+  quantity: 1,
+  amount: 0,
+  needsOrdering: true,
+  customName: "",
+  manualPrice: 0,
 });
 
 const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
@@ -157,6 +190,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
   const [spolLines, setSpolLines] = useState<SPOLLine[]>([emptySPOLLine()]);
   const [expandedTaskRows, setExpandedTaskRows] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [shortageItems, setShortageItems] = useState<string[]>([]);
 
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
@@ -173,13 +210,24 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     );
   }, [partsCatalog]);
 
+  const getStockStatus = (product: Product | undefined) => {
+    if (!product) return null;
+    if (product.quantityOnHand === null) return { label: "Not Tracked", color: "text-gray-400", bg: "bg-gray-100 dark:bg-gray-800" };
+    if (product.quantityOnHand <= 0) return { label: "Out of Stock", color: "text-red-600", bg: "bg-red-50 dark:bg-red-950" };
+    if (product.reorderLevel && product.quantityOnHand <= product.reorderLevel)
+      return { label: `Low (${product.quantityOnHand})`, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" };
+    return { label: `In Stock (${product.quantityOnHand})`, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950" };
+  };
+
   const addJOLine = () => setJoLines((p) => [...p, emptyJOLine()]);
   const removeJOLine = (i: number) => setJoLines((p) => p.filter((_, idx) => idx !== i));
 
   const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
+  const addCustomSOLine = () => setSoLines((p) => [...p, emptyCustomSOLine()]);
   const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
 
   const addSPOLLine = () => setSpolLines((p) => [...p, emptySPOLLine()]);
+  const addCustomSPOLLine = () => setSpolLines((p) => [...p, emptyCustomSPOLLine()]);
   const removeSPOLLine = (i: number) => setSpolLines((p) => p.filter((_, idx) => idx !== i));
 
   const customerVehicles = useMemo(() => {
@@ -386,14 +434,21 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           pricings: s.pricings || [],
         }));
 
-        // Map parts catalog
-        const normalizedParts: Product[] = dbProducts.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          sku: p.SKU,
-          price: Number(p.sell_price || p.price || 0),
-          unit: p.unit?.name || "pc",
-        }));
+        // Map parts catalog with inventory data
+        const normalizedParts: Product[] = dbProducts.map((p: any) => {
+          // Price priority: inventory sell_price → supplier active_price → 0
+          const supplierPrice = p.suppliers?.[0]?.active_price?.Price;
+          const price = Number(p.sell_price || supplierPrice || 0);
+          return {
+            id: p.id,
+            name: p.name,
+            sku: p.SKU,
+            price,
+            unit: p.unit_name || p.unit?.name || "pc",
+            quantityOnHand: p.quantity_on_hand ?? null,
+            reorderLevel: p.reorder_level ?? null,
+          };
+        });
 
         const mappedServiceCategories: ServiceCategory[] = dbServiceCategories.map((c: any) => ({
           id: c.id,
@@ -460,6 +515,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           const dbItems = found.items || [];
           const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
           const partItems = dbItems.filter((i: any) => i.item_type === "part");
+          const spolItems = dbItems.filter((i: any) => i.item_type === "supply");
 
           if (serviceItems.length > 0) {
             setJoLines(
@@ -483,13 +539,30 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             setSoLines(
               partItems.map((p: any) => ({
                 id: p.id,
-                ProductId: p.product_id,
+                ProductId: p.product_id || "",
                 quantity: Number(p.quantity),
                 amount: Number(p.subtotal),
+                needsOrdering: p.needs_ordering ?? false,
+                customName: p.custom_name || undefined,
               }))
             );
           } else {
             setSoLines([emptySOLine()]);
+          }
+
+          if (spolItems.length > 0) {
+            setSpolLines(
+              spolItems.map((p: any) => ({
+                id: p.id,
+                ProductId: p.product_id || "",
+                quantity: Number(p.quantity),
+                amount: Number(p.subtotal),
+                needsOrdering: p.needs_ordering ?? false,
+                customName: p.custom_name || undefined,
+              }))
+            );
+          } else {
+            setSpolLines([emptySPOLLine()]);
           }
         }
       } catch (err: any) {
@@ -591,7 +664,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
     if (field === "ProductId" && value) {
       const existingIdx = soLines.findIndex(
-        (l, i) => i !== idx && l.ProductId === value
+        (l, i) => i !== idx && l.ProductId === value && l.customName === undefined
       );
       if (existingIdx !== -1) {
         const product = partsMap[value];
@@ -617,21 +690,118 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
         if (field === "ProductId") {
           const found = partsMap[value];
-          updated.amount = found ? (updated.quantity || 0) * found.price : 0;
+          updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
+          if (found) {
+            const qty = Number(updated.quantity) || 0;
+            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+            updated.needsOrdering = isOutOfStock || isShortage;
+          }
         }
 
         if (field === "quantity") {
           const qty = value === "" ? 0 : Math.max(0, Number(value));
-          const found = partsMap[updated.ProductId];
-
-          if (!found) {
+          if (updated.customName !== undefined) {
             updated.quantity = qty;
-            updated.amount = 0;
-            return updated;
+            updated.amount = qty * (updated.manualPrice || 0);
+          } else {
+            const found = partsMap[updated.ProductId];
+            updated.quantity = qty;
+            updated.amount = found ? qty * found.price : 0;
+            if (found) {
+              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+              updated.needsOrdering = isOutOfStock || isShortage;
+            }
           }
+        }
 
-          updated.quantity = qty;
-          updated.amount = qty * found.price;
+        if (field === "manualPrice") {
+          const price = value === "" ? 0 : Math.max(0, Number(value));
+          updated.manualPrice = price;
+          updated.amount = (Number(updated.quantity) || 0) * price;
+        }
+
+        if (field === "customName") {
+          updated.customName = value;
+        }
+
+        if (field === "needsOrdering") {
+          updated.needsOrdering = !!value;
+        }
+
+        return updated;
+      })
+    );
+  };
+
+  const updateSPOL = (idx: number, field: keyof SPOLLine, value: any) => {
+    if (field === "ProductId" && value) {
+      const existingIdx = spolLines.findIndex(
+        (l, i) => i !== idx && l.ProductId === value && l.customName === undefined
+      );
+      if (existingIdx !== -1) {
+        const product = partsMap[value];
+        const productName = product?.name ?? "Supply";
+        setSpolLines((prev) => {
+          const next = prev.filter((_, i) => i !== idx);
+          return next.map((l, i) => {
+            if (i !== existingIdx - (idx < existingIdx ? 1 : 0)) return l;
+            const newQty = (Number(l.quantity) || 0) + 1;
+            return { ...l, quantity: newQty, amount: newQty * (product?.price ?? 0) };
+          });
+        });
+        toast.info(`"${productName}" is already added. Quantity increased.`);
+        return;
+      }
+    }
+
+    setSpolLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
+
+        let updated = { ...l, [field]: value };
+
+        if (field === "ProductId") {
+          const found = partsMap[value];
+          updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
+          if (found) {
+            const qty = Number(updated.quantity) || 0;
+            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+            updated.needsOrdering = isOutOfStock || isShortage;
+          }
+        }
+
+        if (field === "quantity") {
+          const qty = value === "" ? 0 : Math.max(0, Number(value));
+          if (updated.customName !== undefined) {
+            updated.quantity = qty;
+            updated.amount = qty * (updated.manualPrice || 0);
+          } else {
+            const found = partsMap[updated.ProductId];
+            updated.quantity = qty;
+            updated.amount = found ? qty * found.price : 0;
+            if (found) {
+              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+              updated.needsOrdering = isOutOfStock || isShortage;
+            }
+          }
+        }
+
+        if (field === "manualPrice") {
+          const price = value === "" ? 0 : Math.max(0, Number(value));
+          updated.manualPrice = price;
+          updated.amount = (Number(updated.quantity) || 0) * price;
+        }
+
+        if (field === "customName") {
+          updated.customName = value;
+        }
+
+        if (field === "needsOrdering") {
+          updated.needsOrdering = !!value;
         }
 
         return updated;
@@ -641,8 +811,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
   const totals = useMemo(() => {
     const validJO = joLines.filter((l) => l.ServiceTypeId);
-    const validSO = soLines.filter((l) => l.ProductId);
-    const validSPOL = spolLines.filter((l) => l.ProductId);
+    const validSO = soLines.filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""));
+    const validSPOL = spolLines.filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""));
 
     const totalServices = validJO.reduce((s, l) => s + l.amount, 0);
     const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
@@ -704,6 +874,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       return;
     }
 
+    if (totals.validSPOL.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All supply lines must have a quantity greater than zero.");
+      return;
+    }
+
     const payloadItems = [
       ...joLines
         .filter((l) => l.ServiceTypeId)
@@ -716,11 +891,25 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             quantity: 1,
             unit_price: rate,
             subtotal: l.amount,
+            needs_ordering: false,
+            custom_name: null,
           };
         }),
       ...soLines
-        .filter((l) => l.ProductId)
+        .filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""))
         .map((l) => {
+          if (l.customName !== undefined) {
+            return {
+              item_type: "part",
+              service_id: null,
+              product_id: null,
+              quantity: Number(l.quantity),
+              unit_price: Number(l.manualPrice || 0),
+              subtotal: l.amount,
+              needs_ordering: l.needsOrdering,
+              custom_name: l.customName,
+            };
+          }
           const found = partsMap[l.ProductId];
           const price = found?.price || 0;
           return {
@@ -730,6 +919,36 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             quantity: Number(l.quantity),
             unit_price: price,
             subtotal: l.amount,
+            needs_ordering: l.needsOrdering,
+            custom_name: null,
+          };
+        }),
+      ...spolLines
+        .filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""))
+        .map((l) => {
+          if (l.customName !== undefined) {
+            return {
+              item_type: "supply",
+              service_id: null,
+              product_id: null,
+              quantity: Number(l.quantity),
+              unit_price: Number(l.manualPrice || 0),
+              subtotal: l.amount,
+              needs_ordering: l.needsOrdering,
+              custom_name: l.customName,
+            };
+          }
+          const found = partsMap[l.ProductId];
+          const price = found?.price || 0;
+          return {
+            item_type: "supply",
+            service_id: null,
+            product_id: l.ProductId,
+            quantity: Number(l.quantity),
+            unit_price: price,
+            subtotal: l.amount,
+            needs_ordering: l.needsOrdering,
+            custom_name: null,
           };
         })
     ];
@@ -743,6 +962,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       items: payloadItems,
     };
 
+    setIsSaving(true);
     try {
       if (mode === "edit" && estimateId) {
         await api.put(`/estimates/${estimateId}`, payload);
@@ -756,11 +976,70 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     } catch (err: any) {
       console.error("Failed to save estimate", err);
       toast.error(err.response?.data?.message || "Failed to save estimate.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePreSaveEstimate = () => {
+    if (!selectedCustomer || !selectedVehicle) {
+      toast.error("Please select a customer and vehicle.");
+      return;
+    }
+
+    const isValidVehicle = vehicles.some(
+      (v) => String(v.id) === String(selectedVehicle.id) && String(v.customerId) === String(selectedCustomer.id)
+    );
+
+    if (!isValidVehicle) {
+      toast.error("The selected vehicle does not belong to this customer.");
+      return;
+    }
+
+    if (!mileage || Number(mileage) <= 0) {
+      toast.error("Mileage is mandatory and must be greater than zero.");
+      return;
+    }
+
+    if (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) {
+      toast.error("Add at least one service or part.");
+      return;
+    }
+
+    if (totals.validSO.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All part lines must have a quantity greater than zero.");
+      return;
+    }
+
+    if (totals.validSPOL.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All supply lines must have a quantity greater than zero.");
+      return;
+    }
+
+    const uncheckedShortageList = soLines
+      .concat(spolLines as any)
+      .filter((l) => {
+        if (l.customName !== undefined || !l.ProductId) return false;
+        const prod = partsMap[l.ProductId];
+        if (!prod || prod.quantityOnHand === null) return false;
+        return Number(l.quantity) > prod.quantityOnHand && !l.needsOrdering;
+      })
+      .map((l) => {
+        const prod = partsMap[l.ProductId];
+        return `${prod?.name || "Part"} (Requested: ${l.quantity}, Stock: ${prod?.quantityOnHand})`;
+      });
+
+    if (uncheckedShortageList.length > 0) {
+      setShortageItems(uncheckedShortageList);
+      setShowConfirmModal(true);
+    } else {
+      saveEstimate();
     }
   };
 
   const handleDownloadPDF = async () => {
     if (!estimateId) return;
+    setIsDownloading(true);
     try {
       const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
         responseType: 'blob',
@@ -778,6 +1057,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     } catch (error) {
       console.error("Error downloading PDF:", error);
       toast.error("Failed to download PDF.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -1146,41 +1427,86 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Box className="size-5 text-orange-500"/>
                   <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>                
                 </div>
-                <Button size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
+                  <Button size="sm" variant="outline" onClick={addCustomSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Custom Part</Button>
+                </div>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-center">Item Name</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-left w-[30%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[15%]">Stock Status</TableHead>
+                        <TableHead className="text-xs text-center w-[15%]">Needs Order</TableHead>
+                        <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Qty</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
 
                     <TableBody>
                       {soLines.map((l, idx) => {
+                        const isCustom = l.customName !== undefined;
+                        const product = partsMap[l.ProductId];
+                        const stockStatus = getStockStatus(product);
+
                         return (
                           <TableRow key={l.id} className="hover:bg-transparent">
                             <TableCell>
-                              <Combobox
-                                value={l.ProductId}
-                                onChange={(val) =>
-                                  updateSO(idx, "ProductId", val)
-                                }
-                                items={partsCatalog.map((p) => ({
-                                  label: `${p.name} - SKU: ${p.sku}`,
-                                  value: p.id,
-                                }))}
-                                placeholder="Select part"
+                              {isCustom ? (
+                                <Input
+                                  value={l.customName || ""}
+                                  onChange={(e) => updateSO(idx, "customName", e.target.value)}
+                                  placeholder="Enter custom part name..."
+                                />
+                              ) : (
+                                <Combobox
+                                  value={l.ProductId}
+                                  onChange={(val) => updateSO(idx, "ProductId", val)}
+                                  items={partsCatalog.map((p) => ({
+                                    label: `${p.name} - SKU: ${p.sku}`,
+                                    value: p.id,
+                                  }))}
+                                  placeholder="Select part"
+                                />
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              {isCustom ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                                  Custom Item
+                                </span>
+                              ) : stockStatus ? (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${stockStatus.bg} ${stockStatus.color}`}>
+                                  {stockStatus.label}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.needsOrdering}
+                                onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
                               />
                             </TableCell>
 
                             <TableCell className="text-center">
-                              {peso(partsMap[l.ProductId]?.price || 0)}
+                              {isCustom ? (
+                                <CurrencyInput
+                                  value={l.manualPrice || 0}
+                                  onChange={(val) => updateSO(idx, "manualPrice", val)}
+                                />
+                              ) : (
+                                peso(product?.price || 0)
+                              )}
                             </TableCell>
 
                             <TableCell>
@@ -1230,73 +1556,107 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Fuel className="size-5 text-green-600"/>
                   <h2 className="text-sm font-semibold text-foreground">Supplies, Petrol, Oils, and Lubricants</h2>
                 </div>
-                <Button size="sm" onClick={addSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Item</Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={addSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Supply</Button>
+                  <Button size="sm" variant="outline" onClick={addCustomSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Custom Supply</Button>
+                </div>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-center">Item Name</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-left w-[30%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[15%]">Stock Status</TableHead>
+                        <TableHead className="text-xs text-center w-[15%]">Needs Order</TableHead>
+                        <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Qty</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {spolLines.map((l, idx) => {
+                        const isCustom = l.customName !== undefined;
+                        const product = partsMap[l.ProductId];
+                        const stockStatus = getStockStatus(product);
+
                         return (
                           <TableRow key={l.id} className="hover:bg-transparent">
                             <TableCell>
-                              <Combobox
-                                value={l.ProductId}
-                                onChange={(val) => {
-                                  const found = partsMap[val];
-                                  setSpolLines(prev => prev.map((line, i) =>
-                                    i !== idx ? line : {
-                                      ...line,
-                                      ProductId: val,
-                                      amount: found ? (Number(line.quantity) || 0) * found.price : 0
-                                    }
-                                  ));
-                                }}
-                                items={partsCatalog.map((p) => ({
-                                  label: `${p.name} - SKU: ${p.sku}`,
-                                  value: p.id,
-                                }))}
-                                placeholder="Select supply / oil / lubricant"
+                              {isCustom ? (
+                                <Input
+                                  value={l.customName || ""}
+                                  onChange={(e) => updateSPOL(idx, "customName", e.target.value)}
+                                  placeholder="Enter custom supply name..."
+                                />
+                              ) : (
+                                <Combobox
+                                  value={l.ProductId}
+                                  onChange={(val) => updateSPOL(idx, "ProductId", val)}
+                                  items={partsCatalog.map((p) => ({
+                                    label: `${p.name} - SKU: ${p.sku}`,
+                                    value: p.id,
+                                  }))}
+                                  placeholder="Select supply / oil / lubricant"
+                                />
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              {isCustom ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                                  Custom Item
+                                </span>
+                              ) : stockStatus ? (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${stockStatus.bg} ${stockStatus.color}`}>
+                                  {stockStatus.label}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.needsOrdering}
+                                onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
                               />
                             </TableCell>
+
                             <TableCell className="text-center">
-                              {peso(partsMap[l.ProductId]?.price || 0)}
+                              {isCustom ? (
+                                <CurrencyInput
+                                  value={l.manualPrice || 0}
+                                  onChange={(val) => updateSPOL(idx, "manualPrice", val)}
+                                />
+                              ) : (
+                                peso(product?.price || 0)
+                              )}
                             </TableCell>
+
                             <TableCell>
                               <Input
                                 type="number"
                                 min={0}
                                 value={l.quantity === 0 || l.quantity === "" ? "" : String(l.quantity)}
                                 placeholder="0"
-                                onFocus={() => { if (!l.quantity) setSpolLines(prev => prev.map((line, i) => i !== idx ? line : { ...line, quantity: "" })); }}
-                                onBlur={(e) => { if (e.target.value === "") setSpolLines(prev => prev.map((line, i) => i !== idx ? line : { ...line, quantity: 0 })); }}
+                                onFocus={() => { if (!l.quantity) updateSPOL(idx, "quantity", ""); }}
+                                onBlur={(e) => { if (e.target.value === "") updateSPOL(idx, "quantity", 0); }}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (!/^\d*$/.test(val)) return;
-                                  const qty = val === "" ? "" : Number(val);
-                                  const found = partsMap[l.ProductId];
-                                  setSpolLines(prev => prev.map((line, i) =>
-                                    i !== idx ? line : {
-                                      ...line,
-                                      quantity: qty,
-                                      amount: found && qty !== "" ? Number(qty) * found.price : 0
-                                    }
-                                  ));
+                                  updateSPOL(idx, "quantity", val === "" ? "" : Number(val));
                                 }}
                               />
                             </TableCell>
+
                             <TableCell className="text-center">
                               {peso(l.amount)}
                             </TableCell>
+
                             <TableCell>
                               {spolLines.length > 1 && (
                                 <Button size="icon_xs" variant="ghost" onClick={() => removeSPOLLine(idx)}>
@@ -1367,24 +1727,26 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     <Button
                       className="w-full shadow-md" 
                       size="lg"
-                      onClick={saveEstimate}
-                      disabled= {
+                      onClick={handlePreSaveEstimate}
+                      disabled={
+                        isSaving ||
                         !selectedCustomer || 
                         !selectedVehicle ||
                         !mileage || Number(mileage) <= 0 ||
-                        (totals.validJO.length === 0 && totals.validSO.length === 0) 
+                        (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) 
                       }
                     >
-                      {mode === "edit" ? "Save Changes" : "Create Estimate"}
+                      {isSaving ? "Saving..." : mode === "edit" ? "Save Changes" : "Create Estimate"}
                     </Button>
                     {mode === "edit" && (
                       <Button
                         variant="outline"
                         className="w-full shadow-sm"
                         onClick={handleDownloadPDF}
+                        disabled={isDownloading}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Download PDF
+                        {isDownloading ? "Downloading..." : "Download PDF"}
                       </Button>
                     )}
                     <Button 
@@ -1392,6 +1754,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                       size="sm" 
                       onClick={() => navigate(-1)} 
                       className="text-destructive hover:bg-destructive/10"
+                      disabled={isSaving}
                     >
                       Discard
                     </Button>
@@ -1412,6 +1775,32 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         open={customerModalOpen}
         onOpenChange={setCustomerModalOpen}
         onSaved={handleCustomerSaved}
+      />
+
+      {/* Shortage Override confirmation dialog */}
+      <ConfirmDialog
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        title="Proceed with Unordered Shortages?"
+        description={
+          <div className="space-y-2 text-left">
+            <p className="text-sm">
+              The following items have insufficient stock but are NOT flagged for ordering. You may be planning to outsource them:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+              {shortageItems.map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ul>
+            <p className="text-sm font-medium mt-2">Do you want to proceed and save this estimate?</p>
+          </div>
+        }
+        confirmLabel="Proceed"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowConfirmModal(false);
+          saveEstimate();
+        }}
       />
     </div>
   );

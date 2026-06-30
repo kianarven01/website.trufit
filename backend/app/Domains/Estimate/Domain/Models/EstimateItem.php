@@ -25,12 +25,15 @@ class EstimateItem extends Model
         'quantity',
         'unit_price',
         'subtotal',
+        'needs_ordering',
+        'custom_name',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'needs_ordering' => 'boolean',
         'created_at' => 'datetime',
     ];
 

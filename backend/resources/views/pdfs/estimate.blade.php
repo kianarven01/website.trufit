@@ -469,11 +469,11 @@
         </tr>
         <tr>
             <td class="total-label">Downpayment</td>
-            <td class="total-value">-</td>
+            <td class="total-value">{{ $estimate->downpayment_amount > 0 ? number_format($estimate->downpayment_amount, 2) : '-' }}</td>
         </tr>
         <tr style="font-weight:bold;">
             <td class="total-label" style="vertical-align: middle;">Total Balance</td>
-            <td class="grand-total-value">{{ number_format($estimate->total_amount, 2) }}</td>
+            <td class="grand-total-value">{{ number_format($estimate->total_amount - ($estimate->downpayment_amount ?? 0), 2) }}</td>
         </tr>
     </table>
 

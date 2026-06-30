@@ -13,6 +13,7 @@ import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
 import api from "@/api/axios";
 import { useAuth } from "@/context/AuthContext";
+import CurrencyInput from "@/components/ui/currencyInput";
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   approved: { label: "Approved", variant: "approved" as const },
@@ -23,6 +24,8 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   "FOR APPROVAL": { label: "For Approval", variant: "for-approval" as const },
   "for approval": { label: "For Approval", variant: "for-approval" as const },
   "for_approval": { label: "For Approval", variant: "for-approval" as const },
+  "APPROVED WITH DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
+  "APPROVED_WITH_DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
 };
 
 import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download } from "lucide-react";
@@ -50,6 +53,8 @@ interface Product {
   sku: string;
   price: number;
   unit: string;
+  quantityOnHand: number | null;
+  reorderLevel: number | null;
 }
 
 /* ================= HELPERS ================= */
@@ -93,6 +98,9 @@ const EstimateDetail: React.FC = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [estimate, setEstimate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [downpayment, setDownpayment] = useState<number>(0);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Catalog data for resolving IDs to names
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
@@ -129,6 +137,7 @@ const EstimateDetail: React.FC = () => {
 
         const estData = estimateRes.data.data;
         setEstimate(estData);
+        setDownpayment(Number(estData?.downpayment_amount) || 0);
 
         if (estData?.estimate_number) {
           sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${id}`, estData.estimate_number);
@@ -151,13 +160,19 @@ const EstimateDetail: React.FC = () => {
         const dbProducts = Array.isArray(productsRes.data)
           ? productsRes.data
           : productsRes.data.data || [];
-        setPartsCatalog(dbProducts.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          sku: p.SKU,
-          price: Number(p.sell_price || p.price || 0),
-          unit: p.unit?.name || "pc",
-        })));
+        setPartsCatalog(dbProducts.map((p: any) => {
+          const supplierPrice = p.suppliers?.[0]?.active_price?.Price;
+          const price = Number(p.sell_price || supplierPrice || 0);
+          return {
+            id: p.id,
+            name: p.name,
+            sku: p.SKU,
+            price,
+            unit: p.unit_name || p.unit?.name || "pc",
+            quantityOnHand: p.quantity_on_hand ?? null,
+            reorderLevel: p.reorder_level ?? null,
+          };
+        }));
       } catch (err) {
         console.error("Failed to load estimate", err);
         setEstimate(null);
@@ -197,7 +212,6 @@ const EstimateDetail: React.FC = () => {
     const totalServices = serviceItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
     const totalParts = partItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
     const totalSupplies = spolItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
-
     const estimatedMinutes = serviceItems.reduce((acc: number, i: any) => {
       const svc = servicesMap[i.service_id];
       return acc + (svc?.duration || 0);
@@ -212,6 +226,39 @@ const EstimateDetail: React.FC = () => {
     };
   }, [serviceItems, partItems, spolItems, servicesMap, estimate]);
 
+  const renderNeedsOrderBadge = (item: any, product: Product | undefined) => {
+    if (product && product.quantityOnHand !== null) {
+      const shortage = Number(item.quantity) - product.quantityOnHand;
+      const qtyToDisplay = shortage > 0 ? shortage : Number(item.quantity);
+
+      if (shortage > 0) {
+        if (item.needs_ordering) {
+          return (
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+              Needs Order (Qty: {qtyToDisplay} | Stock: {product.quantityOnHand})
+            </span>
+          );
+        } else {
+          return (
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">
+              Outsource (Qty: {qtyToDisplay} | Stock: {product.quantityOnHand})
+            </span>
+          );
+        }
+      }
+    }
+
+    if (item.needs_ordering) {
+      return (
+        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+          Needs Order (Qty: {Number(item.quantity)})
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   /* ================= ACTIONS ================= */
 
   const handleEditEstimate = () => {
@@ -219,15 +266,20 @@ const EstimateDetail: React.FC = () => {
   };
 
   const handleApproveEstimate = async () => {
+    setIsApproving(true);
     try {
-      await api.put(`/estimates/${estimate?.id}`, {
-        status: "APPROVED"
+      const status = downpayment > 0 ? "APPROVED WITH DOWNPAYMENT" : "APPROVED";
+      const response = await api.put(`/estimates/${estimate?.id}`, {
+        status,
+        downpayment_amount: downpayment
       });
-      setEstimate((prev: any) => prev ? { ...prev, status: "APPROVED" } : null);
-      toast.success("Estimate approved successfully!");
+      setEstimate(response.data.data);
+      toast.success(`Estimate approved successfully!`);
     } catch (err) {
       console.error("Failed to approve estimate", err);
       toast.error("Failed to approve estimate.");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -244,6 +296,7 @@ const EstimateDetail: React.FC = () => {
 
   const handleDownloadPDF = async () => {
     if (!estimate?.id) return;
+    setIsDownloading(true);
     try {
       const response = await api.get(`/estimates/${estimate.id}/download-pdf`, {
         responseType: 'blob',
@@ -261,6 +314,8 @@ const EstimateDetail: React.FC = () => {
     } catch (error) {
       console.error("Error downloading PDF:", error);
       toast.error("Failed to download PDF.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -524,7 +579,8 @@ const EstimateDetail: React.FC = () => {
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent">
                             <TableCell className="font-medium">
-                              {product?.name || item.product_id || "—"}
+                              {item.custom_name || product?.name || item.product_id || "—"}
+                              {renderNeedsOrderBadge(item, product)}
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -573,7 +629,8 @@ const EstimateDetail: React.FC = () => {
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent">
                             <TableCell className="font-medium">
-                              {product?.name || item.product_id || "—"}
+                              {item.custom_name || product?.name || item.product_id || "—"}
+                              {renderNeedsOrderBadge(item, product)}
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -631,10 +688,32 @@ const EstimateDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
+                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2">
                     <div className="flex justify-between items-end text-primary">
                       <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-2xl font-bold tracking-wide">{peso(totals.total)}</span>
+                      <span className="text-xl font-bold tracking-wide">{peso(totals.total)}</span>
+                    </div>
+                    <Separator className="bg-primary/20" />
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>Downpayment</span>
+                      {(!estimate.status ||
+                        estimate.status.toUpperCase() === "FOR APPROVAL" ||
+                        estimate.status.toUpperCase() === "FOR_APPROVAL" ||
+                        estimate.status.toUpperCase() === "DRAFT") ? (
+                        <div className="w-32">
+                          <CurrencyInput
+                            value={downpayment}
+                            onChange={(val) => setDownpayment(Number(val) || 0)}
+                          />
+                        </div>
+                      ) : (
+                        <span>{peso(Number(estimate.downpayment_amount) || 0)}</span>
+                      )}
+                    </div>
+                    <Separator className="bg-primary/20" />
+                    <div className="flex justify-between items-end text-blue-950 dark:text-blue-200 font-bold">
+                      <span className="text-xs uppercase">Balance Due</span>
+                      <span className="text-2xl tracking-wide">{peso(Math.max(0, totals.total - downpayment))}</span>
                     </div>
                   </div>
 
@@ -670,6 +749,30 @@ const EstimateDetail: React.FC = () => {
                       <span>{formatDate(estimate.created_at)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Created By</span>
+                      <span>
+                        {estimate.creator
+                          ? `${estimate.creator.first_name} ${estimate.creator.last_name}`
+                          : "—"}
+                      </span>
+                    </div>
+                    {estimate.editor && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Edited By</span>
+                        <span>
+                          {estimate.editor.first_name} {estimate.editor.last_name}
+                        </span>
+                      </div>
+                    )}
+                    {estimate.approver && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Approved By</span>
+                        <span>
+                          {estimate.approver.first_name} {estimate.approver.last_name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Updated</span>
                       <span>{formatDate(estimate.updated_at)}</span>
                     </div>
@@ -683,8 +786,9 @@ const EstimateDetail: React.FC = () => {
                           className="w-full shadow-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                           size="lg"
                           onClick={handleApproveEstimate}
+                          disabled={isApproving}
                         >
-                          Approve Estimate
+                          {isApproving ? "Approving..." : "Approve Estimate"}
                         </Button>
                       )}
                     <Button
@@ -692,9 +796,10 @@ const EstimateDetail: React.FC = () => {
                       size="lg"
                       variant="outline"
                       onClick={handleDownloadPDF}
+                      disabled={isDownloading}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Download PDF
+                      {isDownloading ? "Downloading..." : "Download PDF"}
                     </Button>
                   </div>
                 </CardContent>

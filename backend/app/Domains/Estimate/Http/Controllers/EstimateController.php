@@ -74,13 +74,18 @@ class EstimateController extends Controller
                 'status' => 'nullable|string',
                 'total_amount' => 'required|numeric',
                 'mileage' => 'required|numeric|min:0',
+                'downpayment_amount' => 'nullable|numeric|min:0',
+                'payment_method' => 'nullable|string|max:50',
+                'payment_reference' => 'nullable|string|max:100',
                 'items' => 'required|array',
-                'items.*.item_type' => 'required|string|in:service,part',
+                'items.*.item_type' => 'required|string|in:service,part,supply',
                 'items.*.product_id' => 'nullable|uuid',
                 'items.*.service_id' => 'nullable|uuid',
                 'items.*.quantity' => 'required|numeric',
                 'items.*.unit_price' => 'required|numeric',
                 'items.*.subtotal' => 'required|numeric',
+                'items.*.needs_ordering' => 'nullable|boolean',
+                'items.*.custom_name' => 'nullable|string|max:255',
             ]);
 
             $estimate = $this->estimateRepo->create($validated);
@@ -110,13 +115,18 @@ class EstimateController extends Controller
                 'status' => 'nullable|string',
                 'total_amount' => 'nullable|numeric',
                 'mileage' => 'nullable|numeric|min:0',
+                'downpayment_amount' => 'nullable|numeric|min:0',
+                'payment_method' => 'nullable|string|max:50',
+                'payment_reference' => 'nullable|string|max:100',
                 'items' => 'nullable|array',
-                'items.*.item_type' => 'required|string|in:service,part',
+                'items.*.item_type' => 'required|string|in:service,part,supply',
                 'items.*.product_id' => 'nullable|uuid',
                 'items.*.service_id' => 'nullable|uuid',
                 'items.*.quantity' => 'required|numeric',
                 'items.*.unit_price' => 'required|numeric',
                 'items.*.subtotal' => 'required|numeric',
+                'items.*.needs_ordering' => 'nullable|boolean',
+                'items.*.custom_name' => 'nullable|string|max:255',
             ]);
 
             $estimate = $this->estimateRepo->update($id, $validated);
@@ -178,11 +188,13 @@ class EstimateController extends Controller
 
             // Load relations if not already loaded
             if (!$estimate->relationLoaded('customer')) {
-                $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product']);
+                $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product', 'creator']);
+            } else {
+                $estimate->loadMissing(['creator']);
             }
 
             $user = auth()->user() ?? auth('sanctum')->user();
-            $employee = $user ? $user->employee : null;
+            $employee = $estimate->creator ?? ($user ? $user->employee : null);
             if ($employee) {
                 $employee->load('role');
             }

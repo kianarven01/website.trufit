@@ -327,7 +327,7 @@ class ProductController extends Controller
             'reorder_level' => $product->inventoryRelation?->reorder_level,
             'reorder_qty' => $product->inventoryRelation?->reorder_qty,
             'location_id' => $product->inventoryRelation?->location_id,
-            'sell_price' => null,
+            'sell_price' => $product->inventoryRelation?->sell_price,
 
             /*
              * Dynamic supplier-based pricing.

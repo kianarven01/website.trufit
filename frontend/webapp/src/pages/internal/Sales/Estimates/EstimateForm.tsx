@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DataToolbar from "@/components/DataToolbar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,10 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download } from "lucide-react";
+import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download, Eye } from "lucide-react";
 import api from "@/api/axios";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
@@ -183,7 +184,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [mileage, setMileage] = useState<number>(0);
   const [estimateNumber, setEstimateNumber] = useState<string>("");
-  
+
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -198,6 +199,9 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [shortageItems, setShortageItems] = useState<string[]>([]);
 
@@ -255,7 +259,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const getMatchingPricing = (service: Service | null, vehicle: Vehicle | null) => {
     if (!service || !service.pricings?.length) return null;
 
-    const validPricings = service.pricings.filter((p: any) => 
+    const validPricings = service.pricings.filter((p: any) =>
       p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed')
     );
 
@@ -270,8 +274,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       const types = Array.isArray(p.vehicle_types)
         ? p.vehicle_types
         : typeof p.vehicle_types === 'string'
-        ? p.vehicle_types.split(',').map((t: string) => t.trim())
-        : [];
+          ? p.vehicle_types.split(',').map((t: string) => t.trim())
+          : [];
       return types.some((t: string) => {
         const normalizedT = t.toLowerCase();
         return normalizedT.includes(make) || normalizedT.includes(model);
@@ -296,7 +300,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   ) => {
     const service = servicesMap[serviceId];
     if (!service) return 0;
-    
+
     const matched = getMatchingPricing(service, vehicle || null);
     return matched ? Number(matched.price) : Number(0);
   };
@@ -667,8 +671,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         const amount = !service
           ? 0
           : service.pricingType === "fixed"
-          ? rate
-          : rate * ((service.duration || 0) / 60);
+            ? rate
+            : rate * ((service.duration || 0) / 60);
 
         return { ...l, manualRate, amount };
       })
@@ -1053,31 +1057,44 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     }
   };
 
-  const handleDownloadPDF = async () => {
+  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean) => {
     if (!estimateId) return;
-    setIsDownloading(true);
+    setIsLoadingPdf(true);
     try {
       const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
-        params: { hide_part_number: !includePartNumbers },
+        params: { hide_part_number: hidePartNumber },
         responseType: 'blob',
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      const fileName = estimateNumber 
-        ? `${estimateNumber}.pdf` 
-        : `estimate-${estimateId.substring(0,8)}.pdf`;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
     } catch (error) {
-      console.error("Error downloading PDF:", error);
-      toast.error("Failed to download PDF.");
+      console.error("Error loading PDF:", error);
+      toast.error("Failed to load PDF preview.");
     } finally {
-      setIsDownloading(false);
+      setIsLoadingPdf(false);
     }
+  }, [estimateId, pdfBlobUrl]);
+
+  const handlePreviewPDF = async () => {
+    setShowPdfPreview(true);
+    await fetchPdfBlob(!includePartNumbers);
   };
+
+
+  // Re-fetch PDF when part numbers toggle changes while preview is open
+  useEffect(() => {
+    if (showPdfPreview && estimateId) {
+      fetchPdfBlob(!includePartNumbers);
+    }
+  }, [includePartNumbers]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
 
   if (isLoading) {
     return (
@@ -1187,7 +1204,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
               <div className="flex items-center gap-2 text-blue-500">
                 <Car className="size-5" />
                 <p className="font-semibold text-foreground">Vehicle Details</p>
-              </div>              
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
@@ -1281,11 +1298,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     onBlur={(e) => { if (e.target.value === "") setMileage(0); }}
                   />
                 </div>
-              </div>                
-            </CardContent>          
+              </div>
+            </CardContent>
           </Card>
         </div>
-        
+
         {/* ESTIMATE DETAILS */}
         <div className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-6">
@@ -1293,8 +1310,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 ">
-                  <Wrench className="size-5 text-blue-500"/>
-                  <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>                
+                  <Wrench className="size-5 text-blue-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>
                 </div>
                 <Button size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
               </div>
@@ -1391,13 +1408,13 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 {service?.pricings
                                   ?.filter((p: any) => p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed'))
                                   .map((p: any) => {
-                                  const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
-                                  return (
-                                    <option key={p.id} value={p.id}>
-                                      {label}
-                                    </option>
-                                  );
-                                })}
+                                    const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
+                                    return (
+                                      <option key={p.id} value={p.id}>
+                                        {label}
+                                      </option>
+                                    );
+                                  })}
                               </select>
                             </TableCell>
 
@@ -1434,15 +1451,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     </TableBody>
                   </Table>
                 </div>
-              </div>         
+              </div>
             </div>
 
             {/* PARTS */}
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 ">
-                  <Box className="size-5 text-orange-500"/>
-                  <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>                
+                  <Box className="size-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
@@ -1459,7 +1476,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                         <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
                         <TableHead className="text-xs text-center w-[12%]">Needs Order</TableHead>
                         <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[10%] text-center">Qty</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Quantity</TableHead>
                         <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
                         <TableHead className="text-xs w-[4%]"></TableHead>
                       </TableRow>
@@ -1576,7 +1593,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Fuel className="size-5 text-green-600"/>
+                  <Fuel className="size-5 text-green-600" />
                   <h2 className="text-sm font-semibold text-foreground">Supplies, Petrol, Oils, and Lubricants</h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1593,7 +1610,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                         <TableHead className="text-xs text-center w-[15%]">Stock Status</TableHead>
                         <TableHead className="text-xs text-center w-[15%]">Needs Order</TableHead>
                         <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[10%] text-center">Qty</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Quantity</TableHead>
                         <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
@@ -1713,7 +1730,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                       <span>Estimated Duration</span>
                       <span>{formatDuration(totals.estimatedMinutes)}</span>
                     </div>
-                    <Separator/>
+                    <Separator />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Services Subtotal</span>
                       <span>{peso(totals.totalServices)}</span>
@@ -1764,23 +1781,23 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                   <div className="space-y-2 pt-2">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Internal Notes</Label>
-                    <Textarea 
-                      value={notes} 
-                      onChange={e => setNotes(e.target.value)} 
-                      placeholder="Terms, warranty info, etc..." 
-                      rows={4} 
-                      className="resize-none text-xs bg-background" 
+                    <Textarea
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Terms, warranty info, etc..."
+                      rows={4}
+                      className="resize-none text-xs bg-background"
                     />
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
                     <Button
-                      className="w-full shadow-md" 
+                      className="w-full shadow-md"
                       size="lg"
                       onClick={handlePreSaveEstimate}
                       disabled={
                         isSaving ||
-                        !selectedCustomer || 
+                        !selectedCustomer ||
                         !selectedVehicle ||
                         !mileage || Number(mileage) <= 0 ||
                         (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) ||
@@ -1794,28 +1811,17 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                         <Button
                           variant="outline"
                           className="w-full shadow-sm"
-                          onClick={handleDownloadPDF}
-                          disabled={isDownloading}
+                          onClick={handlePreviewPDF}
                         >
-                          <Download className="w-4 h-4 mr-2" />
-                          {isDownloading ? "Downloading..." : "Download PDF"}
+                          <Eye className="w-4 h-4 mr-2" />
+                          Preview PDF
                         </Button>
-                        <div className="flex items-center space-x-2 justify-center mt-1 py-1">
-                          <Checkbox 
-                            id="include-part-numbers-form" 
-                            checked={includePartNumbers}
-                            onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
-                          />
-                          <label htmlFor="include-part-numbers-form" className="text-xs text-muted-foreground cursor-pointer select-none">
-                            Include Part Numbers in PDF
-                          </label>
-                        </div>
                       </>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => navigate(-1)} 
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(-1)}
                       className="text-destructive hover:bg-destructive/10"
                       disabled={isSaving}
                     >
@@ -1824,7 +1830,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   </div>
                 </CardContent>
               </Card>
-              
+
               <p className="text-xs text-center text-muted-foreground px-4">
                 Creating an estimate will not affect inventory until it has been approved by the customer.
               </p>
@@ -1865,6 +1871,57 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           saveEstimate();
         }}
       />
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-semibold">
+                PDF Preview — {estimateNumber || "Estimate"}
+              </DialogTitle>
+              <div className="flex items-center gap-3 mr-8">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-part-numbers-form"
+                    checked={includePartNumbers}
+                    onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
+                  />
+                  <label htmlFor="preview-include-part-numbers-form" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Part Numbers
+                  </label>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Estimate PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

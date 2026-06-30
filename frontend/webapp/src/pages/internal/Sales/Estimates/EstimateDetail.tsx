@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import api from "@/api/axios";
 import { useAuth } from "@/context/AuthContext";
 import CurrencyInput from "@/components/ui/currencyInput";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   approved: { label: "Approved", variant: "approved" as const },
@@ -29,7 +30,7 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   "APPROVED_WITH_DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
 };
 
-import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download } from "lucide-react";
+import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download, Eye } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -106,6 +107,9 @@ const EstimateDetail: React.FC = () => {
   const [isApproving, setIsApproving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
 
   // Catalog data for resolving IDs to names
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
@@ -304,31 +308,46 @@ const EstimateDetail: React.FC = () => {
     }
   };
 
-  const handleDownloadPDF = async () => {
+  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean) => {
     if (!estimate?.id) return;
-    setIsDownloading(true);
+    setIsLoadingPdf(true);
     try {
       const response = await api.get(`/estimates/${estimate.id}/download-pdf`, {
-        params: { hide_part_number: !includePartNumbers },
+        params: { hide_part_number: hidePartNumber },
         responseType: 'blob',
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      const fileName = estimate.estimate_number 
-        ? `${estimate.estimate_number}.pdf` 
-        : `estimate-${estimate.id.substring(0,8)}.pdf`;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
+      // Revoke previous blob URL to prevent memory leaks
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
     } catch (error) {
-      console.error("Error downloading PDF:", error);
-      toast.error("Failed to download PDF.");
+      console.error("Error loading PDF:", error);
+      toast.error("Failed to load PDF preview.");
     } finally {
-      setIsDownloading(false);
+      setIsLoadingPdf(false);
     }
+  }, [estimate?.id, pdfBlobUrl]);
+
+  const handlePreviewPDF = async () => {
+    setShowPdfPreview(true);
+    await fetchPdfBlob(!includePartNumbers);
   };
+
+
+
+  // Re-fetch PDF when part numbers toggle changes while preview is open
+  useEffect(() => {
+    if (showPdfPreview && estimate?.id) {
+      fetchPdfBlob(!includePartNumbers);
+    }
+  }, [includePartNumbers]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
 
   /* ================= LOADING / EMPTY ================= */
 
@@ -589,9 +608,11 @@ const EstimateDetail: React.FC = () => {
                     {partItems.length > 0 ? (
                       partItems.map((item: any) => {
                         const product = partsMap[item.product_id];
-                        const stock = product ? (product.quantityOnHand ?? 0) : 0;
-                        const shortage = Number(item.quantity) - stock;
-                        const orderQty = shortage > 0 ? shortage : Number(item.quantity);
+                        const isTracked = product && product.quantityOnHand !== null;
+                        const stock = isTracked ? (product.quantityOnHand ?? 0) : 0;
+                        const qty = Number(item.quantity || 0);
+                        const shortage = qty - stock;
+                        const orderQty = shortage > 0 ? shortage : qty;
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
                             <TableCell className="font-medium text-center">
@@ -609,9 +630,21 @@ const EstimateDetail: React.FC = () => {
                                 <Badge variant="pending" className="whitespace-nowrap">
                                   Needs Order ({orderQty} {product?.unit || "pc"}{orderQty > 1 ? "s" : ""})
                                 </Badge>
-                              ) : (
+                              ) : !isTracked ? (
                                 <Badge variant="approved" className="whitespace-nowrap">
                                   In Stock
+                                </Badge>
+                              ) : stock >= qty ? (
+                                <Badge variant="approved" className="whitespace-nowrap">
+                                  In Stock
+                                </Badge>
+                              ) : stock <= 0 ? (
+                                <Badge variant="cancelled" className="whitespace-nowrap">
+                                  Out of Stock (Shortage: {qty} {product?.unit || "pc"}{qty > 1 ? "s" : ""})
+                                </Badge>
+                              ) : (
+                                <Badge variant="for-approval" className="whitespace-nowrap">
+                                  Low Stock (Needs {shortage} more {product?.unit || "pc"}{shortage > 1 ? "s" : ""})
                                 </Badge>
                               )}
                             </TableCell>
@@ -833,23 +866,11 @@ const EstimateDetail: React.FC = () => {
                       className="w-full shadow-md"
                       size="lg"
                       variant="outline"
-                      onClick={handleDownloadPDF}
-                      disabled={isDownloading}
+                      onClick={handlePreviewPDF}
                     >
-                      <Download className="w-4 h-4 mr-2" />
-                      {isDownloading ? "Downloading..." : "Download PDF"}
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview PDF
                     </Button>
-
-                    <div className="flex items-center space-x-2 justify-center mt-1 py-1">
-                      <Checkbox 
-                        id="include-part-numbers" 
-                        checked={includePartNumbers}
-                        onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
-                      />
-                      <label htmlFor="include-part-numbers" className="text-xs text-muted-foreground cursor-pointer select-none">
-                        Include Part Numbers in PDF
-                      </label>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -881,6 +902,57 @@ const EstimateDetail: React.FC = () => {
         destructive
         onConfirm={handleRemoveEstimate}
       />
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-semibold">
+                PDF Preview — {estimate?.estimate_number || "Estimate"}
+              </DialogTitle>
+              <div className="flex items-center gap-3 mr-8">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-part-numbers"
+                    checked={includePartNumbers}
+                    onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
+                  />
+                  <label htmlFor="preview-include-part-numbers" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Part Numbers
+                  </label>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Estimate PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

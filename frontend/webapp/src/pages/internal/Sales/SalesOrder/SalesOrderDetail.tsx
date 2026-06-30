@@ -99,26 +99,26 @@ const SalesOrderDetails: React.FC = () => {
         title={order.id}
         actions={
           <>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => navigate(-1)}
             >
-              <ArrowLeft className="w-4 h-4 mr-1" /> 
+              <ArrowLeft className="w-4 h-4 mr-1" />
               Back
-            </Button> 
+            </Button>
             <Button
               size="sm"
               onClick={() => navigate(`/webapp/sales/sales-orders/${order.id}/edit-estimate`)}
             >
-              Edit    
+              Edit
             </Button>
             <Button
               variant="destructive"
               size="sm"
             >
               Generate Invoice
-            </Button>         
+            </Button>
           </>
 
         }
@@ -138,11 +138,11 @@ const SalesOrderDetails: React.FC = () => {
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Name</p>
                 <span>{order.customer.name}</span>
-              </div>     
+              </div>
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Email</p>
                 <span>{order.customer.email}</span>
-              </div>   
+              </div>
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Mobile</p>
                 <span>{order.customer.mobile}</span>
@@ -160,11 +160,11 @@ const SalesOrderDetails: React.FC = () => {
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Vehicle</p>
                 <span>{order.vehicle.year} {order.vehicle.make} {order.vehicle.model}</span>
-              </div>     
+              </div>
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Variant</p>
                 <span>{order.vehicle.variant}</span>
-              </div>   
+              </div>
               <div className="flex justify-between">
                 <p className="text-muted-foreground">Plate No.</p>
                 <span>{order.vehicle.plateNo}</span>

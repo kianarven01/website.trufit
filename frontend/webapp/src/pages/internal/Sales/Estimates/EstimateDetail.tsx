@@ -519,7 +519,7 @@ const EstimateDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="[&_tr]:hover:!bg-transparent">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs w-[30%] text-center">Service</TableHead>
@@ -574,7 +574,7 @@ const EstimateDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="[&_tr]:hover:!bg-transparent">
                   <TableHeader>
                     <TableRow className="bg-muted/50 text-center">
                       <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
@@ -646,7 +646,7 @@ const EstimateDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-foreground">Supplies, Petrol, Oils, and Lubricants</h2>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="[&_tr]:hover:!bg-transparent">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs text-center">Item Name</TableHead>
@@ -732,11 +732,17 @@ const EstimateDetail: React.FC = () => {
                         estimate.status.toUpperCase() === "FOR APPROVAL" ||
                         estimate.status.toUpperCase() === "FOR_APPROVAL" ||
                         estimate.status.toUpperCase() === "DRAFT") ? (
-                        <div className="w-32">
+                        <div className="w-32 flex flex-col items-end">
                           <CurrencyInput
                             value={downpayment}
                             onChange={(val) => setDownpayment(Number(val) || 0)}
+                            className="bg-white dark:bg-zinc-900 border-2 border-blue-500 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 shadow-md font-semibold text-blue-900 dark:text-blue-100"
                           />
+                          {downpayment > totals.total && (
+                            <p className="text-[10px] text-red-600 font-medium text-right mt-1 animate-pulse">
+                              Cannot exceed Grand Total
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <span>{peso(Number(estimate.downpayment_amount) || 0)}</span>
@@ -818,7 +824,7 @@ const EstimateDetail: React.FC = () => {
                           className="w-full shadow-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                           size="lg"
                           onClick={handleApproveEstimate}
-                          disabled={isApproving}
+                          disabled={isApproving || downpayment > totals.total}
                         >
                           {isApproving ? "Approving..." : "Approve Estimate"}
                         </Button>

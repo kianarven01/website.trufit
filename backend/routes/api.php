@@ -18,7 +18,8 @@ require app_path('Domains/Inventory/routes.php');
 // Supplier routes
 require app_path('Domains/Supplier/routes.php');
 
-
+// Purchasing routes
+require app_path('Domains/Purchasing/routes.php');
 /*
 |--------------------------------------------------------------------------
 | Supplier Reference Routes

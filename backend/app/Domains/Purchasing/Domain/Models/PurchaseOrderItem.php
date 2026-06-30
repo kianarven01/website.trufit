@@ -5,7 +5,7 @@ namespace App\Domains\Purchasing\Domain\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use App\Domains\Product\Domain\Models\Product;
-use App\Domains\Product\Domain\Models\ProductSupplier;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 
 class PurchaseOrderItem extends Model
 {

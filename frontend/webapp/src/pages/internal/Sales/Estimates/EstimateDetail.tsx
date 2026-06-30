@@ -148,7 +148,9 @@ const EstimateDetail: React.FC = () => {
 
         setServiceCategories(serviceCatsRes.data.data || []);
 
-        const dbProducts = productsRes.data.data || [];
+        const dbProducts = Array.isArray(productsRes.data)
+          ? productsRes.data
+          : productsRes.data.data || [];
         setPartsCatalog(dbProducts.map((p: any) => ({
           id: p.id,
           name: p.name,

@@ -20,7 +20,16 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
     public function findById(string $id): ?Estimate
     {
-        return Estimate::with(['customer', 'vehicle', 'items'])->find($id);
+        if (\Illuminate\Support\Str::isUuid($id)) {
+            $estimate = Estimate::with(['customer', 'vehicle', 'items'])->find($id);
+            if ($estimate) {
+                return $estimate;
+            }
+        }
+
+        return Estimate::with(['customer', 'vehicle', 'items'])
+            ->where('estimate_number', $id)
+            ->first();
     }
 
     public function create(array $data): Estimate

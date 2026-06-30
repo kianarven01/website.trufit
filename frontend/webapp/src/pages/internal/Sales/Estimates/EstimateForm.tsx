@@ -308,25 +308,35 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     }
   };
 
-  // ── Load Catalog Data & Existing Estimate ──────────────────────────────────
+  // ── Load Catalog Data & Hydrate Existing Estimate ─────────────────────────
   useEffect(() => {
-    const loadCatalogData = async () => {
+    const loadCatalogAndEstimate = async () => {
       try {
         setIsLoading(true);
-        const [
-          customersRes,
-          productsRes,
-          serviceTypesRes,
-          serviceCategoriesRes,
-        ] = await Promise.all([
+
+        const promises: Promise<any>[] = [
           api.get('/customers'),
           api.get('/products'),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
-        ]);
+        ];
+
+        if (mode === "edit" && estimateId) {
+          promises.push(api.get(`/estimates/${estimateId}`));
+        }
+
+        const results = await Promise.all(promises);
+
+        const customersRes = results[0];
+        const productsRes = results[1];
+        const serviceTypesRes = results[2];
+        const serviceCategoriesRes = results[3];
+        const estimateRes = mode === "edit" && estimateId ? results[4] : null;
 
         const dbCustomers = customersRes.data.data || [];
-        const dbProducts = productsRes.data.data || [];
+        const dbProducts = Array.isArray(productsRes.data)
+          ? productsRes.data
+          : productsRes.data.data || [];
         const dbServiceTypes = serviceTypesRes.data.data || [];
         const dbServiceCategories = serviceCategoriesRes.data.data || [];
 
@@ -385,124 +395,119 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           unit: p.unit?.name || "pc",
         }));
 
+        const mappedServiceCategories: ServiceCategory[] = dbServiceCategories.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+        }));
+
         setCustomers(normalizedCustomers);
         setVehicles(allVehicles);
         setServicesCatalog(normalizedServices);
         setPartsCatalog(normalizedParts);
-        setServiceCategories(dbServiceCategories);
+        setServiceCategories(mappedServiceCategories);
 
-      } catch (err) {
-        console.error("Failed to load data from backend", err);
-        toast.error("Failed to fetch catalog data");
+        // Hydrate estimate data if in edit mode
+        if (estimateRes) {
+          const found = estimateRes.data.data;
+
+          if (!found) {
+            toast.error("Estimate not found.");
+            navigate("/webapp/sales/estimates");
+            return;
+          }
+
+          if (found.estimate_number) {
+            setEstimateNumber(found.estimate_number);
+            sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`, found.estimate_number);
+            window.dispatchEvent(new Event('breadcrumb-update'));
+          }
+
+          const cust = found.customer;
+          const normalizedCust = cust ? {
+            id: String(cust.customer_id),
+            firstName: cust.first_name || "",
+            lastName: cust.last_name || "",
+            address: cust.address || "",
+            mobileNumber: cust.mobile_number || "",
+            landline: cust.landline || "",
+            email: cust.email || "",
+            businessPhone: cust.business || "",
+          } : null;
+
+          setSelectedCustomer(normalizedCust);
+
+          const veh = found.vehicle;
+          const normalizedVeh = veh ? {
+            id: String(veh.id),
+            customerId: String(found.customer_id),
+            vehicleModelId: String(veh.id),
+            color: veh.color || "",
+            plateNo: veh.plate_number || "",
+            engineNo: veh.engine_number || "",
+            vin: veh.VIN || "",
+            registrationNo: veh.registration_number || "",
+            sellingDealer: veh.selling_dealer || "",
+            year: veh.year_model || "",
+            make: veh.make || "",
+            model: veh.model || "",
+            variant: veh.variant || "",
+          } : null;
+
+          setSelectedVehicle(normalizedVeh);
+          setMileage(found.mileage ?? 0);
+          setNotes(found.notes ?? "");
+
+          const dbItems = found.items || [];
+          const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
+          const partItems = dbItems.filter((i: any) => i.item_type === "part");
+
+          if (serviceItems.length > 0) {
+            setJoLines(
+              serviceItems.map((s: any) => {
+                const service = normalizedServices.find(sc => sc.id === s.service_id);
+                const pricingOpt = service?.pricings?.find((p: any) => Number(p.price) === Number(s.unit_price));
+                return {
+                  id: s.id,
+                  ServiceTypeId: s.service_id,
+                  pricingId: pricingOpt ? pricingOpt.id : "",
+                  manualRate: Number(s.unit_price),
+                  amount: Number(s.subtotal),
+                };
+              })
+            );
+          } else {
+            setJoLines([emptyJOLine()]);
+          }
+
+          if (partItems.length > 0) {
+            setSoLines(
+              partItems.map((p: any) => ({
+                id: p.id,
+                ProductId: p.product_id,
+                quantity: Number(p.quantity),
+                amount: Number(p.subtotal),
+              }))
+            );
+          } else {
+            setSoLines([emptySOLine()]);
+          }
+        }
+      } catch (err: any) {
+        console.error("Failed to load catalog or estimate data", err);
+        toast.error("Failed to load data: " + (err.message || err));
       } finally {
         setIsLoading(false);
       }
     };
-    loadCatalogData();
-  }, []);
 
-  // Hydrate Estimate in Edit Mode
-  useEffect(() => {
-    if (mode !== "edit" || !estimateId || !servicesCatalog.length) return;
+    loadCatalogAndEstimate();
 
-    const fetchEstimate = async () => {
-      try {
-        const res = await api.get(`/estimates/${estimateId}`);
-        const found = res.data.data;
-
-        if (!found) {
-          toast.error("Estimate not found.");
-          navigate("/webapp/sales/estimates");
-          return;
-        }
-
-        if (found.estimate_number) {
-          setEstimateNumber(found.estimate_number);
-          sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`, found.estimate_number);
-          window.dispatchEvent(new Event('breadcrumb-update'));
-        }
-
-        const cust = found.customer;
-        const normalizedCust = cust ? {
-          id: String(cust.customer_id),
-          firstName: cust.first_name || "",
-          lastName: cust.last_name || "",
-          address: cust.address || "",
-          mobileNumber: cust.mobile_number || "",
-          landline: cust.landline || "",
-          email: cust.email || "",
-          businessPhone: cust.business || "",
-        } : null;
-
-        setSelectedCustomer(normalizedCust);
-
-        const veh = found.vehicle;
-        const normalizedVeh = veh ? {
-          id: String(veh.id),
-          customerId: String(found.customer_id),
-          vehicleModelId: String(veh.id),
-          color: veh.color || "",
-          plateNo: veh.plate_number || "",
-          engineNo: veh.engine_number || "",
-          vin: veh.VIN || "",
-          registrationNo: veh.registration_number || "",
-          sellingDealer: veh.selling_dealer || "",
-          year: veh.year_model || "",
-          make: veh.make || "",
-          model: veh.model || "",
-          variant: veh.variant || "",
-        } : null;
-
-        setSelectedVehicle(normalizedVeh);
-        setMileage(found.mileage ?? 0);
-        setNotes(found.notes ?? "");
-
-        const dbItems = found.items || [];
-        const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
-        const partItems = dbItems.filter((i: any) => i.item_type === "part");
-
-        if (serviceItems.length > 0) {
-          setJoLines(
-            serviceItems.map((s: any) => {
-              const service = servicesCatalog.find(sc => sc.id === s.service_id);
-              const pricingOpt = service?.pricings?.find((p: any) => Number(p.price) === Number(s.unit_price));
-              return {
-                id: s.id,
-                ServiceTypeId: s.service_id,
-                pricingId: pricingOpt ? pricingOpt.id : "",
-                manualRate: Number(s.unit_price),
-                amount: Number(s.subtotal),
-              };
-            })
-          );
-        } else {
-          setJoLines([emptyJOLine()]);
-        }
-
-        if (partItems.length > 0) {
-          setSoLines(
-            partItems.map((p: any) => ({
-              id: p.id,
-              ProductId: p.product_id,
-              quantity: Number(p.quantity),
-              amount: Number(p.subtotal),
-            }))
-          );
-        } else {
-          setSoLines([emptySOLine()]);
-        }
-      } catch (err) {
-        console.error("Failed to load estimate for editing", err);
-        toast.error("Failed to load estimate.");
-      }
-    };
-    fetchEstimate();
     return () => {
       if (estimateId) {
         sessionStorage.removeItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`);
       }
     };
-  }, [mode, estimateId, servicesCatalog]);
+  }, [mode, estimateId]);
 
   const updateJO = (idx: number, serviceId: string) => {
     if (joLines[idx]?.ServiceTypeId === serviceId) return;

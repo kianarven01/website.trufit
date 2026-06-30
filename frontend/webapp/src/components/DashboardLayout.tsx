@@ -328,7 +328,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       
       const info = findInfo(navItems);
       let label = info?.label || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
-      const isClickable = info?.isClickable ?? false;
+      const isClickable = info ? info.isClickable : true;
       
       // Dynamic Label override (for UUIDs or dynamic routes)
       if (!info) {

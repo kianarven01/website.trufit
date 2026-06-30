@@ -68,7 +68,7 @@ const SupplierDetails: React.FC = () => {
   const loadSupplier = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get(`/products/suppliers/${supplierId}`);
+      const res = await api.get(`/suppliers/${supplierId}`);
       if (res.data?.data) {
         setSupplier(res.data.data);
         setProducts(res.data.data.products || []);
@@ -94,7 +94,7 @@ const SupplierDetails: React.FC = () => {
 
   const handleSaveSupplier = async (updated: Supplier) => {
     try {
-      await api.put(`/products/suppliers/${updated.id}`, updated);
+      await api.put(`/suppliers/${updated.id}`, updated);
       setSupplier(updated);
       toast.success("Supplier updated.");
     } catch (error) {
@@ -105,7 +105,7 @@ const SupplierDetails: React.FC = () => {
 
   const handleDeleteSupplier = async () => {
     try {
-      await api.delete(`/products/suppliers/${supplier!.id}`);
+      await api.delete(`/suppliers/${supplier!.id}`);
       toast.success("Supplier deleted.");
       navigate("/webapp/purchasing/suppliers");
     } catch (error) {
@@ -135,7 +135,7 @@ const SupplierDetails: React.FC = () => {
       return;
     }
     try {
-      await api.post(`/products/suppliers/${supplierId}/products`, {
+      await api.post(`/suppliers/${supplierId}/products`, {
         productId: selectedProductId,
         cost: Number(supplierCost),
         isVat: isVat,
@@ -157,7 +157,7 @@ const SupplierDetails: React.FC = () => {
   const handleUpdateCost = async () => {
     if (!selectedProduct || !supplierCost) return;
     try {
-      await api.put(`/products/suppliers/${supplierId}/products/${selectedProduct.id}`, {
+      await api.put(`/suppliers/${supplierId}/products/${selectedProduct.id}`, {
         cost: Number(supplierCost),
         isVat: isVat,
         vatPercent: isVat ? Number(vatPercent) : null
@@ -177,7 +177,7 @@ const SupplierDetails: React.FC = () => {
 
   const handleUnlinkProduct = async (productId: string) => {
     try {
-      await api.delete(`/products/suppliers/${supplierId}/products/${productId}`);
+      await api.delete(`/suppliers/${supplierId}/products/${productId}`);
       toast.success("Product unlinked successfully.");
       void loadSupplier();
     } catch (error) {

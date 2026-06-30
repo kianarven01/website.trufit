@@ -75,10 +75,13 @@ interface Product {
   id: string;
   name: string;
   sku: string;
+  partNumber?: string;
   price: number;
   unit: string;
   quantityOnHand: number | null;
   reorderLevel: number | null;
+  productId?: string;
+  supplierName?: string;
 }
 
 interface JOServiceLine {
@@ -364,7 +367,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
         const promises: Promise<any>[] = [
           api.get('/customers'),
-          api.get('/products'),
+          api.get('/inventory'),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
         ];
@@ -434,19 +437,23 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           pricings: s.pricings || [],
         }));
 
-        // Map parts catalog with inventory data
-        const normalizedParts: Product[] = dbProducts.map((p: any) => {
-          // Price priority: inventory sell_price → supplier active_price → 0
-          const supplierPrice = p.suppliers?.[0]?.active_price?.Price;
-          const price = Number(p.sell_price || supplierPrice || 0);
+        // Map parts catalog using inventory data
+        const normalizedParts: Product[] = dbProducts.map((row: any) => {
+          const product = row.product || {};
+          const supplierPrice = row.active_price?.Price;
+          const price = Number(row.price || supplierPrice || 0);
+          const supplierName = row.supplier?.CompanyName || row.supplier?.name || row.supplier_name || "";
           return {
-            id: p.id,
-            name: p.name,
-            sku: p.SKU,
+            id: String(row.id),
+            productId: String(product.id || ""),
+            name: product.name || "",
+            sku: product.SKU || "",
+            partNumber: product.part_number || product.partNumber || "",
             price,
-            unit: p.unit_name || p.unit?.name || "pc",
-            quantityOnHand: p.quantity_on_hand ?? null,
-            reorderLevel: p.reorder_level ?? null,
+            unit: product.unit_name || product.unit?.name || "pc",
+            quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reorderLevel: Number(row.reorder_level ?? 5),
+            supplierName,
           };
         });
 
@@ -537,14 +544,17 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
           if (partItems.length > 0) {
             setSoLines(
-              partItems.map((p: any) => ({
-                id: p.id,
-                ProductId: p.product_id || "",
-                quantity: Number(p.quantity),
-                amount: Number(p.subtotal),
-                needsOrdering: p.needs_ordering ?? false,
-                customName: p.custom_name || undefined,
-              }))
+              partItems.map((p: any) => {
+                const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
+                return {
+                  id: p.id,
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
+                  quantity: Number(p.quantity),
+                  amount: Number(p.subtotal),
+                  needsOrdering: p.needs_ordering ?? false,
+                  customName: p.custom_name || undefined,
+                };
+              })
             );
           } else {
             setSoLines([emptySOLine()]);
@@ -915,7 +925,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           return {
             item_type: "part",
             service_id: null,
-            product_id: l.ProductId,
+            product_id: found?.productId || l.ProductId,
             quantity: Number(l.quantity),
             unit_price: price,
             subtotal: l.amount,
@@ -959,6 +969,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       status: mode === "edit" ? undefined : "FOR APPROVAL",
       total_amount: totals.total,
       mileage: Number(mileage),
+      notes: notes,
       items: payloadItems,
     };
 
@@ -1436,14 +1447,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 <div className="max-h-[420px] overflow-y-auto">
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-left w-[30%]">Item Name</TableHead>
-                        <TableHead className="text-xs text-center w-[15%]">Stock Status</TableHead>
-                        <TableHead className="text-xs text-center w-[15%]">Needs Order</TableHead>
+                      <TableRow className="bg-muted/50 text-center">
+                        <TableHead className="text-xs text-center w-[22%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[15%]">Part Number</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Needs Order</TableHead>
                         <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
                         <TableHead className="text-xs w-[10%] text-center">Qty</TableHead>
                         <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
-                        <TableHead className="text-xs w-[5%]"></TableHead>
+                        <TableHead className="text-xs w-[4%]"></TableHead>
                       </TableRow>
                     </TableHeader>
 
@@ -1467,12 +1479,16 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                   value={l.ProductId}
                                   onChange={(val) => updateSO(idx, "ProductId", val)}
                                   items={partsCatalog.map((p) => ({
-                                    label: `${p.name} - SKU: ${p.sku}`,
+                                    label: `${p.name} ${p.supplierName ? `(${p.supplierName})` : ""} - ₱${Number(p.price || 0).toLocaleString()} - SKU: ${p.sku}`,
                                     value: p.id,
                                   }))}
                                   placeholder="Select part"
                                 />
                               )}
+                            </TableCell>
+
+                            <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
+                              {isCustom ? "—" : (product?.partNumber || product?.sku || "—")}
                             </TableCell>
 
                             <TableCell className="text-center">
@@ -1566,7 +1582,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-left w-[30%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[30%]">Item Name</TableHead>
                         <TableHead className="text-xs text-center w-[15%]">Stock Status</TableHead>
                         <TableHead className="text-xs text-center w-[15%]">Needs Order</TableHead>
                         <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>

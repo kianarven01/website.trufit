@@ -51,10 +51,13 @@ interface Product {
   id: string;
   name: string;
   sku: string;
+  partNumber?: string;
   price: number;
   unit: string;
   quantityOnHand: number | null;
   reorderLevel: number | null;
+  productId?: string;
+  supplierName?: string;
 }
 
 /* ================= HELPERS ================= */
@@ -113,7 +116,7 @@ const EstimateDetail: React.FC = () => {
   );
 
   const partsMap = useMemo<Record<string, Product>>(() =>
-    Object.fromEntries(partsCatalog.map(p => [p.id, p])),
+    Object.fromEntries(partsCatalog.map(p => [p.productId || p.id, p])),
     [partsCatalog]
   );
 
@@ -132,7 +135,7 @@ const EstimateDetail: React.FC = () => {
           api.get(`/estimates/${id}`),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
-          api.get('/products'),
+          api.get('/inventory'),
         ]);
 
         const estData = estimateRes.data.data;
@@ -157,20 +160,25 @@ const EstimateDetail: React.FC = () => {
 
         setServiceCategories(serviceCatsRes.data.data || []);
 
-        const dbProducts = Array.isArray(productsRes.data)
+        const dbInventory = Array.isArray(productsRes.data)
           ? productsRes.data
           : productsRes.data.data || [];
-        setPartsCatalog(dbProducts.map((p: any) => {
-          const supplierPrice = p.suppliers?.[0]?.active_price?.Price;
-          const price = Number(p.sell_price || supplierPrice || 0);
+        setPartsCatalog(dbInventory.map((row: any) => {
+          const product = row.product || {};
+          const supplierPrice = row.active_price?.Price;
+          const price = Number(row.price || supplierPrice || 0);
+          const supplierName = row.supplier?.CompanyName || row.supplier?.name || row.supplier_name || "";
           return {
-            id: p.id,
-            name: p.name,
-            sku: p.SKU,
+            id: String(row.id),
+            productId: String(product.id || ""),
+            name: product.name || "",
+            sku: product.SKU || "",
+            partNumber: product.part_number || product.partNumber || "",
             price,
-            unit: p.unit_name || p.unit?.name || "pc",
-            quantityOnHand: p.quantity_on_hand ?? null,
-            reorderLevel: p.reorder_level ?? null,
+            unit: product.unit_name || product.unit?.name || "pc",
+            quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reorderLevel: Number(row.reorder_level ?? 5),
+            supplierName,
           };
         }));
       } catch (err) {
@@ -524,8 +532,8 @@ const EstimateDetail: React.FC = () => {
                         const svc = servicesMap[item.service_id];
                         const cat = svc ? categoryMap[svc.serviceCategoryId] : null;
                         return (
-                          <TableRow key={item.id} className="hover:bg-transparent">
-                            <TableCell className="font-medium">
+                          <TableRow key={item.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
                               {svc?.name || item.service_id || "—"}
                             </TableCell>
                             <TableCell className="text-center text-muted-foreground text-sm">
@@ -565,10 +573,12 @@ const EstimateDetail: React.FC = () => {
               <div className="border rounded-lg overflow-hidden">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs text-center">Item Name</TableHead>
-                      <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
-                      <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
+                    <TableRow className="bg-muted/50 text-center">
+                      <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
+                      <TableHead className="text-xs text-center w-[15%]">Part Number</TableHead>
+                      <TableHead className="text-xs text-center w-[15%]">Status</TableHead>
+                      <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
+                      <TableHead className="text-xs w-[10%] text-center">Need Quantity</TableHead>
                       <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -576,11 +586,31 @@ const EstimateDetail: React.FC = () => {
                     {partItems.length > 0 ? (
                       partItems.map((item: any) => {
                         const product = partsMap[item.product_id];
+                        const stock = product ? (product.quantityOnHand ?? 0) : 0;
+                        const shortage = Number(item.quantity) - stock;
+                        const orderQty = shortage > 0 ? shortage : Number(item.quantity);
                         return (
-                          <TableRow key={item.id} className="hover:bg-transparent">
-                            <TableCell className="font-medium">
+                          <TableRow key={item.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
                               {item.custom_name || product?.name || item.product_id || "—"}
-                              {renderNeedsOrderBadge(item, product)}
+                            </TableCell>
+                            <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                              {item.custom_name ? "—" : (product?.partNumber || product?.sku || "—")}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item.custom_name ? (
+                                <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
+                                  Custom Item
+                                </Badge>
+                              ) : item.needs_ordering ? (
+                                <Badge variant="pending" className="whitespace-nowrap">
+                                  Needs Order ({orderQty} {product?.unit || "pc"}{orderQty > 1 ? "s" : ""})
+                                </Badge>
+                              ) : (
+                                <Badge variant="approved" className="whitespace-nowrap">
+                                  In Stock
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -596,7 +626,7 @@ const EstimateDetail: React.FC = () => {
                       })
                     ) : (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                        <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                           No parts added.
                         </TableCell>
                       </TableRow>
@@ -627,10 +657,9 @@ const EstimateDetail: React.FC = () => {
                       spolItems.map((item: any) => {
                         const product = partsMap[item.product_id];
                         return (
-                          <TableRow key={item.id} className="hover:bg-transparent">
-                            <TableCell className="font-medium">
+                          <TableRow key={item.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
                               {item.custom_name || product?.name || item.product_id || "—"}
-                              {renderNeedsOrderBadge(item, product)}
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}

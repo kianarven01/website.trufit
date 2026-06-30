@@ -30,6 +30,7 @@ class Estimate extends Model
         'created_by',
         'edited_by',
         'approved_by',
+        'notes',
     ];
 
     protected $casts = [

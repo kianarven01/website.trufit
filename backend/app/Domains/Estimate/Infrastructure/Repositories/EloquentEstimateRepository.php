@@ -69,6 +69,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'payment_method' => $data['payment_method'] ?? null,
                 'payment_reference' => $data['payment_reference'] ?? null,
                 'created_by' => $employeeId,
+                'notes' => $data['notes'] ?? null,
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {
@@ -112,10 +113,11 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'downpayment_amount' => $data['downpayment_amount'] ?? $estimate->downpayment_amount,
                 'payment_method' => $data['payment_method'] ?? $estimate->payment_method,
                 'payment_reference' => $data['payment_reference'] ?? $estimate->payment_reference,
+                'notes' => $data['notes'] ?? $estimate->notes,
             ];
 
-            // If it's a general edit (items update, mileage change, total_amount change, or downpayment update), track edited_by
-            if (isset($data['items']) || isset($data['mileage']) || isset($data['total_amount']) || isset($data['downpayment_amount'])) {
+            // If it's a general edit (items update, mileage change, total_amount change, downpayment update, or notes update), track edited_by
+            if (isset($data['items']) || isset($data['mileage']) || isset($data['total_amount']) || isset($data['downpayment_amount']) || isset($data['notes'])) {
                 $updateData['edited_by'] = $employeeId;
             }
 

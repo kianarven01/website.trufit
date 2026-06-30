@@ -126,6 +126,8 @@ CREATE TABLE Main.EstimateItems (
   unit_price numeric NOT NULL,
   subtotal numeric,
   created_at timestamp without time zone DEFAULT now(),
+  needs_ordering boolean NOT NULL DEFAULT false,
+  custom_name character varying,
   CONSTRAINT EstimateItems_pkey PRIMARY KEY (id),
   CONSTRAINT estimateitems_estimate_id_fkey FOREIGN KEY (estimate_id) REFERENCES Main.Estimates(id)
 );
@@ -139,9 +141,20 @@ CREATE TABLE Main.Estimates (
   vehicle_id bigint,
   customer_id bigint,
   mileage integer,
+  estimate_number character varying UNIQUE,
+  downpayment_amount numeric NOT NULL DEFAULT '0'::numeric,
+  payment_method character varying,
+  payment_reference character varying,
+  created_by integer,
+  edited_by integer,
+  approved_by integer,
+  notes text,
   CONSTRAINT Estimates_pkey PRIMARY KEY (id),
   CONSTRAINT estimates_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES Main.CustomerVehicles(id),
-  CONSTRAINT estimates_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES Main.Customers(customer_id)
+  CONSTRAINT estimates_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES Main.Customers(customer_id),
+  CONSTRAINT main_estimates_created_by_foreign FOREIGN KEY (created_by) REFERENCES Main.Employees(id),
+  CONSTRAINT main_estimates_edited_by_foreign FOREIGN KEY (edited_by) REFERENCES Main.Employees(id),
+  CONSTRAINT main_estimates_approved_by_foreign FOREIGN KEY (approved_by) REFERENCES Main.Employees(id)
 );
 CREATE TABLE Main.Inventory (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,

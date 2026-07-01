@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,9 @@ import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 import { toast } from "sonner";
 import api from "@/api/axios";
 import { useAuth } from "@/context/AuthContext";
+import CurrencyInput from "@/components/ui/currencyInput";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   approved: { label: "Approved", variant: "approved" as const },
@@ -23,9 +26,11 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   "FOR APPROVAL": { label: "For Approval", variant: "for-approval" as const },
   "for approval": { label: "For Approval", variant: "for-approval" as const },
   "for_approval": { label: "For Approval", variant: "for-approval" as const },
+  "APPROVED WITH DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
+  "APPROVED_WITH_DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
 };
 
-import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download } from "lucide-react";
+import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download, Eye } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -48,8 +53,13 @@ interface Product {
   id: string;
   name: string;
   sku: string;
+  partNumber?: string;
   price: number;
   unit: string;
+  quantityOnHand: number | null;
+  reorderLevel: number | null;
+  productId?: string;
+  supplierName?: string;
 }
 
 /* ================= HELPERS ================= */
@@ -93,6 +103,14 @@ const EstimateDetail: React.FC = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [estimate, setEstimate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [downpayment, setDownpayment] = useState<number>(0);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [includePartNumbers, setIncludePartNumbers] = useState(false);
+  const [includeTentative, setIncludeTentative] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
 
   // Catalog data for resolving IDs to names
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
@@ -105,7 +123,7 @@ const EstimateDetail: React.FC = () => {
   );
 
   const partsMap = useMemo<Record<string, Product>>(() =>
-    Object.fromEntries(partsCatalog.map(p => [p.id, p])),
+    Object.fromEntries(partsCatalog.map(p => [p.productId || p.id, p])),
     [partsCatalog]
   );
 
@@ -124,10 +142,17 @@ const EstimateDetail: React.FC = () => {
           api.get(`/estimates/${id}`),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
-          api.get('/products'),
+          api.get('/inventory'),
         ]);
 
-        setEstimate(estimateRes.data.data);
+        const estData = estimateRes.data.data;
+        setEstimate(estData);
+        setDownpayment(Number(estData?.downpayment_amount) || 0);
+
+        if (estData?.estimate_number) {
+          sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${id}`, estData.estimate_number);
+          window.dispatchEvent(new Event('breadcrumb-update'));
+        }
 
         const dbServiceTypes = serviceTypesRes.data.data || [];
         setServicesCatalog(dbServiceTypes.map((s: any) => ({
@@ -142,14 +167,27 @@ const EstimateDetail: React.FC = () => {
 
         setServiceCategories(serviceCatsRes.data.data || []);
 
-        const dbProducts = productsRes.data.data || [];
-        setPartsCatalog(dbProducts.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          sku: p.SKU,
-          price: Number(p.sell_price || p.price || 0),
-          unit: p.unit?.name || "pc",
-        })));
+        const dbInventory = Array.isArray(productsRes.data)
+          ? productsRes.data
+          : productsRes.data.data || [];
+        setPartsCatalog(dbInventory.map((row: any) => {
+          const product = row.product || {};
+          const supplierPrice = row.active_price?.Price;
+          const price = Number(row.price || supplierPrice || 0);
+          const supplierName = row.supplier?.CompanyName || row.supplier?.name || row.supplier_name || "";
+          return {
+            id: String(row.id),
+            productId: String(product.id || ""),
+            name: product.name || "",
+            sku: product.SKU || "",
+            partNumber: product.part_number || product.partNumber || "",
+            price,
+            unit: product.unit_name || product.unit?.name || "pc",
+            quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reorderLevel: Number(row.reorder_level ?? 5),
+            supplierName,
+          };
+        }));
       } catch (err) {
         console.error("Failed to load estimate", err);
         setEstimate(null);
@@ -158,6 +196,9 @@ const EstimateDetail: React.FC = () => {
       }
     };
     if (id) fetchData();
+    return () => {
+      sessionStorage.removeItem(`breadcrumb-/webapp/sales/estimates/${id}`);
+    };
   }, [id]);
 
   /* ================= DERIVED ================= */
@@ -186,20 +227,64 @@ const EstimateDetail: React.FC = () => {
     const totalServices = serviceItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
     const totalParts = partItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
     const totalSupplies = spolItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    
+    // Tentative-only subtotals
+    const tentativeServices = serviceItems.filter((i: any) => i.is_tentative).reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    const tentativeParts = partItems.filter((i: any) => i.is_tentative).reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    const tentativeSupplies = spolItems.filter((i: any) => i.is_tentative).reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    const tentativeTotal = tentativeServices + tentativeParts + tentativeSupplies;
 
     const estimatedMinutes = serviceItems.reduce((acc: number, i: any) => {
       const svc = servicesMap[i.service_id];
       return acc + (svc?.duration || 0);
     }, 0);
 
+    const total = totalServices + totalParts + totalSupplies;
+    const baseTotal = total - tentativeTotal;
+
     return {
       totalServices,
       totalParts,
       totalSupplies,
-      total: Number(estimate?.total_amount || 0),
+      total,
+      baseTotal,
+      tentativeTotal,
       estimatedMinutes,
     };
   }, [serviceItems, partItems, spolItems, servicesMap, estimate]);
+
+  const renderNeedsOrderBadge = (item: any, product: Product | undefined) => {
+    if (product && product.quantityOnHand !== null) {
+      const shortage = Number(item.quantity) - product.quantityOnHand;
+      const qtyToDisplay = shortage > 0 ? shortage : Number(item.quantity);
+
+      if (shortage > 0) {
+        if (item.needs_ordering) {
+          return (
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+              Needs Order (Qty: {qtyToDisplay} | Stock: {product.quantityOnHand})
+            </span>
+          );
+        } else {
+          return (
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">
+              Outsource (Qty: {qtyToDisplay} | Stock: {product.quantityOnHand})
+            </span>
+          );
+        }
+      }
+    }
+
+    if (item.needs_ordering) {
+      return (
+        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+          Needs Order (Qty: {Number(item.quantity)})
+        </span>
+      );
+    }
+
+    return null;
+  };
 
   /* ================= ACTIONS ================= */
 
@@ -208,15 +293,20 @@ const EstimateDetail: React.FC = () => {
   };
 
   const handleApproveEstimate = async () => {
+    setIsApproving(true);
     try {
-      await api.put(`/estimates/${estimate?.id}`, {
-        status: "APPROVED"
+      const status = downpayment > 0 ? "APPROVED WITH DOWNPAYMENT" : "APPROVED";
+      const response = await api.put(`/estimates/${estimate?.id}`, {
+        status,
+        downpayment_amount: downpayment
       });
-      setEstimate((prev: any) => prev ? { ...prev, status: "APPROVED" } : null);
-      toast.success("Estimate approved successfully!");
+      setEstimate(response.data.data);
+      toast.success(`Estimate approved successfully!`);
     } catch (err) {
       console.error("Failed to approve estimate", err);
       toast.error("Failed to approve estimate.");
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -231,24 +321,49 @@ const EstimateDetail: React.FC = () => {
     }
   };
 
-  const handleDownloadPDF = async () => {
+  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean, incTentative: boolean) => {
     if (!estimate?.id) return;
+    setIsLoadingPdf(true);
     try {
       const response = await api.get(`/estimates/${estimate.id}/download-pdf`, {
+        params: { 
+          hide_part_number: hidePartNumber,
+          include_tentative: incTentative,
+        },
         responseType: 'blob',
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `estimate-${estimate.id.substring(0,8)}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
+      // Revoke previous blob URL to prevent memory leaks
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
     } catch (error) {
-      console.error("Error downloading PDF:", error);
-      toast.error("Failed to download PDF.");
+      console.error("Error loading PDF:", error);
+      toast.error("Failed to load PDF preview.");
+    } finally {
+      setIsLoadingPdf(false);
     }
+  }, [estimate?.id, pdfBlobUrl]);
+
+  const handlePreviewPDF = async () => {
+    setShowPdfPreview(true);
+    await fetchPdfBlob(!includePartNumbers, includeTentative);
   };
+
+
+
+  // Re-fetch PDF when part numbers or tentative toggles change while preview is open
+  useEffect(() => {
+    if (showPdfPreview && estimate?.id) {
+      fetchPdfBlob(!includePartNumbers, includeTentative);
+    }
+  }, [includePartNumbers, includeTentative]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
 
   /* ================= LOADING / EMPTY ================= */
 
@@ -308,16 +423,6 @@ const EstimateDetail: React.FC = () => {
             </Button>
             {isSupervisorOrAdmin && (
               <>
-                {(estimate.status?.toUpperCase() === "FOR APPROVAL" ||
-                  estimate.status?.toUpperCase() === "FOR_APPROVAL") && (
-                  <Button
-                    size="sm"
-                    onClick={handleApproveEstimate}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    Approve Estimate
-                  </Button>
-                )}
                 <Button size="sm" onClick={handleEditEstimate}>
                   Edit Estimate
                 </Button>
@@ -449,7 +554,7 @@ const EstimateDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="[&_tr]:hover:!bg-transparent">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs w-[30%] text-center">Service</TableHead>
@@ -465,9 +570,16 @@ const EstimateDetail: React.FC = () => {
                         const svc = servicesMap[item.service_id];
                         const cat = svc ? categoryMap[svc.serviceCategoryId] : null;
                         return (
-                          <TableRow key={item.id} className="hover:bg-transparent">
-                            <TableCell className="font-medium">
-                              {svc?.name || item.service_id || "—"}
+                          <TableRow key={item.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {svc?.name || item.service_id || "—"}
+                                {item.is_tentative && (
+                                  <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
+                                    Tentative
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-center text-muted-foreground text-sm">
                               {svc?.pricingType === "fixed" ? "Fixed" : svc?.pricingType === "hourly rate" ? "Hourly" : "—"}
@@ -479,7 +591,7 @@ const EstimateDetail: React.FC = () => {
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
+                            <TableCell className={`text-center font-semibold ${item.is_tentative ? "text-amber-600 dark:text-amber-400" : ""}`}>
                               {peso(Number(item.subtotal))}
                             </TableCell>
                           </TableRow>
@@ -504,12 +616,14 @@ const EstimateDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="[&_tr]:hover:!bg-transparent">
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs text-center">Item Name</TableHead>
-                      <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
-                      <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
+                    <TableRow className="bg-muted/50 text-center">
+                      <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
+                      <TableHead className="text-xs text-center w-[15%]">Part Number</TableHead>
+                      <TableHead className="text-xs text-center w-[15%]">Status</TableHead>
+                      <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
+                      <TableHead className="text-xs w-[10%] text-center">Need Quantity</TableHead>
                       <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -517,10 +631,52 @@ const EstimateDetail: React.FC = () => {
                     {partItems.length > 0 ? (
                       partItems.map((item: any) => {
                         const product = partsMap[item.product_id];
+                        const isTracked = product && product.quantityOnHand !== null;
+                        const stock = isTracked ? (product.quantityOnHand ?? 0) : 0;
+                        const qty = Number(item.quantity || 0);
+                        const shortage = qty - stock;
+                        const orderQty = shortage > 0 ? shortage : qty;
                         return (
-                          <TableRow key={item.id} className="hover:bg-transparent">
-                            <TableCell className="font-medium">
-                              {product?.name || item.product_id || "—"}
+                          <TableRow key={item.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {item.custom_name || product?.name || item.product_id || "—"}
+                                {item.is_tentative && (
+                                  <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
+                                    Tentative
+                                  </Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                              {item.custom_name ? "—" : (product?.partNumber || product?.sku || "—")}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {item.custom_name ? (
+                                <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 whitespace-nowrap">
+                                  Custom Item
+                                </Badge>
+                              ) : item.needs_ordering ? (
+                                <Badge variant="pending" className="whitespace-nowrap">
+                                  Needs Order ({orderQty} {product?.unit || "pc"}{orderQty > 1 ? "s" : ""})
+                                </Badge>
+                              ) : !isTracked ? (
+                                <Badge variant="approved" className="whitespace-nowrap">
+                                  In Stock
+                                </Badge>
+                              ) : stock >= qty ? (
+                                <Badge variant="approved" className="whitespace-nowrap">
+                                  In Stock
+                                </Badge>
+                              ) : stock <= 0 ? (
+                                <Badge variant="cancelled" className="whitespace-nowrap">
+                                  Out of Stock (Shortage: {qty} {product?.unit || "pc"}{qty > 1 ? "s" : ""})
+                                </Badge>
+                              ) : (
+                                <Badge variant="for-approval" className="whitespace-nowrap">
+                                  Low Stock (Needs {shortage} more {product?.unit || "pc"}{shortage > 1 ? "s" : ""})
+                                </Badge>
+                              )}
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -528,7 +684,7 @@ const EstimateDetail: React.FC = () => {
                             <TableCell className="text-center">
                               {Number(item.quantity)}
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
+                            <TableCell className={`text-center font-semibold ${item.is_tentative ? "text-amber-600 dark:text-amber-400" : ""}`}>
                               {peso(Number(item.subtotal))}
                             </TableCell>
                           </TableRow>
@@ -536,7 +692,7 @@ const EstimateDetail: React.FC = () => {
                       })
                     ) : (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                        <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                           No parts added.
                         </TableCell>
                       </TableRow>
@@ -553,7 +709,7 @@ const EstimateDetail: React.FC = () => {
                 <h2 className="text-sm font-semibold text-foreground">Supplies, Petrol, Oils, and Lubricants</h2>
               </div>
               <div className="border rounded-lg overflow-hidden">
-                <Table>
+                <Table className="[&_tr]:hover:!bg-transparent">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs text-center">Item Name</TableHead>
@@ -567,9 +723,16 @@ const EstimateDetail: React.FC = () => {
                       spolItems.map((item: any) => {
                         const product = partsMap[item.product_id];
                         return (
-                          <TableRow key={item.id} className="hover:bg-transparent">
-                            <TableCell className="font-medium">
-                              {product?.name || item.product_id || "—"}
+                          <TableRow key={item.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {item.custom_name || product?.name || item.product_id || "—"}
+                                {item.is_tentative && (
+                                  <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
+                                    Tentative
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -577,7 +740,7 @@ const EstimateDetail: React.FC = () => {
                             <TableCell className="text-center">
                               {Number(item.quantity)}
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
+                            <TableCell className={`text-center font-semibold ${item.is_tentative ? "text-amber-600 dark:text-amber-400" : ""}`}>
                               {peso(Number(item.subtotal))}
                             </TableCell>
                           </TableRow>
@@ -627,11 +790,60 @@ const EstimateDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
+                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2">
                     <div className="flex justify-between items-end text-primary">
-                      <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-2xl font-bold tracking-wide">{peso(totals.total)}</span>
+                      <span className="text-xs font-bold uppercase">Grand Total (Confirmed)</span>
+                      <span className="text-xl font-bold tracking-wide">{peso(totals.baseTotal)}</span>
                     </div>
+                    {totals.tentativeTotal > 0 && (
+                      <>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-end text-amber-600 dark:text-amber-400">
+                          <span className="text-[10px] font-semibold uppercase">Tentative Items</span>
+                          <span className="text-xs font-semibold">+{peso(totals.tentativeTotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-end text-muted-foreground">
+                          <span className="text-[10px] font-medium uppercase">Grand Total (incl. Tentative)</span>
+                          <span className="text-sm font-bold">{peso(totals.total)}</span>
+                        </div>
+                      </>
+                    )}
+                    <Separator className="bg-primary/20" />
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>Downpayment</span>
+                      {(!estimate.status ||
+                        estimate.status.toUpperCase() === "FOR APPROVAL" ||
+                        estimate.status.toUpperCase() === "FOR_APPROVAL" ||
+                        estimate.status.toUpperCase() === "DRAFT") ? (
+                        <div className="w-32 flex flex-col items-end">
+                          <CurrencyInput
+                            value={downpayment}
+                            onChange={(val) => setDownpayment(Number(val) || 0)}
+                            className="bg-white dark:bg-zinc-900 border-2 border-blue-500 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 shadow-md font-semibold text-blue-900 dark:text-blue-100"
+                          />
+                          {downpayment > totals.total && (
+                            <p className="text-[10px] text-red-600 font-medium text-right mt-1 animate-pulse">
+                              Cannot exceed Grand Total
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span>{peso(Number(estimate.downpayment_amount) || 0)}</span>
+                      )}
+                    </div>
+                    <Separator className="bg-primary/20" />
+                    <div className="flex justify-between items-end text-blue-950 dark:text-blue-200 font-bold">
+                      <span className="text-xs uppercase">Balance Due</span>
+                      <span className="text-2xl tracking-wide">{peso(Math.max(0, totals.baseTotal - downpayment))}</span>
+                    </div>
+                    {totals.tentativeTotal > 0 && (
+                      <div className="flex justify-between items-end text-muted-foreground">
+                        <span className="text-[10px] font-medium uppercase">Balance Due (incl. Tentative)</span>
+                        <span className="text-lg font-bold">
+                          {peso(Math.max(0, totals.total - downpayment))}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-2">
@@ -666,6 +878,30 @@ const EstimateDetail: React.FC = () => {
                       <span>{formatDate(estimate.created_at)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Created By</span>
+                      <span>
+                        {estimate.creator
+                          ? `${estimate.creator.first_name} ${estimate.creator.last_name}`
+                          : "—"}
+                      </span>
+                    </div>
+                    {estimate.editor && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Edited By</span>
+                        <span>
+                          {estimate.editor.first_name} {estimate.editor.last_name}
+                        </span>
+                      </div>
+                    )}
+                    {estimate.approver && (
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Approved By</span>
+                        <span>
+                          {estimate.approver.first_name} {estimate.approver.last_name}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Updated</span>
                       <span>{formatDate(estimate.updated_at)}</span>
                     </div>
@@ -679,18 +915,19 @@ const EstimateDetail: React.FC = () => {
                           className="w-full shadow-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
                           size="lg"
                           onClick={handleApproveEstimate}
+                          disabled={isApproving || downpayment > totals.total}
                         >
-                          Approve Estimate
+                          {isApproving ? "Approving..." : "Approve Estimate"}
                         </Button>
                       )}
                     <Button
                       className="w-full shadow-md"
                       size="lg"
                       variant="outline"
-                      onClick={handleDownloadPDF}
+                      onClick={handlePreviewPDF}
                     >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download PDF
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview PDF
                     </Button>
                   </div>
                 </CardContent>
@@ -723,6 +960,67 @@ const EstimateDetail: React.FC = () => {
         destructive
         onConfirm={handleRemoveEstimate}
       />
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-semibold">
+                PDF Preview — {estimate?.estimate_number || "Estimate"}
+              </DialogTitle>
+              <div className="flex items-center gap-4 mr-8">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-part-numbers"
+                    checked={includePartNumbers}
+                    onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
+                  />
+                  <label htmlFor="preview-include-part-numbers" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Part Numbers
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-tentative"
+                    checked={includeTentative}
+                    onCheckedChange={(checked) => setIncludeTentative(!!checked)}
+                  />
+                  <label htmlFor="preview-include-tentative" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Tentative Items
+                  </label>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Estimate PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

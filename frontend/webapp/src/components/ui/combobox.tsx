@@ -106,7 +106,9 @@ const Combobox: FC<MakeComboboxProps> = ({
               if (disabled) return;
               const val = e.target.value;
               setSearch(val);
-              onChange(resolveValue(val));
+              if (allowAdd) {
+                onChange(resolveValue(val));
+              }
               setOpen(true);
             }}
             disabled={disabled || isLoading}
@@ -169,7 +171,7 @@ const Combobox: FC<MakeComboboxProps> = ({
                     return (
                       <CommandItem
                         key={item.value}
-                        value={item.label}
+                        value={`${item.label} [id:${item.value}]`}
                         onSelect={() => {
                           onChange(item.value);
                           setSearch(item.label);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import DataToolbar from "@/components/DataToolbar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,11 +11,14 @@ import CurrencyInput from "@/components/ui/currencyInput";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download } from "lucide-react";
+import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download, Eye } from "lucide-react";
 import api from "@/api/axios";
+import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
 /* ================= TYPES ================= */
 
@@ -74,8 +77,13 @@ interface Product {
   id: string;
   name: string;
   sku: string;
+  partNumber?: string;
   price: number;
   unit: string;
+  quantityOnHand: number | null;
+  reorderLevel: number | null;
+  productId?: string;
+  supplierName?: string;
 }
 
 interface JOServiceLine {
@@ -84,6 +92,7 @@ interface JOServiceLine {
   pricingId?: string; // Tracks the selected pricing row ID!
   manualRate?: number;
   amount: number;
+  isTentative: boolean;
 }
 
 interface SOPartLine {
@@ -91,6 +100,10 @@ interface SOPartLine {
   ProductId: string;
   quantity: number | "";
   amount: number;
+  needsOrdering: boolean;
+  customName?: string;
+  manualPrice?: number;
+  isTentative: boolean;
 }
 
 interface SPOLLine {
@@ -98,7 +111,13 @@ interface SPOLLine {
   ProductId: string;
   quantity: number | "";
   amount: number;
+  needsOrdering: boolean;
+  customName?: string;
+  manualPrice?: number;
+  isTentative: boolean;
 }
+
+
 
 interface AddEstimateProps {
   mode?: "create" | "edit";
@@ -119,6 +138,7 @@ const emptyJOLine = (): JOServiceLine => ({
   pricingId: "",
   manualRate: undefined,
   amount: 0,
+  isTentative: false,
 });
 
 const emptySOLine = (): SOPartLine => ({
@@ -126,6 +146,19 @@ const emptySOLine = (): SOPartLine => ({
   ProductId: "",
   quantity: 1,
   amount: 0,
+  needsOrdering: false,
+  isTentative: false,
+});
+
+const emptyCustomSOLine = (): SOPartLine => ({
+  id: genLineId(),
+  ProductId: "",
+  quantity: 1,
+  amount: 0,
+  needsOrdering: true,
+  customName: "",
+  manualPrice: 0,
+  isTentative: false,
 });
 
 const emptySPOLLine = (): SPOLLine => ({
@@ -133,6 +166,19 @@ const emptySPOLLine = (): SPOLLine => ({
   ProductId: "",
   quantity: 1,
   amount: 0,
+  needsOrdering: false,
+  isTentative: false,
+});
+
+const emptyCustomSPOLLine = (): SPOLLine => ({
+  id: genLineId(),
+  ProductId: "",
+  quantity: 1,
+  amount: 0,
+  needsOrdering: true,
+  customName: "",
+  manualPrice: 0,
+  isTentative: false,
 });
 
 const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
@@ -145,17 +191,28 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [mileage, setMileage] = useState<number>(0);
-  
+  const [estimateNumber, setEstimateNumber] = useState<string>("");
+
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
 
   const [notes, setNotes] = useState("");
+  const [downpayment, setDownpayment] = useState<number>(0);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [joLines, setJoLines] = useState<JOServiceLine[]>([emptyJOLine()]);
   const [soLines, setSoLines] = useState<SOPartLine[]>([emptySOLine()]);
   const [spolLines, setSpolLines] = useState<SPOLLine[]>([emptySPOLLine()]);
   const [expandedTaskRows, setExpandedTaskRows] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [includePartNumbers, setIncludePartNumbers] = useState(false);
+  const [includeTentative, setIncludeTentative] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [shortageItems, setShortageItems] = useState<string[]>([]);
 
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
@@ -172,13 +229,24 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     );
   }, [partsCatalog]);
 
+  const getStockStatus = (product: Product | undefined) => {
+    if (!product) return null;
+    if (product.quantityOnHand === null) return { label: "Not Tracked", color: "text-gray-400", bg: "bg-gray-100 dark:bg-gray-800" };
+    if (product.quantityOnHand <= 0) return { label: "Out of Stock", color: "text-red-600", bg: "bg-red-50 dark:bg-red-950" };
+    if (product.reorderLevel && product.quantityOnHand <= product.reorderLevel)
+      return { label: `Low (${product.quantityOnHand})`, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950" };
+    return { label: `In Stock (${product.quantityOnHand})`, color: "text-green-600", bg: "bg-green-50 dark:bg-green-950" };
+  };
+
   const addJOLine = () => setJoLines((p) => [...p, emptyJOLine()]);
   const removeJOLine = (i: number) => setJoLines((p) => p.filter((_, idx) => idx !== i));
 
   const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
+  const addCustomSOLine = () => setSoLines((p) => [...p, emptyCustomSOLine()]);
   const removeSOLine = (i: number) => setSoLines((p) => p.filter((_, idx) => idx !== i));
 
   const addSPOLLine = () => setSpolLines((p) => [...p, emptySPOLLine()]);
+  const addCustomSPOLLine = () => setSpolLines((p) => [...p, emptyCustomSPOLLine()]);
   const removeSPOLLine = (i: number) => setSpolLines((p) => p.filter((_, idx) => idx !== i));
 
   const customerVehicles = useMemo(() => {
@@ -200,7 +268,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const getMatchingPricing = (service: Service | null, vehicle: Vehicle | null) => {
     if (!service || !service.pricings?.length) return null;
 
-    const validPricings = service.pricings.filter((p: any) => 
+    const validPricings = service.pricings.filter((p: any) =>
       p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed')
     );
 
@@ -215,8 +283,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       const types = Array.isArray(p.vehicle_types)
         ? p.vehicle_types
         : typeof p.vehicle_types === 'string'
-        ? p.vehicle_types.split(',').map((t: string) => t.trim())
-        : [];
+          ? p.vehicle_types.split(',').map((t: string) => t.trim())
+          : [];
       return types.some((t: string) => {
         const normalizedT = t.toLowerCase();
         return normalizedT.includes(make) || normalizedT.includes(model);
@@ -241,7 +309,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   ) => {
     const service = servicesMap[serviceId];
     if (!service) return 0;
-    
+
     const matched = getMatchingPricing(service, vehicle || null);
     return matched ? Number(matched.price) : Number(0);
   };
@@ -307,25 +375,35 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     }
   };
 
-  // ── Load Catalog Data & Existing Estimate ──────────────────────────────────
+  // ── Load Catalog Data & Hydrate Existing Estimate ─────────────────────────
   useEffect(() => {
-    const loadCatalogData = async () => {
+    const loadCatalogAndEstimate = async () => {
       try {
         setIsLoading(true);
-        const [
-          customersRes,
-          productsRes,
-          serviceTypesRes,
-          serviceCategoriesRes,
-        ] = await Promise.all([
+
+        const promises: Promise<any>[] = [
           api.get('/customers'),
-          api.get('/products'),
+          api.get('/inventory'),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
-        ]);
+        ];
+
+        if (mode === "edit" && estimateId) {
+          promises.push(api.get(`/estimates/${estimateId}`));
+        }
+
+        const results = await Promise.all(promises);
+
+        const customersRes = results[0];
+        const productsRes = results[1];
+        const serviceTypesRes = results[2];
+        const serviceCategoriesRes = results[3];
+        const estimateRes = mode === "edit" && estimateId ? results[4] : null;
 
         const dbCustomers = customersRes.data.data || [];
-        const dbProducts = productsRes.data.data || [];
+        const dbProducts = Array.isArray(productsRes.data)
+          ? productsRes.data
+          : productsRes.data.data || [];
         const dbServiceTypes = serviceTypesRes.data.data || [];
         const dbServiceCategories = serviceCategoriesRes.data.data || [];
 
@@ -375,122 +453,164 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           pricings: s.pricings || [],
         }));
 
-        // Map parts catalog
-        const normalizedParts: Product[] = dbProducts.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          sku: p.SKU,
-          price: Number(p.sell_price || p.price || 0),
-          unit: p.unit?.name || "pc",
+        // Map parts catalog using inventory data
+        const normalizedParts: Product[] = dbProducts.map((row: any) => {
+          const product = row.product || {};
+          const supplierPrice = row.active_price?.Price;
+          const price = Number(row.price || supplierPrice || 0);
+          const supplierName = row.supplier?.CompanyName || row.supplier?.name || row.supplier_name || "";
+          return {
+            id: String(row.id),
+            productId: String(product.id || ""),
+            name: product.name || "",
+            sku: product.SKU || "",
+            partNumber: product.part_number || product.partNumber || "",
+            price,
+            unit: product.unit_name || product.unit?.name || "pc",
+            quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reorderLevel: Number(row.reorder_level ?? 5),
+            supplierName,
+          };
+        });
+
+        const mappedServiceCategories: ServiceCategory[] = dbServiceCategories.map((c: any) => ({
+          id: c.id,
+          name: c.name,
         }));
 
         setCustomers(normalizedCustomers);
         setVehicles(allVehicles);
         setServicesCatalog(normalizedServices);
         setPartsCatalog(normalizedParts);
-        setServiceCategories(dbServiceCategories);
+        setServiceCategories(mappedServiceCategories);
 
-      } catch (err) {
-        console.error("Failed to load data from backend", err);
-        toast.error("Failed to fetch catalog data");
+        // Hydrate estimate data if in edit mode
+        if (estimateRes) {
+          const found = estimateRes.data.data;
+
+          if (!found) {
+            toast.error("Estimate not found.");
+            navigate("/webapp/sales/estimates");
+            return;
+          }
+
+          if (found.estimate_number) {
+            setEstimateNumber(found.estimate_number);
+            sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`, found.estimate_number);
+            window.dispatchEvent(new Event('breadcrumb-update'));
+          }
+
+          const cust = found.customer;
+          const normalizedCust = cust ? {
+            id: String(cust.customer_id),
+            firstName: cust.first_name || "",
+            lastName: cust.last_name || "",
+            address: cust.address || "",
+            mobileNumber: cust.mobile_number || "",
+            landline: cust.landline || "",
+            email: cust.email || "",
+            businessPhone: cust.business || "",
+          } : null;
+
+          setSelectedCustomer(normalizedCust);
+
+          const veh = found.vehicle;
+          const normalizedVeh = veh ? {
+            id: String(veh.id),
+            customerId: String(found.customer_id),
+            vehicleModelId: String(veh.id),
+            color: veh.color || "",
+            plateNo: veh.plate_number || "",
+            engineNo: veh.engine_number || "",
+            vin: veh.VIN || "",
+            registrationNo: veh.registration_number || "",
+            sellingDealer: veh.selling_dealer || "",
+            year: veh.year_model || "",
+            make: veh.make || "",
+            model: veh.model || "",
+            variant: veh.variant || "",
+          } : null;
+
+          setSelectedVehicle(normalizedVeh);
+          setMileage(found.mileage ?? 0);
+          setNotes(found.notes ?? "");
+          setDownpayment(Number(found.downpayment_amount) ?? 0);
+
+          const dbItems = found.items || [];
+          const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
+          const partItems = dbItems.filter((i: any) => i.item_type === "part");
+          const spolItems = dbItems.filter((i: any) => i.item_type === "supply");
+
+          if (serviceItems.length > 0) {
+            setJoLines(
+              serviceItems.map((s: any) => {
+                const service = normalizedServices.find(sc => sc.id === s.service_id);
+                const pricingOpt = service?.pricings?.find((p: any) => Number(p.price) === Number(s.unit_price));
+                return {
+                  id: s.id,
+                  ServiceTypeId: s.service_id,
+                  pricingId: pricingOpt ? pricingOpt.id : "",
+                  manualRate: Number(s.unit_price),
+                  amount: Number(s.subtotal),
+                  isTentative: s.is_tentative ?? false,
+                };
+              })
+            );
+          } else {
+            setJoLines([emptyJOLine()]);
+          }
+
+          if (partItems.length > 0) {
+            setSoLines(
+              partItems.map((p: any) => {
+                const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
+                return {
+                  id: p.id,
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
+                  quantity: Number(p.quantity),
+                  amount: Number(p.subtotal),
+                  needsOrdering: p.needs_ordering ?? false,
+                  customName: p.custom_name || undefined,
+                  isTentative: p.is_tentative ?? false,
+                };
+              })
+            );
+          } else {
+            setSoLines([emptySOLine()]);
+          }
+
+          if (spolItems.length > 0) {
+            setSpolLines(
+              spolItems.map((p: any) => ({
+                id: p.id,
+                ProductId: p.product_id || "",
+                quantity: Number(p.quantity),
+                amount: Number(p.subtotal),
+                needsOrdering: p.needs_ordering ?? false,
+                customName: p.custom_name || undefined,
+                isTentative: p.is_tentative ?? false,
+              }))
+            );
+          } else {
+            setSpolLines([emptySPOLLine()]);
+          }
+        }
+      } catch (err: any) {
+        console.error("Failed to load catalog or estimate data", err);
+        toast.error("Failed to load data: " + (err.message || err));
       } finally {
         setIsLoading(false);
       }
     };
-    loadCatalogData();
-  }, []);
 
-  // Hydrate Estimate in Edit Mode
-  useEffect(() => {
-    if (mode !== "edit" || !estimateId || !servicesCatalog.length) return;
+    loadCatalogAndEstimate();
 
-    const fetchEstimate = async () => {
-      try {
-        const res = await api.get(`/estimates/${estimateId}`);
-        const found = res.data.data;
-
-        if (!found) {
-          toast.error("Estimate not found.");
-          navigate("/webapp/sales/estimates");
-          return;
-        }
-
-        const cust = found.customer;
-        const normalizedCust = cust ? {
-          id: String(cust.customer_id),
-          firstName: cust.first_name || "",
-          lastName: cust.last_name || "",
-          address: cust.address || "",
-          mobileNumber: cust.mobile_number || "",
-          landline: cust.landline || "",
-          email: cust.email || "",
-          businessPhone: cust.business || "",
-        } : null;
-
-        setSelectedCustomer(normalizedCust);
-
-        const veh = found.vehicle;
-        const normalizedVeh = veh ? {
-          id: String(veh.id),
-          customerId: String(found.customer_id),
-          vehicleModelId: String(veh.id),
-          color: veh.color || "",
-          plateNo: veh.plate_number || "",
-          engineNo: veh.engine_number || "",
-          vin: veh.VIN || "",
-          registrationNo: veh.registration_number || "",
-          sellingDealer: veh.selling_dealer || "",
-          year: veh.year_model || "",
-          make: veh.make || "",
-          model: veh.model || "",
-          variant: veh.variant || "",
-        } : null;
-
-        setSelectedVehicle(normalizedVeh);
-        setMileage(found.mileage ?? 0);
-        setNotes(found.notes ?? "");
-
-        const dbItems = found.items || [];
-        const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
-        const partItems = dbItems.filter((i: any) => i.item_type === "part");
-
-        if (serviceItems.length > 0) {
-          setJoLines(
-            serviceItems.map((s: any) => {
-              const service = servicesCatalog.find(sc => sc.id === s.service_id);
-              const pricingOpt = service?.pricings?.find((p: any) => Number(p.price) === Number(s.unit_price));
-              return {
-                id: s.id,
-                ServiceTypeId: s.service_id,
-                pricingId: pricingOpt ? pricingOpt.id : "",
-                manualRate: Number(s.unit_price),
-                amount: Number(s.subtotal),
-              };
-            })
-          );
-        } else {
-          setJoLines([emptyJOLine()]);
-        }
-
-        if (partItems.length > 0) {
-          setSoLines(
-            partItems.map((p: any) => ({
-              id: p.id,
-              ProductId: p.product_id,
-              quantity: Number(p.quantity),
-              amount: Number(p.subtotal),
-            }))
-          );
-        } else {
-          setSoLines([emptySOLine()]);
-        }
-      } catch (err) {
-        console.error("Failed to load estimate for editing", err);
-        toast.error("Failed to load estimate.");
+    return () => {
+      if (estimateId) {
+        sessionStorage.removeItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`);
       }
     };
-    fetchEstimate();
-  }, [mode, estimateId, servicesCatalog]);
+  }, [mode, estimateId]);
 
   const updateJO = (idx: number, serviceId: string) => {
     if (joLines[idx]?.ServiceTypeId === serviceId) return;
@@ -563,8 +683,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         const amount = !service
           ? 0
           : service.pricingType === "fixed"
-          ? rate
-          : rate * ((service.duration || 0) / 60);
+            ? rate
+            : rate * ((service.duration || 0) / 60);
 
         return { ...l, manualRate, amount };
       })
@@ -574,7 +694,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const updateSO = (idx: number, field: keyof SOPartLine, value: any) => {
     if (field === "ProductId" && value) {
       const existingIdx = soLines.findIndex(
-        (l, i) => i !== idx && l.ProductId === value
+        (l, i) => i !== idx && l.ProductId === value && l.customName === undefined
       );
       if (existingIdx !== -1) {
         const product = partsMap[value];
@@ -600,21 +720,118 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
         if (field === "ProductId") {
           const found = partsMap[value];
-          updated.amount = found ? (updated.quantity || 0) * found.price : 0;
+          updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
+          if (found) {
+            const qty = Number(updated.quantity) || 0;
+            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+            updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+          }
         }
 
         if (field === "quantity") {
           const qty = value === "" ? 0 : Math.max(0, Number(value));
-          const found = partsMap[updated.ProductId];
-
-          if (!found) {
+          if (updated.customName !== undefined) {
             updated.quantity = qty;
-            updated.amount = 0;
-            return updated;
+            updated.amount = qty * (updated.manualPrice || 0);
+          } else {
+            const found = partsMap[updated.ProductId];
+            updated.quantity = qty;
+            updated.amount = found ? qty * found.price : 0;
+            if (found) {
+              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+            }
           }
+        }
 
-          updated.quantity = qty;
-          updated.amount = qty * found.price;
+        if (field === "manualPrice") {
+          const price = value === "" ? 0 : Math.max(0, Number(value));
+          updated.manualPrice = price;
+          updated.amount = (Number(updated.quantity) || 0) * price;
+        }
+
+        if (field === "customName") {
+          updated.customName = value;
+        }
+
+        if (field === "needsOrdering") {
+          updated.needsOrdering = !!value;
+        }
+
+        return updated;
+      })
+    );
+  };
+
+  const updateSPOL = (idx: number, field: keyof SPOLLine, value: any) => {
+    if (field === "ProductId" && value) {
+      const existingIdx = spolLines.findIndex(
+        (l, i) => i !== idx && l.ProductId === value && l.customName === undefined
+      );
+      if (existingIdx !== -1) {
+        const product = partsMap[value];
+        const productName = product?.name ?? "Supply";
+        setSpolLines((prev) => {
+          const next = prev.filter((_, i) => i !== idx);
+          return next.map((l, i) => {
+            if (i !== existingIdx - (idx < existingIdx ? 1 : 0)) return l;
+            const newQty = (Number(l.quantity) || 0) + 1;
+            return { ...l, quantity: newQty, amount: newQty * (product?.price ?? 0) };
+          });
+        });
+        toast.info(`"${productName}" is already added. Quantity increased.`);
+        return;
+      }
+    }
+
+    setSpolLines((prev) =>
+      prev.map((l, i) => {
+        if (i !== idx) return l;
+
+        let updated = { ...l, [field]: value };
+
+        if (field === "ProductId") {
+          const found = partsMap[value];
+          updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
+          if (found) {
+            const qty = Number(updated.quantity) || 0;
+            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+            updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+          }
+        }
+
+        if (field === "quantity") {
+          const qty = value === "" ? 0 : Math.max(0, Number(value));
+          if (updated.customName !== undefined) {
+            updated.quantity = qty;
+            updated.amount = qty * (updated.manualPrice || 0);
+          } else {
+            const found = partsMap[updated.ProductId];
+            updated.quantity = qty;
+            updated.amount = found ? qty * found.price : 0;
+            if (found) {
+              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+            }
+          }
+        }
+
+        if (field === "manualPrice") {
+          const price = value === "" ? 0 : Math.max(0, Number(value));
+          updated.manualPrice = price;
+          updated.amount = (Number(updated.quantity) || 0) * price;
+        }
+
+        if (field === "customName") {
+          updated.customName = value;
+        }
+
+        if (field === "needsOrdering") {
+          updated.needsOrdering = !!value;
         }
 
         return updated;
@@ -624,12 +841,18 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
   const totals = useMemo(() => {
     const validJO = joLines.filter((l) => l.ServiceTypeId);
-    const validSO = soLines.filter((l) => l.ProductId);
-    const validSPOL = spolLines.filter((l) => l.ProductId);
+    const validSO = soLines.filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""));
+    const validSPOL = spolLines.filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""));
 
     const totalServices = validJO.reduce((s, l) => s + l.amount, 0);
     const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
     const totalSupplies = validSPOL.reduce((s, l) => s + l.amount, 0);
+
+    // Tentative-only subtotals
+    const tentativeServices = validJO.filter(l => l.isTentative).reduce((s, l) => s + l.amount, 0);
+    const tentativeParts = validSO.filter(l => l.isTentative).reduce((s, l) => s + l.amount, 0);
+    const tentativeSupplies = validSPOL.filter(l => l.isTentative).reduce((s, l) => s + l.amount, 0);
+    const tentativeTotal = tentativeServices + tentativeParts + tentativeSupplies;
 
     const estimatedMinutes = validJO.reduce(
       (sum, l) => {
@@ -640,13 +863,17 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       0
     );
 
+    // total includes everything; baseTotal excludes tentative
     const total = totalServices + totalParts + totalSupplies;
+    const baseTotal = total - tentativeTotal;
 
     return {
       totalServices,
       totalParts,
       totalSupplies,
       total,
+      baseTotal,
+      tentativeTotal,
       estimatedMinutes,
       validJO,
       validSO,
@@ -687,6 +914,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       return;
     }
 
+    if (totals.validSPOL.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All supply lines must have a quantity greater than zero.");
+      return;
+    }
+
     const payloadItems = [
       ...joLines
         .filter((l) => l.ServiceTypeId)
@@ -699,20 +931,69 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             quantity: 1,
             unit_price: rate,
             subtotal: l.amount,
+            needs_ordering: false,
+            custom_name: null,
+            is_tentative: l.isTentative,
           };
         }),
       ...soLines
-        .filter((l) => l.ProductId)
+        .filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""))
         .map((l) => {
+          if (l.customName !== undefined) {
+            return {
+              item_type: "part",
+              service_id: null,
+              product_id: null,
+              quantity: Number(l.quantity),
+              unit_price: Number(l.manualPrice || 0),
+              subtotal: l.amount,
+              needs_ordering: l.needsOrdering,
+              custom_name: l.customName,
+              is_tentative: l.isTentative,
+            };
+          }
           const found = partsMap[l.ProductId];
           const price = found?.price || 0;
           return {
             item_type: "part",
             service_id: null,
+            product_id: found?.productId || l.ProductId,
+            quantity: Number(l.quantity),
+            unit_price: price,
+            subtotal: l.amount,
+            needs_ordering: l.needsOrdering,
+            custom_name: null,
+            is_tentative: l.isTentative,
+          };
+        }),
+      ...spolLines
+        .filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""))
+        .map((l) => {
+          if (l.customName !== undefined) {
+            return {
+              item_type: "supply",
+              service_id: null,
+              product_id: null,
+              quantity: Number(l.quantity),
+              unit_price: Number(l.manualPrice || 0),
+              subtotal: l.amount,
+              needs_ordering: l.needsOrdering,
+              custom_name: l.customName,
+              is_tentative: l.isTentative,
+            };
+          }
+          const found = partsMap[l.ProductId];
+          const price = found?.price || 0;
+          return {
+            item_type: "supply",
+            service_id: null,
             product_id: l.ProductId,
             quantity: Number(l.quantity),
             unit_price: price,
             subtotal: l.amount,
+            needs_ordering: l.needsOrdering,
+            custom_name: null,
+            is_tentative: l.isTentative,
           };
         })
     ];
@@ -723,9 +1004,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       status: mode === "edit" ? undefined : "FOR APPROVAL",
       total_amount: totals.total,
       mileage: Number(mileage),
+      notes: notes,
+      downpayment_amount: mode === "edit" ? downpayment : undefined,
       items: payloadItems,
     };
 
+    setIsSaving(true);
     try {
       if (mode === "edit" && estimateId) {
         await api.put(`/estimates/${estimateId}`, payload);
@@ -739,27 +1023,108 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     } catch (err: any) {
       console.error("Failed to save estimate", err);
       toast.error(err.response?.data?.message || "Failed to save estimate.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!estimateId) return;
-    try {
-      const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
-        responseType: 'blob',
+  const handlePreSaveEstimate = () => {
+    if (!selectedCustomer || !selectedVehicle) {
+      toast.error("Please select a customer and vehicle.");
+      return;
+    }
+
+    const isValidVehicle = vehicles.some(
+      (v) => String(v.id) === String(selectedVehicle.id) && String(v.customerId) === String(selectedCustomer.id)
+    );
+
+    if (!isValidVehicle) {
+      toast.error("The selected vehicle does not belong to this customer.");
+      return;
+    }
+
+    if (!mileage || Number(mileage) <= 0) {
+      toast.error("Mileage is mandatory and must be greater than zero.");
+      return;
+    }
+
+    if (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) {
+      toast.error("Add at least one service or part.");
+      return;
+    }
+
+    if (totals.validSO.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All part lines must have a quantity greater than zero.");
+      return;
+    }
+
+    if (totals.validSPOL.some((l) => !l.quantity || l.quantity <= 0)) {
+      toast.error("All supply lines must have a quantity greater than zero.");
+      return;
+    }
+
+    const uncheckedShortageList = soLines
+      .concat(spolLines as any)
+      .filter((l) => {
+        if (l.customName !== undefined || !l.ProductId) return false;
+        const prod = partsMap[l.ProductId];
+        if (!prod || prod.quantityOnHand === null) return false;
+        return Number(l.quantity) > prod.quantityOnHand && !l.needsOrdering;
+      })
+      .map((l) => {
+        const prod = partsMap[l.ProductId];
+        return `${prod?.name || "Part"} (Requested: ${l.quantity}, Stock: ${prod?.quantityOnHand})`;
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `estimate-${estimateId.substring(0,8)}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
-      toast.error("Failed to download PDF.");
+
+    if (uncheckedShortageList.length > 0) {
+      setShortageItems(uncheckedShortageList);
+      setShowConfirmModal(true);
+    } else {
+      saveEstimate();
     }
   };
+
+  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean, incTentative: boolean) => {
+    if (!estimateId) return;
+    setIsLoadingPdf(true);
+    try {
+      const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
+        params: { 
+          hide_part_number: hidePartNumber,
+          include_tentative: incTentative,
+        },
+        responseType: 'blob',
+      });
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
+    } catch (error) {
+      console.error("Error loading PDF:", error);
+      toast.error("Failed to load PDF preview.");
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  }, [estimateId, pdfBlobUrl]);
+
+  const handlePreviewPDF = async () => {
+    setShowPdfPreview(true);
+    await fetchPdfBlob(!includePartNumbers, includeTentative);
+  };
+
+
+  // Re-fetch PDF when part numbers or tentative toggles change while preview is open
+  useEffect(() => {
+    if (showPdfPreview && estimateId) {
+      fetchPdfBlob(!includePartNumbers, includeTentative);
+    }
+  }, [includePartNumbers, includeTentative]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
 
   if (isLoading) {
     return (
@@ -869,7 +1234,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
               <div className="flex items-center gap-2 text-blue-500">
                 <Car className="size-5" />
                 <p className="font-semibold text-foreground">Vehicle Details</p>
-              </div>              
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
@@ -963,11 +1328,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     onBlur={(e) => { if (e.target.value === "") setMileage(0); }}
                   />
                 </div>
-              </div>                
-            </CardContent>          
+              </div>
+            </CardContent>
           </Card>
         </div>
-        
+
         {/* ESTIMATE DETAILS */}
         <div className="grid lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-6">
@@ -975,21 +1340,22 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 ">
-                  <Wrench className="size-5 text-blue-500"/>
-                  <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>                
+                  <Wrench className="size-5 text-blue-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>
                 </div>
                 <Button size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
-                  <Table>
+                  <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs w-[30%] text-center">Service</TableHead>
-                        <TableHead className="text-xs w-[25%] text-center">Pricing</TableHead>
-                        <TableHead className="text-xs w-[14%] text-center">Est. Duration</TableHead>
-                        <TableHead className="text-xs w-[13%] text-center">Rate</TableHead>
-                        <TableHead className="text-xs w-[13%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs w-[28%] text-center">Service</TableHead>
+                        <TableHead className="text-xs w-[23%] text-center">Pricing</TableHead>
+                        <TableHead className="text-xs w-[12%] text-center">Est. Duration</TableHead>
+                        <TableHead className="text-xs w-[11%] text-center">Rate</TableHead>
+                        <TableHead className="text-xs w-[11%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Tentative</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1073,13 +1439,13 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 {service?.pricings
                                   ?.filter((p: any) => p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed'))
                                   .map((p: any) => {
-                                  const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
-                                  return (
-                                    <option key={p.id} value={p.id}>
-                                      {label}
-                                    </option>
-                                  );
-                                })}
+                                    const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
+                                    return (
+                                      <option key={p.id} value={p.id}>
+                                        {label}
+                                      </option>
+                                    );
+                                  })}
                               </select>
                             </TableCell>
 
@@ -1099,6 +1465,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               {peso(l.amount)}
                             </TableCell>
 
+                            <TableCell className="align-top text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.isTentative}
+                                onChange={(e) => setJoLines(prev => prev.map((line, i) => i === idx ? { ...line, isTentative: e.target.checked } : line))}
+                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                              />
+                            </TableCell>
+
                             <TableCell className="align-top">
                               {joLines.length > 1 && (
                                 <Button
@@ -1116,51 +1491,94 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     </TableBody>
                   </Table>
                 </div>
-              </div>         
+              </div>
             </div>
 
             {/* PARTS */}
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 ">
-                  <Box className="size-5 text-orange-500"/>
-                  <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>                
+                  <Box className="size-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Parts (Sales Order)</h2>
                 </div>
-                <Button size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={addSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Part</Button>
+                  <Button size="sm" variant="outline" onClick={addCustomSOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Custom Part</Button>
+                </div>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
-                  <Table>
+                  <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-center">Item Name</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
-                        <TableHead className="text-xs w-[5%]"></TableHead>
+                      <TableRow className="bg-muted/50 text-center">
+                        <TableHead className="text-xs text-center w-[20%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Part Number</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Stock Status</TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[8%] text-center">Quantity</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-center w-[9%]">Needs Order</TableHead>
+                        <TableHead className="text-xs w-[9%] text-center">Tentative</TableHead>
+                        <TableHead className="text-xs w-[4%]"></TableHead>
                       </TableRow>
                     </TableHeader>
 
                     <TableBody>
                       {soLines.map((l, idx) => {
+                        const isCustom = l.customName !== undefined;
+                        const product = partsMap[l.ProductId];
+                        const stockStatus = getStockStatus(product);
+
                         return (
                           <TableRow key={l.id} className="hover:bg-transparent">
                             <TableCell>
-                              <Combobox
-                                value={l.ProductId}
-                                onChange={(val) =>
-                                  updateSO(idx, "ProductId", val)
-                                }
-                                items={partsCatalog.map((p) => ({
-                                  label: `${p.name} - SKU: ${p.sku}`,
-                                  value: p.id,
-                                }))}
-                                placeholder="Select part"
-                              />
+                              {isCustom ? (
+                                <Input
+                                  value={l.customName || ""}
+                                  onChange={(e) => updateSO(idx, "customName", e.target.value)}
+                                  placeholder="Enter custom part name..."
+                                />
+                              ) : (
+                                <Combobox
+                                  value={l.ProductId}
+                                  onChange={(val) => updateSO(idx, "ProductId", val)}
+                                  items={partsCatalog.map((p) => ({
+                                    label: `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
+                                    value: p.id,
+                                    description: `Price: ₱${Number(p.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                                  }))}
+                                  placeholder="Select part"
+                                />
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
+                              {isCustom ? "—" : (product?.partNumber || product?.sku || "—")}
                             </TableCell>
 
                             <TableCell className="text-center">
-                              {peso(partsMap[l.ProductId]?.price || 0)}
+                              {isCustom ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                                  Custom Item
+                                </span>
+                              ) : stockStatus ? (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${stockStatus.bg} ${stockStatus.color}`}>
+                                  {stockStatus.label}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              {isCustom ? (
+                                <CurrencyInput
+                                  value={l.manualPrice || 0}
+                                  onChange={(val) => updateSO(idx, "manualPrice", val)}
+                                />
+                              ) : (
+                                peso(product?.price || 0)
+                              )}
                             </TableCell>
 
                             <TableCell>
@@ -1181,6 +1599,47 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                             <TableCell className="text-center">
                               {peso(l.amount)}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.needsOrdering}
+                                disabled={l.isTentative}
+                                onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                              />
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.isTentative}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSoLines(prev => prev.map((line, i) => {
+                                    if (i !== idx) return line;
+                                    let needsOrdering = line.needsOrdering;
+                                    if (checked) {
+                                      needsOrdering = false;
+                                    } else {
+                                      if (line.customName !== undefined) {
+                                        needsOrdering = true;
+                                      } else {
+                                        const found = partsMap[line.ProductId];
+                                        if (found) {
+                                          const qty = Number(line.quantity || 0);
+                                          const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+                                          const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+                                          needsOrdering = isOutOfStock || isShortage;
+                                        }
+                                      }
+                                    }
+                                    return { ...line, isTentative: checked, needsOrdering };
+                                  }));
+                                }}
+                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                              />
                             </TableCell>
 
                             <TableCell>
@@ -1207,76 +1666,143 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Fuel className="size-5 text-green-600"/>
+                  <Fuel className="size-5 text-green-600" />
                   <h2 className="text-sm font-semibold text-foreground">Supplies, Petrol, Oils, and Lubricants</h2>
                 </div>
-                <Button size="sm" onClick={addSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Item</Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={addSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Supply</Button>
+                  <Button size="sm" variant="outline" onClick={addCustomSPOLLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Custom Supply</Button>
+                </div>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
-                  <Table>
+                  <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-center">Item Name</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[15%] text-center">Qty</TableHead>
-                        <TableHead className="text-xs w-[20%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-center w-[26%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[9%] text-center">Quantity</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Needs Order</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Tentative</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {spolLines.map((l, idx) => {
+                        const isCustom = l.customName !== undefined;
+                        const product = partsMap[l.ProductId];
+                        const stockStatus = getStockStatus(product);
+
                         return (
                           <TableRow key={l.id} className="hover:bg-transparent">
                             <TableCell>
-                              <Combobox
-                                value={l.ProductId}
-                                onChange={(val) => {
-                                  const found = partsMap[val];
-                                  setSpolLines(prev => prev.map((line, i) =>
-                                    i !== idx ? line : {
-                                      ...line,
-                                      ProductId: val,
-                                      amount: found ? (Number(line.quantity) || 0) * found.price : 0
-                                    }
-                                  ));
-                                }}
-                                items={partsCatalog.map((p) => ({
-                                  label: `${p.name} - SKU: ${p.sku}`,
-                                  value: p.id,
-                                }))}
-                                placeholder="Select supply / oil / lubricant"
-                              />
+                              {isCustom ? (
+                                <Input
+                                  value={l.customName || ""}
+                                  onChange={(e) => updateSPOL(idx, "customName", e.target.value)}
+                                  placeholder="Enter custom supply name..."
+                                />
+                              ) : (
+                                <Combobox
+                                  value={l.ProductId}
+                                  onChange={(val) => updateSPOL(idx, "ProductId", val)}
+                                  items={partsCatalog.map((p) => ({
+                                    label: `${p.name} - SKU: ${p.sku}`,
+                                    value: p.id,
+                                  }))}
+                                  placeholder="Select supply / oil / lubricant"
+                                />
+                              )}
                             </TableCell>
+
                             <TableCell className="text-center">
-                              {peso(partsMap[l.ProductId]?.price || 0)}
+                              {isCustom ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                                  Custom Item
+                                </span>
+                              ) : stockStatus ? (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${stockStatus.bg} ${stockStatus.color}`}>
+                                  {stockStatus.label}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
                             </TableCell>
+
+                            <TableCell className="text-center">
+                              {isCustom ? (
+                                <CurrencyInput
+                                  value={l.manualPrice || 0}
+                                  onChange={(val) => updateSPOL(idx, "manualPrice", val)}
+                                />
+                              ) : (
+                                peso(product?.price || 0)
+                              )}
+                            </TableCell>
+
                             <TableCell>
                               <Input
                                 type="number"
                                 min={0}
                                 value={l.quantity === 0 || l.quantity === "" ? "" : String(l.quantity)}
                                 placeholder="0"
-                                onFocus={() => { if (!l.quantity) setSpolLines(prev => prev.map((line, i) => i !== idx ? line : { ...line, quantity: "" })); }}
-                                onBlur={(e) => { if (e.target.value === "") setSpolLines(prev => prev.map((line, i) => i !== idx ? line : { ...line, quantity: 0 })); }}
+                                onFocus={() => { if (!l.quantity) updateSPOL(idx, "quantity", ""); }}
+                                onBlur={(e) => { if (e.target.value === "") updateSPOL(idx, "quantity", 0); }}
                                 onChange={(e) => {
                                   const val = e.target.value;
                                   if (!/^\d*$/.test(val)) return;
-                                  const qty = val === "" ? "" : Number(val);
-                                  const found = partsMap[l.ProductId];
-                                  setSpolLines(prev => prev.map((line, i) =>
-                                    i !== idx ? line : {
-                                      ...line,
-                                      quantity: qty,
-                                      amount: found && qty !== "" ? Number(qty) * found.price : 0
-                                    }
-                                  ));
+                                  updateSPOL(idx, "quantity", val === "" ? "" : Number(val));
                                 }}
                               />
                             </TableCell>
+
                             <TableCell className="text-center">
                               {peso(l.amount)}
                             </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.needsOrdering}
+                                disabled={l.isTentative}
+                                onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                              />
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.isTentative}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSpolLines(prev => prev.map((line, i) => {
+                                    if (i !== idx) return line;
+                                    let needsOrdering = line.needsOrdering;
+                                    if (checked) {
+                                      needsOrdering = false;
+                                    } else {
+                                      if (line.customName !== undefined) {
+                                        needsOrdering = true;
+                                      } else {
+                                        const found = partsMap[line.ProductId];
+                                        if (found) {
+                                          const qty = Number(line.quantity || 0);
+                                          const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+                                          const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+                                          needsOrdering = isOutOfStock || isShortage;
+                                        }
+                                      }
+                                    }
+                                    return { ...line, isTentative: checked, needsOrdering };
+                                  }));
+                                }}
+                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                              />
+                            </TableCell>
+
                             <TableCell>
                               {spolLines.length > 1 && (
                                 <Button size="icon_xs" variant="ghost" onClick={() => removeSPOLLine(idx)}>
@@ -1310,7 +1836,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                       <span>Estimated Duration</span>
                       <span>{formatDuration(totals.estimatedMinutes)}</span>
                     </div>
-                    <Separator/>
+                    <Separator />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Services Subtotal</span>
                       <span>{peso(totals.totalServices)}</span>
@@ -1325,60 +1851,113 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     </div>
                   </div>
 
-                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20">
+                  <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2">
                     <div className="flex justify-between items-end text-primary">
-                      <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-2xl font-bold tracking-wide">{peso(totals.total)}</span>
+                      <span className="text-xs font-bold uppercase">Grand Total (Confirmed)</span>
+                      <span className="text-2xl font-bold tracking-wide">{peso(totals.baseTotal)}</span>
                     </div>
+                    {totals.tentativeTotal > 0 && (
+                      <>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-end text-amber-600 dark:text-amber-400">
+                          <span className="text-[10px] font-semibold uppercase">Tentative Items</span>
+                          <span className="text-sm font-semibold">+{peso(totals.tentativeTotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-end text-muted-foreground">
+                          <span className="text-[10px] font-medium uppercase">Grand Total (incl. Tentative)</span>
+                          <span className="text-lg font-bold">{peso(totals.total)}</span>
+                        </div>
+                      </>
+                    )}
+                    {mode === "edit" && (
+                      <>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                          <span>Downpayment</span>
+                          <div className="w-32 flex flex-col items-end">
+                            <CurrencyInput
+                              value={downpayment}
+                              onChange={(val) => setDownpayment(val ?? 0)}
+                              className="bg-white dark:bg-zinc-900 border-2 border-blue-500 focus:border-blue-600 focus:ring-2 focus:ring-blue-200 shadow-md font-semibold text-blue-900 dark:text-blue-100"
+                            />
+                            {downpayment > totals.total && (
+                              <p className="text-[10px] text-red-600 font-medium text-right mt-1 animate-pulse">
+                                Cannot exceed Grand Total
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-end text-primary">
+                          <span className="text-xs font-bold uppercase">Balance Due</span>
+                          <span className="text-2xl font-bold tracking-wide">
+                            {peso(Math.max(0, totals.baseTotal - downpayment))}
+                          </span>
+                        </div>
+                        {totals.tentativeTotal > 0 && (
+                          <div className="flex justify-between items-end text-muted-foreground">
+                            <span className="text-[10px] font-medium uppercase">Balance Due (incl. Tentative)</span>
+                            <span className="text-lg font-bold">
+                              {peso(Math.max(0, totals.total - downpayment))}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-2">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Internal Notes</Label>
-                    <Textarea 
-                      value={notes} 
-                      onChange={e => setNotes(e.target.value)} 
-                      placeholder="Terms, warranty info, etc..." 
-                      rows={4} 
-                      className="resize-none text-xs bg-background" 
+                    <Textarea
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Terms, warranty info, etc..."
+                      rows={4}
+                      className="resize-none text-xs bg-background"
                     />
                   </div>
 
                   <div className="flex flex-col gap-2 pt-2">
                     <Button
-                      className="w-full shadow-md" 
+                      className="w-full shadow-md"
                       size="lg"
-                      onClick={saveEstimate}
-                      disabled= {
-                        !selectedCustomer || 
+                      onClick={handlePreSaveEstimate}
+                      disabled={
+                        isSaving ||
+                        !selectedCustomer ||
                         !selectedVehicle ||
                         !mileage || Number(mileage) <= 0 ||
-                        (totals.validJO.length === 0 && totals.validSO.length === 0) 
+                        (totals.validJO.length === 0 && totals.validSO.length === 0 && totals.validSPOL.length === 0) ||
+                        (mode === "edit" && downpayment > totals.total)
                       }
                     >
-                      {mode === "edit" ? "Save Changes" : "Create Estimate"}
+                      {isSaving ? "Saving..." : mode === "edit" ? "Save Changes" : "Create Estimate"}
                     </Button>
                     {mode === "edit" && (
-                      <Button
-                        variant="outline"
-                        className="w-full shadow-sm"
-                        onClick={handleDownloadPDF}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download PDF
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full shadow-sm"
+                          onClick={handlePreviewPDF}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Preview PDF
+                        </Button>
+                      </>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => navigate(-1)} 
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(-1)}
                       className="text-destructive hover:bg-destructive/10"
+                      disabled={isSaving}
                     >
                       Discard
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-              
+
               <p className="text-xs text-center text-muted-foreground px-4">
                 Creating an estimate will not affect inventory until it has been approved by the customer.
               </p>
@@ -1393,6 +1972,93 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         onOpenChange={setCustomerModalOpen}
         onSaved={handleCustomerSaved}
       />
+
+      {/* Shortage Override confirmation dialog */}
+      <ConfirmDialog
+        open={showConfirmModal}
+        onOpenChange={setShowConfirmModal}
+        title="Proceed with Unordered Shortages?"
+        description={
+          <div className="space-y-2 text-left">
+            <p className="text-sm">
+              The following items have insufficient stock but are NOT flagged for ordering. You may be planning to outsource them:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+              {shortageItems.map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ul>
+            <p className="text-sm font-medium mt-2">Do you want to proceed and save this estimate?</p>
+          </div>
+        }
+        confirmLabel="Proceed"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowConfirmModal(false);
+          saveEstimate();
+        }}
+      />
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-semibold">
+                PDF Preview — {estimateNumber || "Estimate"}
+              </DialogTitle>
+              <div className="flex items-center gap-4 mr-8">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-part-numbers-form"
+                    checked={includePartNumbers}
+                    onCheckedChange={(checked) => setIncludePartNumbers(!!checked)}
+                  />
+                  <label htmlFor="preview-include-part-numbers-form" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Part Numbers
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-tentative-form"
+                    checked={includeTentative}
+                    onCheckedChange={(checked) => setIncludeTentative(!!checked)}
+                  />
+                  <label htmlFor="preview-include-tentative-form" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Tentative Items
+                  </label>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Estimate PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

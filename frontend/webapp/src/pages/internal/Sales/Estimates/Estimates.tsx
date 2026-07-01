@@ -25,6 +25,7 @@ import api from "@/api/axios";
 interface Estimate {
   id: string;
   estimateNo?: string;
+  estimate_number?: string;
   customer?: any;
   vehicle?: any;
   items?: any[];
@@ -32,7 +33,7 @@ interface Estimate {
   parts: any[];
   createdAt?: string;
   updatedAt?: string;
-  status: "approved" | "issued" | "DRAFT" | "APPROVED" | "ISSUED" | "FOR APPROVAL" | "for approval" | "for_approval";
+  status: string;
   total: number;
 }
 
@@ -47,6 +48,8 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   "FOR APPROVAL": { label: "For Approval", variant: "for-approval" as const },
   "for approval": { label: "For Approval", variant: "for-approval" as const },
   "for_approval": { label: "For Approval", variant: "for-approval" as const },
+  "APPROVED WITH DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
+  "APPROVED_WITH_DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
 };
 
 /* ================= FILTER ================= */
@@ -107,7 +110,8 @@ const Estimates: React.FC = () => {
 
           return {
             id: e.id,
-            estimateNo: e.id?.substring(0, 8)?.toUpperCase(),
+            estimateNo: e.estimate_number || e.id?.substring(0, 8)?.toUpperCase(),
+            estimate_number: e.estimate_number,
             customer,
             vehicle: e.vehicle || null,
             items,
@@ -139,8 +143,9 @@ const Estimates: React.FC = () => {
         ? `${e.customer.firstName ?? ""} ${e.customer.lastName ?? ""}`.trim()
         : "";
 
+      const plateNumber = e.vehicle?.plate_number || "";
       const searchMatch =
-        `${e.id} ${e.estimateNo || ""} ${customerName} ${e.status}`
+        `${e.id} ${e.estimate_number || ""} ${e.estimateNo || ""} ${customerName} ${plateNumber} ${e.status}`
           .toLowerCase()
           .includes(search.toLowerCase());
 
@@ -191,16 +196,17 @@ const Estimates: React.FC = () => {
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
 
           <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+            <Table className="table-fixed w-full min-w-[1000px] border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Estimate No.</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Services</TableHead>
-                  <TableHead>Parts</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center w-[15%]">Estimate No.</TableHead>
+                  <TableHead className="text-center w-[10%]">Date</TableHead>
+                  <TableHead className="text-center w-[20%]">Customer</TableHead>
+                  <TableHead className="text-center w-[12%]">Plate Number</TableHead>
+                  <TableHead className="text-center w-[8%]">Services</TableHead>
+                  <TableHead className="text-center w-[8%]">Parts</TableHead>
+                  <TableHead className="text-center w-[12%]">Total</TableHead>
+                  <TableHead className="text-center w-[15%]">Status</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -216,38 +222,48 @@ const Estimates: React.FC = () => {
                           navigate(`/webapp/sales/estimates/${e.id}`)
                         }
                         className={cn(
-                          "cursor-pointer bg-card border rounded-lg hover:bg-accent/30"
+                          "cursor-pointer bg-card border rounded-lg hover:bg-accent/30 text-center"
                         )}
                       >
                         {/* EST-XXXXXX code; fall back to raw id for legacy records */}
-                        <TableCell className="font-mono font-semibold">
+                        <TableCell className="font-mono font-semibold text-center">
                           {e.estimateNo || e.id}
                         </TableCell>
 
-                        <TableCell>
+                        <TableCell className="text-center text-muted-foreground">
                           {e.createdAt
                             ? new Date(e.createdAt).toLocaleDateString()
                             : "-"}
                         </TableCell>
 
-                        <TableCell>
+                        <TableCell className="text-center font-medium">
                           {e.customer
                             ? `${e.customer.firstName ?? ""} ${e.customer.lastName ?? ""}`.trim() || "—"
                             : "—"}
                         </TableCell>
 
-                        <TableCell>{e.services.length}</TableCell>
+                        <TableCell className="text-center">
+                          {e.vehicle?.plate_number ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                              {e.vehicle.plate_number}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          )}
+                        </TableCell>
 
-                        <TableCell>{e.parts.length}</TableCell>
+                        <TableCell className="text-center font-semibold">{e.services.length}</TableCell>
 
-                        <TableCell>
+                        <TableCell className="text-center font-semibold">{e.parts.length}</TableCell>
+
+                        <TableCell className="text-center font-semibold">
                           ₱ {Number(e.total).toLocaleString()}
                         </TableCell>
 
                         <TableCell className="text-center">
                           <Badge
                             variant={config.variant}
-                            className="w-24 justify-center"
+                            className="whitespace-nowrap px-3 justify-center"
                           >
                             {config.label}
                           </Badge>
@@ -257,7 +273,7 @@ const Estimates: React.FC = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={8}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">

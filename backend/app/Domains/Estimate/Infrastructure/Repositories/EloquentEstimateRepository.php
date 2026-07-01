@@ -13,14 +13,23 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 {
     public function getAll()
     {
-        return Estimate::with(['customer', 'vehicle', 'items'])
+        return Estimate::with(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
 
     public function findById(string $id): ?Estimate
     {
-        return Estimate::with(['customer', 'vehicle', 'items'])->find($id);
+        if (\Illuminate\Support\Str::isUuid($id)) {
+            $estimate = Estimate::with(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver'])->find($id);
+            if ($estimate) {
+                return $estimate;
+            }
+        }
+
+        return Estimate::with(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver'])
+            ->where('estimate_number', $id)
+            ->first();
     }
 
     public function create(array $data): Estimate
@@ -28,6 +37,24 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         return DB::transaction(function () use ($data) {
             $vehicle = CustomerVehicle::find($data['vehicle_id']);
             $vehicleOld = $vehicle ? $vehicle->plate_number : '';
+
+            // Generate estimate number like EST-YYMMDD-XXX
+            $today = now();
+            $dateStr = $today->format('ymd');
+            $prefix = 'EST-' . $dateStr . '-';
+
+            $lastEstimate = Estimate::where('estimate_number', 'like', $prefix . '%')
+                ->orderBy('estimate_number', 'desc')
+                ->first();
+
+            $nextSequence = 1;
+            if ($lastEstimate && preg_match('/-(\d+)$/', $lastEstimate->estimate_number, $matches)) {
+                $nextSequence = ((int) $matches[1]) + 1;
+            }
+
+            $estimateNumber = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+
+            $employeeId = auth()->user() ? auth()->user()->employeeID : null;
 
             $estimate = Estimate::create([
                 'id' => (string) Str::uuid(),
@@ -37,6 +64,12 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'status' => $data['status'] ?? 'DRAFT',
                 'total_amount' => $data['total_amount'] ?? 0.00,
                 'mileage' => $data['mileage'] ?? null,
+                'estimate_number' => $estimateNumber,
+                'downpayment_amount' => $data['downpayment_amount'] ?? 0.00,
+                'payment_method' => $data['payment_method'] ?? null,
+                'payment_reference' => $data['payment_reference'] ?? null,
+                'created_by' => $employeeId,
+                'notes' => $data['notes'] ?? null,
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {
@@ -50,11 +83,14 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                         'quantity' => $item['quantity'] ?? 1,
                         'unit_price' => $item['unit_price'] ?? 0.00,
                         'subtotal' => $item['subtotal'] ?? 0.00,
+                        'needs_ordering' => $item['needs_ordering'] ?? false,
+                        'custom_name' => $item['custom_name'] ?? null,
+                        'is_tentative' => $item['is_tentative'] ?? false,
                     ]);
                 }
             }
 
-            return $estimate->load(['customer', 'vehicle', 'items']);
+            return $estimate->load(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver']);
         });
     }
 
@@ -66,14 +102,32 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             $vehicle = CustomerVehicle::find($data['vehicle_id'] ?? $estimate->vehicle_id);
             $vehicleOld = $vehicle ? $vehicle->plate_number : $estimate->vehicle_id_old;
 
-            $estimate->update([
+            $employeeId = auth()->user() ? auth()->user()->employeeID : null;
+
+            $updateData = [
                 'customer_id' => $data['customer_id'] ?? $estimate->customer_id,
                 'vehicle_id' => $data['vehicle_id'] ?? $estimate->vehicle_id,
                 'vehicle_id_old' => $vehicleOld,
                 'status' => $data['status'] ?? $estimate->status,
                 'total_amount' => $data['total_amount'] ?? $estimate->total_amount,
                 'mileage' => $data['mileage'] ?? $estimate->mileage,
-            ]);
+                'downpayment_amount' => $data['downpayment_amount'] ?? $estimate->downpayment_amount,
+                'payment_method' => $data['payment_method'] ?? $estimate->payment_method,
+                'payment_reference' => $data['payment_reference'] ?? $estimate->payment_reference,
+                'notes' => $data['notes'] ?? $estimate->notes,
+            ];
+
+            // If it's a general edit (items update, mileage change, total_amount change, downpayment update, or notes update), track edited_by
+            if (isset($data['items']) || isset($data['mileage']) || isset($data['total_amount']) || isset($data['downpayment_amount']) || isset($data['notes'])) {
+                $updateData['edited_by'] = $employeeId;
+            }
+
+            // If the status is being set to APPROVED or APPROVED WITH DOWNPAYMENT, track approved_by
+            if (isset($data['status']) && (strtoupper($data['status']) === 'APPROVED' || strtoupper($data['status']) === 'APPROVED WITH DOWNPAYMENT' || strtoupper($data['status']) === 'APPROVED_WITH_DOWNPAYMENT')) {
+                $updateData['approved_by'] = $employeeId;
+            }
+
+            $estimate->update($updateData);
 
             if (isset($data['items']) && is_array($data['items'])) {
                 // Remove old items
@@ -90,11 +144,14 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                         'quantity' => $item['quantity'] ?? 1,
                         'unit_price' => $item['unit_price'] ?? 0.00,
                         'subtotal' => $item['subtotal'] ?? 0.00,
+                        'needs_ordering' => $item['needs_ordering'] ?? false,
+                        'custom_name' => $item['custom_name'] ?? null,
+                        'is_tentative' => $item['is_tentative'] ?? false,
                     ]);
                 }
             }
 
-            return $estimate->load(['customer', 'vehicle', 'items']);
+            return $estimate->load(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver']);
         });
     }
 

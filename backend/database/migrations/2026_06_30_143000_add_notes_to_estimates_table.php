@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('Main.ServicePricing', function (Blueprint $table) {
-            $table->jsonb('vehicle_types')->nullable()->after('vehicle_size_name');
+        Schema::table('Main.Estimates', function (Blueprint $table) {
+            $table->text('notes')->nullable();
         });
     }
 
     public function down(): void
     {
-        Schema::table('Main.ServicePricing', function (Blueprint $table) {
-            $table->dropColumn('vehicle_types');
+        Schema::table('Main.Estimates', function (Blueprint $table) {
+            $table->dropColumn('notes');
         });
     }
 };

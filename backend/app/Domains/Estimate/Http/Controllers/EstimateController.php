@@ -74,13 +74,20 @@ class EstimateController extends Controller
                 'status' => 'nullable|string',
                 'total_amount' => 'required|numeric',
                 'mileage' => 'required|numeric|min:0',
+                'downpayment_amount' => 'nullable|numeric|min:0',
+                'payment_method' => 'nullable|string|max:50',
+                'payment_reference' => 'nullable|string|max:100',
+                'notes' => 'nullable|string',
                 'items' => 'required|array',
-                'items.*.item_type' => 'required|string|in:service,part',
+                'items.*.item_type' => 'required|string|in:service,part,supply',
                 'items.*.product_id' => 'nullable|uuid',
                 'items.*.service_id' => 'nullable|uuid',
                 'items.*.quantity' => 'required|numeric',
                 'items.*.unit_price' => 'required|numeric',
                 'items.*.subtotal' => 'required|numeric',
+                'items.*.needs_ordering' => 'nullable|boolean',
+                'items.*.custom_name' => 'nullable|string|max:255',
+                'items.*.is_tentative' => 'nullable|boolean',
             ]);
 
             $estimate = $this->estimateRepo->create($validated);
@@ -110,13 +117,20 @@ class EstimateController extends Controller
                 'status' => 'nullable|string',
                 'total_amount' => 'nullable|numeric',
                 'mileage' => 'nullable|numeric|min:0',
+                'downpayment_amount' => 'nullable|numeric|min:0',
+                'payment_method' => 'nullable|string|max:50',
+                'payment_reference' => 'nullable|string|max:100',
+                'notes' => 'nullable|string',
                 'items' => 'nullable|array',
-                'items.*.item_type' => 'required|string|in:service,part',
+                'items.*.item_type' => 'required|string|in:service,part,supply',
                 'items.*.product_id' => 'nullable|uuid',
                 'items.*.service_id' => 'nullable|uuid',
                 'items.*.quantity' => 'required|numeric',
                 'items.*.unit_price' => 'required|numeric',
                 'items.*.subtotal' => 'required|numeric',
+                'items.*.needs_ordering' => 'nullable|boolean',
+                'items.*.custom_name' => 'nullable|string|max:255',
+                'items.*.is_tentative' => 'nullable|boolean',
             ]);
 
             $estimate = $this->estimateRepo->update($id, $validated);
@@ -178,21 +192,29 @@ class EstimateController extends Controller
 
             // Load relations if not already loaded
             if (!$estimate->relationLoaded('customer')) {
-                $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product']);
+                $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product', 'creator']);
+            } else {
+                $estimate->loadMissing(['creator']);
             }
 
             $user = auth()->user() ?? auth('sanctum')->user();
-            $employee = $user ? $user->employee : null;
+            $employee = $estimate->creator ?? ($user ? $user->employee : null);
             if ($employee) {
                 $employee->load('role');
             }
 
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.estimate', [
+            $filename = ($estimate->estimate_number ?: 'estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT)) . '.pdf';
+            $hidePartNumber = request()->query('hide_part_number') === 'true' || request()->query('hide_part_number') === '1';
+            $includeTentative = request()->query('include_tentative') === 'true' || request()->query('include_tentative') === '1';
+
+            return \Spatie\LaravelPdf\Facades\Pdf::view('pdfs.estimate', [
                 'estimate' => $estimate,
                 'employee' => $employee,
-            ]);
-
-            return $pdf->stream('estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT) . '.pdf');
+                'hidePartNumber' => $hidePartNumber,
+                'includeTentative' => $includeTentative,
+            ])
+            ->format('a4')
+            ->inline($filename);
         } catch (\Exception $e) {
             Log::error('Failed to generate estimate PDF: ' . $e->getMessage());
             return response()->json([
@@ -201,4 +223,5 @@ class EstimateController extends Controller
             ], 500);
         }
     }
+
 }

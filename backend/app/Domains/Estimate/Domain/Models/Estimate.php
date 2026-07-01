@@ -23,10 +23,19 @@ class Estimate extends Model
         'status',
         'total_amount',
         'mileage',
+        'estimate_number',
+        'downpayment_amount',
+        'payment_method',
+        'payment_reference',
+        'created_by',
+        'edited_by',
+        'approved_by',
+        'notes',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
+        'downpayment_amount' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -44,5 +53,20 @@ class Estimate extends Model
     public function items()
     {
         return $this->hasMany(EstimateItem::class, 'estimate_id', 'id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(\App\Domains\Employee\Domain\Models\Employee::class, 'created_by', 'id');
+    }
+
+    public function editor()
+    {
+        return $this->belongsTo(\App\Domains\Employee\Domain\Models\Employee::class, 'edited_by', 'id');
+    }
+
+    public function approver()
+    {
+        return $this->belongsTo(\App\Domains\Employee\Domain\Models\Employee::class, 'approved_by', 'id');
     }
 }

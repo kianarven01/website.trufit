@@ -120,7 +120,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className="relative w-full">
       <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
         ₱
       </span>
@@ -133,7 +133,7 @@ const CurrencyInput: React.FC<CurrencyInputProps> = ({
         onFocus={handleFocus}
         onBlur={handleBlur}
         inputMode="decimal"
-        className="pl-6 pr-2 text-right w-full border rounded-md h-8 text-sm"
+        className={`pl-6 pr-2 text-right w-full border rounded-md h-8 text-sm bg-background ${className || ""}`}
       />
     </div>
   );

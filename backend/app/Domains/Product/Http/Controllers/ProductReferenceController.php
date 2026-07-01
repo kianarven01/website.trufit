@@ -12,6 +12,7 @@ use App\Domains\Product\Domain\Models\ServiceType;
 use App\Domains\Product\Domain\Models\ServicePricing;
 use App\Domains\Product\Domain\Models\ServiceCategory;
 use App\Domains\Product\Domain\Models\Part;
+use App\Domains\Product\Domain\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -27,7 +28,14 @@ class ProductReferenceController extends Controller
             ->select('id', 'name', 'code')
             ->withCount('products')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->map(function ($category) {
+                $category->parts_count = Part::query()
+                    ->where('category_id', $category->id)
+                    ->count();
+
+                return $category;
+            });
 
         return response()->json([
             'data' => $categories,
@@ -100,9 +108,26 @@ class ProductReferenceController extends Controller
             'code' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $name = trim($validated['name']);
+        $code = isset($validated['code']) && trim($validated['code']) !== ''
+            ? Str::upper(trim($validated['code']))
+            : Str::upper(Str::slug($name, '_'));
+
+        $existing = Category::query()
+            ->whereRaw('LOWER(name) = ?', [strtolower($name)])
+            ->orWhereRaw('LOWER(code) = ?', [strtolower($code)])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'message' => 'Category already exists.',
+                'data' => $existing,
+            ], 409);
+        }
+
         $category = Category::create([
-            'name' => $validated['name'],
-            'code' => $validated['code'] ?? Str::upper(Str::slug($validated['name'], '_')),
+            'name' => $name,
+            'code' => $code,
         ]);
 
         return response()->json([
@@ -121,9 +146,28 @@ class ProductReferenceController extends Controller
 
         $category = Category::query()->where('id', $id)->firstOrFail();
 
+        $name = trim($validated['name']);
+        $code = isset($validated['code']) && trim($validated['code']) !== ''
+            ? Str::upper(trim($validated['code']))
+            : ($category->code ?: Str::upper(Str::slug($name, '_')));
+
+        $duplicate = Category::query()
+            ->where('id', '!=', $category->id)
+            ->where(function ($query) use ($name, $code) {
+                $query->whereRaw('LOWER(name) = ?', [strtolower($name)])
+                    ->orWhereRaw('LOWER(code) = ?', [strtolower($code)]);
+            })
+            ->first();
+
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'Another category with the same name or code already exists.',
+            ], 409);
+        }
+
         $category->update([
-            'name' => $validated['name'],
-            'code' => $validated['code'] ?? $category->code,
+            'name' => $name,
+            'code' => $code,
         ]);
 
         return response()->json([
@@ -136,6 +180,22 @@ class ProductReferenceController extends Controller
     public function deleteCategory(string $id): JsonResponse
     {
         $category = Category::query()->where('id', $id)->firstOrFail();
+
+        $productsUsingCategory = Product::query()
+            ->where('category_id', $category->id)
+            ->count();
+
+        $partsUsingCategory = Part::query()
+            ->where('category_id', $category->id)
+            ->count();
+
+        if ($productsUsingCategory > 0 || $partsUsingCategory > 0) {
+            return response()->json([
+                'message' => 'This category is currently used by products or parts and cannot be deleted.',
+                'products_count' => $productsUsingCategory,
+                'parts_count' => $partsUsingCategory,
+            ], 422);
+        }
 
         $category->delete();
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import api from "@/api/axios";
+import ManageProductCategories from "./manageProductCategories";
 
 import {
   Dialog,
@@ -20,6 +21,8 @@ interface Option {
   CompanyName?: string;
   company_name?: string;
   label?: string;
+  products_count?: number;
+  parts_count?: number;
 }
 
 interface PartOption {
@@ -69,6 +72,7 @@ export default function ProductModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [localCategories, setLocalCategories] = useState<Option[]>(categories);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const [localManufacturers, setLocalManufacturers] = useState<Option[]>(manufacturers);
   const [referenceModalType, setReferenceModalType] = useState<ReferenceModalType>(null);
   const [savingReference, setSavingReference] = useState(false);
@@ -111,6 +115,26 @@ export default function ProductModal({
   useEffect(() => {
     setLocalCategories(categories);
   }, [categories]);
+
+  const handleManagedCategoriesChanged = (nextCategories: Option[]) => {
+    setLocalCategories(nextCategories);
+
+    setForm((prev) => {
+      if (!prev.category_id) return prev;
+
+      const stillExists = nextCategories.some(
+        (category) => String(category.id) === String(prev.category_id)
+      );
+
+      return stillExists
+        ? prev
+        : {
+            ...prev,
+            category_id: "",
+            part_id: "",
+          };
+    });
+  };
 
   useEffect(() => {
     setLocalManufacturers(manufacturers);
@@ -859,30 +883,45 @@ export default function ProductModal({
             />
           </div>
 
-          <select
-            className="border rounded-md px-3 py-2 bg-background"
-            value={form.category_id}
-            onChange={(e) => {
-              const value = e.target.value;
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                Category
+              </span>
+              <button
+                type="button"
+                className="text-xs font-medium text-primary hover:underline"
+                onClick={() => setManageCategoriesOpen(true)}
+              >
+                Manage Categories
+              </button>
+            </div>
 
-              if (value === ADD_NEW_CATEGORY) {
-                openReferenceModal("category");
-                return;
-              }
+            <select
+              className="w-full border rounded-md px-3 py-2 bg-background"
+              value={form.category_id}
+              onChange={(e) => {
+                const value = e.target.value;
 
-              handleCategoryChange(value);
-            }}
-          >
-            <option value="">Select category</option>
+                if (value === ADD_NEW_CATEGORY) {
+                  openReferenceModal("category");
+                  return;
+                }
 
-            {localCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {getOptionLabel(category)}
-              </option>
-            ))}
+                handleCategoryChange(value);
+              }}
+            >
+              <option value="">Select category</option>
 
-            <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
-          </select>
+              {localCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {getOptionLabel(category)}
+                </option>
+              ))}
+
+              <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
+            </select>
+          </div>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
@@ -1099,6 +1138,12 @@ export default function ProductModal({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ManageProductCategories
+      open={manageCategoriesOpen}
+      onOpenChange={setManageCategoriesOpen}
+      onChanged={handleManagedCategoriesChanged}
+    />
 
     <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {
       if (!nextOpen) {

@@ -207,6 +207,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
+  const [includeTentative, setIncludeTentative] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
@@ -724,7 +725,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             const qty = Number(updated.quantity) || 0;
             const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
             const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-            updated.needsOrdering = isOutOfStock || isShortage;
+            updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
           }
         }
 
@@ -740,7 +741,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             if (found) {
               const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
               const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-              updated.needsOrdering = isOutOfStock || isShortage;
+              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
             }
           }
         }
@@ -798,7 +799,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             const qty = Number(updated.quantity) || 0;
             const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
             const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-            updated.needsOrdering = isOutOfStock || isShortage;
+            updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
           }
         }
 
@@ -814,7 +815,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             if (found) {
               const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
               const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-              updated.needsOrdering = isOutOfStock || isShortage;
+              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
             }
           }
         }
@@ -1083,12 +1084,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     }
   };
 
-  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean) => {
+  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean, incTentative: boolean) => {
     if (!estimateId) return;
     setIsLoadingPdf(true);
     try {
       const response = await api.get(`/estimates/${estimateId}/download-pdf`, {
-        params: { hide_part_number: hidePartNumber },
+        params: { 
+          hide_part_number: hidePartNumber,
+          include_tentative: incTentative,
+        },
         responseType: 'blob',
       });
       if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
@@ -1104,16 +1108,16 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
   const handlePreviewPDF = async () => {
     setShowPdfPreview(true);
-    await fetchPdfBlob(!includePartNumbers);
+    await fetchPdfBlob(!includePartNumbers, includeTentative);
   };
 
 
-  // Re-fetch PDF when part numbers toggle changes while preview is open
+  // Re-fetch PDF when part numbers or tentative toggles change while preview is open
   useEffect(() => {
     if (showPdfPreview && estimateId) {
-      fetchPdfBlob(!includePartNumbers);
+      fetchPdfBlob(!includePartNumbers, includeTentative);
     }
-  }, [includePartNumbers]);
+  }, [includePartNumbers, includeTentative]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -1611,7 +1615,29 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               <input
                                 type="checkbox"
                                 checked={l.isTentative}
-                                onChange={(e) => setSoLines(prev => prev.map((line, i) => i === idx ? { ...line, isTentative: e.target.checked, needsOrdering: e.target.checked ? false : line.needsOrdering } : line))}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSoLines(prev => prev.map((line, i) => {
+                                    if (i !== idx) return line;
+                                    let needsOrdering = line.needsOrdering;
+                                    if (checked) {
+                                      needsOrdering = false;
+                                    } else {
+                                      if (line.customName !== undefined) {
+                                        needsOrdering = true;
+                                      } else {
+                                        const found = partsMap[line.ProductId];
+                                        if (found) {
+                                          const qty = Number(line.quantity || 0);
+                                          const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+                                          const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+                                          needsOrdering = isOutOfStock || isShortage;
+                                        }
+                                      }
+                                    }
+                                    return { ...line, isTentative: checked, needsOrdering };
+                                  }));
+                                }}
                                 className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
                               />
                             </TableCell>
@@ -1750,7 +1776,29 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               <input
                                 type="checkbox"
                                 checked={l.isTentative}
-                                onChange={(e) => setSpolLines(prev => prev.map((line, i) => i === idx ? { ...line, isTentative: e.target.checked, needsOrdering: e.target.checked ? false : line.needsOrdering } : line))}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSpolLines(prev => prev.map((line, i) => {
+                                    if (i !== idx) return line;
+                                    let needsOrdering = line.needsOrdering;
+                                    if (checked) {
+                                      needsOrdering = false;
+                                    } else {
+                                      if (line.customName !== undefined) {
+                                        needsOrdering = true;
+                                      } else {
+                                        const found = partsMap[line.ProductId];
+                                        if (found) {
+                                          const qty = Number(line.quantity || 0);
+                                          const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+                                          const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+                                          needsOrdering = isOutOfStock || isShortage;
+                                        }
+                                      }
+                                    }
+                                    return { ...line, isTentative: checked, needsOrdering };
+                                  }));
+                                }}
                                 className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
                               />
                             </TableCell>
@@ -1959,13 +2007,13 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           setPdfBlobUrl(null);
         }
       }}>
-        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-lg font-semibold">
                 PDF Preview — {estimateNumber || "Estimate"}
               </DialogTitle>
-              <div className="flex items-center gap-3 mr-8">
+              <div className="flex items-center gap-4 mr-8">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="preview-include-part-numbers-form"
@@ -1974,6 +2022,16 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   />
                   <label htmlFor="preview-include-part-numbers-form" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
                     Include Part Numbers
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-tentative-form"
+                    checked={includeTentative}
+                    onCheckedChange={(checked) => setIncludeTentative(!!checked)}
+                  />
+                  <label htmlFor="preview-include-tentative-form" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Tentative Items
                   </label>
                 </div>
               </div>

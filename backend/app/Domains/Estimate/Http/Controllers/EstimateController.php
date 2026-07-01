@@ -205,11 +205,13 @@ class EstimateController extends Controller
 
             $filename = ($estimate->estimate_number ?: 'estimate-' . str_pad($estimate->id, 5, '0', STR_PAD_LEFT)) . '.pdf';
             $hidePartNumber = request()->query('hide_part_number') === 'true' || request()->query('hide_part_number') === '1';
+            $includeTentative = request()->query('include_tentative') === 'true' || request()->query('include_tentative') === '1';
 
             return \Spatie\LaravelPdf\Facades\Pdf::view('pdfs.estimate', [
                 'estimate' => $estimate,
                 'employee' => $employee,
                 'hidePartNumber' => $hidePartNumber,
+                'includeTentative' => $includeTentative,
             ])
             ->format('a4')
             ->inline($filename);

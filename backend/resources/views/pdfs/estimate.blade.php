@@ -366,6 +366,21 @@
         });
         $supplyTypeItems = $estimate->items->where('item_type', 'supply');
         $supplyItems = $supplyItems->merge($supplyTypeItems);
+
+        $includeTentative = $includeTentative ?? false;
+        if (!$includeTentative) {
+            $serviceItems = $serviceItems->filter(fn($i) => !$i->is_tentative);
+            $partItems = $partItems->filter(fn($i) => !$i->is_tentative);
+            $supplyItems = $supplyItems->filter(fn($i) => !$i->is_tentative);
+        }
+
+        $totalServices = $serviceItems->sum('subtotal');
+        $totalParts = $partItems->sum('subtotal');
+        $totalSupplies = $supplyItems->sum('subtotal');
+
+        $grandTotal = $totalServices + $totalParts + $totalSupplies;
+        $downpayment = (float)($estimate->downpayment_amount ?? 0);
+        $balance = max(0, $grandTotal - $downpayment);
     @endphp
 
     <table class="items-table" style="border:none;">
@@ -380,7 +395,12 @@
         <tbody>
             @foreach($serviceItems as $item)
             <tr>
-                <td style="text-align: left; vertical-align: top;">{{ $item->service->name ?? 'Unknown Service' }}</td>
+                <td style="text-align: left; vertical-align: top;">
+                    {{ $item->service->name ?? 'Unknown Service' }}
+                    @if($item->is_tentative)
+                        <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
+                    @endif
+                </td>
                 <td style="text-align: left; vertical-align: top;">
                     @if($item->service && $item->service->tasks)
                         @foreach(is_string($item->service->tasks) ? json_decode($item->service->tasks, true) : $item->service->tasks as $task)
@@ -419,7 +439,12 @@
                 @if(empty($hidePartNumber))
                 <td style="text-align: left;">{{ $item->custom_name ? '—' : ($item->product->part_number ?? $item->product->SKU ?? '—') }}</td>
                 @endif
-                <td style="text-align: left;">{{ $item->custom_name ?? $item->product->name ?? 'Unknown Part' }}</td>
+                <td style="text-align: left;">
+                    {{ $item->custom_name ?? $item->product->name ?? 'Unknown Part' }}
+                    @if($item->is_tentative)
+                        <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
+                    @endif
+                </td>
                 <td class="text-center">{{ intval($item->quantity) }}</td>
                 <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
                 <td class="text-right">{{ number_format($item->subtotal, 2) }}</td>
@@ -446,7 +471,12 @@
             @foreach($supplyItems as $item)
             <tr>
                 <td width="20%"></td>
-                <td width="40%" style="text-align: left;">{{ $item->product->name ?? 'Unknown Supply' }}</td>
+                <td width="40%" style="text-align: left;">
+                    {{ $item->product->name ?? 'Unknown Supply' }}
+                    @if($item->is_tentative)
+                        <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
+                    @endif
+                </td>
                 <td width="10%" class="text-center">
                     {{ intval($item->quantity) == 1 && strtolower($item->product->name ?? '') === 'sundries' ? '' : intval($item->quantity) }}
                 </td>
@@ -469,7 +499,7 @@
     <!-- Totals Line -->
     <div style="margin-top: 15px; margin-bottom: 5px; font-weight: bold; font-size: 10.5px; border-bottom: 2.5px solid #000000ff; padding-bottom: 3px; position: relative; text-align: center;">
         <span>&lt;&lt;&lt;&lt; Total For Job 1 &gt;&gt;&gt;&gt;</span>
-        <span style="position: absolute; right: 0; top: 0;">{{ number_format($estimate->total_amount, 2) }}</span>
+        <span style="position: absolute; right: 0; top: 0;">{{ number_format($grandTotal, 2) }}</span>
     </div>
 
     <div style="text-align: right; color: red; font-weight: bold; font-size: 11px; margin-top: 2px; margin-bottom: 10px; margin-right: 5px;">
@@ -479,15 +509,15 @@
     <table class="totals-table">
         <tr>
             <td class="total-label">Total Sales</td>
-            <td class="total-value">{{ number_format($estimate->total_amount, 2) }}</td>
+            <td class="total-value">{{ number_format($grandTotal, 2) }}</td>
         </tr>
         <tr>
             <td class="total-label">Downpayment</td>
-            <td class="total-value">{{ $estimate->downpayment_amount > 0 ? number_format($estimate->downpayment_amount, 2) : '-' }}</td>
+            <td class="total-value">{{ $downpayment > 0 ? number_format($downpayment, 2) : '-' }}</td>
         </tr>
         <tr style="font-weight:bold;">
             <td class="total-label" style="vertical-align: middle;">Total Balance</td>
-            <td class="grand-total-value">{{ number_format($estimate->total_amount - ($estimate->downpayment_amount ?? 0), 2) }}</td>
+            <td class="grand-total-value">{{ number_format($balance, 2) }}</td>
         </tr>
     </table>
 

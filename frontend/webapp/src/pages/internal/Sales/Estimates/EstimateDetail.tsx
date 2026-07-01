@@ -107,6 +107,7 @@ const EstimateDetail: React.FC = () => {
   const [isApproving, setIsApproving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
+  const [includeTentative, setIncludeTentative] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
@@ -320,12 +321,15 @@ const EstimateDetail: React.FC = () => {
     }
   };
 
-  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean) => {
+  const fetchPdfBlob = useCallback(async (hidePartNumber: boolean, incTentative: boolean) => {
     if (!estimate?.id) return;
     setIsLoadingPdf(true);
     try {
       const response = await api.get(`/estimates/${estimate.id}/download-pdf`, {
-        params: { hide_part_number: hidePartNumber },
+        params: { 
+          hide_part_number: hidePartNumber,
+          include_tentative: incTentative,
+        },
         responseType: 'blob',
       });
       // Revoke previous blob URL to prevent memory leaks
@@ -342,17 +346,17 @@ const EstimateDetail: React.FC = () => {
 
   const handlePreviewPDF = async () => {
     setShowPdfPreview(true);
-    await fetchPdfBlob(!includePartNumbers);
+    await fetchPdfBlob(!includePartNumbers, includeTentative);
   };
 
 
 
-  // Re-fetch PDF when part numbers toggle changes while preview is open
+  // Re-fetch PDF when part numbers or tentative toggles change while preview is open
   useEffect(() => {
     if (showPdfPreview && estimate?.id) {
-      fetchPdfBlob(!includePartNumbers);
+      fetchPdfBlob(!includePartNumbers, includeTentative);
     }
-  }, [includePartNumbers]);
+  }, [includePartNumbers, includeTentative]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -965,13 +969,13 @@ const EstimateDetail: React.FC = () => {
           setPdfBlobUrl(null);
         }
       }}>
-        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-lg font-semibold">
                 PDF Preview — {estimate?.estimate_number || "Estimate"}
               </DialogTitle>
-              <div className="flex items-center gap-3 mr-8">
+              <div className="flex items-center gap-4 mr-8">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="preview-include-part-numbers"
@@ -980,6 +984,16 @@ const EstimateDetail: React.FC = () => {
                   />
                   <label htmlFor="preview-include-part-numbers" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
                     Include Part Numbers
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="preview-include-tentative"
+                    checked={includeTentative}
+                    onCheckedChange={(checked) => setIncludeTentative(!!checked)}
+                  />
+                  <label htmlFor="preview-include-tentative" className="text-xs text-muted-foreground cursor-pointer select-none whitespace-nowrap">
+                    Include Tentative Items
                   </label>
                 </div>
               </div>

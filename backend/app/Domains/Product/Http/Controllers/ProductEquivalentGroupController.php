@@ -6,23 +6,22 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use App\Domains\Product\Application\Services\ProductFormatterService;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Domain\Models\ProductEquivalentGroup;
 use App\Domains\Product\Domain\Models\ProductEquivalentGroupItem;
 
 class ProductEquivalentGroupController extends Controller
 {
+    public function __construct(private ProductFormatterService $formatter)
+    {
+    }
+
     public function index(string $productId): JsonResponse
     {
         $product = Product::findOrFail($productId);
 
-        $groups = ProductEquivalentGroup::with([
-            'items.product.manufacturer',
-            'items.product.part',
-            'items.product.category',
-            'items.product.unitRelation',
-            'items.product.inventoryRows',
-        ])
+        $groups = ProductEquivalentGroup::with($this->groupRelations())
             ->whereHas('items', function ($query) use ($productId) {
                 $query->where('product_id', $productId);
             })
@@ -30,9 +29,7 @@ class ProductEquivalentGroupController extends Controller
 
         return response()->json([
             'product_id' => $product->id,
-            'groups' => $groups->map(function ($group) use ($productId) {
-                return $this->formatGroup($group, $productId);
-            })->values(),
+            'groups' => $groups->map(fn ($group) => $this->formatGroup($group, $productId))->values(),
         ]);
     }
 
@@ -65,9 +62,7 @@ class ProductEquivalentGroupController extends Controller
                 'product_id' => $baseProduct->id,
             ]);
 
-            $equivalentProductIds = $validated['equivalent_product_ids'] ?? [];
-
-            foreach ($equivalentProductIds as $equivalentProductId) {
+            foreach ($validated['equivalent_product_ids'] ?? [] as $equivalentProductId) {
                 if ($equivalentProductId === $baseProduct->id) {
                     continue;
                 }
@@ -94,13 +89,7 @@ class ProductEquivalentGroupController extends Controller
             return $group;
         });
 
-        $group->load([
-            'items.product.manufacturer',
-            'items.product.part',
-            'items.product.category',
-            'items.product.unitRelation',
-            'items.product.inventoryRows',
-        ]);
+        $group->load($this->groupRelations());
 
         return response()->json([
             'message' => 'Equivalent group created successfully.',
@@ -120,13 +109,7 @@ class ProductEquivalentGroupController extends Controller
 
         $search = trim((string) $request->query('search', ''));
 
-        $query = Product::with([
-            'manufacturer',
-            'part',
-            'category',
-            'unitRelation',
-            'inventoryRows',
-        ])
+        $query = Product::with($this->productRelations())
             ->where('id', '!=', $product->id)
             ->where('part_id', $product->part_id);
 
@@ -143,7 +126,7 @@ class ProductEquivalentGroupController extends Controller
             ->orderBy('name')
             ->limit(30)
             ->get()
-            ->map(fn ($candidate) => $this->formatProduct($candidate))
+            ->map(fn ($candidate) => $this->formatter->format($candidate))
             ->values();
 
         return response()->json([
@@ -171,13 +154,7 @@ class ProductEquivalentGroupController extends Controller
             'product_id' => $product->id,
         ]);
 
-        $group->load([
-            'items.product.manufacturer',
-            'items.product.part',
-            'items.product.category',
-            'items.product.unitRelation',
-            'items.product.inventoryRows',
-        ]);
+        $group->load($this->groupRelations());
 
         return response()->json([
             'message' => 'Product added to equivalent group successfully.',
@@ -203,13 +180,7 @@ class ProductEquivalentGroupController extends Controller
             ]);
         }
 
-        $group->load([
-            'items.product.manufacturer',
-            'items.product.part',
-            'items.product.category',
-            'items.product.unitRelation',
-            'items.product.inventoryRows',
-        ]);
+        $group->load($this->groupRelations());
 
         return response()->json([
             'message' => 'Product removed from equivalent group successfully.',
@@ -222,7 +193,7 @@ class ProductEquivalentGroupController extends Controller
         $products = $group->items
             ->map(fn ($item) => $item->product)
             ->filter()
-            ->map(fn ($product) => $this->formatProduct($product))
+            ->map(fn ($product) => $this->formatter->format($product))
             ->values();
 
         return [
@@ -239,37 +210,35 @@ class ProductEquivalentGroupController extends Controller
         ];
     }
 
-    private function formatProduct(Product $product): array
+    private function groupRelations(): array
     {
-        $totalStock = $product->inventoryRows
-            ? $product->inventoryRows->sum(fn ($inventory) => (int) $inventory->quantity_on_hand)
-            : 0;
-
         return [
-            'id' => $product->id,
-            'name' => $product->name,
-            'SKU' => $product->SKU,
-            'sku' => $product->SKU,
-            'barcode' => $product->barcode,
-            'part_number' => $product->part_number,
-            'description' => $product->description,
-            'image_path' => $product->image_path,
-            'category_id' => $product->category_id,
-            'part_id' => $product->part_id,
-            'manufacturer_id' => $product->manufacturer_id,
-            'unit' => $product->unit,
+            'items.product.category',
+            'items.product.manufacturer',
+            'items.product.part',
+            'items.product.unitRelation',
+            'items.product.productSuppliers.supplier',
+            'items.product.productSuppliers.price',
+            'items.product.inventoryRelation',
+            'items.product.inventoryRows.productSupplier.supplier',
+            'items.product.inventoryRows.productSupplier.price',
+            'items.product.vehicleCompatibilities.vehicleVariant',
+        ];
+    }
 
-            'manufacturer' => $product->manufacturer?->name,
-            'manufacturer_name' => $product->manufacturer?->name,
-            'part' => $product->part?->name,
-            'part_name' => $product->part?->name,
-            'category' => $product->category?->name,
-            'category_name' => $product->category?->name,
-            'unit_name' => $product->unitRelation?->name,
-            'unit_abbreviation' => $product->unitRelation?->abbreviation,
-
-            'quantity_on_hand' => $totalStock,
-            'stock_status' => $totalStock > 0 ? 'In Stock' : 'Out of Stock',
+    private function productRelations(): array
+    {
+        return [
+            'category',
+            'manufacturer',
+            'part',
+            'unitRelation',
+            'productSuppliers.supplier',
+            'productSuppliers.price',
+            'inventoryRelation',
+            'inventoryRows.productSupplier.supplier',
+            'inventoryRows.productSupplier.price',
+            'vehicleCompatibilities.vehicleVariant',
         ];
     }
 }

@@ -76,61 +76,144 @@ const fromSlug = (slug?: string) =>
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
     .join(" ") || "";
 
-const normalizeProduct = (row: any): Product => ({
-  id: String(row.id),
-  image: row.image || row.image_URL || undefined,
-  name: String(row.name || ""),
-  brand:
-    row.brand?.name ||
-    row.Brand?.name ||
-    row.brand_name ||
-    row.manufacturer ||
-    "",
-  manufacturer:
-    row.manufacturer_name ||
-    row.manufacturer ||
-    row.brand?.name ||
-    row.Brand?.name ||
-    row.brand_name ||
-    "",
-  supplier:
-    row.supplier?.CompanyName ||
-    row.Supplier?.CompanyName ||
-    row.supplier_name ||
-    row.supplier ||
-    "",
-  sku: String(row.SKU || row.sku || ""),
-  partNumber: String(row.part_number || row.partNumber || ""),
-  unit:
-    row.unit?.name ||
-    row.Unit?.name ||
-    row.unit_name ||
-    row.unit ||
-    "",
-  unitAbbreviation:
-    row.unit?.abbreviation ||
-    row.Unit?.abbreviation ||
-    row.unit_abbreviation ||
-    row.unitAbbreviation ||
-    null,
-  price: Number(row.selling_price || row.price || row.sell_price || 0),
-  cost: Number(row.cost || 0),
-  description: row.description || "",
-  barcode: row.barcode || "",
-  categoryId: row.category_id ?? row.categoryId ?? null,
-  category:
-    row.category?.name || row.Category?.name || row.category_name || "",
-  supplierCode:
-    row.supplier_code ||
-    row.supplier?.supplier_code ||
-    row.Supplier?.supplier_code ||
-    "",
+const getRows = (payload: any): any[] => {
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.products)) return payload.products;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
 
-  fitmentType: row.fitment_type || "unfiltered",
-  equivalentToProductId: row.equivalent_to_product_id || null,
-  equivalentToProductName: row.equivalent_to_product_name || null,
-  equivalenceNotes: row.equivalence_notes || null,
-});
+const toNumberOrZero = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getProductSellingPrice = (row: any): number => {
+  const directPrice =
+    row.selling_price ??
+    row.price ??
+    row.sell_price ??
+    row.active_price?.Price ??
+    row.active_price?.price ??
+    row.activePrice?.Price ??
+    row.activePrice?.price;
+
+  if (directPrice !== null && directPrice !== undefined && directPrice !== "") {
+    return toNumberOrZero(directPrice);
+  }
+
+  const suppliers = Array.isArray(row.suppliers)
+    ? row.suppliers
+    : Array.isArray(row.product_suppliers)
+      ? row.product_suppliers
+      : Array.isArray(row.productSuppliers)
+        ? row.productSuppliers
+        : [];
+
+  const firstSupplierWithPrice = suppliers.find((supplier: any) => {
+    const activePrice = supplier.active_price || supplier.activePrice;
+    return (
+      activePrice?.Price !== undefined ||
+      activePrice?.price !== undefined ||
+      supplier.price?.Price !== undefined ||
+      supplier.price?.price !== undefined ||
+      (supplier.price !== undefined && typeof supplier.price !== "object")
+    );
+  });
+
+  if (!firstSupplierWithPrice) return 0;
+
+  const activePrice =
+    firstSupplierWithPrice.active_price ||
+    firstSupplierWithPrice.activePrice ||
+    (typeof firstSupplierWithPrice.price === "object"
+      ? firstSupplierWithPrice.price
+      : null);
+
+  return toNumberOrZero(
+    activePrice?.Price ??
+      activePrice?.price ??
+      firstSupplierWithPrice.price ??
+      0
+  );
+};
+
+
+const normalizeProduct = (row: any): Product => {
+  const suppliers = Array.isArray(row.suppliers)
+    ? row.suppliers
+    : Array.isArray(row.product_suppliers)
+      ? row.product_suppliers
+      : Array.isArray(row.productSuppliers)
+        ? row.productSuppliers
+        : [];
+
+  const firstSupplier = suppliers[0];
+
+  return {
+    id: String(row.id),
+    image: row.image || row.image_URL || row.image_path || undefined,
+    name: String(row.name || ""),
+    brand:
+      row.brand?.name ||
+      row.Brand?.name ||
+      row.brand_name ||
+      row.manufacturer_name ||
+      row.manufacturer ||
+      "",
+    manufacturer:
+      row.manufacturer_name ||
+      row.manufacturer ||
+      row.manufacturer?.name ||
+      row.Manufacturer?.name ||
+      row.brand?.name ||
+      row.Brand?.name ||
+      row.brand_name ||
+      "",
+    supplier:
+      row.supplier?.CompanyName ||
+      row.Supplier?.CompanyName ||
+      row.supplier_name ||
+      row.supplier ||
+      firstSupplier?.supplier?.CompanyName ||
+      firstSupplier?.supplier?.name ||
+      "",
+    sku: String(row.SKU || row.sku || ""),
+    partNumber: String(row.part_number || row.partNumber || ""),
+    unit:
+      row.unit?.name ||
+      row.Unit?.name ||
+      row.unit_name ||
+      row.unit ||
+      "",
+    unitAbbreviation:
+      row.unit?.abbreviation ||
+      row.Unit?.abbreviation ||
+      row.unit_abbreviation ||
+      row.unitAbbreviation ||
+      null,
+    price: getProductSellingPrice(row),
+    cost: toNumberOrZero(row.cost ?? firstSupplier?.supplier_cost ?? 0),
+    description: row.description || "",
+    barcode: row.barcode || "",
+    categoryId: row.category_id ?? row.categoryId ?? null,
+    category:
+      row.category?.name || row.Category?.name || row.category_name || "",
+    supplierCode:
+      row.supplier_code ||
+      row.supplier?.supplier_code ||
+      row.Supplier?.supplier_code ||
+      firstSupplier?.supplier?.supplier_code ||
+      "",
+
+    fitmentType: row.fitment_type || row.fitmentType || "unfiltered",
+    equivalentToProductId:
+      row.equivalent_to_product_id || row.equivalentToProductId || null,
+    equivalentToProductName:
+      row.equivalent_to_product_name || row.equivalentToProductName || null,
+    equivalenceNotes: row.equivalence_notes || row.equivalenceNotes || null,
+  };
+};
 
 const FitmentBadge = ({
   product,
@@ -214,9 +297,7 @@ const ProductsList: React.FC = () => {
 
   const loadVehiclesAndResolveIds = async () => {
     const vehiclesRes = await api.get("/vehicles");
-    const vehicleRows = Array.isArray(vehiclesRes.data?.data)
-      ? vehiclesRes.data.data
-      : vehiclesRes.data;
+    const vehicleRows = getRows(vehiclesRes.data);
 
     const normalizedVehicles = (Array.isArray(vehicleRows) ? vehicleRows : []).map(
       (row: any) => ({
@@ -249,9 +330,7 @@ const ProductsList: React.FC = () => {
     }
 
     const variantsRes = await api.get(`/vehicles/models/${vehicleId}/variants`);
-    const variantRows = Array.isArray(variantsRes.data?.data)
-      ? variantsRes.data.data
-      : variantsRes.data;
+    const variantRows = getRows(variantsRes.data);
 
     const normalizedVariants: VariantInfo[] = (Array.isArray(variantRows)
       ? variantRows
@@ -272,7 +351,7 @@ const ProductsList: React.FC = () => {
 
   const loadCategories = async () => {
     const res = await api.get("/products/categories");
-    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    const rows = getRows(res.data);
 
     const normalized: CategoryOption[] = (Array.isArray(rows) ? rows : []).map(
       (row: any) => ({
@@ -294,7 +373,7 @@ const ProductsList: React.FC = () => {
   const loadManufacturers = async () => {
     try {
       const res = await api.get("/products/manufacturers");
-      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      const rows = getRows(res.data);
 
       setManufacturers(
         (Array.isArray(rows) ? rows : []).map((row: any) => ({
@@ -311,7 +390,7 @@ const ProductsList: React.FC = () => {
   const loadSuppliers = async () => {
     try {
       const res = await api.get("/products/suppliers");
-      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      const rows = getRows(res.data);
 
       setSuppliers(
         (Array.isArray(rows) ? rows : []).map((row: any) => ({
@@ -337,7 +416,7 @@ const ProductsList: React.FC = () => {
     if (categoryId) params.category_id = categoryId;
 
     const res = await api.get("/products", { params });
-    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    const rows = getRows(res.data);
     setProducts((Array.isArray(rows) ? rows : []).map(normalizeProduct));
   };
 

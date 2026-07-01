@@ -73,10 +73,12 @@ interface Product {
   categoryId?: string | number | null;
   suppliers?: ProductSupplier[];
   compatibleVehicles?: {
+    id?: string;
     make: string;
     model: string;
     variant: string;
     year: string;
+    notes?: string;
   }[];
   crossReferences?: {
     type: string;
@@ -122,6 +124,95 @@ const fromSlug = (slug?: string) =>
     .join(" ") || "";
 
 const BARCODE_LABEL_COUNT = 40;
+
+const getRows = (payload: any): any[] => {
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.products)) return payload.products;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+const getVehicleLabel = (variant: any): string => {
+  if (!variant) return "-";
+
+  const make =
+    variant.make ||
+    variant.make_name ||
+    variant.Manufacturer?.name ||
+    variant.manufacturer ||
+    variant.vehicle_model?.make ||
+    "";
+
+  const model =
+    variant.model ||
+    variant.model_name ||
+    variant.vehicle_model?.model ||
+    variant.VehicleModel?.model ||
+    "";
+
+  const variantName =
+    variant.name ||
+    variant.variant ||
+    variant.variant_name ||
+    variant.engine ||
+    "";
+
+  const year =
+    variant.year ||
+    variant.year_range ||
+    variant.model_year ||
+    "";
+
+  return [make, model, variantName, year].filter(Boolean).join(" ") || "-";
+};
+
+const normalizeCompatibleVehicles = (row: any) => {
+  const compatibilities = Array.isArray(row.compatible_vehicles)
+    ? row.compatible_vehicles
+    : Array.isArray(row.vehicle_compatibilities)
+      ? row.vehicle_compatibilities
+      : Array.isArray(row.compatibleVehicles)
+        ? row.compatibleVehicles
+        : [];
+
+  return compatibilities.map((compatibility: any) => {
+    const variant =
+      compatibility.vehicle_variant ||
+      compatibility.vehicleVariant ||
+      compatibility.variant ||
+      compatibility;
+
+    return {
+      id: String(compatibility.id || compatibility.car_variant_id || variant?.id || `${getVehicleLabel(variant)}-${Math.random()}`),
+      make:
+        variant?.make ||
+        variant?.make_name ||
+        variant?.Manufacturer?.name ||
+        variant?.manufacturer ||
+        variant?.vehicle_model?.make ||
+        "-",
+      model:
+        variant?.model ||
+        variant?.model_name ||
+        variant?.vehicle_model?.model ||
+        variant?.VehicleModel?.model ||
+        "-",
+      variant:
+        variant?.name ||
+        variant?.variant ||
+        variant?.variant_name ||
+        variant?.engine ||
+        getVehicleLabel(variant),
+      year:
+        variant?.year ||
+        variant?.year_range ||
+        variant?.model_year ||
+        "-",
+      notes: compatibility.notes || "",
+    };
+  });
+};
+
 
 const normalizeSuppliers = (row: any): ProductSupplier[] => {
   if (Array.isArray(row.suppliers)) return row.suppliers;
@@ -256,9 +347,7 @@ const normalizeProduct = (row: any): Product => ({
       ? "In Stock"
       : "Out of Stock"),
   suppliers: normalizeSuppliers(row),
-  compatibleVehicles: Array.isArray(row.compatibleVehicles)
-    ? row.compatibleVehicles
-    : [],
+  compatibleVehicles: normalizeCompatibleVehicles(row),
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
 });
 
@@ -351,10 +440,11 @@ const ProductDetail: React.FC = () => {
   const [selectedEquivalentIds, setSelectedEquivalentIds] = useState<string[]>([]);
   const [equivalentSaving, setEquivalentSaving] = useState(false);
   const [equivalentLoading, setEquivalentLoading] = useState(false);
+  const [vehicleSyncing, setVehicleSyncing] = useState(false);
 
   const loadCategories = async () => {
     const res = await api.get("/products/categories");
-    const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+    const rows = getRows(res.data);
 
     setCategories(
       (Array.isArray(rows) ? rows : []).map((row: any) => ({
@@ -368,7 +458,7 @@ const ProductDetail: React.FC = () => {
   const loadManufacturers = async () => {
     try {
       const res = await api.get("/products/manufacturers");
-      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      const rows = getRows(res.data);
 
       setManufacturers(
         (Array.isArray(rows) ? rows : []).map((row: any) => ({
@@ -386,7 +476,7 @@ const ProductDetail: React.FC = () => {
   const loadSuppliers = async () => {
     try {
       const res = await api.get("/products/suppliers");
-      const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+      const rows = getRows(res.data);
 
       setSuppliers(
         (Array.isArray(rows) ? rows : []).map((row: any) => ({
@@ -432,10 +522,8 @@ const ProductDetail: React.FC = () => {
         },
       });
 
-      const rows = Array.isArray(listRes.data?.data)
-        ? listRes.data.data
-        : listRes.data;
-      const normalized = (Array.isArray(rows) ? rows : []).map(normalizeProduct);
+      const rows = getRows(listRes.data);
+      const normalized = rows.map(normalizeProduct);
 
       const found =
         normalized.find((item) => item.id === selectedProductId) || null;
@@ -470,7 +558,7 @@ const ProductDetail: React.FC = () => {
         params: { search: equivalentSearch || undefined },
       });
 
-      const rows = Array.isArray(res.data?.products) ? res.data.products : [];
+      const rows = getRows(res.data);
       const alreadyLinkedIds = new Set(
         equivalentGroups.flatMap((group) =>
           group.products.map((equivalentProduct) => equivalentProduct.id)
@@ -545,6 +633,40 @@ const ProductDetail: React.FC = () => {
     } catch (error: any) {
       console.error("Failed to remove equivalent product:", error);
       alert(error?.response?.data?.message || "Failed to remove equivalent product.");
+    }
+  };
+
+  const handleSyncVehicleCompatibility = async () => {
+    if (!product?.id) return;
+
+    const confirmed = window.confirm(
+      "This will copy this product's compatible vehicles to its equivalent products. Existing records will not be duplicated. Continue?"
+    );
+
+    if (!confirmed) return;
+
+    setVehicleSyncing(true);
+
+    try {
+      const res = await api.post(
+        `/products/${product.id}/vehicle-compatibilities/sync-equivalents`
+      );
+
+      alert(
+        res.data?.message ||
+          `Vehicle compatibility synced. Added ${res.data?.synced_count ?? 0} records.`
+      );
+
+      await loadProduct();
+      await loadEquivalentGroups(product.id);
+    } catch (error: any) {
+      console.error("Failed to sync vehicle compatibility:", error);
+      alert(
+        error?.response?.data?.message ||
+          "Failed to sync vehicle compatibility to equivalents."
+      );
+    } finally {
+      setVehicleSyncing(false);
     }
   };
 
@@ -1025,13 +1147,20 @@ const ProductDetail: React.FC = () => {
                 product.compatibleVehicles.length > 0 ? (
                   product.compatibleVehicles.map((vehicle, idx) => (
                     <div
-                      key={idx}
+                      key={vehicle.id || idx}
                       className="grid grid-cols-4 gap-2 text-xs border-b pb-2"
                     >
                       <span>{vehicle.make}</span>
                       <span>{vehicle.model}</span>
                       <span>{vehicle.variant}</span>
-                      <span>{vehicle.year}</span>
+                      <span>
+                        {vehicle.year}
+                        {vehicle.notes ? (
+                          <span className="block text-[10px] text-muted-foreground">
+                            {vehicle.notes}
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                   ))
                 ) : (
@@ -1045,11 +1174,21 @@ const ProductDetail: React.FC = () => {
 
           <Card className="p-4 flex-1 min-h-0">
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <h2 className="font-semibold">Equivalent Products</h2>
-                <Button size="sm" variant="outline" onClick={openEquivalentModal}>
-                  + Add Equivalent
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSyncVehicleCompatibility}
+                    disabled={vehicleSyncing || equivalentGroups.length === 0}
+                  >
+                    {vehicleSyncing ? "Syncing..." : "Sync Vehicles"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={openEquivalentModal}>
+                    + Add Equivalent
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-3 text-sm flex-1 min-h-0 overflow-auto">

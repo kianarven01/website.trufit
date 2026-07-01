@@ -26,6 +26,7 @@ class Supplier extends Model
         'ContactNumber',
         'Viber',
         'supplier_code',
+        'address',
     ];
 
     public function productSuppliers()

@@ -10,6 +10,7 @@ class SupplierDTO
         public readonly ?string $email,
         public readonly ?string $phone,
         public readonly ?string $viber,
+        public readonly ?string $address,
         public readonly ?string $supplierCode = null
     ) {}
 
@@ -21,6 +22,7 @@ class SupplierDTO
             email: $data['email'] ?? null,
             phone: $data['phone'] ?? null,
             viber: $data['viber'] ?? null,
+            address: $data['address'] ?? null,
             supplierCode: $data['supplierCode'] ?? null
         );
     }
@@ -33,6 +35,7 @@ class SupplierDTO
             'Email' => $this->email,
             'ContactNumber' => $this->phone,
             'Viber' => $this->viber,
+            'address' => $this->address,
         ];
     }
 }

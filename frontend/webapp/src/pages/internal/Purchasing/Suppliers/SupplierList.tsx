@@ -27,6 +27,7 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
+  address: string;
 }
 
 const SupplierList: React.FC = () => {
@@ -92,6 +93,7 @@ const filtered = suppliers.filter((s) => {
       await loadSuppliers();
     } catch (error) {
       console.error("Failed to save supplier:", error);
+      throw error;
     }
   };
 

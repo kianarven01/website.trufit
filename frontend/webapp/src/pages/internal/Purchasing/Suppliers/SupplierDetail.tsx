@@ -17,7 +17,7 @@ import ContactSupplierModal from "@/components/popupModal/Purchasing/contactSupp
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
 
-import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent, Plus, MapPin } from "lucide-react";
 import api from "@/api/axios";
 
 interface Supplier {
@@ -28,6 +28,7 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
+  address: string;
 }
 
 interface Product {
@@ -96,10 +97,9 @@ const SupplierDetails: React.FC = () => {
     try {
       await api.put(`/suppliers/${updated.id}`, updated);
       setSupplier(updated);
-      toast.success("Supplier updated.");
     } catch (error) {
       console.error("Failed to update supplier:", error);
-      toast.error("Failed to update supplier.");
+      throw error;
     }
   };
 
@@ -316,6 +316,19 @@ const SupplierDetails: React.FC = () => {
                   <MessageCircle className="w-3.5 h-3.5" />
                   <p className={`text-sm ${!supplier.viber ? 'text-muted-foreground italic' : ''}`}>
                     {supplier.viber || "Not Provided"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Address
+                </p>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <p className={`text-sm ${!supplier.address ? 'text-muted-foreground italic' : ''}`}>
+                    {supplier.address || "Not Provided"}
                   </p>
                 </div>
               </div>

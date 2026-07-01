@@ -20,6 +20,7 @@ interface Supplier {
   phone: string;
   contactPerson: string;
   viber: string;
+  address: string;
   supplierCode: string;
 }
 
@@ -27,7 +28,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   supplier?: Supplier | null;
-  onSaved: (supplier: Supplier) => void;
+  onSaved: (supplier: Supplier) => void | Promise<void>;
 }
 
 const SupplierModal: React.FC<Props> = ({
@@ -43,6 +44,7 @@ const SupplierModal: React.FC<Props> = ({
   const [phone, setPhone] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [viber, setViber] = useState("");
+  const [address, setAddress] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   /* LOAD DATA WHEN OPEN */
@@ -55,12 +57,14 @@ const SupplierModal: React.FC<Props> = ({
       setPhone(supplier.phone || "");
       setContactPerson(supplier.contactPerson || "");
       setViber(supplier.viber || "");
+      setAddress(supplier.address || "");
     } else {
       setName("");
       setEmail("");
       setPhone("");
       setContactPerson("");
       setViber("");
+      setAddress("");
     }
   }, [open, supplier]);
 
@@ -92,6 +96,26 @@ const SupplierModal: React.FC<Props> = ({
       toast.error("Supplier name is required.");
       return;
     }
+    if (!email.trim()) {
+      toast.error("Email is required.");
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error("Phone is required.");
+      return;
+    }
+    if (phone.trim().length !== 11) {
+      toast.error("Phone number must be exactly 11 digits.");
+      return;
+    }
+    if (!contactPerson.trim()) {
+      toast.error("Contact person is required.");
+      return;
+    }
+    if (!address.trim()) {
+      toast.error("Address is required.");
+      return;
+    }
 
     const newSupplier: Supplier = {
       id: supplier?.id || Date.now().toString(),
@@ -100,17 +124,29 @@ const SupplierModal: React.FC<Props> = ({
       phone: phone.trim(),
       contactPerson: contactPerson.trim(),
       viber: viber.trim(),
+      address: address.trim(),
       supplierCode: supplier?.supplierCode || generateSupplierCode(name),
     };
 
     setIsSaving(true);
 
     try {
-      onSaved(newSupplier);
+      await onSaved(newSupplier);
       toast.success(isEdit ? "Supplier updated." : "Supplier added.");
       onOpenChange(false);
-    } catch (err) {
-      toast.error("Failed to save supplier.");
+    } catch (err: any) {
+      console.error("Failed to save supplier:", err);
+      let errorMessage = "Failed to save supplier.";
+      if (err.response?.data?.errors) {
+        const firstErrorKey = Object.keys(err.response.data.errors)[0];
+        const firstErrorMessages = err.response.data.errors[firstErrorKey];
+        if (Array.isArray(firstErrorMessages) && firstErrorMessages.length > 0) {
+          errorMessage = firstErrorMessages[0];
+        }
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -126,7 +162,7 @@ const SupplierModal: React.FC<Props> = ({
         <ScrollArea className="max-h-[65vh]">
           <div className="px-6 pb-4 space-y-4">
             <div>
-              <Label className="text-xs">Supplier Name</Label>
+              <Label className="text-xs">Supplier Name <span className="text-destructive"></span></Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -135,7 +171,7 @@ const SupplierModal: React.FC<Props> = ({
             </div>
 
             <div>
-              <Label className="text-xs">Email</Label>
+              <Label className="text-xs">Email <span className="text-destructive"></span></Label>
               <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -144,20 +180,34 @@ const SupplierModal: React.FC<Props> = ({
             </div>
 
             <div>
-              <Label className="text-xs">Phone</Label>
+              <Label className="text-xs">Phone <span className="text-destructive"></span></Label>
               <Input
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  if (val.length <= 11) {
+                    setPhone(val);
+                  }
+                }}
                 placeholder="Supplier Phone"
               />
             </div>
 
             <div>
-              <Label className="text-xs">Contact Person</Label>
+              <Label className="text-xs">Contact Person <span className="text-destructive"></span></Label>
               <Input
                 value={contactPerson}
                 onChange={(e) => setContactPerson(e.target.value)}
                 placeholder="Contact Person"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs">Address <span className="text-destructive"></span></Label>
+              <Input
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Supplier Address"
               />
             </div>
 

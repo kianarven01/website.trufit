@@ -32,6 +32,7 @@ class SupplierController extends Controller
                     'phone' => $supplier->ContactNumber,
                     'contactPerson' => $supplier->CompanyContact,
                     'viber' => $supplier->Viber,
+                    'address' => $supplier->address,
                 ];
             }),
         ]);
@@ -51,6 +52,7 @@ class SupplierController extends Controller
                     'email' => $supplier->Email,
                     'contactNumber' => $supplier->ContactNumber,
                     'viber' => $supplier->Viber,
+                    'address' => $supplier->address,
                     'supplierCode' => $supplier->supplier_code,
                     'products' => $supplier->products->map(function ($product) {
                         return [
@@ -74,9 +76,10 @@ class SupplierController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'contactPerson' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:50',
+            'contactPerson' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:50',
+            'address' => 'required|string',
             'viber' => 'nullable|string|max:50',
             'supplierCode' => 'nullable|string|max:50',
         ]);
@@ -94,6 +97,7 @@ class SupplierController extends Controller
                 'email' => $supplier->Email,
                 'contactNumber' => $supplier->ContactNumber,
                 'viber' => $supplier->Viber,
+                'address' => $supplier->address,
                 'supplierCode' => $supplier->supplier_code,
             ],
         ], 201);
@@ -103,9 +107,10 @@ class SupplierController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'contactPerson' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'phone' => 'nullable|string|max:50',
+            'contactPerson' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:50',
+            'address' => 'required|string',
             'viber' => 'nullable|string|max:50',
             'supplierCode' => 'nullable|string|max:50',
         ]);
@@ -124,6 +129,7 @@ class SupplierController extends Controller
                     'email' => $supplier->Email,
                     'contactNumber' => $supplier->ContactNumber,
                     'viber' => $supplier->Viber,
+                    'address' => $supplier->address,
                     'supplierCode' => $supplier->supplier_code,
                 ],
             ]);

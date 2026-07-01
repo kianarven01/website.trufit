@@ -11,10 +11,12 @@ use App\Domains\Product\Domain\Models\VehicleModel;
 use App\Domains\Product\Domain\Models\ServiceType;
 use App\Domains\Product\Domain\Models\ServicePricing;
 use App\Domains\Product\Domain\Models\ServiceCategory;
+use App\Domains\Product\Domain\Models\Part;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+
 
 class ProductReferenceController extends Controller
 {

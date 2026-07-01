@@ -128,6 +128,7 @@ CREATE TABLE Main.EstimateItems (
   created_at timestamp without time zone DEFAULT now(),
   needs_ordering boolean NOT NULL DEFAULT false,
   custom_name character varying,
+  is_tentative boolean NOT NULL DEFAULT false,
   CONSTRAINT EstimateItems_pkey PRIMARY KEY (id),
   CONSTRAINT estimateitems_estimate_id_fkey FOREIGN KEY (estimate_id) REFERENCES Main.Estimates(id)
 );
@@ -143,12 +144,12 @@ CREATE TABLE Main.Estimates (
   mileage integer,
   estimate_number character varying UNIQUE,
   downpayment_amount numeric NOT NULL DEFAULT '0'::numeric,
-  payment_method character varying,
-  payment_reference character varying,
   created_by integer,
   edited_by integer,
   approved_by integer,
   notes text,
+  payment_method text,
+  payment_reference text,
   CONSTRAINT Estimates_pkey PRIMARY KEY (id),
   CONSTRAINT estimates_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES Main.CustomerVehicles(id),
   CONSTRAINT estimates_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES Main.Customers(customer_id),
@@ -233,7 +234,7 @@ CREATE TABLE Main.PartRequests (
   CONSTRAINT partrequests_joborderid_fkey FOREIGN KEY (JobOrderID) REFERENCES Main.JobOrder(id),
   CONSTRAINT partrequests_productid_fkey FOREIGN KEY (ProductID) REFERENCES Main.Products(id),
   CONSTRAINT partrequests_status_fkey FOREIGN KEY (Status) REFERENCES Main.Status(id),
-  CONSTRAINT partrequests_purchaseorderid_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrder(id),
+  CONSTRAINT partrequests_purchaseorderid_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrders(id),
   CONSTRAINT partrequests_saleorderid_fkey FOREIGN KEY (SaleOrderID) REFERENCES Main.SalesOrder(id),
   CONSTRAINT partrequests_employee_fkey FOREIGN KEY (employee) REFERENCES Main.Employees(id)
 );
@@ -304,33 +305,47 @@ CREATE TABLE Main.Products (
   CONSTRAINT products_part_id_fkey FOREIGN KEY (part_id) REFERENCES Main.Parts(id),
   CONSTRAINT products_manufacturer_id_fkey FOREIGN KEY (manufacturer_id) REFERENCES Main.Manufacturers(id)
 );
-CREATE TABLE Main.PurchaseOrder (
+CREATE TABLE Main.PurchaseOrders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  itemsID text NOT NULL,
   order_date timestamp without time zone NOT NULL DEFAULT now(),
   request_ship_date date,
-  ETA timestamp without time zone NOT NULL,
-  Total numeric NOT NULL CHECK ("Total" >= 0::numeric),
-  supplier uuid NOT NULL,
+  eta timestamp without time zone NOT NULL,
+  total_amount numeric NOT NULL DEFAULT 0 CHECK (total_amount >= 0::numeric),
+  supplier_id uuid NOT NULL,
   date_received timestamp without time zone,
-  po_number text UNIQUE,
-  status text NOT NULL DEFAULT 'DRAFT'::text CHECK (status = ANY (ARRAY['DRAFT'::text, 'SENT'::text, 'PARTIALLY_RECEIVED'::text, 'RECEIVED'::text, 'CANCELLED'::text])),
+  po_number text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'DRAFT'::text CHECK (status = ANY (ARRAY['DRAFT'::text, 'SUBMITTED'::text, 'APPROVED'::text, 'PARTIALLY_RECEIVED'::text, 'RECEIVED'::text, 'CANCELLED'::text])),
   remarks text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT PurchaseOrder_pkey PRIMARY KEY (id),
-  CONSTRAINT purchaseorder_vendor_fkey FOREIGN KEY (supplier) REFERENCES Main.Suppliers(id)
+  subtotal numeric NOT NULL DEFAULT 0,
+  submitted_at timestamp with time zone,
+  approved_at timestamp with time zone,
+  cancelled_at timestamp with time zone,
+  created_by uuid,
+  approved_by uuid,
+  cancelled_by uuid,
+  CONSTRAINT PurchaseOrders_pkey PRIMARY KEY (id),
+  CONSTRAINT PurchaseOrders_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES Main.Suppliers(id),
+  CONSTRAINT purchaseorder_vendor_fkey FOREIGN KEY (supplier_id) REFERENCES Main.Suppliers(id)
 );
 CREATE TABLE Main.PurchaseOrderItems (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  PurchaseOrderID uuid NOT NULL,
-  productID uuid NOT NULL,
-  quantity integer NOT NULL DEFAULT 0 CHECK (quantity > 0),
-  UnitPrice numeric NOT NULL DEFAULT '0'::numeric CHECK ("UnitPrice" >= 0::numeric),
-  subtotal numeric NOT NULL DEFAULT '0'::numeric CHECK (subtotal >= 0::numeric),
+  purchase_order_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  quantity_ordered integer NOT NULL DEFAULT 0 CHECK (quantity_ordered > 0),
+  unit_cost numeric NOT NULL DEFAULT 0 CHECK (unit_cost >= 0::numeric),
+  line_total numeric NOT NULL DEFAULT 0 CHECK (line_total >= 0::numeric),
+  product_supplier_id uuid,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone,
   CONSTRAINT PurchaseOrderItems_pkey PRIMARY KEY (id),
-  CONSTRAINT purchaseorderitems_purchaseorderid_fkey FOREIGN KEY (PurchaseOrderID) REFERENCES Main.PurchaseOrder(id),
-  CONSTRAINT purchase_order_items_product_fk FOREIGN KEY (productID) REFERENCES Main.Products(id)
+  CONSTRAINT PurchaseOrderItems_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES Main.PurchaseOrders(id),
+  CONSTRAINT PurchaseOrderItems_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
+  CONSTRAINT PurchaseOrderItems_product_supplier_id_fkey FOREIGN KEY (product_supplier_id) REFERENCES Main.ProductSuppliers(id),
+  CONSTRAINT purchaseorderitems_purchaseorderid_fkey FOREIGN KEY (purchase_order_id) REFERENCES Main.PurchaseOrders(id),
+  CONSTRAINT purchase_order_items_product_fk FOREIGN KEY (product_id) REFERENCES Main.Products(id)
 );
 CREATE TABLE Main.RegistrationKeys (
   id bigint NOT NULL DEFAULT nextval('"Main"."RegistrationKeys_id_seq"'::regclass),
@@ -654,4 +669,55 @@ CREATE TABLE Main.ProductEquivalentGroupItems (
   CONSTRAINT ProductEquivalentGroupItems_pkey PRIMARY KEY (id),
   CONSTRAINT ProductEquivalentGroupItems_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
   CONSTRAINT ProductEquivalentGroupItems_group_id_fkey FOREIGN KEY (group_id) REFERENCES Main.ProductEquivalentGroups(id)
+);
+CREATE TABLE Main.GoodsReceipts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  receipt_number text NOT NULL UNIQUE,
+  purchase_order_id uuid NOT NULL,
+  status text NOT NULL DEFAULT 'DRAFT'::text CHECK (status = ANY (ARRAY['DRAFT'::text, 'APPROVED'::text, 'CANCELLED'::text])),
+  received_at timestamp with time zone,
+  approved_at timestamp with time zone,
+  cancelled_at timestamp with time zone,
+  received_by uuid,
+  approved_by uuid,
+  cancelled_by uuid,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone,
+  CONSTRAINT GoodsReceipts_pkey PRIMARY KEY (id),
+  CONSTRAINT GoodsReceipts_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES Main.PurchaseOrders(id)
+);
+CREATE TABLE Main.GoodsReceiptItems (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  goods_receipt_id uuid NOT NULL,
+  purchase_order_item_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  product_supplier_id uuid,
+  quantity_received integer NOT NULL DEFAULT 0 CHECK (quantity_received >= 0),
+  quantity_rejected integer NOT NULL DEFAULT 0 CHECK (quantity_rejected >= 0),
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone,
+  CONSTRAINT GoodsReceiptItems_pkey PRIMARY KEY (id),
+  CONSTRAINT GoodsReceiptItems_goods_receipt_id_fkey FOREIGN KEY (goods_receipt_id) REFERENCES Main.GoodsReceipts(id),
+  CONSTRAINT GoodsReceiptItems_purchase_order_item_id_fkey FOREIGN KEY (purchase_order_item_id) REFERENCES Main.PurchaseOrderItems(id),
+  CONSTRAINT GoodsReceiptItems_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
+  CONSTRAINT GoodsReceiptItems_product_supplier_id_fkey FOREIGN KEY (product_supplier_id) REFERENCES Main.ProductSuppliers(id)
+);
+CREATE TABLE Main.StockMovements (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  inventory_id bigint,
+  product_id uuid NOT NULL,
+  product_supplier_id uuid,
+  movement_type text NOT NULL CHECK (movement_type = ANY (ARRAY['IN_RECEIPT'::text, 'OUT_SALES'::text, 'ADJUSTMENT_IN'::text, 'ADJUSTMENT_OUT'::text, 'RETURN'::text])),
+  quantity integer NOT NULL CHECK (quantity <> 0),
+  reference_type text,
+  reference_id uuid,
+  notes text,
+  created_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT StockMovements_pkey PRIMARY KEY (id),
+  CONSTRAINT StockMovements_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES Main.Inventory(id),
+  CONSTRAINT StockMovements_product_id_fkey FOREIGN KEY (product_id) REFERENCES Main.Products(id),
+  CONSTRAINT StockMovements_product_supplier_id_fkey FOREIGN KEY (product_supplier_id) REFERENCES Main.ProductSuppliers(id)
 );

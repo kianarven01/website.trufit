@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Unit;
 use App\Domains\Product\Domain\Models\Manufacturers;
-use App\Domains\Product\Domain\Models\Manufacturer;
 use App\Domains\Product\Domain\Models\VehicleModel;
 use App\Domains\Product\Domain\Models\ServiceType;
 use App\Domains\Product\Domain\Models\ServicePricing;
@@ -285,14 +284,10 @@ class ProductReferenceController extends Controller
         ], 201);
     }
 
-    // New method to retrieve all vehicles (manufacturers of type 'Vehicle') for product association
+    // New method to retrieve all vehicles (vehicle models with manufacturer and variants) for product association
     public function vehicles(): JsonResponse
     {
-        $vehicles = Manufacturers::query()
-            ->select('id', 'name', 'type')
-            ->where('type', 'Vehicle')
-            ->orderBy('name')
-            ->get();
+        $vehicles = VehicleModel::with(['manufacturer', 'variants'])->get();
 
         return response()->json([
             'data' => $vehicles,
@@ -310,7 +305,7 @@ class ProductReferenceController extends Controller
         ]);
 
         // Find or create Manufacturer
-        $manufacturer = Manufacturer::firstOrCreate(
+        $manufacturer = Manufacturers::firstOrCreate(
             ['name' => $request->make, 'type' => 'Vehicle']
         );
 

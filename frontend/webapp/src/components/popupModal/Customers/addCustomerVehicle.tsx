@@ -9,6 +9,16 @@ import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
 
 import api from "@/api/axios";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 /* ================= TYPES ================= */
 interface VehicleModel {
@@ -102,6 +112,8 @@ const AddCustomerVehicle: React.FC<Props> = ({
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isLoadingManufacturers, setIsLoadingManufacturers] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmNewVehicles, setShowConfirmNewVehicles] = useState(false);
+  const [pendingVehicles, setPendingVehicles] = useState<any[]>([]);
 
   /* ================= LOAD MODELS ================= */
   useEffect(() => {
@@ -230,6 +242,33 @@ const AddCustomerVehicle: React.FC<Props> = ({
     setVehicles(p => p.filter((_, i) => i !== idx));
 
   /* ================= SAVE ================= */
+  const executeSave = async (normalizedVehiclesList: any[]) => {
+    setIsSaving(true);
+    for (const nv of normalizedVehiclesList) {
+      if (!nv.vehicleModelId) {
+        try {
+          await api.post('/products/vehicles/custom', {
+            make: nv.make,
+            model: nv.model
+          });
+          nv.vehicleModelId = ""; // Important: We do not create VehicleVariants, so this remains empty.
+        } catch (error) {
+          console.error("Failed to add custom vehicle", error);
+          toast.error("Failed to add vehicle to database");
+          setIsSaving(false);
+          return;
+        }
+      }
+    }
+
+    /* PASS TO PARENT */
+    onSaved?.(normalizedVehiclesList);
+
+    toast.success("Vehicle(s) added");
+    setIsSaving(false);
+    onOpenChange(false);
+  };
+
   const handleSave = async () => {
     const validVehicles = vehicles.filter(v => v.plateNo || v.make || v.model);
 
@@ -287,183 +326,196 @@ const AddCustomerVehicle: React.FC<Props> = ({
     }
 
     if (hasNewVehicles) {
-      const confirmAdd = window.confirm("One or more vehicles are not in our database. Would you like to add them?");
-      if (!confirmAdd) {
-        setIsSaving(false);
-        return;
-      }
-
-      for (const nv of normalizedVehicles) {
-        if (!nv.vehicleModelId) {
-          try {
-            await api.post('/products/vehicles/custom', {
-              make: nv.make,
-              model: nv.model
-            });
-            nv.vehicleModelId = ""; // Important: We do not create VehicleVariants, so this remains empty.
-          } catch (error) {
-            console.error("Failed to add custom vehicle", error);
-            toast.error("Failed to add vehicle to database");
-            setIsSaving(false);
-            return;
-          }
-        }
-      }
+      setPendingVehicles(normalizedVehicles);
+      setShowConfirmNewVehicles(true);
+      setIsSaving(false);
+      return;
     }
 
-    /* PASS TO PARENT */
-    onSaved?.(normalizedVehicles);
-
-    toast.success("Vehicle(s) added");
-    setIsSaving(false);
-    onOpenChange(false);
+    await executeSave(normalizedVehicles);
   };
 
   /* ================= UI ================= */
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle>{vehicleToEdit ? "Edit Vehicle" : "Add Vehicle"}</DialogTitle>
-          <p className="text-[13px] text-muted-foreground mt-1">
-            {vehicleToEdit ? "Update existing vehicle details" : "Register new vehicles to this customer profile"}
-          </p>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>{vehicleToEdit ? "Edit Vehicle" : "Add Vehicle"}</DialogTitle>
+            <p className="text-[13px] text-muted-foreground mt-1">
+              {vehicleToEdit ? "Update existing vehicle details" : "Register new vehicles to this customer profile"}
+            </p>
+          </DialogHeader>
 
-        <ScrollArea className="max-h-[65vh] relative">
-          {(isLoadingManufacturers || isLoadingModels) && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] transition-opacity">
-              <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
-              <p className="text-sm font-medium text-slate-600 animate-pulse">Loading vehicle data...</p>
-            </div>
-          )}
-          <div className="px-6 pb-4 space-y-4">
-
-            <div className="flex justify-between">
-              <p className="text-sm font-semibold flex items-center gap-1.5">
-                <Car className="h-4 w-4" /> Vehicles
-              </p>
-
-              {!vehicleToEdit && (
-                <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={addVehicleRow}>
-                  <Plus className="h-3 w-3" /> Add Vehicle
-                </Button>
-              )}
-            </div>
-
-            {vehicles.map((v, idx) => (
-              <div key={v.id} className="border rounded-lg p-3 space-y-2">
-
-                <div className="flex justify-between">
-                  <span className="text-xs">Vehicle {idx + 1}</span>
-
-                  {vehicles.length > 1 && (
-                    <Button size="icon" variant="ghost" onClick={() => removeVehicle(idx)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Year</Label>
-                    <Input
-                      className="bg-muted/30"
-                      placeholder=""
-                      value={v.year}
-                      onChange={(e) => updateVehicle(idx, "year", e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Make</Label>
-                    <Combobox
-                      value={v.make}
-                      onChange={(val) => {
-                        updateVehicle(idx, "make", toTitleCase(val));
-                        updateVehicle(idx, "model", "");
-                        updateVehicle(idx, "variant", "");
-                      }}
-                      items={makes}
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Model</Label>
-                    <Combobox
-                      value={v.model}
-                      onChange={(val) => {
-                        const formatted = toTitleCase(val);
-                        const canonical = findCanonical(models(v.make), formatted) || formatted;
-
-                        updateVehicle(idx, "model", canonical);
-                        updateVehicle(idx, "variant", "");
-                      }}
-                      items={models(v.make)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Variant</Label>
-                    <Combobox
-                      value={v.variant}
-                      onChange={(val) => {
-                        const formatted = toTitleCase(val);
-                        const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
-
-                        updateVehicle(idx, "variant", canonical || "");
-                      }}
-                      items={variants(v.make, v.model)}
-                      placeholder=""
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Color</Label>
-                    <Input className="bg-muted/30" placeholder="" value={v.color} onChange={(e) => updateVehicle(idx, "color", toTitleCase(e.target.value))} />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Plate Number</Label>
-                    <Input className="bg-muted/30" placeholder="" value={v.plateNo} onChange={(e) => updateVehicle(idx, "plateNo", e.target.value.toUpperCase().slice(0, 8))} />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Engine Number</Label>
-                    <Input className="bg-muted/30" placeholder="" value={v.engineNo} onChange={(e) => updateVehicle(idx, "engineNo", e.target.value.toUpperCase().slice(0, 20))} />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">VIN</Label>
-                    <Input className="bg-muted/30" placeholder="" value={v.vin} onChange={(e) => updateVehicle(idx, "vin", e.target.value.toUpperCase().slice(0, 17))} />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Registration Number</Label>
-                    <Input className="bg-muted/30" placeholder="" value={v.registrationNo} onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value.toUpperCase().slice(0, 15))} />
-                  </div>
-
-                  <div className="col-span-2 flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium">Selling Dealer</Label>
-                    <Input className="bg-muted/30" placeholder="" value={v.sellingDealer} onChange={(e) => updateVehicle(idx, "sellingDealer", toTitleCase(e.target.value))} />
-                  </div>
-                </div>
-
+          <ScrollArea className="max-h-[65vh] relative">
+            {(isLoadingManufacturers || isLoadingModels) && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[1px] transition-opacity">
+                <div className="w-10 h-10 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
+                <p className="text-sm font-medium text-slate-600 animate-pulse">Loading vehicle data...</p>
               </div>
-            ))}
-          </div>
-        </ScrollArea>
+            )}
+            <div className="px-6 pb-4 space-y-4">
 
-        <DialogFooter className="px-6 pb-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Vehicle"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+              <div className="flex justify-between">
+                <p className="text-sm font-semibold flex items-center gap-1.5">
+                  <Car className="h-4 w-4" /> Vehicles
+                </p>
+
+                {!vehicleToEdit && (
+                  <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={addVehicleRow}>
+                    <Plus className="h-3 w-3" /> Add Vehicle
+                  </Button>
+                )}
+              </div>
+
+              {vehicles.map((v, idx) => (
+                <div key={v.id} className="border rounded-lg p-3 space-y-2">
+
+                  <div className="flex justify-between">
+                    <span className="text-xs">Vehicle {idx + 1}</span>
+
+                    {vehicles.length > 1 && (
+                      <Button size="icon" variant="ghost" onClick={() => removeVehicle(idx)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Year</Label>
+                      <Input
+                        className="bg-muted/30"
+                        placeholder=""
+                        value={v.year}
+                        onChange={(e) => updateVehicle(idx, "year", e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Make</Label>
+                      <Combobox
+                        value={v.make}
+                        onChange={(val) => {
+                          updateVehicle(idx, "make", toTitleCase(val));
+                          updateVehicle(idx, "model", "");
+                          updateVehicle(idx, "variant", "");
+                        }}
+                        items={makes}
+                        freeText
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Model</Label>
+                      <Combobox
+                        value={v.model}
+                        onChange={(val) => {
+                          const formatted = toTitleCase(val);
+                          const canonical = findCanonical(models(v.make), formatted) || formatted;
+
+                          updateVehicle(idx, "model", canonical);
+                          updateVehicle(idx, "variant", "");
+                        }}
+                        items={models(v.make)}
+                        freeText
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Variant</Label>
+                      <Combobox
+                        value={v.variant}
+                        onChange={(val) => {
+                          const formatted = toTitleCase(val);
+                          const canonical = findCanonical(variants(v.make, v.model), formatted) || formatted;
+
+                          updateVehicle(idx, "variant", canonical || "");
+                        }}
+                        items={variants(v.make, v.model)}
+                        placeholder=""
+                        freeText
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Color</Label>
+                      <Input className="bg-muted/30" placeholder="" value={v.color} onChange={(e) => updateVehicle(idx, "color", toTitleCase(e.target.value))} />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Plate Number</Label>
+                      <Input className="bg-muted/30" placeholder="" value={v.plateNo} onChange={(e) => updateVehicle(idx, "plateNo", e.target.value.toUpperCase().slice(0, 8))} />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Engine Number</Label>
+                      <Input className="bg-muted/30" placeholder="" value={v.engineNo} onChange={(e) => updateVehicle(idx, "engineNo", e.target.value.toUpperCase().slice(0, 20))} />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">VIN</Label>
+                      <Input className="bg-muted/30" placeholder="" value={v.vin} onChange={(e) => updateVehicle(idx, "vin", e.target.value.toUpperCase().slice(0, 17))} />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Registration Number</Label>
+                      <Input className="bg-muted/30" placeholder="" value={v.registrationNo} onChange={(e) => updateVehicle(idx, "registrationNo", e.target.value.toUpperCase().slice(0, 15))} />
+                    </div>
+
+                    <div className="col-span-2 flex flex-col gap-1.5">
+                      <Label className="text-xs font-medium">Selling Dealer</Label>
+                      <Input className="bg-muted/30" placeholder="" value={v.sellingDealer} onChange={(e) => updateVehicle(idx, "sellingDealer", toTitleCase(e.target.value))} />
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="px-6 pb-6">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Vehicle"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showConfirmNewVehicles} onOpenChange={setShowConfirmNewVehicles}>
+        <AlertDialogContent className="rounded-2xl max-w-md border-border bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-semibold">Unrecognized Vehicle Models</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              One or more vehicles are not in our database. Would you like to register them to the database catalog?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowConfirmNewVehicles(false);
+                setPendingVehicles([]);
+              }}
+              className="text-xs border-muted-foreground/30 hover:bg-muted/50"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={async () => {
+                setShowConfirmNewVehicles(false);
+                await executeSave(pendingVehicles);
+              }}
+              className="text-xs bg-primary text-primary-foreground hover:bg-primary/95"
+            >
+              Yes, Add to Database
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

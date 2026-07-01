@@ -745,6 +745,7 @@ const SERVICE_LIST = [
                         model: "",
                       }))
                     }
+                    freeText
                   />                
                 </div>
 
@@ -762,6 +763,7 @@ const SERVICE_LIST = [
 
                       setForm(p => ({ ...p, model: canonical }));
                     }}
+                    freeText
                   />                  
                 </div>
 

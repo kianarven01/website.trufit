@@ -34,6 +34,7 @@ interface MakeComboboxProps {
   isLoading?: boolean;
   disabled?: boolean;
   className?: string;
+  freeText?: boolean;
 }
 
 const Combobox: FC<MakeComboboxProps> = ({
@@ -48,6 +49,7 @@ const Combobox: FC<MakeComboboxProps> = ({
   isLoading,
   disabled,
   className,
+  freeText,
 }) => {
   const [open, setOpen] = useState(false);
 
@@ -106,7 +108,7 @@ const Combobox: FC<MakeComboboxProps> = ({
               if (disabled) return;
               const val = e.target.value;
               setSearch(val);
-              if (allowAdd) {
+              if (allowAdd || freeText) {
                 onChange(resolveValue(val));
               }
               setOpen(true);

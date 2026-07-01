@@ -577,6 +577,7 @@ const shouldScroll = rowCount > MAX_VISIBLE_ROWS;
                       }
                     }}
                     placeholder="Select or type category"
+                    freeText
                   />                  
               </div>
               <div className="space-y-1.5">

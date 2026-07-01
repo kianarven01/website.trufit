@@ -17,7 +17,7 @@ class VehicleModel extends Model
 
     public function manufacturer()
     {
-        return $this->belongsTo(Manufacturer::class, 'manufacturer_id');
+        return $this->belongsTo(Manufacturers::class, 'manufacturer_id');
     }
 
     public function variants()

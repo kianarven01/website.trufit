@@ -272,12 +272,12 @@ class UpdateAppointment
         if (empty($make) || empty($model)) return;
 
         // Use case-insensitive lookup to prevent duplicates (Postgres ILIKE)
-        $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::where('name', 'ILIKE', $make)
+        $manufacturer = \App\Domains\Product\Domain\Models\Manufacturers::where('name', 'ILIKE', $make)
             ->where('type', 'Vehicle')
             ->first();
 
         if (!$manufacturer) {
-            $manufacturer = \App\Domains\Product\Domain\Models\Manufacturer::create([
+            $manufacturer = \App\Domains\Product\Domain\Models\Manufacturers::create([
                 'name' => ucfirst($make), 
                 'type' => 'Vehicle'
             ]);

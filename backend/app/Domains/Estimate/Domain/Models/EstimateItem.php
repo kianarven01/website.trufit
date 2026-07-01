@@ -27,6 +27,7 @@ class EstimateItem extends Model
         'subtotal',
         'needs_ordering',
         'custom_name',
+        'is_tentative',
     ];
 
     protected $casts = [
@@ -34,6 +35,7 @@ class EstimateItem extends Model
         'unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'needs_ordering' => 'boolean',
+        'is_tentative' => 'boolean',
         'created_at' => 'datetime',
     ];
 

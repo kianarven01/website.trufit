@@ -226,16 +226,28 @@ const EstimateDetail: React.FC = () => {
     const totalServices = serviceItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
     const totalParts = partItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
     const totalSupplies = spolItems.reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    
+    // Tentative-only subtotals
+    const tentativeServices = serviceItems.filter((i: any) => i.is_tentative).reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    const tentativeParts = partItems.filter((i: any) => i.is_tentative).reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    const tentativeSupplies = spolItems.filter((i: any) => i.is_tentative).reduce((acc: number, i: any) => acc + Number(i.subtotal || 0), 0);
+    const tentativeTotal = tentativeServices + tentativeParts + tentativeSupplies;
+
     const estimatedMinutes = serviceItems.reduce((acc: number, i: any) => {
       const svc = servicesMap[i.service_id];
       return acc + (svc?.duration || 0);
     }, 0);
 
+    const total = totalServices + totalParts + totalSupplies;
+    const baseTotal = total - tentativeTotal;
+
     return {
       totalServices,
       totalParts,
       totalSupplies,
-      total: Number(estimate?.total_amount || 0),
+      total,
+      baseTotal,
+      tentativeTotal,
       estimatedMinutes,
     };
   }, [serviceItems, partItems, spolItems, servicesMap, estimate]);
@@ -556,7 +568,14 @@ const EstimateDetail: React.FC = () => {
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
                             <TableCell className="font-medium text-center">
-                              {svc?.name || item.service_id || "—"}
+                              <div className="flex items-center justify-center gap-1.5">
+                                {svc?.name || item.service_id || "—"}
+                                {item.is_tentative && (
+                                  <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
+                                    Tentative
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-center text-muted-foreground text-sm">
                               {svc?.pricingType === "fixed" ? "Fixed" : svc?.pricingType === "hourly rate" ? "Hourly" : "—"}
@@ -568,7 +587,7 @@ const EstimateDetail: React.FC = () => {
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
+                            <TableCell className={`text-center font-semibold ${item.is_tentative ? "text-amber-600 dark:text-amber-400" : ""}`}>
                               {peso(Number(item.subtotal))}
                             </TableCell>
                           </TableRow>
@@ -616,7 +635,14 @@ const EstimateDetail: React.FC = () => {
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
                             <TableCell className="font-medium text-center">
-                              {item.custom_name || product?.name || item.product_id || "—"}
+                              <div className="flex items-center justify-center gap-1.5">
+                                {item.custom_name || product?.name || item.product_id || "—"}
+                                {item.is_tentative && (
+                                  <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
+                                    Tentative
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-center font-mono text-xs text-muted-foreground">
                               {item.custom_name ? "—" : (product?.partNumber || product?.sku || "—")}
@@ -654,7 +680,7 @@ const EstimateDetail: React.FC = () => {
                             <TableCell className="text-center">
                               {Number(item.quantity)}
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
+                            <TableCell className={`text-center font-semibold ${item.is_tentative ? "text-amber-600 dark:text-amber-400" : ""}`}>
                               {peso(Number(item.subtotal))}
                             </TableCell>
                           </TableRow>
@@ -695,7 +721,14 @@ const EstimateDetail: React.FC = () => {
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
                             <TableCell className="font-medium text-center">
-                              {item.custom_name || product?.name || item.product_id || "—"}
+                              <div className="flex items-center justify-center gap-1.5">
+                                {item.custom_name || product?.name || item.product_id || "—"}
+                                {item.is_tentative && (
+                                  <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
+                                    Tentative
+                                  </Badge>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -703,7 +736,7 @@ const EstimateDetail: React.FC = () => {
                             <TableCell className="text-center">
                               {Number(item.quantity)}
                             </TableCell>
-                            <TableCell className="text-center font-semibold">
+                            <TableCell className={`text-center font-semibold ${item.is_tentative ? "text-amber-600 dark:text-amber-400" : ""}`}>
                               {peso(Number(item.subtotal))}
                             </TableCell>
                           </TableRow>
@@ -755,9 +788,22 @@ const EstimateDetail: React.FC = () => {
 
                   <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2">
                     <div className="flex justify-between items-end text-primary">
-                      <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-xl font-bold tracking-wide">{peso(totals.total)}</span>
+                      <span className="text-xs font-bold uppercase">Grand Total (Confirmed)</span>
+                      <span className="text-xl font-bold tracking-wide">{peso(totals.baseTotal)}</span>
                     </div>
+                    {totals.tentativeTotal > 0 && (
+                      <>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-end text-amber-600 dark:text-amber-400">
+                          <span className="text-[10px] font-semibold uppercase">Tentative Items</span>
+                          <span className="text-xs font-semibold">+{peso(totals.tentativeTotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-end text-muted-foreground">
+                          <span className="text-[10px] font-medium uppercase">Grand Total (incl. Tentative)</span>
+                          <span className="text-sm font-bold">{peso(totals.total)}</span>
+                        </div>
+                      </>
+                    )}
                     <Separator className="bg-primary/20" />
                     <div className="flex justify-between items-center text-xs text-muted-foreground">
                       <span>Downpayment</span>
@@ -784,8 +830,16 @@ const EstimateDetail: React.FC = () => {
                     <Separator className="bg-primary/20" />
                     <div className="flex justify-between items-end text-blue-950 dark:text-blue-200 font-bold">
                       <span className="text-xs uppercase">Balance Due</span>
-                      <span className="text-2xl tracking-wide">{peso(Math.max(0, totals.total - downpayment))}</span>
+                      <span className="text-2xl tracking-wide">{peso(Math.max(0, totals.baseTotal - downpayment))}</span>
                     </div>
+                    {totals.tentativeTotal > 0 && (
+                      <div className="flex justify-between items-end text-muted-foreground">
+                        <span className="text-[10px] font-medium uppercase">Balance Due (incl. Tentative)</span>
+                        <span className="text-lg font-bold">
+                          {peso(Math.max(0, totals.total - downpayment))}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2 pt-2">

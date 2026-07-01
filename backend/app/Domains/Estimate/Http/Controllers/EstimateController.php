@@ -87,6 +87,7 @@ class EstimateController extends Controller
                 'items.*.subtotal' => 'required|numeric',
                 'items.*.needs_ordering' => 'nullable|boolean',
                 'items.*.custom_name' => 'nullable|string|max:255',
+                'items.*.is_tentative' => 'nullable|boolean',
             ]);
 
             $estimate = $this->estimateRepo->create($validated);
@@ -129,6 +130,7 @@ class EstimateController extends Controller
                 'items.*.subtotal' => 'required|numeric',
                 'items.*.needs_ordering' => 'nullable|boolean',
                 'items.*.custom_name' => 'nullable|string|max:255',
+                'items.*.is_tentative' => 'nullable|boolean',
             ]);
 
             $estimate = $this->estimateRepo->update($id, $validated);

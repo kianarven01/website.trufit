@@ -92,6 +92,7 @@ interface JOServiceLine {
   pricingId?: string; // Tracks the selected pricing row ID!
   manualRate?: number;
   amount: number;
+  isTentative: boolean;
 }
 
 interface SOPartLine {
@@ -102,6 +103,7 @@ interface SOPartLine {
   needsOrdering: boolean;
   customName?: string;
   manualPrice?: number;
+  isTentative: boolean;
 }
 
 interface SPOLLine {
@@ -112,6 +114,7 @@ interface SPOLLine {
   needsOrdering: boolean;
   customName?: string;
   manualPrice?: number;
+  isTentative: boolean;
 }
 
 
@@ -135,6 +138,7 @@ const emptyJOLine = (): JOServiceLine => ({
   pricingId: "",
   manualRate: undefined,
   amount: 0,
+  isTentative: false,
 });
 
 const emptySOLine = (): SOPartLine => ({
@@ -143,6 +147,7 @@ const emptySOLine = (): SOPartLine => ({
   quantity: 1,
   amount: 0,
   needsOrdering: false,
+  isTentative: false,
 });
 
 const emptyCustomSOLine = (): SOPartLine => ({
@@ -153,6 +158,7 @@ const emptyCustomSOLine = (): SOPartLine => ({
   needsOrdering: true,
   customName: "",
   manualPrice: 0,
+  isTentative: false,
 });
 
 const emptySPOLLine = (): SPOLLine => ({
@@ -161,6 +167,7 @@ const emptySPOLLine = (): SPOLLine => ({
   quantity: 1,
   amount: 0,
   needsOrdering: false,
+  isTentative: false,
 });
 
 const emptyCustomSPOLLine = (): SPOLLine => ({
@@ -171,6 +178,7 @@ const emptyCustomSPOLLine = (): SPOLLine => ({
   needsOrdering: true,
   customName: "",
   manualPrice: 0,
+  isTentative: false,
 });
 
 const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
@@ -543,6 +551,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   pricingId: pricingOpt ? pricingOpt.id : "",
                   manualRate: Number(s.unit_price),
                   amount: Number(s.subtotal),
+                  isTentative: s.is_tentative ?? false,
                 };
               })
             );
@@ -561,6 +570,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   amount: Number(p.subtotal),
                   needsOrdering: p.needs_ordering ?? false,
                   customName: p.custom_name || undefined,
+                  isTentative: p.is_tentative ?? false,
                 };
               })
             );
@@ -577,6 +587,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 amount: Number(p.subtotal),
                 needsOrdering: p.needs_ordering ?? false,
                 customName: p.custom_name || undefined,
+                isTentative: p.is_tentative ?? false,
               }))
             );
           } else {
@@ -836,6 +847,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     const totalParts = validSO.reduce((s, l) => s + l.amount, 0);
     const totalSupplies = validSPOL.reduce((s, l) => s + l.amount, 0);
 
+    // Tentative-only subtotals
+    const tentativeServices = validJO.filter(l => l.isTentative).reduce((s, l) => s + l.amount, 0);
+    const tentativeParts = validSO.filter(l => l.isTentative).reduce((s, l) => s + l.amount, 0);
+    const tentativeSupplies = validSPOL.filter(l => l.isTentative).reduce((s, l) => s + l.amount, 0);
+    const tentativeTotal = tentativeServices + tentativeParts + tentativeSupplies;
+
     const estimatedMinutes = validJO.reduce(
       (sum, l) => {
         const service = servicesMap[l.ServiceTypeId];
@@ -845,13 +862,17 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       0
     );
 
+    // total includes everything; baseTotal excludes tentative
     const total = totalServices + totalParts + totalSupplies;
+    const baseTotal = total - tentativeTotal;
 
     return {
       totalServices,
       totalParts,
       totalSupplies,
       total,
+      baseTotal,
+      tentativeTotal,
       estimatedMinutes,
       validJO,
       validSO,
@@ -911,6 +932,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             subtotal: l.amount,
             needs_ordering: false,
             custom_name: null,
+            is_tentative: l.isTentative,
           };
         }),
       ...soLines
@@ -926,6 +948,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
               subtotal: l.amount,
               needs_ordering: l.needsOrdering,
               custom_name: l.customName,
+              is_tentative: l.isTentative,
             };
           }
           const found = partsMap[l.ProductId];
@@ -939,6 +962,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             subtotal: l.amount,
             needs_ordering: l.needsOrdering,
             custom_name: null,
+            is_tentative: l.isTentative,
           };
         }),
       ...spolLines
@@ -954,6 +978,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
               subtotal: l.amount,
               needs_ordering: l.needsOrdering,
               custom_name: l.customName,
+              is_tentative: l.isTentative,
             };
           }
           const found = partsMap[l.ProductId];
@@ -967,6 +992,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             subtotal: l.amount,
             needs_ordering: l.needsOrdering,
             custom_name: null,
+            is_tentative: l.isTentative,
           };
         })
     ];
@@ -1320,11 +1346,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs w-[30%] text-center">Service</TableHead>
-                        <TableHead className="text-xs w-[25%] text-center">Pricing</TableHead>
-                        <TableHead className="text-xs w-[14%] text-center">Est. Duration</TableHead>
-                        <TableHead className="text-xs w-[13%] text-center">Rate</TableHead>
-                        <TableHead className="text-xs w-[13%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs w-[28%] text-center">Service</TableHead>
+                        <TableHead className="text-xs w-[23%] text-center">Pricing</TableHead>
+                        <TableHead className="text-xs w-[12%] text-center">Est. Duration</TableHead>
+                        <TableHead className="text-xs w-[11%] text-center">Rate</TableHead>
+                        <TableHead className="text-xs w-[11%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Tentative</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1434,6 +1461,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               {peso(l.amount)}
                             </TableCell>
 
+                            <TableCell className="align-top text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.isTentative}
+                                onChange={(e) => setJoLines(prev => prev.map((line, i) => i === idx ? { ...line, isTentative: e.target.checked } : line))}
+                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                              />
+                            </TableCell>
+
                             <TableCell className="align-top">
                               {joLines.length > 1 && (
                                 <Button
@@ -1471,13 +1507,14 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
-                        <TableHead className="text-xs text-center w-[22%]">Item Name</TableHead>
-                        <TableHead className="text-xs text-center w-[15%]">Part Number</TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">Needs Order</TableHead>
-                        <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[10%] text-center">Quantity</TableHead>
+                        <TableHead className="text-xs text-center w-[20%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Part Number</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Stock Status</TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[8%] text-center">Quantity</TableHead>
                         <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-center w-[9%]">Needs Order</TableHead>
+                        <TableHead className="text-xs w-[9%] text-center">Tentative</TableHead>
                         <TableHead className="text-xs w-[4%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1530,15 +1567,6 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             </TableCell>
 
                             <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={l.needsOrdering}
-                                onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
-                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                              />
-                            </TableCell>
-
-                            <TableCell className="text-center">
                               {isCustom ? (
                                 <CurrencyInput
                                   value={l.manualPrice || 0}
@@ -1567,6 +1595,25 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                             <TableCell className="text-center">
                               {peso(l.amount)}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.needsOrdering}
+                                disabled={l.isTentative}
+                                onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                              />
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.isTentative}
+                                onChange={(e) => setSoLines(prev => prev.map((line, i) => i === idx ? { ...line, isTentative: e.target.checked, needsOrdering: e.target.checked ? false : line.needsOrdering } : line))}
+                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                              />
                             </TableCell>
 
                             <TableCell>
@@ -1606,12 +1653,13 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-center w-[30%]">Item Name</TableHead>
-                        <TableHead className="text-xs text-center w-[15%]">Stock Status</TableHead>
-                        <TableHead className="text-xs text-center w-[15%]">Needs Order</TableHead>
-                        <TableHead className="text-xs w-[15%] text-center">Unit Price</TableHead>
-                        <TableHead className="text-xs w-[10%] text-center">Quantity</TableHead>
+                        <TableHead className="text-xs text-center w-[26%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">Unit Price</TableHead>
+                        <TableHead className="text-xs w-[9%] text-center">Quantity</TableHead>
                         <TableHead className="text-xs w-[10%] text-center">Amount</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Needs Order</TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">Tentative</TableHead>
                         <TableHead className="text-xs w-[5%]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1658,15 +1706,6 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             </TableCell>
 
                             <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={l.needsOrdering}
-                                onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
-                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                              />
-                            </TableCell>
-
-                            <TableCell className="text-center">
                               {isCustom ? (
                                 <CurrencyInput
                                   value={l.manualPrice || 0}
@@ -1695,6 +1734,25 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                             <TableCell className="text-center">
                               {peso(l.amount)}
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.needsOrdering}
+                                disabled={l.isTentative}
+                                onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
+                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                              />
+                            </TableCell>
+
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                checked={l.isTentative}
+                                onChange={(e) => setSpolLines(prev => prev.map((line, i) => i === idx ? { ...line, isTentative: e.target.checked, needsOrdering: e.target.checked ? false : line.needsOrdering } : line))}
+                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                              />
                             </TableCell>
 
                             <TableCell>
@@ -1747,9 +1805,22 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                   <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2">
                     <div className="flex justify-between items-end text-primary">
-                      <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-2xl font-bold tracking-wide">{peso(totals.total)}</span>
+                      <span className="text-xs font-bold uppercase">Grand Total (Confirmed)</span>
+                      <span className="text-2xl font-bold tracking-wide">{peso(totals.baseTotal)}</span>
                     </div>
+                    {totals.tentativeTotal > 0 && (
+                      <>
+                        <Separator className="bg-primary/20" />
+                        <div className="flex justify-between items-end text-amber-600 dark:text-amber-400">
+                          <span className="text-[10px] font-semibold uppercase">Tentative Items</span>
+                          <span className="text-sm font-semibold">+{peso(totals.tentativeTotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-end text-muted-foreground">
+                          <span className="text-[10px] font-medium uppercase">Grand Total (incl. Tentative)</span>
+                          <span className="text-lg font-bold">{peso(totals.total)}</span>
+                        </div>
+                      </>
+                    )}
                     {mode === "edit" && (
                       <>
                         <Separator className="bg-primary/20" />
@@ -1772,9 +1843,17 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                         <div className="flex justify-between items-end text-primary">
                           <span className="text-xs font-bold uppercase">Balance Due</span>
                           <span className="text-2xl font-bold tracking-wide">
-                            {peso(Math.max(0, totals.total - downpayment))}
+                            {peso(Math.max(0, totals.baseTotal - downpayment))}
                           </span>
                         </div>
+                        {totals.tentativeTotal > 0 && (
+                          <div className="flex justify-between items-end text-muted-foreground">
+                            <span className="text-[10px] font-medium uppercase">Balance Due (incl. Tentative)</span>
+                            <span className="text-lg font-bold">
+                              {peso(Math.max(0, totals.total - downpayment))}
+                            </span>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

@@ -85,6 +85,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                         'subtotal' => $item['subtotal'] ?? 0.00,
                         'needs_ordering' => $item['needs_ordering'] ?? false,
                         'custom_name' => $item['custom_name'] ?? null,
+                        'is_tentative' => $item['is_tentative'] ?? false,
                     ]);
                 }
             }
@@ -145,6 +146,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                         'subtotal' => $item['subtotal'] ?? 0.00,
                         'needs_ordering' => $item['needs_ordering'] ?? false,
                         'custom_name' => $item['custom_name'] ?? null,
+                        'is_tentative' => $item['is_tentative'] ?? false,
                     ]);
                 }
             }

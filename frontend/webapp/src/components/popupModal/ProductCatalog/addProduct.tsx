@@ -116,8 +116,22 @@ export default function ProductModal({
     setLocalCategories(categories);
   }, [categories]);
 
-  const handleManagedCategoriesChanged = (nextCategories: Option[]) => {
-    setLocalCategories(nextCategories);
+  type ManagedProductCategory = {
+    id: string | number;
+    name: string;
+    code?: string | null;
+  };
+
+  const handleManagedCategoriesChanged = (
+    nextCategories: ManagedProductCategory[]
+  ) => {
+    setLocalCategories(
+      nextCategories.map((category) => ({
+        id: String(category.id),
+        name: category.name,
+        code: category.code ?? undefined,
+      }))
+    );
 
     setForm((prev) => {
       if (!prev.category_id) return prev;

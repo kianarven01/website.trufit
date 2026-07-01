@@ -31,6 +31,7 @@ interface Customer {
   landline?: string;
   email?: string;
   businessPhone?: string;
+  origin?: string;
 }
 
 interface Vehicle {
@@ -341,6 +342,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       landline: newCustomer.landline || "",
       email: newCustomer.email || "",
       businessPhone: newCustomer.business || "",
+      origin: newCustomer.origin || "appointment",
     };
 
     const newVehiclesList: Vehicle[] = [];
@@ -439,6 +441,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             landline: c.landline || "",
             email: c.email || "",
             businessPhone: c.business || "",
+            origin: c.origin || "appointment",
           };
         });
 
@@ -510,6 +513,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             landline: cust.landline || "",
             email: cust.email || "",
             businessPhone: cust.business || "",
+            origin: cust.origin || "appointment",
           } : null;
 
           setSelectedCustomer(normalizedCust);
@@ -1031,6 +1035,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const handlePreSaveEstimate = () => {
     if (!selectedCustomer || !selectedVehicle) {
       toast.error("Please select a customer and vehicle.");
+      return;
+    }
+
+    if (selectedCustomer.origin === 'appointment') {
+      toast.error("Cannot create estimate: This customer profile is incomplete.");
       return;
     }
 

@@ -90,6 +90,14 @@ class EstimateController extends Controller
                 'items.*.is_tentative' => 'nullable|boolean',
             ]);
 
+            $customer = \App\Domains\Customer\Domain\Models\Customer::find($validated['customer_id']);
+            if ($customer && $customer->origin === 'appointment') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Cannot create estimate: This customer profile is incomplete.'
+                ], 422);
+            }
+
             $estimate = $this->estimateRepo->create($validated);
 
             return response()->json([
@@ -132,6 +140,16 @@ class EstimateController extends Controller
                 'items.*.custom_name' => 'nullable|string|max:255',
                 'items.*.is_tentative' => 'nullable|boolean',
             ]);
+
+            if (isset($validated['customer_id'])) {
+                $customer = \App\Domains\Customer\Domain\Models\Customer::find($validated['customer_id']);
+                if ($customer && $customer->origin === 'appointment') {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Cannot update estimate: This customer profile is incomplete.'
+                    ], 422);
+                }
+            }
 
             $estimate = $this->estimateRepo->update($id, $validated);
 

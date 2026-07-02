@@ -609,10 +609,19 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
     loadCatalogAndEstimate();
 
+    if (mode === "create") {
+      sessionStorage.setItem("breadcrumb-/webapp/sales/estimates/new-estimate", "Create New Estimate");
+      window.dispatchEvent(new Event("breadcrumb-update"));
+    }
+
     return () => {
       if (estimateId) {
         sessionStorage.removeItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`);
       }
+      if (mode === "create") {
+        sessionStorage.removeItem("breadcrumb-/webapp/sales/estimates/new-estimate");
+      }
+      window.dispatchEvent(new Event("breadcrumb-update"));
     };
   }, [mode, estimateId]);
 
@@ -1150,7 +1159,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     <div className="w-full h-full pl-4 pr-3 pb-4 flex flex-col gap-4 overflow-y-auto">
 
       {/* HEADER */}
-      <DataToolbar variant="detail" title={mode === "edit" ? "Edit Estimate" : "Create New Estimate"} />
+      <DataToolbar variant="detail" title={mode === "edit" ? "Edit Estimate" : ""} />
 
       <div className="space-y-6">
         <div className="grid lg:grid-cols-2 gap-4">

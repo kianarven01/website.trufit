@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
-import { Trash2, Pencil, Printer } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Trash2, Pencil, Printer } from "lucide-react";
+import AppToast, { AppToastType } from "@/components/ui/AppToast";
 import { Separator } from "@/components/ui/separator";
 import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addProductSupplier";
 import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addVehicleCompatibility";
@@ -56,6 +57,9 @@ interface Product {
   sku: string;
   image?: string;
   partNumber: string;
+  partId?: string | number | null;
+  manufacturerId?: string | number | null;
+  unitId?: string | number | null;
   isOEM: boolean;
   oemRef?: string | null;
   description: string;
@@ -308,6 +312,29 @@ const normalizeProduct = (row: any): Product => ({
   sku: String(row.SKU || row.sku || ""),
   image: row.image || row.image_URL || row.image_path || undefined,
   partNumber: String(row.part_number || row.partNumber || ""),
+  partId:
+    row.part_id ??
+    row.partId ??
+    row.part?.id ??
+    row.Part?.id ??
+    null,
+  manufacturerId:
+    row.manufacturer_id ??
+    row.manufacturerId ??
+    row.manufacturer?.id ??
+    row.Manufacturer?.id ??
+    row.brand?.id ??
+    row.Brand?.id ??
+    null,
+  unitId:
+    row.unit_id ??
+    row.unitId ??
+    row.unit?.id ??
+    row.Unit?.id ??
+    row.unitRelation?.id ??
+    (typeof row.unit === "number" || typeof row.unit === "string"
+      ? row.unit
+      : null),
   isOEM: Boolean(row.is_oem || row.isOEM || false),
   oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
@@ -405,6 +432,24 @@ const ProductDetail: React.FC = () => {
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isPrintingBarcodeLabels, setIsPrintingBarcodeLabels] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  
+  const [toast, setToast] = useState<{
+    type: AppToastType;
+    title: string;
+    message: string;
+  } | null>(null);
+
+  const showToast = (
+    type: AppToastType,
+    title: string,
+    message: string
+  ) => {
+    setToast({ type, title, message });
+  };
+
 
   const { vehicleSlug, variantSlug, categorySlug, productId } = useParams<{
     vehicleSlug: string;
@@ -417,6 +462,8 @@ const ProductDetail: React.FC = () => {
     | {
         productId?: string;
         product?: Product;
+        productName?: string;
+        breadcrumbLabel?: string;
         vehicleId?: string;
         variantId?: string;
         categoryId?: string;
@@ -536,6 +583,8 @@ const ProductDetail: React.FC = () => {
       setLoading(false);
     }
   };
+
+  
 
   const loadEquivalentGroups = async (id: string) => {
     try {
@@ -676,6 +725,34 @@ const ProductDetail: React.FC = () => {
   }, [routeState?.productId, productId]);
 
   useEffect(() => {
+    if (!product?.name) return;
+
+    const breadcrumbKey = `breadcrumb-${location.pathname}`;
+    sessionStorage.setItem(breadcrumbKey, product.name);
+
+    const currentState = (location.state || {}) as Record<string, any>;
+
+    if (
+      currentState.productName === product.name &&
+      currentState.breadcrumbLabel === product.name
+    ) {
+      window.dispatchEvent(new Event("breadcrumb-update"));
+      return;
+    }
+
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: {
+        ...currentState,
+        productName: product.name,
+        breadcrumbLabel: product.name,
+      },
+    });
+
+    window.dispatchEvent(new Event("breadcrumb-update"));
+  }, [product?.name, location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
     if (!product?.id) {
       setEquivalentGroups([]);
       return;
@@ -726,6 +803,14 @@ const ProductDetail: React.FC = () => {
         : `/webapp/products/product-catalog/products`,
     [vehicleSlug, variantSlug, categorySlug]
   );
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(backToProductsPath);
+  };
 
   if (loading) {
     return (
@@ -740,7 +825,7 @@ const ProductDetail: React.FC = () => {
       <div className="px-6 py-4 text-center text-muted-foreground">
         <p>No product found.</p>
         <div className="mt-4">
-          <Button variant="outline" onClick={() => navigate(backToProductsPath)}>
+          <Button variant="outline" onClick={handleBack}>
             Back to Products
           </Button>
         </div>
@@ -757,6 +842,26 @@ const ProductDetail: React.FC = () => {
   const selectedSellingPrice = getSupplierSellingPrice(selectedSupplier);
   const barcodeValue = product.barcode || product.sku || "";
 
+  const editProductInitialData = {
+    id: product.id,
+    name: product.name,
+    SKU: product.sku,
+    sku: product.sku,
+    description:
+      product.description && product.description !== "-"
+        ? product.description
+        : "",
+    image_path: product.image || null,
+    barcode: product.barcode || "",
+    part_number: product.partNumber || "",
+    part_id: product.partId || null,
+    category_id: product.categoryId || null,
+    manufacturer_id: product.manufacturerId || null,
+    unit: product.unitId || null,
+    is_oem: product.isOEM,
+    oem_reference_number: product.oemRef || null,
+  };
+
   const handlePrintBarcodeLabels = () => {
     if (!barcodeValue) {
       alert("No barcode or SKU available to print.");
@@ -770,8 +875,73 @@ const ProductDetail: React.FC = () => {
     }, 150);
   };
 
+  const openDeleteModal = () => {
+    setDeleteError("");
+    setIsDeleteOpen(true);
+  };
+
+  const handleArchiveProduct = async () => {
+    if (!product?.id) return;
+
+    setIsDeleting(true);
+    setDeleteError("");
+
+    try {
+      await api.delete(`/products/${product.id}`);
+
+      setIsDeleteOpen(false);
+
+      navigate(backToProductsPath, {
+        replace: true,
+        state: {
+          toast: {
+            type: "success",
+            title: "Product archived",
+            message: `${product.name} was removed from the active product list.`,
+          },
+        },
+      });
+
+      
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        "Failed to archive product. Please try again.";
+
+      const toastType: AppToastType =
+        message.toLowerCase().includes("stock") ||
+        message.toLowerCase().includes("reserved")
+          ? "warning"
+          : message.toLowerCase().includes("already archived")
+            ? "info"
+            : "error";
+
+      setDeleteError(message);
+
+      showToast(
+        toastType,
+        toastType === "warning"
+          ? "Product still has stock"
+          : toastType === "info"
+            ? "Product already archived"
+            : "Unable to archive product",
+        message
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen px-6 py-4 space-y-6">
+      {toast && (
+        <AppToast
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
+      )}
       <style>{`
         @media screen {
           #barcode-label-sheet {
@@ -880,6 +1050,43 @@ const ProductDetail: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Product Header and Actions */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          className="w-fit flex items-center gap-2"
+          onClick={handleBack}
+        >
+          <ArrowLeft size={16} />
+          Back
+        </Button>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            type="button"
+            className="flex items-center gap-2"
+            onClick={() => setIsEditOpen(true)}
+          >
+            <Pencil size={16} />
+            Edit Product
+          </Button>
+
+          <Button
+            size="sm"
+            type="button"
+            variant="destructive"
+            className="flex items-center gap-2"
+            onClick={openDeleteModal}
+          >
+            <Trash2 size={16} />
+            Remove Product
+          </Button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         <div className="lg:col-span-2">
@@ -894,15 +1101,6 @@ const ProductDetail: React.FC = () => {
                   {product.stockStatus || "Out of Stock"}
                 </Badge>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={() => setIsEditOpen(true)}
-              >
-                <Pencil size={16} /> Edit Product
-              </Button>
             </div>
 
             <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
@@ -1386,9 +1584,64 @@ const ProductDetail: React.FC = () => {
         </div>
       )}
 
+      {isDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-5 shadow-xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-destructive/10 p-2 text-destructive">
+                <AlertTriangle size={22} />
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">Remove Product?</h2>
+                <p className="text-sm text-muted-foreground">
+                  This will archive the product and hide it from the product list.
+                  The product record will still remain in the database.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-sm font-medium">{product.name}</p>
+              <p className="text-xs text-muted-foreground">
+                SKU: {product.sku || "-"} • Part No: {product.partNumber || "-"}
+              </p>
+            </div>
+
+            {deleteError && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setIsDeleteOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="destructive"
+                type="button"
+                onClick={handleArchiveProduct}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Removing..." : "Remove Product"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ProductModal
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
+        mode="edit"
+        product={editProductInitialData}
         categories={categories}
         manufacturers={manufacturers}
         suppliers={suppliers}
@@ -1398,7 +1651,21 @@ const ProductDetail: React.FC = () => {
           (product.categoryId ? String(product.categoryId) : null)
         }
         onSaved={async () => {
+          setIsEditOpen(false);
           await loadProduct();
+
+          showToast(
+            "success",
+            "Product updated",
+            `${product.name} was updated successfully.`
+          );
+        }}
+        onError={(message: string) => {
+          showToast(
+            "error",
+            "Unable to update product",
+            message || "Failed to update product. Please try again."
+          );
         }}
       />
 

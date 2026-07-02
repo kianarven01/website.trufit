@@ -20,15 +20,24 @@ class Category extends Model
         'name',
         'code',
         'seq_counter',
+        'is_active',
+        'archived_at',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'seq_counter' => 'integer',
+        'is_active' => 'boolean',
+        'archived_at' => 'datetime',
     ];
 
     public function products()
     {
         return $this->hasMany(Product::class, 'category_id', 'id');
+    }
+
+    public function parts()
+    {
+        return $this->hasMany(Part::class, 'category_id', 'id');
     }
 }

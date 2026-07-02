@@ -304,41 +304,77 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const unreadCount = mockNotifications.filter((n) => n.unread).length;
 
   // Breadcrumb generator
+  const routeState = location.state as
+    | {
+        productName?: string;
+        breadcrumbLabel?: string;
+      }
+    | undefined;
+
+  const isUuid = (value: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value
+    );
+
+  const formatBreadcrumbSegment = (segment: string) =>
+    segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+
   const pathSegments = location.pathname.split("/").filter(Boolean);
+
   const breadcrumbItems = pathSegments
     .map((segment, index) => {
       const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
-      
-      const findInfo = (items: NavItem[]): { label: string; isClickable: boolean } | null => {
+      const isLastItem = index === pathSegments.length - 1;
+
+      const findInfo = (
+        items: NavItem[]
+      ): { label: string; isClickable: boolean } | null => {
         for (const item of items) {
-          if (item.path === path) return { label: item.label, isClickable: true };
+          if (item.path === path) {
+            return { label: item.label, isClickable: true };
+          }
+
           if (item.children) {
-            const child = item.children.find(c => c.path === path);
-            if (child) return { label: child.label, isClickable: true };
-            
-            // If the current path segment is a group parent (e.g. /webapp/services)
-            // but it's not the final segment and doesn't have its own path
-            // Ensure we don't match the root '/webapp' as a group parent
-            const isGroupParent = path !== "/webapp" && item.children.some(c => c.path.startsWith(path));
-            if (isGroupParent) return { label: item.label, isClickable: false };
+            const child = item.children.find((c) => c.path === path);
+
+            if (child) {
+              return { label: child.label, isClickable: true };
+            }
+
+            const isGroupParent =
+              path !== "/webapp" && item.children.some((c) => c.path.startsWith(path));
+
+            if (isGroupParent) {
+              return { label: item.label, isClickable: false };
+            }
           }
         }
+
         return null;
       };
-      
+
       const info = findInfo(navItems);
-      let label = info?.label || (segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " "));
+
+      let label = info?.label || formatBreadcrumbSegment(segment);
       const isClickable = info ? info.isClickable : true;
-      
-      // Dynamic Label override (for UUIDs or dynamic routes)
+
       if (!info) {
         const dynamicLabel = sessionStorage.getItem(`breadcrumb-${path}`);
-        if (dynamicLabel) label = dynamicLabel;
+
+        if (isLastItem && isUuid(segment)) {
+          label =
+            routeState?.breadcrumbLabel ||
+            routeState?.productName ||
+            dynamicLabel ||
+            formatBreadcrumbSegment(segment);
+        } else if (dynamicLabel) {
+          label = dynamicLabel;
+        }
       }
-      
+
       return { label, path, isClickable };
     })
-    .filter(item => item.label.toLowerCase() !== "webapp");
+    .filter((item) => item.label.toLowerCase() !== "webapp");
 
   /* ---- Unified Nav Item Render ---- */
   const renderNavItem = (item: NavItem) => {

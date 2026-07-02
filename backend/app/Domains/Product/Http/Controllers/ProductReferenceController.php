@@ -12,9 +12,12 @@ use App\Domains\Product\Domain\Models\ServicePricing;
 use App\Domains\Product\Domain\Models\ServiceCategory;
 use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Product\Application\DTO\ArchiveCategoryDTO;
+use App\Domains\Product\Application\UseCases\ArchiveCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 
@@ -24,7 +27,8 @@ class ProductReferenceController extends Controller
     public function categories(): JsonResponse
     {
         $categories = Category::query()
-            ->select('id', 'name', 'code')
+            ->select('id', 'name', 'code', 'is_active')
+            ->where('is_active', true)
             ->withCount('products')
             ->orderBy('name')
             ->get()
@@ -127,6 +131,8 @@ class ProductReferenceController extends Controller
         $category = Category::create([
             'name' => $name,
             'code' => $code,
+            'is_active' => true,
+            'archived_at' => null,
         ]);
 
         return response()->json([
@@ -175,31 +181,16 @@ class ProductReferenceController extends Controller
         ]);
     }
 
-    // Soft delete to preserve historical data integrity
-    public function deleteCategory(string $id): JsonResponse
+    // Archive category, keep history, and unassign affected products/parts
+    public function deleteCategory(string $id, ArchiveCategory $archiveCategory): JsonResponse
     {
-        $category = Category::query()->where('id', $id)->firstOrFail();
-
-        $productsUsingCategory = Product::query()
-            ->where('category_id', $category->id)
-            ->count();
-
-        $partsUsingCategory = Part::query()
-            ->where('category_id', $category->id)
-            ->count();
-
-        if ($productsUsingCategory > 0 || $partsUsingCategory > 0) {
-            return response()->json([
-                'message' => 'This category is currently used by products or parts and cannot be deleted.',
-                'products_count' => $productsUsingCategory,
-                'parts_count' => $partsUsingCategory,
-            ], 422);
-        }
-
-        $category->delete();
+        $result = $archiveCategory->execute(
+            ArchiveCategoryDTO::fromId($id)
+        );
 
         return response()->json([
-            'message' => 'Category deleted successfully.',
+            'message' => 'Category archived successfully. Affected products and parts were unassigned.',
+            'data' => $result,
         ]);
     }
 

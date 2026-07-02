@@ -35,6 +35,8 @@ export default function ManageProductCategories({
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [categoryToArchive, setCategoryToArchive] =
+    useState<ProductCategory | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -43,6 +45,13 @@ export default function ManageProductCategories({
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => a.name.localeCompare(b.name));
   }, [categories]);
+
+  const resetState = () => {
+    setCategoryToArchive(null);
+    setEditingId(null);
+    setEditName("");
+    setEditCode("");
+  };
 
   const loadCategories = async () => {
     setLoading(true);
@@ -107,40 +116,31 @@ export default function ManageProductCategories({
     } catch (error: any) {
       console.error("Failed to update category:", error);
       alert(
-        error?.response?.data?.message ||
-          "Failed to update product category."
+        error?.response?.data?.message || "Failed to update product category.",
       );
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteCategory = async (category: ProductCategory) => {
-    const usedCount = Number(category.products_count || 0) + Number(category.parts_count || 0);
+  const requestArchiveCategory = (category: ProductCategory) => {
+    cancelEdit();
+    setCategoryToArchive(category);
+  };
 
-    if (usedCount > 0) {
-      alert(
-        "This category is currently used by products or parts and cannot be deleted."
-      );
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Delete product category "${category.name}"?`
-    );
-
-    if (!confirmed) return;
+  const confirmArchiveCategory = async () => {
+    if (!categoryToArchive) return;
 
     setSaving(true);
 
     try {
-      await api.delete(`/products/categories/${category.id}`);
+      await api.delete(`/products/categories/${categoryToArchive.id}`);
       await loadCategories();
+      setCategoryToArchive(null);
     } catch (error: any) {
-      console.error("Failed to delete category:", error);
+      console.error("Failed to archive category:", error);
       alert(
-        error?.response?.data?.message ||
-          "Failed to delete product category."
+        error?.response?.data?.message || "Failed to archive product category.",
       );
     } finally {
       setSaving(false);
@@ -152,149 +152,203 @@ export default function ManageProductCategories({
       open={open}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
-          cancelEdit();
+          resetState();
         }
 
         onOpenChange(nextOpen);
       }}
     >
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Manage Product Categories</DialogTitle>
-        </DialogHeader>
+      <DialogContent className={categoryToArchive ? "max-w-md" : "max-w-2xl"}>
+        {categoryToArchive ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Archive Product Category?</DialogTitle>
+            </DialogHeader>
 
-        <div className="rounded-lg border overflow-hidden">
-          <div className="grid grid-cols-12 gap-3 bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground">
-            <div className="col-span-4">Category Name</div>
-            <div className="col-span-2">Code</div>
-            <div className="col-span-2">Products</div>
-            <div className="col-span-2">Parts</div>
-            <div className="col-span-2 text-right">Actions</div>
-          </div>
+            <p className="text-sm text-muted-foreground">
+              This will hide the category from product forms.
+            </p>
 
-          {loading ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">
-              Loading categories...
+            <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+              <p className="text-sm text-foreground">
+                <span className="font-semibold">{categoryToArchive.name}</span>{" "}
+                is currently assigned to{" "}
+                <span className="font-semibold">
+                  {categoryToArchive.products_count ?? 0}
+                </span>{" "}
+                product(s) and{" "}
+                <span className="font-semibold">
+                  {categoryToArchive.parts_count ?? 0}
+                </span>{" "}
+                part(s).
+              </p>
+
+              <p className="mt-3 text-sm text-muted-foreground">
+                If you continue, those products and parts will become
+                uncategorized and must be reassigned later.
+              </p>
             </div>
-          ) : sortedCategories.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">
-              No product categories yet.
+
+            <DialogFooter className="mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCategoryToArchive(null)}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={confirmArchiveCategory}
+                disabled={saving}
+              >
+                {saving ? "Archiving..." : "Archive Category"}
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Manage Product Categories</DialogTitle>
+            </DialogHeader>
+
+            <div className="rounded-lg border overflow-hidden">
+              <div className="grid grid-cols-12 gap-3 bg-muted/40 px-4 py-3 text-xs font-medium text-muted-foreground">
+                <div className="col-span-4">Category Name</div>
+                <div className="col-span-2">Code</div>
+                <div className="col-span-2">Products</div>
+                <div className="col-span-2">Parts</div>
+                <div className="col-span-2 text-right">Actions</div>
+              </div>
+
+              {loading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  Loading categories...
+                </div>
+              ) : sortedCategories.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">
+                  No product categories yet.
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {sortedCategories.map((category) => {
+                    const isEditing = editingId === category.id;
+                    const usedCount =
+                      Number(category.products_count || 0) +
+                      Number(category.parts_count || 0);
+
+                    return (
+                      <div
+                        key={category.id}
+                        className="grid grid-cols-12 gap-3 items-center px-4 py-3 text-sm"
+                      >
+                        <div className="col-span-4">
+                          {isEditing ? (
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              placeholder="Category name"
+                            />
+                          ) : (
+                            <span className="font-medium">{category.name}</span>
+                          )}
+                        </div>
+
+                        <div className="col-span-2">
+                          {isEditing ? (
+                            <Input
+                              value={editCode}
+                              onChange={(e) =>
+                                setEditCode(e.target.value.toUpperCase())
+                              }
+                              placeholder="Code"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {category.code || "-"}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="col-span-2 text-muted-foreground">
+                          {category.products_count || 0}
+                        </div>
+
+                        <div className="col-span-2 text-muted-foreground">
+                          {category.parts_count || 0}
+                        </div>
+
+                        <div className="col-span-2 flex justify-end gap-2">
+                          {isEditing ? (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => saveEdit(category.id)}
+                                disabled={saving}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={cancelEdit}
+                                disabled={saving}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => startEdit(category)}
+                                disabled={saving}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => requestArchiveCategory(category)}
+                                disabled={saving}
+                                title={
+                                  usedCount > 0
+                                    ? "Archive category and unassign affected products/parts"
+                                    : "Archive category"
+                                }
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="divide-y">
-              {sortedCategories.map((category) => {
-                const isEditing = editingId === category.id;
-                const usedCount =
-                  Number(category.products_count || 0) +
-                  Number(category.parts_count || 0);
 
-                return (
-                  <div
-                    key={category.id}
-                    className="grid grid-cols-12 gap-3 items-center px-4 py-3 text-sm"
-                  >
-                    <div className="col-span-4">
-                      {isEditing ? (
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          placeholder="Category name"
-                        />
-                      ) : (
-                        <span className="font-medium">{category.name}</span>
-                      )}
-                    </div>
-
-                    <div className="col-span-2">
-                      {isEditing ? (
-                        <Input
-                          value={editCode}
-                          onChange={(e) =>
-                            setEditCode(e.target.value.toUpperCase())
-                          }
-                          placeholder="Code"
-                        />
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {category.code || "-"}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="col-span-2 text-muted-foreground">
-                      {category.products_count || 0}
-                    </div>
-
-                    <div className="col-span-2 text-muted-foreground">
-                      {category.parts_count || 0}
-                    </div>
-
-                    <div className="col-span-2 flex justify-end gap-2">
-                      {isEditing ? (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => saveEdit(category.id)}
-                            disabled={saving}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={cancelEdit}
-                            disabled={saving}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => startEdit(category)}
-                            disabled={saving}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => deleteCategory(category)}
-                            disabled={saving || usedCount > 0}
-                            title={
-                              usedCount > 0
-                                ? "Category is used and cannot be deleted"
-                                : "Delete category"
-                            }
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            Close
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -3,17 +3,24 @@
 namespace App\Domains\Product\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Product\Application\DTO\ArchiveProductDTO;
 use App\Domains\Product\Application\DTO\CreateProductDTO;
+use App\Domains\Product\Application\DTO\UpdateProductDTO;
 use App\Domains\Product\Application\Services\ProductFormatterService;
 use App\Domains\Product\Application\Services\ProductImageUploader;
 use App\Domains\Product\Application\Services\ProductQueryService;
 use App\Domains\Product\Application\Services\ProductSkuService;
+use App\Domains\Product\Application\UseCases\ArchiveProduct;
 use App\Domains\Product\Application\UseCases\CreateProduct;
+use App\Domains\Product\Application\UseCases\UpdateProduct;
 use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Http\Requests\StoreProductRequest;
+use App\Domains\Product\Http\Requests\UpdateProductRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 class ProductController extends Controller
 {
@@ -40,6 +47,14 @@ class ProductController extends Controller
         ProductImageUploader $imageUploader
     ): JsonResponse {
         $validated = $request->validated();
+
+        if (!empty($validated['part_id'])) {
+            $part = Part::query()
+                ->where('id', (int) $validated['part_id'])
+                ->firstOrFail();
+
+            $validated['category_id'] = $part->category_id;
+        }
 
         if (
             empty($validated['SKU']) &&
@@ -102,6 +117,82 @@ class ProductController extends Controller
         return response()->json([
             'data' => $this->formatter->format($product),
         ]);
+    }
+
+    public function update(
+        string $id,
+        UpdateProductRequest $request,
+        UpdateProduct $updateProduct,
+        ProductImageUploader $imageUploader
+    ): JsonResponse {
+        try {
+            $validated = $request->validated();
+
+            if ($request->hasFile('image')) {
+                try {
+                    $validated['image_path'] = $imageUploader->upload($request->file('image'));
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'message' => $e->getMessage(),
+                    ], 422);
+                }
+            }
+
+            $product = $updateProduct->execute(
+                UpdateProductDTO::fromArray($id, $validated)
+            );
+
+            $product->load($this->productRelations());
+
+            return response()->json([
+                'message' => 'Product updated successfully.',
+                'data' => $this->formatter->format($product),
+            ]);
+        } catch (RuntimeException $e) {
+            $status = $e->getCode();
+
+            if (!in_array($status, [400, 404, 409, 422], true)) {
+                $status = 400;
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $status);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to update product.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function archive(string $id, ArchiveProduct $archiveProduct): JsonResponse
+    {
+        try {
+            $result = $archiveProduct->execute(
+                ArchiveProductDTO::fromId($id)
+            );
+
+            return response()->json([
+                'message' => 'Product archived successfully.',
+                'data' => $result,
+            ]);
+        } catch (RuntimeException $e) {
+            $status = $e->getCode();
+
+            if (!in_array($status, [400, 404, 409, 422], true)) {
+                $status = 400;
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $status);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to archive product.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function parts(Request $request): JsonResponse

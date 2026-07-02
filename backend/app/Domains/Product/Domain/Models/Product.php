@@ -3,6 +3,7 @@
 namespace App\Domains\Product\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Manufacturers;
 use App\Domains\Product\Domain\Models\Unit;
@@ -16,6 +17,8 @@ use App\Domains\Product\Domain\Models\ProductEquivalentGroup;
 
 class Product extends Model
 {
+    use SoftDeletes;
+
     public $timestamps = false;
 
     protected $table = 'Main.Products';
@@ -47,6 +50,7 @@ class Product extends Model
         'unit' => 'integer',
         'part_id' => 'integer',
         'is_oem' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     public function category()
@@ -113,8 +117,6 @@ class Product extends Model
         );
     }
 
-   
-
     public function inventoryRelation()
     {
         return $this->hasOne(Inventory::class, 'productID', 'id');
@@ -148,4 +150,4 @@ class Product extends Model
             'group_id'
         )->withPivot(['id']);
     }
-    }
+}

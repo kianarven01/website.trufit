@@ -26,7 +26,6 @@ Route::prefix('products')->group(function () {
     Route::post('/categories', [ProductReferenceController::class, 'storeCategory']);
     Route::put('/categories/{id}', [ProductReferenceController::class, 'updateCategory']);
     Route::delete('/categories/{id}', [ProductReferenceController::class, 'deleteCategory']);
-    
 
     Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories']);
     Route::post('/service-categories', [ProductReferenceController::class, 'storeServiceCategory']);
@@ -71,6 +70,9 @@ Route::prefix('products')->group(function () {
 
     // Stock adjustment route
     Route::post('/{id}/adjust-stock', [ProductStockController::class, 'adjust']);
+
+    // Product archive route
+    Route::delete('/{id}', [ProductController::class, 'archive']);
 
     // Product details route. Keep this last so it does not catch static routes above.
     Route::get('/{id}', [ProductController::class, 'show']);

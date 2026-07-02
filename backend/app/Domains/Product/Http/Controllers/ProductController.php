@@ -3,17 +3,21 @@
 namespace App\Domains\Product\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Product\Application\DTO\ArchiveProductDTO;
 use App\Domains\Product\Application\DTO\CreateProductDTO;
 use App\Domains\Product\Application\Services\ProductFormatterService;
 use App\Domains\Product\Application\Services\ProductImageUploader;
 use App\Domains\Product\Application\Services\ProductQueryService;
 use App\Domains\Product\Application\Services\ProductSkuService;
+use App\Domains\Product\Application\UseCases\ArchiveProduct;
 use App\Domains\Product\Application\UseCases\CreateProduct;
 use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Http\Requests\StoreProductRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 class ProductController extends Controller
 {
@@ -110,6 +114,35 @@ class ProductController extends Controller
         return response()->json([
             'data' => $this->formatter->format($product),
         ]);
+    }
+
+    public function archive(string $id, ArchiveProduct $archiveProduct): JsonResponse
+    {
+        try {
+            $result = $archiveProduct->execute(
+                ArchiveProductDTO::fromId($id)
+            );
+
+            return response()->json([
+                'message' => 'Product archived successfully.',
+                'data' => $result,
+            ]);
+        } catch (RuntimeException $e) {
+            $status = $e->getCode();
+
+            if (!in_array($status, [400, 404, 409, 422], true)) {
+                $status = 400;
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $status);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to archive product.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function parts(Request $request): JsonResponse

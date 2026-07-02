@@ -24,6 +24,7 @@ import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon } from "lucide-react";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import api from "@/api/axios";
+import AppToast, { AppToastType } from "@/components/ui/AppToast";
 
 interface Product {
   id: string;
@@ -260,6 +261,11 @@ const ProductsList: React.FC = () => {
         variant?: VariantInfo;
         categoryId?: string;
         category?: CategoryOption;
+        toast?: {
+          type: AppToastType;
+          title: string;
+          message: string;
+        };
       }
     | undefined;
 
@@ -270,6 +276,11 @@ const ProductsList: React.FC = () => {
   const [variants, setVariants] = useState<VariantInfo[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{
+    type: AppToastType;
+    title: string;
+    message: string;
+  } | null>(null);
 
   const [filtersState, setFiltersState] = useState<Record<string, string>>({
     manufacturer: "all",
@@ -289,6 +300,19 @@ const ProductsList: React.FC = () => {
   const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(
     routeState?.categoryId || null
   );
+
+  useEffect(() => {
+    if (!routeState?.toast) return;
+
+    setToast(routeState.toast);
+
+    const { toast: _toast, ...restState } = routeState;
+
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: Object.keys(restState).length > 0 ? restState : null,
+    });
+  }, [routeState?.toast, location.pathname, location.search, navigate]);
 
   const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "All Vehicles";
   const variantName = routeState?.variant?.name || (variantSlug ? fromSlug(variantSlug) : "All Variants");
@@ -503,6 +527,16 @@ const ProductsList: React.FC = () => {
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
+       {toast && (
+        <AppToast
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          duration={4000}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <DataToolbar
         searchPlaceholder={isGeneralView ? "Search all products..." : `Search ${categoryName} products...`}
         onSearch={setSearch}

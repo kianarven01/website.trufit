@@ -71,6 +71,10 @@ Route::prefix('products')->group(function () {
     // Stock adjustment route
     Route::post('/{id}/adjust-stock', [ProductStockController::class, 'adjust']);
 
+    // Product edit route
+    Route::patch('/{id}', [ProductController::class, 'update']);
+    Route::put('/{id}', [ProductController::class, 'update']);
+
     // Product archive route
     Route::delete('/{id}', [ProductController::class, 'archive']);
 

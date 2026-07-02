@@ -122,6 +122,11 @@ const navItems: NavItem[] = [
         path: "/webapp/sales/estimates",
         icon: Estimate01Icon,
       },
+      {
+        label: "Billing",
+        path: "/webapp/sales/billing",
+        icon: StickyNote01Icon,
+      },
     ],
   },
   {

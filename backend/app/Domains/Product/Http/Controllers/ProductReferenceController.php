@@ -341,19 +341,6 @@ class ProductReferenceController extends Controller
     {
         $vehicles = VehicleModel::with(['manufacturer', 'variants'])->get();
 
-        foreach ($vehicles as $vehicle) {
-            if ($vehicle->variants->isEmpty()) {
-                VehicleVariant::create([
-                    'car_model_id' => $vehicle->id,
-                    'variant_name' => 'Variant',
-                    'year' => 2020,
-                ]);
-            }
-        }
-
-        // Re-load vehicles with variants if we created any new ones
-        $vehicles = VehicleModel::with(['manufacturer', 'variants'])->get();
-
         return response()->json([
             'data' => $vehicles,
         ]);

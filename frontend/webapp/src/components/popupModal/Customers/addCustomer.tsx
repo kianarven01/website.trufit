@@ -353,7 +353,7 @@ const emptyVehicle = (): VehicleForm => ({
     const payload = {
       car_model_id: Number(modelId),
       variant_name: variantData.name,
-      year: variantData.year || null,
+      year: null,
       engine_displacement: variantData.engine || null,
       transmission_type: variantData.transmission || null,
       drivetrain: variantData.drivetrain || null,

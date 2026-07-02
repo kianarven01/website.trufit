@@ -597,7 +597,7 @@ const VehicleVariantsPage: React.FC = () => {
                           {selectedVariant.year || "-"}
                         </div>
                         <div>
-                          <span className="font-medium">Engine:</span>{" "}
+                          <span className="font-medium">Piston Displacement:</span>{" "}
                           {selectedVariant.engine || "-"}
                         </div>
                         <div>
@@ -693,14 +693,7 @@ const VehicleVariantsPage: React.FC = () => {
                         </p>
                       </div>
 
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          Service Class
-                        </p>
-                        <p className="font-medium">
-                          {selectedVariant.serviceClass || "-"}
-                        </p>
-                      </div>
+
                     </div>
                   ) : (
                     <div className="h-full min-h-[200px] flex items-center justify-center text-sm text-muted-foreground">

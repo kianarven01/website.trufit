@@ -25,7 +25,6 @@ class VehicleVariant extends Model
 
     protected $casts = [
         'car_model_id' => 'integer',
-        'year' => 'integer',
         'oil_capacity' => 'integer',
     ];
 

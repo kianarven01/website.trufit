@@ -145,7 +145,7 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
               <label className="text-sm font-medium">Year Range</label>
               <Input
                 value={year}
-                onChange={(e) => setYear(e.target.value)}
+                onChange={(e) => setYear(e.target.value.replace(/[^0-9-]/g, ""))}
                 placeholder="e.g. 2020-2025"
               />
             </div>

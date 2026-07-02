@@ -21,6 +21,8 @@ class StoreVehicleVariantRequest extends FormRequest
             'drivetrain' => ['nullable', 'string', 'max:50'],
             'oil_capacity' => ['nullable', 'integer', 'min:0'],
             'service_class' => ['nullable', 'string', 'max:100'],
+            'fuel_type' => ['nullable', 'string', 'max:50'],
+            'body_type' => ['nullable', 'string', 'max:50'],
         ];
     }
 

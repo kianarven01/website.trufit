@@ -16,6 +16,8 @@ export interface VehicleVariantFormData {
   engine?: string;
   transmission?: string;
   drivetrain?: string;
+  fuel?: string;
+  bodyType?: string;
   oilCapacity?: number;
   serviceClass?: string;
 }
@@ -25,6 +27,7 @@ interface AddVehicleVariantProps {
   onOpenChange: (open: boolean) => void;
   variant?: VehicleVariantFormData | null;
   onSaved: (variant: VehicleVariantFormData) => Promise<void> | void;
+  hideYear?: boolean;
 }
 
 const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
@@ -32,12 +35,15 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
   onOpenChange,
   variant,
   onSaved,
+  hideYear = false,
 }) => {
   const [name, setName] = useState("");
   const [year, setYear] = useState("");
   const [engine, setEngine] = useState("");
   const [transmission, setTransmission] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
+  const [fuel, setFuel] = useState("");
+  const [bodyType, setBodyType] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -46,12 +52,16 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
       const engineStr = variant?.engine || "";
       const drivetrainStr = variant?.drivetrain || "";
       const transmissionStr = variant?.transmission || "";
+      const fuelStr = variant?.fuel || "";
 
       if (transmissionStr && baseName.endsWith(transmissionStr)) {
         baseName = baseName.slice(0, baseName.length - transmissionStr.length).trim();
       }
       if (drivetrainStr && baseName.endsWith(drivetrainStr)) {
         baseName = baseName.slice(0, baseName.length - drivetrainStr.length).trim();
+      }
+      if (fuelStr && baseName.endsWith(fuelStr)) {
+        baseName = baseName.slice(0, baseName.length - fuelStr.length).trim();
       }
       if (engineStr && baseName.endsWith(engineStr)) {
         baseName = baseName.slice(0, baseName.length - engineStr.length).trim();
@@ -62,12 +72,16 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
       setEngine(engineStr);
       setTransmission(transmissionStr);
       setDrivetrain(drivetrainStr);
+      setFuel(fuelStr);
+      setBodyType(variant?.bodyType || "");
     } else {
       setName("");
       setYear("");
       setEngine("");
       setTransmission("");
       setDrivetrain("");
+      setFuel("");
+      setBodyType("");
     }
   }, [open, variant]);
 
@@ -75,11 +89,12 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
     const parts = [
       name.trim(),
       engine.trim(),
+      fuel.trim(),
       drivetrain.trim(),
       transmission.trim(),
     ].filter(Boolean);
     return parts.join(" ");
-  }, [name, engine, drivetrain, transmission]);
+  }, [name, engine, fuel, drivetrain, transmission]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -94,6 +109,8 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
         engine: engine.trim() || "",
         transmission: transmission.trim() || "",
         drivetrain: drivetrain.trim() || "",
+        fuel: fuel.trim() || "",
+        bodyType: bodyType.trim() || "",
       });
 
       onOpenChange(false);
@@ -123,17 +140,19 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Year Range</label>
-            <Input
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              placeholder="e.g. 2020-2025"
-            />
-          </div>
+          {!hideYear && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Year Range</label>
+              <Input
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="e.g. 2020-2025"
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Engine</label>
+            <label className="text-sm font-medium">Piston Displacement</label>
             <Input
               value={engine}
               onChange={(e) => setEngine(e.target.value)}
@@ -159,10 +178,28 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
             />
           </div>
 
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Fuel Type</label>
+            <Input
+              value={fuel}
+              onChange={(e) => setFuel(e.target.value)}
+              placeholder="e.g. Gas"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Body Type</label>
+            <Input
+              value={bodyType}
+              onChange={(e) => setBodyType(e.target.value)}
+              placeholder="e.g. Hatchback"
+            />
+          </div>
+
           {computedName && (
             <div className="md:col-span-2 rounded-lg bg-muted/40 border p-3 mt-1">
-              <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                Generated Catalog Name Preview
+              <span className="block text-xs font-semibold text-muted-foreground mb-1">
+                Variant Name Preview
               </span>
               <span className="text-sm font-medium text-foreground">
                 {computedName}

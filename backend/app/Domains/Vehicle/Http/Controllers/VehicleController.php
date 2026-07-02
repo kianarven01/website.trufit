@@ -215,6 +215,8 @@ class VehicleController extends Controller
             'engine' => $variant->engine_displacement ?? '',
             'transmission' => $variant->transmission_type ?? '',
             'drivetrain' => $variant->drivetrain ?? '',
+            'fuel' => $variant->fuel_type ?? '',
+            'bodyType' => $variant->body_type ?? '',
             'oilCapacity' => $variant->oil_capacity,
             'serviceClass' => $variant->service_class ?? '',
         ];

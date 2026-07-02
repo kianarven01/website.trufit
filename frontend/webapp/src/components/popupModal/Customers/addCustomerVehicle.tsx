@@ -279,11 +279,20 @@ const AddCustomerVehicle: React.FC<Props> = ({
     const foundModel = vehicleModels.find(
       m => normalize(m.make) === normalize(targetVehicle.make) && normalize(m.model) === normalize(targetVehicle.model)
     );
-    const modelId = foundModel?.modelId;
+    let modelId = foundModel?.modelId;
 
     if (!modelId) {
-      toast.error("Please ensure the Make and Model are registered to the catalog first.");
-      return;
+      try {
+        const customRes = await api.post('/products/vehicles/custom', {
+          make: targetVehicle.make,
+          model: targetVehicle.model,
+        });
+        modelId = String(customRes.data.data.id);
+      } catch (error) {
+        console.error("Failed to register custom model on the fly:", error);
+        toast.error("Failed to register Make and Model to the catalog.");
+        return;
+      }
     }
 
     const payload = {
@@ -293,6 +302,8 @@ const AddCustomerVehicle: React.FC<Props> = ({
       engine_displacement: variantData.engine || null,
       transmission_type: variantData.transmission || null,
       drivetrain: variantData.drivetrain || null,
+      fuel_type: variantData.fuel || null,
+      body_type: variantData.bodyType || null,
       oil_capacity: null,
       service_class: null,
     };
@@ -611,8 +622,12 @@ const AddCustomerVehicle: React.FC<Props> = ({
       <AddVehicleVariant
         open={addVariantOpen}
         onOpenChange={setAddVariantOpen}
-        variant={variantInitialSearch ? { name: variantInitialSearch } : null}
+        variant={{
+          name: variantInitialSearch,
+          year: variantTargetVehicleIndex !== -1 ? vehicles[variantTargetVehicleIndex]?.year : ""
+        }}
         onSaved={handleVariantSaved}
+        hideYear={true}
       />
     </>
   );

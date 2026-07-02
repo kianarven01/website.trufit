@@ -19,6 +19,8 @@ class VehicleVariant extends Model
         'drivetrain',
         'oil_capacity',
         'service_class',
+        'fuel_type',
+        'body_type',
     ];
 
     protected $casts = [

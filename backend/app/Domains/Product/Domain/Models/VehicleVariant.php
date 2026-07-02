@@ -17,7 +17,9 @@ class VehicleVariant extends Model
         'transmission_type',
         'oil_capacity',
         'service_class',
-        'drivetrain'
+        'drivetrain',
+        'fuel_type',
+        'body_type',
     ];
 
     public function vehicleModel()

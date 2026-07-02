@@ -61,6 +61,8 @@ interface Variant {
   engine?: string;
   transmission?: string;
   drivetrain?: string;
+  fuel?: string;
+  bodyType?: string;
   oilCapacity?: number;
   serviceClass?: string;
 }
@@ -239,6 +241,8 @@ const VehicleVariantsPage: React.FC = () => {
         engine: row.engine || row.engine_displacement || "",
         transmission: row.transmission || row.transmission_type || "",
         drivetrain: row.drivetrain || "",
+        fuel: row.fuel || row.fuel_type || "",
+        bodyType: row.bodyType || row.body_type || "",
         oilCapacity: row.oilCapacity ?? row.oil_capacity ?? undefined,
         serviceClass: row.serviceClass ?? row.service_class ?? "",
       })
@@ -378,10 +382,12 @@ const VehicleVariantsPage: React.FC = () => {
     const payload = {
       car_model_id: Number(currentVehicle.id),
       variant_name: variant.name,
-      year: variant.year ? Number(variant.year) : null,
+      year: variant.year || null,
       engine_displacement: variant.engine || null,
       transmission_type: variant.transmission || null,
       drivetrain: variant.drivetrain || null,
+      fuel_type: variant.fuel || null,
+      body_type: variant.bodyType || null,
       oil_capacity: variant.oilCapacity ?? null,
       service_class: variant.serviceClass || null,
     };
@@ -655,8 +661,18 @@ const VehicleVariantsPage: React.FC = () => {
                       </div>
 
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Engine</p>
+                        <p className="text-xs text-muted-foreground mb-1">Piston Displacement</p>
                         <p className="font-medium">{selectedVariant.engine || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Fuel Type</p>
+                        <p className="font-medium">{selectedVariant.fuel || "-"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Body Type</p>
+                        <p className="font-medium">{selectedVariant.bodyType || "-"}</p>
                       </div>
 
                       <div>

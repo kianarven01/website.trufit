@@ -42,12 +42,15 @@ interface ProductSupplierInput {
 interface ProductModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mode?: "create" | "edit";
+  product?: any | null;
   categories: Option[];
   manufacturers: Option[];
   suppliers: Option[];
   variantId?: string | null;
   categoryId?: string | null;
   onSaved: () => Promise<void> | void;
+  onError?: (message: string) => void;
 }
 
 type ProductNameMode = "auto" | "manual";
@@ -62,13 +65,17 @@ const ADD_NEW_UNIT = "__add_new_unit__";
 export default function ProductModal({
   open,
   onOpenChange,
+  mode = "create",
+  product = null,
   categories,
   manufacturers,
   suppliers,
   variantId,
   categoryId,
   onSaved,
+  onError,
 }: ProductModalProps) {
+  const isEditMode = mode === "edit";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [localCategories, setLocalCategories] = useState<Option[]>(categories);
@@ -196,11 +203,44 @@ export default function ProductModal({
         setParts([]);
       });
 
-    setForm((prev) => ({
-      ...prev,
-      category_id: categoryId || prev.category_id,
-    }));
-  }, [open, categoryId]);
+    if (!isEditMode) {
+      setForm((prev) => ({
+        ...prev,
+        category_id: categoryId || prev.category_id,
+      }));
+    }
+  }, [open, categoryId, isEditMode]);
+
+  useEffect(() => {
+    if (!open || !isEditMode || !product) return;
+
+    setProductNameMode("manual");
+    setProductSkuMode("manual");
+    setSkuLoading(false);
+    setProductSuppliers([]);
+    setImageFile(null);
+    setImagePreview(product.image_path || product.image || "");
+
+    setForm({
+      name: product.name || "",
+      SKU: product.SKU || product.sku || "",
+      description: product.description || "",
+      category_id: product.category_id ? String(product.category_id) : "",
+      part_id: product.part_id ? String(product.part_id) : "",
+      unit: product.unit ? String(product.unit) : "",
+      manufacturer_id: product.manufacturer_id
+        ? String(product.manufacturer_id)
+        : "",
+      barcode: product.barcode || "",
+      part_number: product.part_number || "",
+      is_oem: Boolean(product.is_oem),
+      oem_reference_number: product.oem_reference_number || "",
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [open, isEditMode, product]);
 
   const getOptionLabel = (option: Option) => {
     return (
@@ -265,7 +305,7 @@ export default function ProductModal({
   }, [selectedManufacturerName, selectedPartName, form.part_number]);
 
   useEffect(() => {
-    if (!open || productNameMode !== "auto") return;
+    if (!open || isEditMode || productNameMode !== "auto") return;
 
     setForm((prev) => {
       if (prev.name === generatedProductName) {
@@ -277,10 +317,10 @@ export default function ProductModal({
         name: generatedProductName,
       };
     });
-  }, [open, productNameMode, generatedProductName]);
+  }, [open, isEditMode, productNameMode, generatedProductName]);
 
   useEffect(() => {
-    if (!open || productSkuMode !== "auto") return;
+    if (!open || isEditMode || productSkuMode !== "auto") return;
 
     if (!form.manufacturer_id || !form.part_id) {
       setForm((prev) => ({
@@ -332,7 +372,7 @@ export default function ProductModal({
     return () => {
       cancelled = true;
     };
-  }, [open, productSkuMode, form.manufacturer_id, form.part_id]);
+  }, [open, isEditMode, productSkuMode, form.manufacturer_id, form.part_id]);
 
   const handleProductNameModeChange = (mode: ProductNameMode) => {
     setProductNameMode(mode);
@@ -653,73 +693,90 @@ export default function ProductModal({
 
       payload.append("name", form.name.trim());
 
-      if (form.SKU.trim()) {
+      if (form.SKU.trim() || isEditMode) {
         payload.append("SKU", form.SKU.trim());
       }
 
       payload.append("part_number", form.part_number.trim());
       payload.append("is_oem", form.is_oem ? "1" : "0");
 
-      if (form.description.trim()) {
+      if (form.description.trim() || isEditMode) {
         payload.append("description", form.description.trim());
       }
 
-      if (form.part_id) {
-        payload.append("part_id", form.part_id);
+      if (form.category_id || isEditMode) {
+        payload.append("category_id", form.category_id || "");
       }
 
-      if (form.unit) {
-        payload.append("unit", form.unit);
+      if (form.part_id || isEditMode) {
+        payload.append("part_id", form.part_id || "");
       }
 
-      if (form.manufacturer_id) {
-        payload.append("manufacturer_id", form.manufacturer_id);
+      if (form.unit || isEditMode) {
+        payload.append("unit", form.unit || "");
       }
 
-      if (form.barcode.trim()) {
+      if (form.manufacturer_id || isEditMode) {
+        payload.append("manufacturer_id", form.manufacturer_id || "");
+      }
+
+      if (form.barcode.trim() || isEditMode) {
         payload.append("barcode", form.barcode.trim());
       }
 
-      if (form.oem_reference_number.trim()) {
+      if (form.oem_reference_number.trim() || isEditMode) {
         payload.append("oem_reference_number", form.oem_reference_number.trim());
       }
 
       /**
        * Supplier IDs are UUIDs, so keep them as strings.
        * Only remove blank placeholder values.
+       * Supplier editing is intentionally create-mode only.
        */
-      const validSuppliers = productSuppliers.filter((supplier) => {
-        const supplierId = String(supplier.supplier_id || "").trim();
-        return supplierId !== "" && supplierId !== "0";
-      });
+      if (!isEditMode) {
+        const validSuppliers = productSuppliers.filter((supplier) => {
+          const supplierId = String(supplier.supplier_id || "").trim();
+          return supplierId !== "" && supplierId !== "0";
+        });
 
-      validSuppliers.forEach((supplier, index) => {
-        payload.append(
-          `suppliers[${index}][supplier_id]`,
-          String(supplier.supplier_id).trim()
-        );
-
-        if (supplier.supplier_cost.trim() !== "") {
+        validSuppliers.forEach((supplier, index) => {
           payload.append(
-            `suppliers[${index}][supplier_cost]`,
-            supplier.supplier_cost.trim()
+            `suppliers[${index}][supplier_id]`,
+            String(supplier.supplier_id).trim()
           );
-        }
-      });
 
-      if (variantId) {
-        payload.append("car_variant_id", variantId);
+          if (supplier.supplier_cost.trim() !== "") {
+            payload.append(
+              `suppliers[${index}][supplier_cost]`,
+              supplier.supplier_cost.trim()
+            );
+          }
+        });
+
+        if (variantId) {
+          payload.append("car_variant_id", variantId);
+        }
       }
 
       if (imageFile) {
         payload.append("image", imageFile);
       }
 
-      await api.post("/products", payload, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      if (isEditMode && product?.id) {
+        payload.append("_method", "PATCH");
+
+        await api.post(`/products/${product.id}`, payload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      } else {
+        await api.post("/products", payload, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
 
       await onSaved();
       resetForm();
@@ -727,12 +784,20 @@ export default function ProductModal({
     } catch (error: any) {
       console.error("Failed to save product:", error);
 
+      const validationErrors = error?.response?.data?.errors;
+
       const message =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
-        "Failed to save product.";
+        (validationErrors
+          ? Object.values(validationErrors).flat().join(" ")
+          : "Failed to save product.");
 
-      alert(message);
+      if (onError) {
+        onError(message);
+      } else {
+        alert(message);
+      }
     } finally {
       setSaving(false);
     }
@@ -745,7 +810,7 @@ export default function ProductModal({
     <Dialog open={open} onOpenChange={handleModalChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Product</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Product" : "Add Product"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
@@ -1022,6 +1087,7 @@ export default function ProductModal({
             onChange={(e) => updateField("description", e.target.value)}
           />
 
+          {!isEditMode && (
           <div className="col-span-2 border rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -1101,6 +1167,7 @@ export default function ProductModal({
               </div>
             )}
           </div>
+          )}
 
           <label className="col-span-2 flex items-center gap-2 text-sm">
             <input
@@ -1138,7 +1205,7 @@ export default function ProductModal({
             onClick={handleSave}
             disabled={saving || !canSave}
           >
-            {saving ? "Saving..." : "Save Product"}
+            {saving ? "Saving..." : isEditMode ? "Update Product" : "Save Product"}
           </Button>
         </DialogFooter>
       </DialogContent>

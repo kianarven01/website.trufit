@@ -57,6 +57,9 @@ interface Product {
   sku: string;
   image?: string;
   partNumber: string;
+  partId?: string | number | null;
+  manufacturerId?: string | number | null;
+  unitId?: string | number | null;
   isOEM: boolean;
   oemRef?: string | null;
   description: string;
@@ -309,6 +312,29 @@ const normalizeProduct = (row: any): Product => ({
   sku: String(row.SKU || row.sku || ""),
   image: row.image || row.image_URL || row.image_path || undefined,
   partNumber: String(row.part_number || row.partNumber || ""),
+  partId:
+    row.part_id ??
+    row.partId ??
+    row.part?.id ??
+    row.Part?.id ??
+    null,
+  manufacturerId:
+    row.manufacturer_id ??
+    row.manufacturerId ??
+    row.manufacturer?.id ??
+    row.Manufacturer?.id ??
+    row.brand?.id ??
+    row.Brand?.id ??
+    null,
+  unitId:
+    row.unit_id ??
+    row.unitId ??
+    row.unit?.id ??
+    row.Unit?.id ??
+    row.unitRelation?.id ??
+    (typeof row.unit === "number" || typeof row.unit === "string"
+      ? row.unit
+      : null),
   isOEM: Boolean(row.is_oem || row.isOEM || false),
   oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
@@ -436,6 +462,8 @@ const ProductDetail: React.FC = () => {
     | {
         productId?: string;
         product?: Product;
+        productName?: string;
+        breadcrumbLabel?: string;
         vehicleId?: string;
         variantId?: string;
         categoryId?: string;
@@ -555,6 +583,8 @@ const ProductDetail: React.FC = () => {
       setLoading(false);
     }
   };
+
+  
 
   const loadEquivalentGroups = async (id: string) => {
     try {
@@ -695,6 +725,34 @@ const ProductDetail: React.FC = () => {
   }, [routeState?.productId, productId]);
 
   useEffect(() => {
+    if (!product?.name) return;
+
+    const breadcrumbKey = `breadcrumb-${location.pathname}`;
+    sessionStorage.setItem(breadcrumbKey, product.name);
+
+    const currentState = (location.state || {}) as Record<string, any>;
+
+    if (
+      currentState.productName === product.name &&
+      currentState.breadcrumbLabel === product.name
+    ) {
+      window.dispatchEvent(new Event("breadcrumb-update"));
+      return;
+    }
+
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: {
+        ...currentState,
+        productName: product.name,
+        breadcrumbLabel: product.name,
+      },
+    });
+
+    window.dispatchEvent(new Event("breadcrumb-update"));
+  }, [product?.name, location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
     if (!product?.id) {
       setEquivalentGroups([]);
       return;
@@ -783,6 +841,26 @@ const ProductDetail: React.FC = () => {
   const selectedMarkup = getSupplierMarkup(selectedSupplier);
   const selectedSellingPrice = getSupplierSellingPrice(selectedSupplier);
   const barcodeValue = product.barcode || product.sku || "";
+
+  const editProductInitialData = {
+    id: product.id,
+    name: product.name,
+    SKU: product.sku,
+    sku: product.sku,
+    description:
+      product.description && product.description !== "-"
+        ? product.description
+        : "",
+    image_path: product.image || null,
+    barcode: product.barcode || "",
+    part_number: product.partNumber || "",
+    part_id: product.partId || null,
+    category_id: product.categoryId || null,
+    manufacturer_id: product.manufacturerId || null,
+    unit: product.unitId || null,
+    is_oem: product.isOEM,
+    oem_reference_number: product.oemRef || null,
+  };
 
   const handlePrintBarcodeLabels = () => {
     if (!barcodeValue) {
@@ -973,7 +1051,7 @@ const ProductDetail: React.FC = () => {
         </div>
       )}
       
-      // Product Header and Actions
+      {/* Product Header and Actions */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Button
           variant="outline"
@@ -1562,6 +1640,8 @@ const ProductDetail: React.FC = () => {
       <ProductModal
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
+        mode="edit"
+        product={editProductInitialData}
         categories={categories}
         manufacturers={manufacturers}
         suppliers={suppliers}
@@ -1571,7 +1651,21 @@ const ProductDetail: React.FC = () => {
           (product.categoryId ? String(product.categoryId) : null)
         }
         onSaved={async () => {
+          setIsEditOpen(false);
           await loadProduct();
+
+          showToast(
+            "success",
+            "Product updated",
+            `${product.name} was updated successfully.`
+          );
+        }}
+        onError={(message: string) => {
+          showToast(
+            "error",
+            "Unable to update product",
+            message || "Failed to update product. Please try again."
+          );
         }}
       />
 

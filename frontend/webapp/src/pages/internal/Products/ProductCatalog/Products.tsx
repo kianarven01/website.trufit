@@ -614,6 +614,8 @@ const ProductsList: React.FC = () => {
                           state: {
                             productId: product.id,
                             product,
+                            productName: product.name,
+                            breadcrumbLabel: product.name,
                             vehicleId: resolvedVehicleId,
                             variantId: resolvedVariantId,
                             categoryId: resolvedCategoryId,

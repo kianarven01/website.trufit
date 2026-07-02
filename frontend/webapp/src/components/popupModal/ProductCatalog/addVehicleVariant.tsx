@@ -38,31 +38,48 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
   const [engine, setEngine] = useState("");
   const [transmission, setTransmission] = useState("");
   const [drivetrain, setDrivetrain] = useState("");
-  const [oilCapacity, setOilCapacity] = useState("");
-  const [serviceClass, setServiceClass] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setName(variant?.name || "");
+      let baseName = variant?.name || "";
+      const engineStr = variant?.engine || "";
+      const drivetrainStr = variant?.drivetrain || "";
+      const transmissionStr = variant?.transmission || "";
+
+      if (transmissionStr && baseName.endsWith(transmissionStr)) {
+        baseName = baseName.slice(0, baseName.length - transmissionStr.length).trim();
+      }
+      if (drivetrainStr && baseName.endsWith(drivetrainStr)) {
+        baseName = baseName.slice(0, baseName.length - drivetrainStr.length).trim();
+      }
+      if (engineStr && baseName.endsWith(engineStr)) {
+        baseName = baseName.slice(0, baseName.length - engineStr.length).trim();
+      }
+
+      setName(baseName);
       setYear(variant?.year || "");
-      setEngine(variant?.engine || "");
-      setTransmission(variant?.transmission || "");
-      setDrivetrain(variant?.drivetrain || "");
-      setOilCapacity(
-        variant?.oilCapacity !== undefined ? String(variant.oilCapacity) : ""
-      );
-      setServiceClass(variant?.serviceClass || "");
+      setEngine(engineStr);
+      setTransmission(transmissionStr);
+      setDrivetrain(drivetrainStr);
     } else {
       setName("");
       setYear("");
       setEngine("");
       setTransmission("");
       setDrivetrain("");
-      setOilCapacity("");
-      setServiceClass("");
     }
   }, [open, variant]);
+
+  const computedName = React.useMemo(() => {
+    const parts = [
+      name.trim(),
+      engine.trim(),
+      drivetrain.trim(),
+      transmission.trim(),
+    ].filter(Boolean);
+    return parts.join(" ");
+  }, [name, engine, drivetrain, transmission]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
@@ -72,13 +89,11 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
 
       await onSaved({
         id: variant?.id,
-        name: name.trim(),
+        name: computedName,
         year: year.trim() || "",
         engine: engine.trim() || "",
         transmission: transmission.trim() || "",
         drivetrain: drivetrain.trim() || "",
-        oilCapacity: oilCapacity.trim() ? Number(oilCapacity) : undefined,
-        serviceClass: serviceClass.trim() || "",
       });
 
       onOpenChange(false);
@@ -100,20 +115,20 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Variant Name</label>
+            <label className="text-sm font-medium">Base Variant Name</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. GLX AT"
+              placeholder="e.g. GLX"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Year</label>
+            <label className="text-sm font-medium">Year Range</label>
             <Input
               value={year}
               onChange={(e) => setYear(e.target.value)}
-              placeholder="e.g. 2024"
+              placeholder="e.g. 2020-2025"
             />
           </div>
 
@@ -144,25 +159,16 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Oil Capacity</label>
-            <Input
-              type="number"
-              step="0.1"
-              value={oilCapacity}
-              onChange={(e) => setOilCapacity(e.target.value)}
-              placeholder="e.g. 4.5"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Service Class</label>
-            <Input
-              value={serviceClass}
-              onChange={(e) => setServiceClass(e.target.value)}
-              placeholder="e.g. Premium"
-            />
-          </div>
+          {computedName && (
+            <div className="md:col-span-2 rounded-lg bg-muted/40 border p-3 mt-1">
+              <span className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                Generated Catalog Name Preview
+              </span>
+              <span className="text-sm font-medium text-foreground">
+                {computedName}
+              </span>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">

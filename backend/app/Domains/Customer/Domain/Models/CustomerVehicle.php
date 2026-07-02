@@ -25,11 +25,17 @@ class CustomerVehicle extends Model
         'make',
         'model',
         'variant',
-        'selling_dealer'
+        'selling_dealer',
+        'vehicle_variant_id'
     ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customerID', 'customer_id');
+    }
+
+    public function vehicleVariant()
+    {
+        return $this->belongsTo(\App\Domains\Product\Domain\Models\VehicleVariant::class, 'vehicle_variant_id');
     }
 }

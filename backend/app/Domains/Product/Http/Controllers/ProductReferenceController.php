@@ -365,8 +365,6 @@ class ProductReferenceController extends Controller
         $request->validate([
             'make' => 'required|string',
             'model' => 'required|string',
-            'variant' => 'nullable|string',
-            'year' => 'nullable|numeric'
         ]);
 
         // Find or create Manufacturer
@@ -379,22 +377,12 @@ class ProductReferenceController extends Controller
             ['model' => $request->model, 'manufacturer_id' => $manufacturer->id]
         );
 
-        // Create default VehicleVariant for this model
-        $variant = VehicleVariant::firstOrCreate([
-            'car_model_id' => $vehicleModel->id,
-            'variant_name' => $request->variant ?: 'Variant',
-            'year' => $request->year ?: 2020,
-        ]);
-
         return response()->json([
             'message' => 'Vehicle added successfully',
             'data' => [
                 'id' => $vehicleModel->id,
-                'year' => $variant->year,
                 'make' => $manufacturer->name,
                 'model' => $vehicleModel->model,
-                'variant' => $variant->variant_name,
-                'variant_id' => $variant->id,
             ]
         ]);
     }

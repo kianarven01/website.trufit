@@ -65,9 +65,11 @@ const Combobox: FC<MakeComboboxProps> = ({
   const [search, setSearch] = useState(initialLabel);
 
   useEffect(() => {
-    const label = normalizedItems.find((i) => i.value === value)?.label || value;
-    setSearch(label);
-  }, [value, normalizedItems]);
+    if (!open) {
+      const label = normalizedItems.find((i) => i.value === value)?.label || value;
+      setSearch(label);
+    }
+  }, [open, value, normalizedItems]);
 
   // Filter items based on search input
   const filteredItems = normalizedItems.filter((item) =>
@@ -108,7 +110,7 @@ const Combobox: FC<MakeComboboxProps> = ({
               if (disabled) return;
               const val = e.target.value;
               setSearch(val);
-              if (allowAdd || freeText) {
+              if (freeText) {
                 onChange(resolveValue(val));
               }
               setOpen(true);

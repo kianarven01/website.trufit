@@ -16,7 +16,7 @@ class StoreVehicleVariantRequest extends FormRequest
         return [
             'variant_name' => ['required', 'string', 'max:255'],
             'engine_displacement' => ['nullable', 'string', 'max:50'],
-            'year' => ['required', 'integer', 'min:1900', 'max:2100'],
+            'year' => ['required', 'string', 'max:50'],
             'transmission_type' => ['nullable', 'string', 'max:50'],
             'drivetrain' => ['nullable', 'string', 'max:50'],
             'oil_capacity' => ['nullable', 'integer', 'min:0'],

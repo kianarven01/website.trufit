@@ -56,7 +56,8 @@ class EloquentCustomerRepository implements CustomerRepositoryInterface
                 'make' => $vehicleData['make'] ?? '',
                 'model' => $vehicleData['model'] ?? '',
                 'variant' => $vehicleData['variant'] ?? '',
-                'selling_dealer' => $vehicleData['sellingDealer'] ?? $vehicleData['selling_dealer'] ?? ''
+                'selling_dealer' => $vehicleData['sellingDealer'] ?? $vehicleData['selling_dealer'] ?? '',
+                'vehicle_variant_id' => (!empty($vehicleData['vehicleModelId'])) ? $vehicleData['vehicleModelId'] : null,
             ];
 
             // If plate was changed, find by old plate and update (including new plate)

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Combobox from "@/components/ui/combobox";
 
 import api from "@/api/axios";
+import AddVehicleVariant from "@/components/popupModal/ProductCatalog/addVehicleVariant";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -23,6 +24,7 @@ import {
 /* ================= TYPES ================= */
 interface VehicleModel {
   id: string;
+  modelId?: string;
   year: number;
   make: string;
   model: string;
@@ -112,39 +114,44 @@ const AddCustomerVehicle: React.FC<Props> = ({
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isLoadingManufacturers, setIsLoadingManufacturers] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [addVariantOpen, setAddVariantOpen] = useState(false);
+  const [variantTargetVehicleIndex, setVariantTargetVehicleIndex] = useState<number>(-1);
+  const [variantInitialSearch, setVariantInitialSearch] = useState("");
   const [showConfirmNewVehicles, setShowConfirmNewVehicles] = useState(false);
   const [pendingVehicles, setPendingVehicles] = useState<any[]>([]);
+
+  const loadVehicleModels = async () => {
+    setIsLoadingModels(true);
+    try {
+      const res = await api.get('/products/vehicles');
+      const models = res.data.data.flatMap((m: any) => {
+        return m.variants.length > 0 ? m.variants.map((v: any) => ({
+          id: v.id,
+          modelId: String(m.id),
+          year: v.year,
+          make: m.manufacturer?.name || "",
+          model: m.model,
+          variant: v.variant_name
+        })) : [{
+          id: m.id,
+          modelId: String(m.id),
+          year: 0,
+          make: m.manufacturer?.name || "",
+          model: m.model,
+          variant: ""
+        }];
+      });
+      setVehicleModels(models);
+    } catch (error) {
+      console.error("Failed to load vehicle models:", error);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
 
   /* ================= LOAD MODELS ================= */
   useEffect(() => {
     if (!open) return;
-
-    const fetchModels = async () => {
-      setIsLoadingModels(true);
-      try {
-        const res = await api.get('/products/vehicles');
-        const models = res.data.data.flatMap((m: any) => {
-          return m.variants.length > 0 ? m.variants.map((v: any) => ({
-            id: v.id,
-            year: v.year,
-            make: m.manufacturer?.name || "",
-            model: m.model,
-            variant: v.variant_name
-          })) : [{
-            id: m.id,
-            year: 0,
-            make: m.manufacturer?.name || "",
-            model: m.model,
-            variant: ""
-          }];
-        });
-        setVehicleModels(models);
-      } catch (error) {
-        console.error("Failed to load vehicle models:", error);
-      } finally {
-        setIsLoadingModels(false);
-      }
-    };
 
     const fetchManufacturers = async () => {
       setIsLoadingManufacturers(true);
@@ -158,7 +165,7 @@ const AddCustomerVehicle: React.FC<Props> = ({
       }
     };
 
-    fetchModels();
+    loadVehicleModels();
     fetchManufacturers();
   }, [open]);
 
@@ -241,17 +248,84 @@ const AddCustomerVehicle: React.FC<Props> = ({
   const removeVehicle = (idx: number) =>
     setVehicles(p => p.filter((_, i) => i !== idx));
 
+  const isYearInCatalogRange = (customerYear: number | string, catalogYearStr: string): boolean => {
+    if (!catalogYearStr) return true;
+    const customerYearNum = Number(customerYear);
+    if (isNaN(customerYearNum)) return false;
+
+    const cleanStr = catalogYearStr.replace(/\s+/g, "");
+
+    if (cleanStr.includes("-")) {
+      const [start, end] = cleanStr.split("-").map(Number);
+      if (!isNaN(start) && !isNaN(end)) {
+        return customerYearNum >= start && customerYearNum <= end;
+      }
+    }
+
+    const years = cleanStr.split(",").map(Number);
+    if (years.some(y => y === customerYearNum)) {
+      return true;
+    }
+
+    return cleanStr === String(customerYear);
+  };
+
+  const handleVariantSaved = async (variantData: any) => {
+    if (variantTargetVehicleIndex === -1) return;
+    const targetVehicle = vehicles[variantTargetVehicleIndex];
+    if (!targetVehicle) return;
+
+    // Find model ID of current vehicle
+    const foundModel = vehicleModels.find(
+      m => normalize(m.make) === normalize(targetVehicle.make) && normalize(m.model) === normalize(targetVehicle.model)
+    );
+    const modelId = foundModel?.modelId;
+
+    if (!modelId) {
+      toast.error("Please ensure the Make and Model are registered to the catalog first.");
+      return;
+    }
+
+    const payload = {
+      car_model_id: Number(modelId),
+      variant_name: variantData.name,
+      year: variantData.year || null,
+      engine_displacement: variantData.engine || null,
+      transmission_type: variantData.transmission || null,
+      drivetrain: variantData.drivetrain || null,
+      oil_capacity: null,
+      service_class: null,
+    };
+
+    try {
+      await api.post(`/vehicles/models/${modelId}/variants`, payload);
+      toast.success("Variant added to catalog");
+      
+      // Reload vehicle models list
+      await loadVehicleModels();
+
+      // Pre-select new variant name in target vehicle row
+      updateVehicle(variantTargetVehicleIndex, "variant", variantData.name);
+    } catch (error) {
+      console.error("Failed to save variant:", error);
+      toast.error("Failed to register variant to catalog");
+    }
+  };
+
   /* ================= SAVE ================= */
   const executeSave = async (normalizedVehiclesList: any[]) => {
     setIsSaving(true);
     for (const nv of normalizedVehiclesList) {
-      if (!nv.vehicleModelId) {
+      // Find if this model exists in the catalog to avoid duplicate API calls
+      const modelMatch = vehicleModels.find(
+        m => normalize(m.make) === normalize(nv.make) && normalize(m.model) === normalize(nv.model)
+      );
+      if (!modelMatch && !nv.vehicleModelId) {
         try {
           await api.post('/products/vehicles/custom', {
             make: nv.make,
-            model: nv.model
+            model: nv.model,
           });
-          nv.vehicleModelId = ""; // Important: We do not create VehicleVariants, so this remains empty.
         } catch (error) {
           console.error("Failed to add custom vehicle", error);
           toast.error("Failed to add vehicle to database");
@@ -294,16 +368,28 @@ const AddCustomerVehicle: React.FC<Props> = ({
       const formattedModel = toTitleCase(v.model);
       const formattedVariant = toTitleCase(v.variant).trim() || "";
 
-      let match = vehicleModels.find(
+      // Check if make & model exists in catalog
+      let modelExists = vehicleModels.some(
         m =>
           normalize(m.make) === normalize(formattedMake) &&
           normalize(m.model) === normalize(formattedModel)
       );
 
+      if (!modelExists) {
+         hasNewVehicles = true;
+      }
+
+      // Find matching catalog variant to link vehicle_variant_id
+      let match = vehicleModels.find(
+        m =>
+          normalize(m.make) === normalize(formattedMake) &&
+          normalize(m.model) === normalize(formattedModel) &&
+          normalize(m.variant) === normalize(formattedVariant) &&
+          isYearInCatalogRange(v.year, String(m.year))
+      );
+
       if (match) {
          vehicleModelId = match.id;
-      } else {
-         hasNewVehicles = true;
       }
 
       normalizedVehicles.push({
@@ -436,7 +522,13 @@ const AddCustomerVehicle: React.FC<Props> = ({
                         }}
                         items={variants(v.make, v.model)}
                         placeholder=""
-                        freeText
+                        allowAdd={!!(v.make && v.model)}
+                        addLabel="Variant to Catalog"
+                        onAdd={(searchVal) => {
+                          setVariantTargetVehicleIndex(idx);
+                          setVariantInitialSearch(searchVal);
+                          setAddVariantOpen(true);
+                        }}
                       />
                     </div>
 
@@ -515,6 +607,13 @@ const AddCustomerVehicle: React.FC<Props> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AddVehicleVariant
+        open={addVariantOpen}
+        onOpenChange={setAddVariantOpen}
+        variant={variantInitialSearch ? { name: variantInitialSearch } : null}
+        onSaved={handleVariantSaved}
+      />
     </>
   );
 };

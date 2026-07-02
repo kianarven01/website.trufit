@@ -3,10 +3,12 @@
 namespace App\Domains\Product\Infrastructure\Repositories;
 
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Domain\Models\ProductPrice;
+use App\Domains\Inventory\Domain\Models\Inventory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,6 +19,14 @@ class EloquentProductRepository implements ProductRepositoryInterface
         return DB::transaction(function () use ($productData, $suppliers, $compatibility) {
             $productId = (string) Str::uuid();
 
+            $categoryId = $productData['category_id'] ?? null;
+
+            if (!empty($productData['part_id'])) {
+                $categoryId = Part::query()
+                    ->where('id', (int) $productData['part_id'])
+                    ->value('category_id');
+            }
+
             // Create the product
             $product = Product::create([
                 'id' => $productId,
@@ -24,7 +34,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'SKU' => $productData['SKU'] ?? $productData['sku'] ?? null,
                 'description' => $productData['description'] ?? null,
                 'image_path' => $productData['image_path'] ?? null,
-                'category_id' => $productData['category_id'] ?? null,
+                'category_id' => $categoryId,
                 'barcode' => $productData['barcode'] ?? $productData['SKU'] ?? $productData['sku'] ?? null,
                 'part_number' => $productData['part_number'] ?? null,
                 'is_oem' => $productData['is_oem'] ?? false,

@@ -26,6 +26,7 @@ Route::prefix('products')->group(function () {
     Route::post('/categories', [ProductReferenceController::class, 'storeCategory']);
     Route::put('/categories/{id}', [ProductReferenceController::class, 'updateCategory']);
     Route::delete('/categories/{id}', [ProductReferenceController::class, 'deleteCategory']);
+    
 
     Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories']);
     Route::post('/service-categories', [ProductReferenceController::class, 'storeServiceCategory']);

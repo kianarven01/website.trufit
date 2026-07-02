@@ -41,6 +41,14 @@ class ProductController extends Controller
     ): JsonResponse {
         $validated = $request->validated();
 
+        if (!empty($validated['part_id'])) {
+            $part = Part::query()
+                ->where('id', (int) $validated['part_id'])
+                ->firstOrFail();
+
+            $validated['category_id'] = $part->category_id;
+        }
+
         if (
             empty($validated['SKU']) &&
             !empty($validated['manufacturer_id']) &&

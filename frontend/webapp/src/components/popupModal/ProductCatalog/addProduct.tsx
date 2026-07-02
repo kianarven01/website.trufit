@@ -83,6 +83,7 @@ export default function ProductModal({
     category_id: "",
     description: "",
   });
+  const [pendingPartReferenceForm, setPendingPartReferenceForm] = useState<typeof referenceForm | null>(null);
 
   const [units, setUnits] = useState<Option[]>([]);
   const [parts, setParts] = useState<PartOption[]>([]);
@@ -134,13 +135,19 @@ export default function ProductModal({
     );
 
     setForm((prev) => {
-      if (!prev.category_id) return prev;
+      if (!prev.part_id) return prev;
 
-      const stillExists = nextCategories.some(
-        (category) => String(category.id) === String(prev.category_id)
+      const selectedPart = parts.find(
+        (part) => String(part.id) === String(prev.part_id)
       );
 
-      return stillExists
+      if (!selectedPart?.category_id) return prev;
+
+      const categoryStillExists = nextCategories.some(
+        (category) => String(category.id) === String(selectedPart.category_id)
+      );
+
+      return categoryStillExists
         ? prev
         : {
             ...prev,
@@ -354,33 +361,27 @@ export default function ProductModal({
     }
   };
 
-  const filteredParts = useMemo(() => {
-    if (!form.category_id) {
-      return parts;
+  const selectedPart = useMemo(() => {
+    return parts.find((part) => String(part.id) === String(form.part_id)) || null;
+  }, [parts, form.part_id]);
+
+  const selectedCategoryName = useMemo(() => {
+    if (selectedPart?.category_name) {
+      return selectedPart.category_name;
     }
 
-    return parts.filter(
-      (part) => String(part.category_id) === String(form.category_id)
+    const selectedCategory = localCategories.find(
+      (category) => String(category.id) === String(selectedPart?.category_id)
     );
-  }, [parts, form.category_id]);
 
-  const handleCategoryChange = (categoryIdValue: string) => {
-    setForm((prev) => {
-      const currentPart = parts.find(
-        (part) => String(part.id) === String(prev.part_id)
-      );
+    return selectedCategory
+      ? getOptionLabel(selectedCategory)
+      : "Uncategorized";
+  }, [form.part_id, parts, localCategories]);
 
-      const shouldClearPart =
-        currentPart &&
-        String(currentPart.category_id) !== String(categoryIdValue);
-
-      return {
-        ...prev,
-        category_id: categoryIdValue,
-        part_id: shouldClearPart ? "" : prev.part_id,
-      };
-    });
-  };
+  const filteredParts = useMemo(() => {
+    return parts;
+  }, [parts]);
 
   const handlePartChange = (partIdValue: string) => {
     const selectedPart = parts.find(
@@ -506,7 +507,7 @@ export default function ProductModal({
       name: "",
       code: "",
       abbreviation: "",
-      category_id: type === "part" ? form.category_id : "",
+      category_id: type === "part" ? selectedPart?.category_id || "" : "",
       description: "",
     });
   };
@@ -514,6 +515,7 @@ export default function ProductModal({
   const closeReferenceModal = () => {
     setReferenceModalType(null);
     setSavingReference(false);
+    setPendingPartReferenceForm(null);
     setReferenceForm({
       name: "",
       code: "",
@@ -550,7 +552,16 @@ export default function ProductModal({
         };
 
         setLocalCategories((prev) => [...prev, newCategory]);
-        updateField("category_id", newCategory.id);
+
+        if (pendingPartReferenceForm) {
+          setReferenceModalType("part");
+          setReferenceForm({
+            ...pendingPartReferenceForm,
+            category_id: newCategory.id,
+          });
+          setPendingPartReferenceForm(null);
+          return;
+        }
       }
 
       if (referenceModalType === "manufacturer") {
@@ -598,7 +609,6 @@ export default function ProductModal({
         const res = await api.post("/products/parts", {
           name,
           category_id: selectedCategoryId,
-          code: referenceForm.code.trim() || undefined,
           description: referenceForm.description.trim() || undefined,
         });
 
@@ -606,7 +616,7 @@ export default function ProductModal({
         const newPart: PartOption = {
           id: String(created.id),
           name: String(created.name || name),
-          code: created.code ?? (referenceForm.code.trim() || null),
+          code: created.code ?? null,
           description: created.description ?? (referenceForm.description.trim() || null),
           category_id: String(created.category_id || selectedCategoryId),
           category_name: created.category_name ?? null,
@@ -652,10 +662,6 @@ export default function ProductModal({
 
       if (form.description.trim()) {
         payload.append("description", form.description.trim());
-      }
-
-      if (form.category_id) {
-        payload.append("category_id", form.category_id);
       }
 
       if (form.part_id) {
@@ -732,7 +738,7 @@ export default function ProductModal({
     }
   };
 
-  const canSave = form.name.trim() && form.part_number.trim();
+  const canSave = form.name.trim() && form.part_number.trim() && form.part_id;
 
   return (
     <>
@@ -898,6 +904,37 @@ export default function ProductModal({
           </div>
 
           <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">
+              Part
+            </span>
+
+            <select
+              className="w-full border rounded-md px-3 py-2 bg-background"
+              value={form.part_id}
+              onChange={(e) => {
+                const value = e.target.value;
+
+                if (value === ADD_NEW_PART) {
+                  openReferenceModal("part");
+                  return;
+                }
+
+                handlePartChange(value);
+              }}
+            >
+              <option value="">Select part</option>
+
+              {filteredParts.map((part) => (
+                <option key={part.id} value={part.id}>
+                  {part.name}
+                </option>
+              ))}
+
+              <option value={ADD_NEW_PART}>+ Add new part</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
                 Category
@@ -911,56 +948,10 @@ export default function ProductModal({
               </button>
             </div>
 
-            <select
-              className="w-full border rounded-md px-3 py-2 bg-background"
-              value={form.category_id}
-              onChange={(e) => {
-                const value = e.target.value;
-
-                if (value === ADD_NEW_CATEGORY) {
-                  openReferenceModal("category");
-                  return;
-                }
-
-                handleCategoryChange(value);
-              }}
-            >
-              <option value="">Select category</option>
-
-              {localCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {getOptionLabel(category)}
-                </option>
-              ))}
-
-              <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
-            </select>
+            <div className="w-full border rounded-md px-3 py-2 bg-muted/30 text-sm min-h-10 flex items-center">
+              {form.part_id ? selectedCategoryName || "Uncategorized part" : "Select a part first"}
+            </div>
           </div>
-
-          <select
-            className="border rounded-md px-3 py-2 bg-background"
-            value={form.part_id}
-            onChange={(e) => {
-              const value = e.target.value;
-
-              if (value === ADD_NEW_PART) {
-                openReferenceModal("part");
-                return;
-              }
-
-              handlePartChange(value);
-            }}
-          >
-            <option value="">Select part</option>
-
-            {filteredParts.map((part) => (
-              <option key={part.id} value={part.id}>
-                {part.name}
-              </option>
-            ))}
-
-            <option value={ADD_NEW_PART}>+ Add new part</option>
-          </select>
 
           <select
             className="border rounded-md px-3 py-2 bg-background"
@@ -1184,7 +1175,6 @@ export default function ProductModal({
           />
 
           {(referenceModalType === "category" ||
-            referenceModalType === "part" ||
             referenceModalType === "manufacturer") && (
             <Input
               placeholder="Code (optional)"
@@ -1216,12 +1206,27 @@ export default function ProductModal({
               <select
                 className="w-full border rounded-md px-3 py-2 bg-background"
                 value={referenceForm.category_id}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const value = e.target.value;
+
+                  if (value === ADD_NEW_CATEGORY) {
+                    setPendingPartReferenceForm(referenceForm);
+                    setReferenceModalType("category");
+                    setReferenceForm({
+                      name: "",
+                      code: "",
+                      abbreviation: "",
+                      category_id: "",
+                      description: "",
+                    });
+                    return;
+                  }
+
                   setReferenceForm((prev) => ({
                     ...prev,
-                    category_id: e.target.value,
-                  }))
-                }
+                    category_id: value,
+                  }));
+                }}
               >
                 <option value="">Select category for this part</option>
                 {localCategories.map((category) => (
@@ -1229,6 +1234,7 @@ export default function ProductModal({
                     {getOptionLabel(category)}
                   </option>
                 ))}
+                <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
               </select>
 
               <Input

@@ -30,7 +30,7 @@ class StoreProductRequest extends FormRequest
 
             'barcode' => ['nullable', 'string', 'max:255'],
             'part_number' => ['required', 'string', 'max:255'],
-            'part_id' => ['nullable', 'integer'],
+            'part_id' => ['required', 'integer'],
 
             'is_oem' => ['nullable', 'boolean'],
             'oem_reference_number' => ['nullable', 'string', 'max:255'],
@@ -56,6 +56,12 @@ class StoreProductRequest extends FormRequest
 
             if ($barcode && DB::table('Main.Products')->where('barcode', $barcode)->exists()) {
                 $validator->errors()->add('barcode', 'The barcode has already been taken.');
+            }
+
+            $partId = $this->input('part_id');
+
+            if (!$partId || !DB::table('Main.Parts')->where('id', $partId)->exists()) {
+                $validator->errors()->add('part_id', 'Please select a valid part.');
             }
         });
     }

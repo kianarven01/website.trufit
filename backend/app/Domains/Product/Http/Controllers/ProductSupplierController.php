@@ -36,4 +36,21 @@ class ProductSupplierController extends Controller
             'data' => $this->formatter->format($updatedProduct),
         ], 201);
     }
+
+    public function destroy(string $productId, string $productSupplierId): JsonResponse
+    {
+        try {
+            $product = Product::findOrFail($productId);
+            $updatedProduct = $this->supplierService->removeSupplier($product, $productSupplierId);
+
+            return response()->json([
+                'message' => 'Supplier removed from product successfully.',
+                'data' => $this->formatter->format($updatedProduct),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
 }

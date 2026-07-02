@@ -5,6 +5,7 @@ namespace App\Domains\Product\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Domains\Product\Application\Services\ProductVehicleCompatibilityService;
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -38,5 +39,16 @@ class ProductVehicleCompatibilityController extends Controller
         $result = $this->compatibilityService->syncToEquivalents($product);
 
         return response()->json($result);
+    }
+
+    public function destroy(string $productId, string $compatibilityId): JsonResponse
+    {
+        $product = Product::findOrFail($productId);
+        $compatibility = ProductVehicleCompatibility::where('product_id', $productId)->findOrFail($compatibilityId);
+        $compatibility->delete();
+
+        return response()->json([
+            'message' => 'Vehicle compatibility removed successfully.',
+        ]);
     }
 }

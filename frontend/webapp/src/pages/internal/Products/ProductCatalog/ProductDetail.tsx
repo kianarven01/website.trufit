@@ -685,6 +685,43 @@ const ProductDetail: React.FC = () => {
     }
   };
 
+  const handleRemoveSupplier = async (supplierRowId: string) => {
+    if (!product?.id) return;
+
+    const confirmed = window.confirm("Are you sure you want to remove this supplier from the product?");
+    if (!confirmed) return;
+
+    try {
+      const res = await api.delete(`/products/${product.id}/suppliers/${supplierRowId}`);
+      
+      showToast("success", "Supplier removed", "Supplier was successfully removed from the product.");
+      await loadProduct();
+    } catch (error: any) {
+      console.error("Failed to remove supplier:", error);
+      const errorMsg = error?.response?.data?.message || "Failed to remove supplier from product.";
+      showToast("error", "Failed to remove supplier", errorMsg);
+    }
+  };
+
+  const handleRemoveVehicleCompatibility = async (compatibilityId: string) => {
+    if (!product?.id) return;
+
+    const confirmed = window.confirm("Are you sure you want to remove this vehicle compatibility?");
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/products/${product.id}/vehicle-compatibilities/${compatibilityId}`);
+      
+      showToast("success", "Vehicle compatibility removed", "Vehicle compatibility was successfully removed.");
+      await loadProduct();
+      await loadEquivalentGroups(product.id);
+    } catch (error: any) {
+      console.error("Failed to remove vehicle compatibility:", error);
+      const errorMsg = error?.response?.data?.message || "Failed to remove vehicle compatibility.";
+      showToast("error", "Failed to remove vehicle", errorMsg);
+    }
+  };
+
   const handleSyncVehicleCompatibility = async () => {
     if (!product?.id) return;
 
@@ -933,7 +970,7 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen px-6 py-4 space-y-6">
+    <div className="w-full h-full overflow-y-auto px-6 pt-1 pb-6 space-y-6">
       {toast && (
         <AppToast
           type={toast.type}
@@ -1286,39 +1323,51 @@ const ProductDetail: React.FC = () => {
                       const sellingPrice = getSupplierSellingPrice(supplier);
 
                       return (
-                        <button
-                          type="button"
-                          key={supplierRowId}
-                          onClick={() => setSelectedSupplierId(supplierRowId)}
-                          className={`w-full rounded-lg border p-3 text-left transition ${
-                            isSelected
-                              ? "border-primary bg-primary/10"
-                              : "border-border hover:bg-muted"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium">
-                                {getSupplierName(supplier)}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Cost:{" "}
-                                {supplierCost !== null
-                                  ? `₱${supplierCost.toFixed(2)}`
-                                  : "-"}
-                              </p>
-                            </div>
+                        <div key={supplierRowId} className="relative group/supplier">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSupplierId(supplierRowId)}
+                            className={`w-full rounded-lg border p-3 pr-10 text-left transition ${
+                              isSelected
+                                ? "border-primary bg-primary/10"
+                                : "border-border hover:bg-muted"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {getSupplierName(supplier)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Cost:{" "}
+                                  {supplierCost !== null
+                                    ? `₱${supplierCost.toFixed(2)}`
+                                    : "-"}
+                                </p>
+                              </div>
 
-                            <div className="text-right">
-                              <p className="text-xs text-muted-foreground">
-                                Selling Price
-                              </p>
-                              <p className="text-sm font-semibold">
-                                {formatPeso(sellingPrice)}
-                              </p>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground">
+                                  Selling Price
+                                </p>
+                                <p className="text-sm font-semibold">
+                                  {formatPeso(sellingPrice)}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleRemoveSupplier(supplierRowId);
+                            }}
+                            className="absolute top-1/2 -translate-y-1/2 right-3 p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover/supplier:opacity-100 transition-opacity"
+                            title="Remove supplier"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -1346,19 +1395,29 @@ const ProductDetail: React.FC = () => {
                   product.compatibleVehicles.map((vehicle, idx) => (
                     <div
                       key={vehicle.id || idx}
-                      className="grid grid-cols-4 gap-2 text-xs border-b pb-2"
+                      className="flex items-center justify-between gap-2 text-xs border-b pb-2"
                     >
-                      <span>{vehicle.make}</span>
-                      <span>{vehicle.model}</span>
-                      <span>{vehicle.variant}</span>
-                      <span>
-                        {vehicle.year}
-                        {vehicle.notes ? (
-                          <span className="block text-[10px] text-muted-foreground">
-                            {vehicle.notes}
-                          </span>
-                        ) : null}
-                      </span>
+                      <div className="grid grid-cols-4 gap-2 flex-1">
+                        <span>{vehicle.make}</span>
+                        <span>{vehicle.model}</span>
+                        <span>{vehicle.variant}</span>
+                        <span>
+                          {vehicle.year}
+                          {vehicle.notes ? (
+                            <span className="block text-[10px] text-muted-foreground">
+                              {vehicle.notes}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => vehicle.id && void handleRemoveVehicleCompatibility(vehicle.id)}
+                        className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition shrink-0"
+                        title="Remove compatibility"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))
                 ) : (

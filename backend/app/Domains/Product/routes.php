@@ -53,6 +53,7 @@ Route::prefix('products')->group(function () {
     // Supplier routes used by Product screens
     Route::get('/suppliers', [SupplierController::class, 'index']);
     Route::post('/{productId}/suppliers', [ProductSupplierController::class, 'store']);
+    Route::delete('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'destroy']);
 
     // Equivalent group routes
     Route::get('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'index']);
@@ -64,6 +65,7 @@ Route::prefix('products')->group(function () {
     // Vehicle compatibility routes
     Route::post('/{productId}/vehicle-compatibilities', [ProductVehicleCompatibilityController::class, 'store']);
     Route::post('/{productId}/vehicle-compatibilities/sync-equivalents', [ProductVehicleCompatibilityController::class, 'syncToEquivalents']);
+    Route::delete('/{productId}/vehicle-compatibilities/{compatibilityId}', [ProductVehicleCompatibilityController::class, 'destroy']);
 
     // SKU preview route
     Route::get('/sku-preview', [ProductSkuController::class, 'preview']);

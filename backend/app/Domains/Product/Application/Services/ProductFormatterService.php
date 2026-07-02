@@ -140,6 +140,8 @@ class ProductFormatterService
             return [];
         }
 
+        $product->vehicleCompatibilities->loadMissing('vehicleVariant.vehicleModel.manufacturer');
+
         return $product->vehicleCompatibilities
             ->map(function ($compatibility) {
                 $variant = $compatibility->vehicleVariant;
@@ -149,12 +151,20 @@ class ProductFormatterService
                     'product_id' => $compatibility->product_id,
                     'car_variant_id' => $compatibility->car_variant_id,
                     'notes' => $compatibility->notes,
-                    'vehicle_variant' => $variant,
-                    'name' => $variant?->name
-                        ?? $variant?->variant_name
-                        ?? $variant?->model_name
-                        ?? $variant?->variant
-                        ?? null,
+                    'vehicle_variant' => $variant ? [
+                        'id' => $variant->id,
+                        'variant_name' => $variant->variant_name,
+                        'variant' => $variant->variant_name,
+                        'year' => $variant->year,
+                        'model' => $variant->vehicleModel?->model,
+                        'make' => $variant->vehicleModel?->manufacturer?->name,
+                        'vehicle_model' => $variant->vehicleModel ? [
+                            'id' => $variant->vehicleModel->id,
+                            'model' => $variant->vehicleModel->model,
+                            'make' => $variant->vehicleModel->manufacturer?->name,
+                        ] : null,
+                    ] : null,
+                    'name' => $variant?->variant_name,
                 ];
             })
             ->values()

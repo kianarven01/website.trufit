@@ -58,9 +58,41 @@ const SupplierDetails: React.FC = () => {
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [supplierCost, setSupplierCost] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
+  const [markup, setMarkup] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [isVat, setIsVat] = useState(false);
   const [vatPercent, setVatPercent] = useState("12");
+
+  const handleCostChange = (val: string) => {
+    setSupplierCost(val);
+    const costNum = parseFloat(val);
+    const priceNum = parseFloat(sellingPrice);
+    if (!isNaN(costNum) && costNum > 0 && !isNaN(priceNum)) {
+      const calculatedMarkup = ((priceNum - costNum) / costNum) * 100;
+      setMarkup(calculatedMarkup.toFixed(2));
+    }
+  };
+
+  const handleSellingPriceChange = (val: string) => {
+    setSellingPrice(val);
+    const costNum = parseFloat(supplierCost);
+    const priceNum = parseFloat(val);
+    if (!isNaN(costNum) && costNum > 0 && !isNaN(priceNum)) {
+      const calculatedMarkup = ((priceNum - costNum) / costNum) * 100;
+      setMarkup(calculatedMarkup.toFixed(2));
+    }
+  };
+
+  const handleMarkupChange = (val: string) => {
+    setMarkup(val);
+    const costNum = parseFloat(supplierCost);
+    const markupNum = parseFloat(val);
+    if (!isNaN(costNum) && !isNaN(markupNum)) {
+      const calculatedPrice = costNum * (1 + markupNum / 100);
+      setSellingPrice(calculatedPrice.toFixed(2));
+    }
+  };
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
@@ -139,12 +171,16 @@ const SupplierDetails: React.FC = () => {
         productId: selectedProductId,
         cost: Number(supplierCost),
         isVat: isVat,
-        vatPercent: isVat ? Number(vatPercent) : null
+        vatPercent: isVat ? Number(vatPercent) : null,
+        sellingPrice: sellingPrice ? Number(sellingPrice) : null,
+        markup: markup ? Number(markup) : null
       });
       toast.success("Product linked successfully.");
       setIsLinkOpen(false);
       setSelectedProductId("");
       setSupplierCost("");
+      setSellingPrice("");
+      setMarkup("");
       setIsVat(false);
       setVatPercent("12");
       void loadSupplier();
@@ -160,12 +196,16 @@ const SupplierDetails: React.FC = () => {
       await api.put(`/suppliers/${supplierId}/products/${selectedProduct.id}`, {
         cost: Number(supplierCost),
         isVat: isVat,
-        vatPercent: isVat ? Number(vatPercent) : null
+        vatPercent: isVat ? Number(vatPercent) : null,
+        sellingPrice: sellingPrice ? Number(sellingPrice) : null,
+        markup: markup ? Number(markup) : null
       });
       toast.success("Supplier cost updated successfully.");
       setIsCostOpen(false);
       setSelectedProduct(null);
       setSupplierCost("");
+      setSellingPrice("");
+      setMarkup("");
       setIsVat(false);
       setVatPercent("12");
       void loadSupplier();
@@ -366,12 +406,13 @@ const SupplierDetails: React.FC = () => {
                   <Table className="table-fixed w-full">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-[25%]">Product Name</TableHead>
+                        <TableHead className="w-[20%]">Product Name</TableHead>
                         <TableHead className="w-[15%]">Part Number</TableHead>
-                        <TableHead className="w-[15%]">Price</TableHead>
-                        <TableHead className="w-[20%]">VAT Status</TableHead>
+                        <TableHead className="w-[15%]">Supplier Cost</TableHead>
+                        <TableHead className="w-[15%]">Selling Price</TableHead>
+                        <TableHead className="w-[15%]">VAT Status</TableHead>
                         <TableHead className="w-[10%]">Stock</TableHead>
-                        <TableHead className="w-[15%] text-right pr-4">Actions</TableHead>
+                        <TableHead className="w-[10%] text-right pr-4">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                   </Table>
@@ -382,7 +423,7 @@ const SupplierDetails: React.FC = () => {
                       <TableBody>
                         {paginate(products).map((prod, index) => (
                           <TableRow key={prod.id}>
-                            <TableCell className="w-[25%] truncate">
+                            <TableCell className="w-[20%] truncate">
                               {prod.name}
                             </TableCell>
                             <TableCell className="w-[15%]">
@@ -391,7 +432,14 @@ const SupplierDetails: React.FC = () => {
                             <TableCell className="w-[15%]">
                               ₱{Number(prod.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="w-[20%]">
+                            <TableCell className="w-[15%]">
+                              {prod.sellingPrice !== null && prod.sellingPrice !== undefined ? (
+                                `₱${Number(prod.sellingPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                              ) : (
+                                <span className="text-muted-foreground italic text-xs">No price set</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="w-[15%]">
                               {prod.isVat ? (
                                 <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20 font-normal">
                                   VAT ({prod.vatPercent}%)
@@ -405,7 +453,7 @@ const SupplierDetails: React.FC = () => {
                             <TableCell className="w-[10%]">
                               {prod.stock}
                             </TableCell>
-                            <TableCell className="w-[15%] text-right pr-4">
+                            <TableCell className="w-[10%] text-right pr-4">
                               <div className="flex justify-end gap-1.5">
                                 <Button
                                   variant="ghost"
@@ -414,12 +462,14 @@ const SupplierDetails: React.FC = () => {
                                   onClick={() => {
                                     setSelectedProduct(prod);
                                     setSupplierCost(prod.price.toString());
+                                    setSellingPrice(prod.sellingPrice ? prod.sellingPrice.toString() : "");
+                                    setMarkup(prod.markup ? prod.markup.toString() : "");
                                     setIsVat(prod.isVat ?? false);
                                     setVatPercent((prod.vatPercent ?? 12).toString());
                                     setIsCostOpen(true);
                                   }}
                                 >
-                                  <Pencil className="h-3.5 w-3.5" />
+                                  <Edit className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -522,15 +572,41 @@ const SupplierDetails: React.FC = () => {
                   ))}
               </select>
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Supplier Cost</Label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={supplierCost}
-                onChange={(e) => setSupplierCost(e.target.value)}
-              />
+            
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Supplier Cost</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={supplierCost}
+                  onChange={(e) => handleCostChange(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Markup (%)</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={markup}
+                  onChange={(e) => handleMarkupChange(e.target.value)}
+                  disabled={!supplierCost}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Selling Price</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={sellingPrice}
+                  onChange={(e) => handleSellingPriceChange(e.target.value)}
+                  disabled={!supplierCost}
+                />
+              </div>
             </div>
+
             <div className="flex gap-4 items-center pt-2">
               <div className="flex-1 space-y-2">
                 <Label className="text-xs">Tax Type</Label>
@@ -584,19 +660,43 @@ const SupplierDetails: React.FC = () => {
       <Dialog open={isCostOpen} onOpenChange={setIsCostOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Supplier Cost</DialogTitle>
+            <DialogTitle>Edit Product Pricing</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm font-semibold">{selectedProduct?.name}</p>
-            <div className="space-y-2">
-              <Label className="text-xs">Supplier Cost</Label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={supplierCost}
-                onChange={(e) => setSupplierCost(e.target.value)}
-              />
+            
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Supplier Cost</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={supplierCost}
+                  onChange={(e) => handleCostChange(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Markup (%)</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={markup}
+                  onChange={(e) => handleMarkupChange(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Selling Price</Label>
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={sellingPrice}
+                  onChange={(e) => handleSellingPriceChange(e.target.value)}
+                />
+              </div>
             </div>
+
             <div className="flex gap-4 items-center pt-2">
               <div className="flex-1 space-y-2">
                 <Label className="text-xs">Tax Type</Label>

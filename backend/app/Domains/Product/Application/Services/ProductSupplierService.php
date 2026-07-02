@@ -61,4 +61,50 @@ class ProductSupplierService
             ]);
         });
     }
+
+    public function removeSupplier(Product $product, string $productSupplierId): Product
+    {
+        return DB::transaction(function () use ($product, $productSupplierId) {
+            $productSupplier = ProductSupplier::where('product_id', $product->id)
+                ->findOrFail($productSupplierId);
+
+            $hasStockOrReserved = DB::table('Main.Inventory')
+                ->where('product_supplier_id', $productSupplierId)
+                ->where(function ($query) {
+                    $query->where('quantity_on_hand', '>', 0)
+                        ->orWhere('reserved_quantity', '>', 0);
+                })
+                ->exists();
+
+            if ($hasStockOrReserved) {
+                throw new \Exception("Cannot remove supplier. There is active stock or reserved quantity associated with this supplier.");
+            }
+
+            // Clean up inventory rows linked to this supplier
+            DB::table('Main.Inventory')
+                ->where('product_supplier_id', $productSupplierId)
+                ->delete();
+
+            // Clean up price rows linked to this supplier
+            DB::table('Main.ProductPrice')
+                ->where('product_supplier_id', $productSupplierId)
+                ->delete();
+
+            // Delete the supplier link
+            $productSupplier->delete();
+
+            return $product->fresh([
+                'category',
+                'manufacturer',
+                'unitRelation',
+                'part',
+                'productSuppliers.supplier',
+                'productSuppliers.price',
+                'inventoryRelation',
+                'inventoryRows.productSupplier.supplier',
+                'inventoryRows.productSupplier.price',
+                'vehicleCompatibilities.vehicleVariant',
+            ]);
+        });
+    }
 }

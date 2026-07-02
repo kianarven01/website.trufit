@@ -43,6 +43,9 @@ class SupplierController extends Controller
         try {
             $supplier = $useCase->execute($id);
 
+            $productSupplierIds = $supplier->products->map(fn ($p) => $p->pivot->id)->filter()->all();
+            $prices = \App\Domains\Product\Domain\Models\ProductPrice::whereIn('product_supplier_id', $productSupplierIds)->get()->keyBy('product_supplier_id');
+
             return response()->json([
                 'data' => [
                     'id' => $supplier->id,
@@ -54,7 +57,9 @@ class SupplierController extends Controller
                     'viber' => $supplier->Viber,
                     'address' => $supplier->address,
                     'supplierCode' => $supplier->supplier_code,
-                    'products' => $supplier->products->map(function ($product) {
+                    'products' => $supplier->products->map(function ($product) use ($prices) {
+                        $pivotId = $product->pivot->id;
+                        $priceObj = $prices->get($pivotId);
                         return [
                             'id' => $product->id,
                             'name' => $product->product_name,
@@ -63,6 +68,8 @@ class SupplierController extends Controller
                             'isVat' => $product->pivot->is_vat ?? false,
                             'vatPercent' => $product->pivot->vat_percent ?? null,
                             'stock' => $product->inventory->quantity ?? 0,
+                            'sellingPrice' => $priceObj ? $priceObj->Price : null,
+                            'markup' => $priceObj ? $priceObj->Markup : null,
                         ];
                     })->values(),
                 ],
@@ -155,6 +162,8 @@ class SupplierController extends Controller
             'cost' => 'required|numeric|min:0',
             'isVat' => 'nullable|boolean',
             'vatPercent' => 'nullable|numeric|min:0|max:100',
+            'sellingPrice' => 'nullable|numeric|min:0',
+            'markup' => 'nullable|numeric',
         ]);
 
         $useCase->execute(
@@ -162,7 +171,9 @@ class SupplierController extends Controller
             $validated['productId'],
             $validated['cost'],
             $validated['isVat'] ?? false,
-            $validated['vatPercent'] ?? null
+            $validated['vatPercent'] ?? null,
+            $validated['sellingPrice'] ?? null,
+            $validated['markup'] ?? null
         );
 
         return response()->json(['message' => 'Product linked to supplier successfully']);
@@ -184,6 +195,8 @@ class SupplierController extends Controller
             'cost' => 'required|numeric|min:0',
             'isVat' => 'nullable|boolean',
             'vatPercent' => 'nullable|numeric|min:0|max:100',
+            'sellingPrice' => 'nullable|numeric|min:0',
+            'markup' => 'nullable|numeric',
         ]);
 
         try {
@@ -192,7 +205,9 @@ class SupplierController extends Controller
                 $productId,
                 $validated['cost'],
                 $validated['isVat'] ?? false,
-                $validated['vatPercent'] ?? null
+                $validated['vatPercent'] ?? null,
+                $validated['sellingPrice'] ?? null,
+                $validated['markup'] ?? null
             );
             return response()->json(['message' => 'Product cost updated successfully']);
         } catch (ModelNotFoundException $e) {

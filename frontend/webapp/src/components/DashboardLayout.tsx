@@ -655,28 +655,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="hidden md:block ml-2">
               <Breadcrumb>
                 <BreadcrumbList className="gap-1.5 sm:gap-2">
-                  {breadcrumbItems.map((item, idx) => (
-                    <React.Fragment key={item.path}>
-                      {idx > 0 && <BreadcrumbSeparator className="text-muted-foreground/30" />}
-                      <BreadcrumbItem>
-                        {idx === breadcrumbItems.length - 1 || !item.isClickable ? (
-                          <BreadcrumbPage className={cn(
-                            "text-[13px] font-semibold",
-                            idx === breadcrumbItems.length - 1 ? "text-foreground/90" : "text-muted-foreground/60"
-                          )}>
-                            {item.label}
-                          </BreadcrumbPage>
-                        ) : (
-                          <BreadcrumbLink 
-                            onClick={() => navigate(item.path)}
-                            className="text-[13px] text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
-                          >
-                            {item.label}
-                          </BreadcrumbLink>
-                        )}
-                      </BreadcrumbItem>
-                    </React.Fragment>
-                  ))}
+                  {breadcrumbItems
+                    .filter((item) => !item.path.endsWith("/product-catalog/products"))
+                    .map((item, idx, arr) => (
+                      <React.Fragment key={item.path}>
+                        {idx > 0 && <BreadcrumbSeparator className="text-muted-foreground/30" />}
+                        <BreadcrumbItem>
+                          {idx === arr.length - 1 || !item.isClickable ? (
+                            <BreadcrumbPage className={cn(
+                              "text-[13px] font-semibold",
+                              idx === arr.length - 1 ? "text-foreground/90" : "text-muted-foreground/60"
+                            )}>
+                              {item.label}
+                            </BreadcrumbPage>
+                          ) : (
+                            <BreadcrumbLink 
+                              onClick={() => navigate(item.path)}
+                              className="text-[13px] text-muted-foreground/60 hover:text-foreground cursor-pointer transition-colors"
+                            >
+                              {item.label}
+                            </BreadcrumbLink>
+                          )}
+                        </BreadcrumbItem>
+                      </React.Fragment>
+                    ))}
                 </BreadcrumbList>
               </Breadcrumb>
             </div>

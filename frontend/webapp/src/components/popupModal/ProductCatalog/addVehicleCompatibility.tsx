@@ -126,14 +126,52 @@ const AddVehicleCompatibility: React.FC<AddVehicleCompatibilityProps> = ({
   const [loadingVariants, setLoadingVariants] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const filteredVariants = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    if (!keyword) return variants;
+  const [selectedMake, setSelectedMake] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
 
-    return variants.filter((variant) =>
-      variant.label.toLowerCase().includes(keyword)
+  const uniqueMakes = useMemo(() => {
+    return Array.from(new Set(variants.map((v) => v.make).filter(Boolean))).sort();
+  }, [variants]);
+
+  const uniqueModels = useMemo(() => {
+    if (!selectedMake) return [];
+    return Array.from(
+      new Set(
+        variants
+          .filter((v) => v.make === selectedMake)
+          .map((v) => v.model)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [variants, selectedMake]);
+
+  const uniqueYears = useMemo(() => {
+    if (!selectedMake || !selectedModel) return [];
+    return Array.from(
+      new Set(
+        variants
+          .filter((v) => v.make === selectedMake && v.model === selectedModel)
+          .map((v) => v.year)
+          .filter(Boolean)
+      )
+    ).sort((a, b) => Number(b) - Number(a));
+  }, [variants, selectedMake, selectedModel]);
+
+  const matchingVariants = useMemo(() => {
+    if (!selectedMake || !selectedModel || !selectedYear) return [];
+    return variants.filter(
+      (v) => v.make === selectedMake && v.model === selectedModel && v.year === selectedYear
     );
-  }, [variants, search]);
+  }, [variants, selectedMake, selectedModel, selectedYear]);
+
+  useEffect(() => {
+    if (matchingVariants.length === 1) {
+      setSelectedVariantId(matchingVariants[0].id);
+    } else {
+      setSelectedVariantId("");
+    }
+  }, [matchingVariants]);
 
   const loadVariants = async () => {
     setLoadingVariants(true);
@@ -154,6 +192,9 @@ const AddVehicleCompatibility: React.FC<AddVehicleCompatibilityProps> = ({
 
   useEffect(() => {
     if (!open) {
+      setSelectedMake("");
+      setSelectedModel("");
+      setSelectedYear("");
       setSelectedVariantId("");
       setManualVariantId("");
       setSearch("");
@@ -206,35 +247,95 @@ const AddVehicleCompatibility: React.FC<AddVehicleCompatibilityProps> = ({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Search Vehicle Variant</label>
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search make, model, variant, year, engine"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Vehicle Variant</label>
-            <select
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
-              value={selectedVariantId}
-              onChange={(event) => {
-                setSelectedVariantId(event.target.value);
-                if (event.target.value) setManualVariantId("");
-              }}
-              disabled={loadingVariants}
-            >
-              <option value="">
-                {loadingVariants ? "Loading variants..." : "Select vehicle variant"}
-              </option>
-              {filteredVariants.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  {variant.label}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Make</label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                value={selectedMake}
+                onChange={(event) => {
+                  setSelectedMake(event.target.value);
+                  setSelectedModel("");
+                  setSelectedYear("");
+                  setSelectedVariantId("");
+                }}
+                disabled={loadingVariants}
+              >
+                <option value="">
+                  {loadingVariants ? "Loading..." : "Select Make"}
                 </option>
-              ))}
-            </select>
+                {uniqueMakes.map((make) => (
+                  <option key={make} value={make}>
+                    {make}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Model</label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                value={selectedModel}
+                onChange={(event) => {
+                  setSelectedModel(event.target.value);
+                  setSelectedYear("");
+                  setSelectedVariantId("");
+                }}
+                disabled={!selectedMake}
+              >
+                <option value="">Select Model</option>
+                {uniqueModels.map((model) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Year</label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                value={selectedYear}
+                onChange={(event) => {
+                  setSelectedYear(event.target.value);
+                  setSelectedVariantId("");
+                }}
+                disabled={!selectedModel}
+              >
+                <option value="">Select Year</option>
+                {uniqueYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Variant</label>
+              <select
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
+                value={selectedVariantId}
+                onChange={(event) => setSelectedVariantId(event.target.value)}
+                disabled={!selectedYear || matchingVariants.length <= 1}
+              >
+                <option value="">
+                  {matchingVariants.length === 0
+                    ? "Select variant"
+                    : matchingVariants.length === 1
+                    ? matchingVariants[0].variant
+                    : "Select variant"}
+                </option>
+                {matchingVariants.length > 1 &&
+                  matchingVariants.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.variant}
+                    </option>
+                  ))}
+              </select>
+            </div>
           </div>
 
           {variants.length === 0 && !loadingVariants && (

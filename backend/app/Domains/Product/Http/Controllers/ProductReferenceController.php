@@ -12,6 +12,7 @@ use App\Domains\Product\Domain\Models\ServicePricing;
 use App\Domains\Product\Domain\Models\ServiceCategory;
 use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Product\Domain\Models\VehicleVariant;
 use App\Domains\Product\Application\DTO\ArchiveCategoryDTO;
 use App\Domains\Product\Application\UseCases\ArchiveCategory;
 use Illuminate\Http\JsonResponse;
@@ -340,6 +341,19 @@ class ProductReferenceController extends Controller
     {
         $vehicles = VehicleModel::with(['manufacturer', 'variants'])->get();
 
+        foreach ($vehicles as $vehicle) {
+            if ($vehicle->variants->isEmpty()) {
+                VehicleVariant::create([
+                    'car_model_id' => $vehicle->id,
+                    'variant_name' => 'Variant',
+                    'year' => 2020,
+                ]);
+            }
+        }
+
+        // Re-load vehicles with variants if we created any new ones
+        $vehicles = VehicleModel::with(['manufacturer', 'variants'])->get();
+
         return response()->json([
             'data' => $vehicles,
         ]);
@@ -365,14 +379,22 @@ class ProductReferenceController extends Controller
             ['model' => $request->model, 'manufacturer_id' => $manufacturer->id]
         );
 
+        // Create default VehicleVariant for this model
+        $variant = VehicleVariant::firstOrCreate([
+            'car_model_id' => $vehicleModel->id,
+            'variant_name' => $request->variant ?: 'Variant',
+            'year' => $request->year ?: 2020,
+        ]);
+
         return response()->json([
             'message' => 'Vehicle added successfully',
             'data' => [
                 'id' => $vehicleModel->id,
-                'year' => $request->year ?: 0,
+                'year' => $variant->year,
                 'make' => $manufacturer->name,
                 'model' => $vehicleModel->model,
-                'variant' => $request->variant
+                'variant' => $variant->variant_name,
+                'variant_id' => $variant->id,
             ]
         ]);
     }

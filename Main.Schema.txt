@@ -57,6 +57,8 @@ CREATE TABLE Main.Category (
   name text NOT NULL,
   code text NOT NULL UNIQUE,
   seq_counter numeric NOT NULL DEFAULT '1'::numeric,
+  is_active boolean NOT NULL DEFAULT true,
+  archived_at timestamp with time zone,
   CONSTRAINT Category_pkey PRIMARY KEY (id)
 );
 CREATE TABLE Main.CustomerVehicles (
@@ -242,7 +244,7 @@ CREATE TABLE Main.Parts (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   name text NOT NULL,
   description text,
-  category_id bigint NOT NULL,
+  category_id bigint,
   code text,
   CONSTRAINT Parts_pkey PRIMARY KEY (id),
   CONSTRAINT parts_category_id_fkey FOREIGN KEY (category_id) REFERENCES Main.Category(id)
@@ -446,8 +448,9 @@ CREATE TABLE Main.Suppliers (
   CompanyContact text,
   Email character varying,
   ContactNumber text NOT NULL,
-  Viber text NOT NULL,
+  Viber text,
   supplier_code text NOT NULL UNIQUE,
+  address text,
   CONSTRAINT Suppliers_pkey PRIMARY KEY (id)
 );
 CREATE TABLE Main.Tax (

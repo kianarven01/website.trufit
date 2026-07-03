@@ -58,10 +58,6 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  const [showAddManufacturer, setShowAddManufacturer] = useState(false);
-  const [newManufacturerName, setNewManufacturerName] = useState("");
-  const [creatingManufacturer, setCreatingManufacturer] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedMaker = useMemo(
@@ -75,20 +71,12 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
       setModel(vehicle?.model || "");
       setImagePreview(vehicle?.image || "");
       setImageFile(null);
-
-      setShowAddManufacturer(false);
-      setNewManufacturerName("");
-      setCreatingManufacturer(false);
     } else {
       setMakeName("");
       setModel("");
       setImagePreview("");
       setImageFile(null);
       setIsDragging(false);
-
-      setShowAddManufacturer(false);
-      setNewManufacturerName("");
-      setCreatingManufacturer(false);
     }
   }, [open, vehicle, selectedMaker]);
 
@@ -99,65 +87,32 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleMakeChange = (value: string) => {
-    if (value === ADD_MANUFACTURER_OPTION) {
-      setShowAddManufacturer(true);
-      setMakeName("");
-      return;
-    }
-
-    setShowAddManufacturer(false);
-    setNewManufacturerName("");
-    setMakeName(value);
-  };
-
-  const handleCreateManufacturer = async () => {
-    const trimmedName = newManufacturerName.trim();
-    if (!trimmedName) return;
-
-    const existing = makerList.find(
-      (maker) => maker.name.toLowerCase() === trimmedName.toLowerCase()
-    );
-
-    if (existing) {
-      setMakeName(existing.name);
-      setShowAddManufacturer(false);
-      setNewManufacturerName("");
-      return;
-    }
-
-    try {
-      setCreatingManufacturer(true);
-
-      const createdManufacturer = await onCreateManufacturer(
-        trimmedName,
-        "vehicle"
-      );
-
-      if (createdManufacturer) {
-        setMakeName(createdManufacturer.name);
-        setShowAddManufacturer(false);
-        setNewManufacturerName("");
-      }
-    } catch (error) {
-      console.error("Failed to create manufacturer:", error);
-    } finally {
-      setCreatingManufacturer(false);
-    }
-  };
-
   const handleSave = async () => {
-    const chosenMaker = makerList.find((maker) => maker.name === makeName);
+    const trimmedMake = makeName.trim();
+    const trimmedModel = model.trim();
 
-    if (!chosenMaker || !model.trim()) return;
+    if (!trimmedMake || !trimmedModel) return;
 
     try {
       setSaving(true);
 
+      let chosenMaker = makerList.find(
+        (maker) => maker.name.toLowerCase() === trimmedMake.toLowerCase()
+      );
+
+      // Register new manufacturer on the fly if it doesn't exist
+      if (!chosenMaker) {
+        const createdMaker = await onCreateManufacturer(trimmedMake, "vehicle");
+        if (!createdMaker) {
+          throw new Error("Failed to register manufacturer");
+        }
+        chosenMaker = createdMaker;
+      }
+
       await onSaved({
         id: vehicle?.id,
         makeId: chosenMaker.id,
-        model: model.trim(),
+        model: trimmedModel,
         image: imagePreview.trim(),
         imageFile,
       });
@@ -170,10 +125,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
     }
   };
 
-  const makeOptions = [
-    ...makerList.map((maker) => maker.name),
-    ADD_MANUFACTURER_OPTION,
-  ];
+  const makeOptions = useMemo(
+    () => makerList.map((maker) => maker.name),
+    [makerList]
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,26 +145,10 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
             <Combobox
               items={makeOptions}
               value={makeName}
-              onChange={handleMakeChange}
-              placeholder="Select vehicle make"
+              onChange={setMakeName}
+              placeholder="Select or type vehicle make..."
+              freeText={true}
             />
-
-            {showAddManufacturer && (
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={newManufacturerName}
-                  onChange={(e) => setNewManufacturerName(e.target.value)}
-                  placeholder="Enter manufacturer name"
-                />
-                <Button
-                  type="button"
-                  onClick={handleCreateManufacturer}
-                  disabled={creatingManufacturer || !newManufacturerName.trim()}
-                >
-                  {creatingManufacturer ? "Adding..." : "Add"}
-                </Button>
-              </div>
-            )}
           </div>
 
           <div className="space-y-2">
@@ -284,19 +223,13 @@ export const VehicleModal: React.FC<VehicleModalProps> = ({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={saving || creatingManufacturer}
+            disabled={saving}
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
-            disabled={
-              saving ||
-              creatingManufacturer ||
-              !makeName ||
-              !model.trim() ||
-              showAddManufacturer
-            }
+            disabled={saving || !makeName.trim() || !model.trim()}
           >
             {saving ? "Saving..." : vehicle ? "Save Changes" : "Add Vehicle"}
           </Button>

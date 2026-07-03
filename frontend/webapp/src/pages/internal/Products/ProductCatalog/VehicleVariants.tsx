@@ -158,25 +158,11 @@ const VehicleVariantsPage: React.FC = () => {
   const selectedVariant = variantList.find((v) => v.id === selectedVariantId);
 
   const selectedVariantLabel = useMemo(() => {
-    if (!selectedVariant) return "";
-    const extra = [
-      selectedVariant.year,
-      selectedVariant.engine,
-      selectedVariant.transmission,
-    ]
-      .filter(Boolean)
-      .join(" • ");
-
-    return extra ? `${selectedVariant.name} — ${extra}` : selectedVariant.name;
+    return selectedVariant ? selectedVariant.name : "";
   }, [selectedVariant]);
 
   const variantComboItems = useMemo(() => {
-    return variantList.map((variant) => {
-      const extra = [variant.year, variant.engine, variant.transmission]
-        .filter(Boolean)
-        .join(" • ");
-      return extra ? `${variant.name} — ${extra}` : variant.name;
-    });
+    return variantList.map((variant) => variant.name);
   }, [variantList]);
 
   const loadManufacturers = async () => {
@@ -290,6 +276,11 @@ const VehicleVariantsPage: React.FC = () => {
         setVariantList([]);
         setCategoryList([]);
       }
+
+      if (foundVehicle) {
+        sessionStorage.setItem(`breadcrumb-${location.pathname}`, `${foundVehicle.makeName} ${foundVehicle.model}`);
+        window.dispatchEvent(new Event("breadcrumb-update"));
+      }
     } catch (error) {
       console.error("Failed to load vehicle variants page:", error);
       setVariantList([]);
@@ -301,7 +292,12 @@ const VehicleVariantsPage: React.FC = () => {
 
   useEffect(() => {
     void loadPageData();
-  }, [vehicleSlug]);
+
+    return () => {
+      sessionStorage.removeItem(`breadcrumb-${location.pathname}`);
+      window.dispatchEvent(new Event("breadcrumb-update"));
+    };
+  }, [vehicleSlug, location.pathname]);
 
   const handleCreateManufacturer = async (
     name: string
@@ -567,22 +563,8 @@ const VehicleVariantsPage: React.FC = () => {
 
                       <Combobox
                         value={selectedVariantLabel}
-                        onChange={(label) => {
-                          const found = variantList.find((variant) => {
-                            const extra = [
-                              variant.year,
-                              variant.engine,
-                              variant.transmission,
-                            ]
-                              .filter(Boolean)
-                              .join(" • ");
-                            const composed = extra
-                              ? `${variant.name} — ${extra}`
-                              : variant.name;
-
-                            return composed === label;
-                          });
-
+                        onChange={(val) => {
+                          const found = variantList.find((variant) => variant.name === val);
                           if (found) setSelectedVariantId(found.id);
                         }}
                         items={variantComboItems}

@@ -24,6 +24,7 @@ class VehicleFormatter
             'model' => $vehicle->model,
             'image' => $imageUrl,
             'image_path' => $vehicle->image_path,
+            'variants_count' => (int) $vehicle->variants_count,
         ];
     }
 }

@@ -80,6 +80,17 @@ class VehicleController extends Controller
     {
         $vehicle = $this->repository->findOrFail($id);
 
+        $variantIds = $vehicle->variants()->pluck('id');
+        $hasVariants = $vehicle->variants()->exists();
+        $hasParts = \App\Domains\Product\Domain\Models\ProductVehicleCompatibility::whereIn('car_variant_id', $variantIds)->exists();
+        $hasCustomerVehicles = \App\Domains\Customer\Domain\Models\CustomerVehicle::whereIn('vehicle_variant_id', $variantIds)->exists();
+
+        if ($hasVariants || $hasParts || $hasCustomerVehicles) {
+            return response()->json([
+                'message' => 'This vehicle cannot be updated because it has variants, parts compatibility, or customer vehicles associated with it.',
+            ], 422);
+        }
+
         $manufacturer = Manufacturers::query()
             ->where('id', $request->input('manufacturer_id'))
             ->where('type', 'Vehicle')
@@ -140,7 +151,27 @@ class VehicleController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $vehicle = $this->repository->findOrFail($id);
+
+        $variantIds = $vehicle->variants()->pluck('id');
+        $hasVariants = $vehicle->variants()->exists();
+        $hasParts = \App\Domains\Product\Domain\Models\ProductVehicleCompatibility::whereIn('car_variant_id', $variantIds)->exists();
+        $hasCustomerVehicles = \App\Domains\Customer\Domain\Models\CustomerVehicle::whereIn('vehicle_variant_id', $variantIds)->exists();
+
+        if ($hasVariants || $hasParts || $hasCustomerVehicles) {
+            return response()->json([
+                'message' => 'This vehicle cannot be deleted because it has variants, parts compatibility, or customer vehicles associated with it.',
+            ], 422);
+        }
+
+        $manufacturerId = $vehicle->manufacturer_id;
+
         $this->repository->delete($vehicle);
+
+        // Delete the manufacturer if no other models exist under it
+        $hasOtherModels = \App\Domains\Vehicle\Domain\Models\VehicleModel::where('manufacturer_id', $manufacturerId)->exists();
+        if (!$hasOtherModels) {
+            Manufacturers::where('id', $manufacturerId)->delete();
+        }
 
         return response()->json([
             'message' => 'Vehicle deleted.',

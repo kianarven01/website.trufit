@@ -8,7 +8,7 @@ class VehicleRepository
 {
     public function allWithManufacturer()
     {
-        return VehicleModel::with('manufacturer')->orderBy('id')->get();
+        return VehicleModel::with('manufacturer')->withCount('variants')->orderBy('id')->get();
     }
 
     public function findOrFail(int $id): VehicleModel

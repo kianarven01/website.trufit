@@ -21,4 +21,9 @@ class VehicleModel extends Model
     {
         return $this->belongsTo(Manufacturers::class, 'manufacturer_id');
     }
+
+    public function variants()
+    {
+        return $this->hasMany(VehicleVariant::class, 'car_model_id');
+    }
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import {
   VehicleModal,
@@ -207,24 +208,30 @@ const VehiclesPage: React.FC = () => {
       formData.append("image", vehicleData.imageFile);
     }
 
-    if (vehicleData.id) {
-      formData.append("_method", "PUT");
+    try {
+      if (vehicleData.id) {
+        formData.append("_method", "PUT");
 
-      await api.post(`/vehicles/${vehicleData.id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-    } else {
-      await api.post("/vehicles", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+        await api.post(`/vehicles/${vehicleData.id}`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      } else {
+        await api.post("/vehicles", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      await loadVehicles();
+      await loadManufacturers();
+      toast.success(vehicleData.id ? "Vehicle updated successfully!" : "Vehicle added successfully!");
+    } catch (error: any) {
+      console.error("Failed to save vehicle:", error);
+      toast.error(error.response?.data?.message || "Failed to save vehicle.");
     }
-
-    await loadVehicles();
-    await loadManufacturers();
   };
 
   const handleDeleteVehicle = async (vehicle: Vehicle) => {
@@ -237,8 +244,10 @@ const VehiclesPage: React.FC = () => {
     try {
       await api.delete(`/vehicles/${vehicle.id}`);
       await loadVehicles();
-    } catch (error) {
+      toast.success("Vehicle deleted successfully!");
+    } catch (error: any) {
       console.error("Failed to delete vehicle:", error);
+      toast.error(error.response?.data?.message || "Failed to delete vehicle.");
     }
   };
 

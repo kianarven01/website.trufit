@@ -4,6 +4,7 @@ import StockMovementTypeBadge from "@/components/purchasing/StockMovementTypeBad
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatDate, getCleanApiError, getRows } from "@/components/purchasing/purchasingUtils";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 
 interface StockMovementRow {
   id: string;
@@ -136,6 +137,9 @@ const StockLedger = () => {
         </div>
       </div>
 
+      {loading ? (
+        <TableSkeleton columns={7} rows={6} />
+      ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-background">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
@@ -161,7 +165,7 @@ const StockLedger = () => {
             ) : (
               filteredMovements.map((movement) => {
                 const quantityDisplay = getQuantityDisplay(
-                  movement.movementType.toUpperCase(),
+                  movement.movementType,
                   Number(movement.quantity || 0)
                 );
 
@@ -175,18 +179,17 @@ const StockLedger = () => {
                     <td className="px-4 py-3"><StockMovementTypeBadge type={movement.movementType} /></td>
                     <td className="px-4 py-3">
                       <div
-                        className={`ml-auto flex w-fit items-center justify-end gap-1 font-semibold ${
+                        className={`flex items-center justify-end gap-1 font-semibold ${
                           quantityDisplay.isOut
                             ? "text-red-700 dark:text-red-400"
                             : "text-green-700 dark:text-green-400"
                         }`}
                       >
                         {quantityDisplay.isOut ? (
-                          <TrendingDown size={14} strokeWidth={2.4} />
+                          <TrendingDown size={14} />
                         ) : (
-                          <TrendingUp size={14} strokeWidth={2.4} />
+                          <TrendingUp size={14} />
                         )}
-
                         <span>
                           {quantityDisplay.value > 0
                             ? `+${quantityDisplay.value}`
@@ -207,6 +210,8 @@ const StockLedger = () => {
           </tbody>
         </table>
       </div>
+      )}
+
     </div>
   );
 };

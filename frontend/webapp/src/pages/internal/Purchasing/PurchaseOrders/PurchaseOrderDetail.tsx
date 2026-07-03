@@ -7,6 +7,7 @@ import PurchaseOrderItemsTable, { PurchaseOrderItemRow } from "@/components/purc
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatCurrency, formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
+import DetailSkeleton from "@/components/ui/DetailSkeleton";
 
 interface PurchaseOrderDetailModel {
   id: string;
@@ -230,7 +231,7 @@ const PurchaseOrderDetail = () => {
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Loading purchase order...</div>
+        <DetailSkeleton />
       ) : !purchaseOrder ? (
         <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Purchase order not found.</div>
       ) : (

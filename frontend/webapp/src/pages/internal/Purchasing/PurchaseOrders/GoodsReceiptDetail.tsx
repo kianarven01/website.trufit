@@ -6,6 +6,7 @@ import GoodsReceiptItemsTable, { GoodsReceiptItemRow } from "@/components/purcha
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
+import DetailSkeleton from "@/components/ui/DetailSkeleton";
 
 interface GoodsReceiptDetailModel {
   id: string;
@@ -129,7 +130,7 @@ const GoodsReceiptDetail = () => {
       </div>
 
       {loading ? (
-        <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Loading goods receipt...</div>
+        <DetailSkeleton />
       ) : !receipt ? (
         <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Goods receipt not found.</div>
       ) : (

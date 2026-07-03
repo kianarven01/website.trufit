@@ -6,6 +6,7 @@ import NewPurchaseOrderModal from "@/components/purchasing/NewPurchaseOrderModal
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatCurrency, formatDate, getCleanApiError, getRows, normalizeStatus } from "@/components/purchasing/purchasingUtils";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 
 interface PurchaseOrderRow {
   id: string;
@@ -204,6 +205,9 @@ const PurchaseOrders = () => {
         />
       </div>
 
+      {loading ? (
+        <TableSkeleton columns={6} rows={5} />
+      ) : (
       <div className="overflow-hidden rounded-xl border border-border bg-background">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
@@ -248,6 +252,7 @@ const PurchaseOrders = () => {
           </tbody>
         </table>
       </div>
+      )}
 
       <NewPurchaseOrderModal
         open={isCreateOpen}

@@ -3,6 +3,7 @@ import api from "@/api/axios";
 import StockMovementTypeBadge from "@/components/purchasing/StockMovementTypeBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatDate, getCleanApiError, getRows } from "@/components/purchasing/purchasingUtils";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface StockMovementRow {
   id: string;
@@ -31,6 +32,20 @@ const normalizeStockMovement = (row: any): StockMovementRow => ({
   notes: row.notes ?? null,
   createdBy: row.created_by ?? row.createdBy ?? null,
 });
+
+const getQuantityDisplay = (movementType: string, quantity: number) => {
+  const isOut =
+    movementType === "OUT_SALES" ||
+    movementType === "ADJ_SHRINKAGE" ||
+    movementType === "OUT_RETURN";
+
+  const signedQuantity = isOut ? -Math.abs(quantity) : Math.abs(quantity);
+
+  return {
+    value: signedQuantity,
+    isOut,
+  };
+};
 
 const StockLedger = () => {
   const [movements, setMovements] = useState<StockMovementRow[]>([]);
@@ -145,8 +160,10 @@ const StockLedger = () => {
               </tr>
             ) : (
               filteredMovements.map((movement) => {
-                const quantity = Number(movement.quantity || 0);
-                const isPositive = quantity >= 0;
+                const quantityDisplay = getQuantityDisplay(
+                  movement.movementType.toUpperCase(),
+                  Number(movement.quantity || 0)
+                );
 
                 return (
                   <tr key={movement.id} className="border-t border-border/60">
@@ -156,8 +173,26 @@ const StockLedger = () => {
                       {movement.supplierName !== "-" && <p className="text-xs text-muted-foreground">{movement.supplierName}</p>}
                     </td>
                     <td className="px-4 py-3"><StockMovementTypeBadge type={movement.movementType} /></td>
-                    <td className={`px-4 py-3 text-right font-semibold ${isPositive ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
-                      {isPositive ? "+" : ""}{quantity}
+                    <td className="px-4 py-3">
+                      <div
+                        className={`ml-auto flex w-fit items-center justify-end gap-1 font-semibold ${
+                          quantityDisplay.isOut
+                            ? "text-red-700 dark:text-red-400"
+                            : "text-green-700 dark:text-green-400"
+                        }`}
+                      >
+                        {quantityDisplay.isOut ? (
+                          <TrendingDown size={14} strokeWidth={2.4} />
+                        ) : (
+                          <TrendingUp size={14} strokeWidth={2.4} />
+                        )}
+
+                        <span>
+                          {quantityDisplay.value > 0
+                            ? `+${quantityDisplay.value}`
+                            : quantityDisplay.value}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       <p>{movement.referenceId}</p>

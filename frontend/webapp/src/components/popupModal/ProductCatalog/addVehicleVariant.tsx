@@ -97,7 +97,7 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
   }, [name, engine, fuel, drivetrain, transmission]);
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !engine.trim() || !transmission.trim() || !fuel.trim()) return;
 
     try {
       setSaving(true);
@@ -126,13 +126,15 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
       <DialogContent className="sm:max-w-[560px] rounded-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            {variant ? "Edit Vehicle Variant" : "Add Vehicle Variant"}
+            {variant && variant.id ? "Edit Vehicle Variant" : "Add Vehicle Variant"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-medium">Base Variant Name</label>
+            <label className="text-sm font-medium">
+              Base Variant Name <span className="text-red-500"></span>
+            </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -152,7 +154,9 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
           )}
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Piston Displacement</label>
+            <label className="text-sm font-medium">
+              Piston Displacement <span className="text-red-500"></span>
+            </label>
             <Input
               value={engine}
               onChange={(e) => setEngine(e.target.value)}
@@ -161,7 +165,9 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Transmission</label>
+            <label className="text-sm font-medium">
+              Transmission <span className="text-red-500"></span>
+            </label>
             <Input
               value={transmission}
               onChange={(e) => setTransmission(e.target.value)}
@@ -179,7 +185,9 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Fuel Type</label>
+            <label className="text-sm font-medium">
+              Fuel Type <span className="text-red-500"></span>
+            </label>
             <Input
               value={fuel}
               onChange={(e) => setFuel(e.target.value)}
@@ -212,8 +220,11 @@ const AddVehicleVariant: React.FC<AddVehicleVariantProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim()}>
-            {saving ? "Saving..." : variant ? "Save Changes" : "Add Variant"}
+          <Button
+            onClick={handleSave}
+            disabled={saving || !name.trim() || !engine.trim() || !transmission.trim() || !fuel.trim()}
+          >
+            {saving ? "Saving..." : (variant && variant.id) ? "Save Changes" : "Add Variant"}
           </Button>
         </DialogFooter>
       </DialogContent>

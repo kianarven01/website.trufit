@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Breadcrumb,
@@ -126,6 +126,16 @@ const VehicleVariantsPage: React.FC = () => {
   const [currentVehicle, setCurrentVehicle] = useState<Vehicle | null>(
     locationState?.vehicle || null
   );
+
+  useLayoutEffect(() => {
+    if (currentVehicle) {
+      sessionStorage.setItem(
+        `breadcrumb-${location.pathname}`,
+        `${currentVehicle.makeName} ${currentVehicle.model}`
+      );
+      window.dispatchEvent(new Event("breadcrumb-update"));
+    }
+  }, [currentVehicle, location.pathname]);
 
   const [vehicleModalOpen, setVehicleModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -733,7 +743,7 @@ const VehicleVariantsPage: React.FC = () => {
                           if (!selectedVariant) return;
 
                           navigate(
-                            `/webapp/products/product-catalog/${vehicleSlug}/${toVariantSlug(
+                            `/webapp/products/product-catalog/vehicles/${vehicleSlug}/${toVariantSlug(
                               selectedVariant.name
                             )}/${toCategorySlug(category.name)}/products`,
                             {

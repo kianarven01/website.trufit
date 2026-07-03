@@ -836,7 +836,7 @@ const ProductDetail: React.FC = () => {
   const backToProductsPath = useMemo(
     () =>
       vehicleSlug
-        ? `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products`
+        ? `/webapp/products/product-catalog/vehicles/${vehicleSlug}/${variantSlug}/${categorySlug}/products`
         : `/webapp/products/product-catalog/products`,
     [vehicleSlug, variantSlug, categorySlug]
   );

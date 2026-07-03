@@ -263,6 +263,18 @@ const VehiclesPage: React.FC = () => {
     });
   }, [vehicles, filters, search]);
 
+  const groupedVehicles = useMemo(() => {
+    const groups: Record<string, Vehicle[]> = {};
+    filteredVehicles.forEach((vehicle) => {
+      const make = vehicle.makeName || "Unknown";
+      if (!groups[make]) {
+        groups[make] = [];
+      }
+      groups[make].push(vehicle);
+    });
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredVehicles]);
+
   const filterOptions: FilterOption[] = [
     {
       key: "make",
@@ -275,7 +287,7 @@ const VehiclesPage: React.FC = () => {
   ];
 
   return (
-    <div className="w-full min-h-screen p-4 flex flex-col space-y-4 select-none">
+    <div className="w-full h-full p-4 flex flex-col space-y-4 select-none overflow-auto">
       <DataToolbar
         searchPlaceholder="Search vehicles..."
         onSearch={setSearch}
@@ -322,84 +334,96 @@ const VehiclesPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredVehicles.map((vehicle) => (
-            <Card
-              key={vehicle.id}
-              onClick={() =>
-                navigate(
-                  `/webapp/products/product-catalog/${getVehicleSlug(vehicle)}`,
-                  {
-                    state: {
-                      vehicleId: vehicle.id,
-                      vehicle,
-                    },
-                  }
-                )
-              }
-              className="cursor-pointer overflow-hidden relative group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border"
-            >
-              <CardContent className="p-0">
-                <div className="w-full h-44 relative overflow-hidden flex items-center justify-center bg-muted/30">
-                  {vehicle.image ? (
-                    <img
-                      src={vehicle.image}
-                      alt={`${vehicle.makeName} ${vehicle.model}`}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  ) : (
-                    <Car className="size-16 text-muted-foreground/20" />
-                  )}
+        <div className="space-y-8">
+          {groupedVehicles.map(([make, list]) => (
+            <div key={make} className="space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+                <h3 className="text-md font-bold tracking-tight text-foreground/80">
+                  {make}
+                </h3>
+                <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-medium text-muted-foreground">
+                  {list.length} {list.length === 1 ? "Model" : "Models"}
+                </span>
+              </div>
 
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="absolute top-2 right-2 flex gap-2 z-10">
-                      <Button
-                        variant="secondary"
-                        size="icon_xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingVehicle(vehicle);
-                          setModalOpen(true);
-                        }}
-                        className="p-2 shadow-sm"
-                        title="Edit Vehicle"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {list.map((vehicle) => (
+                  <Card
+                    key={vehicle.id}
+                    onClick={() =>
+                      navigate(
+                        `/webapp/products/product-catalog/vehicles/${getVehicleSlug(vehicle)}`,
+                        {
+                          state: {
+                            vehicleId: vehicle.id,
+                            vehicle,
+                          },
+                        }
+                      )
+                    }
+                    className="cursor-pointer overflow-hidden relative group transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-border"
+                  >
+                    <CardContent className="p-0">
+                      <div className="w-full h-44 relative overflow-hidden flex items-center justify-center bg-muted/30">
+                        {vehicle.image ? (
+                          <img
+                            src={vehicle.image}
+                            alt={`${vehicle.makeName} ${vehicle.model}`}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : (
+                          <Car className="size-16 text-muted-foreground/20" />
+                        )}
 
-                      <Button
-                        variant="destructive"
-                        size="icon_xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleDeleteVehicle(vehicle);
-                        }}
-                        className="p-2 shadow-sm hover:text-white"
-                        title="Delete Vehicle"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="absolute top-2 right-2 flex gap-2 z-10">
+                            <Button
+                              variant="secondary"
+                              size="icon_xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingVehicle(vehicle);
+                                setModalOpen(true);
+                              }}
+                              className="p-2 shadow-sm"
+                              title="Edit Vehicle"
+                            >
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
 
-              <CardFooter className="flex justify-between items-center px-4 py-4 bg-card group-hover:bg-blue-900 transition-colors">
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-foreground group-hover:text-white">
-                    {vehicle.makeName}
-                  </span>
-                  <span className="text-sm text-muted-foreground group-hover:text-blue-100">
-                    {vehicle.model}
-                  </span>
-                  <span className="text-xs text-muted-foreground group-hover:text-blue-200 mt-1">
-                    {vehicle.variantCount ?? 0} variants
-                  </span>
-                </div>
+                            <Button
+                              variant="destructive"
+                              size="icon_xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleDeleteVehicle(vehicle);
+                              }}
+                              className="p-2 shadow-sm hover:text-white"
+                              title="Delete Vehicle"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
 
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-white" />
-              </CardFooter>
-            </Card>
+                    <CardFooter className="flex justify-between items-center px-4 py-4 bg-card group-hover:bg-blue-900 transition-colors">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-foreground group-hover:text-white">
+                          {vehicle.model}
+                        </span>
+                        <span className="text-xs text-muted-foreground group-hover:text-blue-200 mt-1">
+                          {vehicle.variantCount ?? 0} variants
+                        </span>
+                      </div>
+
+                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-white" />
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

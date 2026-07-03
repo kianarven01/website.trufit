@@ -15,13 +15,13 @@ class UpdateVehicleVariantRequest extends FormRequest
     {
         return [
             'variant_name' => ['required', 'string', 'max:255'],
-            'engine_displacement' => ['nullable', 'string', 'max:50'],
+            'engine_displacement' => ['required', 'string', 'max:50'],
             'year' => ['nullable', 'string', 'max:50'],
-            'transmission_type' => ['nullable', 'string', 'max:50'],
+            'transmission_type' => ['required', 'string', 'max:50'],
             'drivetrain' => ['nullable', 'string', 'max:50'],
             'oil_capacity' => ['nullable', 'integer', 'min:0'],
             'service_class' => ['nullable', 'string', 'max:100'],
-            'fuel_type' => ['nullable', 'string', 'max:50'],
+            'fuel_type' => ['required', 'string', 'max:50'],
             'body_type' => ['nullable', 'string', 'max:50'],
         ];
     }

@@ -609,7 +609,7 @@ const ProductsList: React.FC = () => {
                       onClick={() => {
                         const path = isGeneralView
                           ? `/webapp/products/product-catalog/products/${product.id}`
-                          : `/webapp/products/product-catalog/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`;
+                          : `/webapp/products/product-catalog/vehicles/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`;
                         navigate(path, {
                           state: {
                             productId: product.id,

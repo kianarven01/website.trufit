@@ -163,9 +163,9 @@ const App: React.FC = () => {
               <Route path="vehicles" element={<VehiclesPage />} />
               <Route path="products" element={<Navigate to="/webapp/products/product-catalog" replace />} />
               <Route path="products/:productId" element={<ProductDetail />} />
-              <Route path=":vehicleSlug" element={<VehicleVariantsPage />} />
-              <Route path=":vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />
-              <Route path=":vehicleSlug/:variantSlug/:categorySlug/products/:productId" element={<ProductDetail />} />
+              <Route path="vehicles/:vehicleSlug" element={<VehicleVariantsPage />} />
+              <Route path="vehicles/:vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />
+              <Route path="vehicles/:vehicleSlug/:variantSlug/:categorySlug/products/:productId" element={<ProductDetail />} />
             </Route>
 
             <Route path="/webapp/products/inventory" element={<InventoryList />} />

@@ -10,8 +10,7 @@ use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrderItem;
-use App\Domains\Purchasing\Domain\Models\StockMovement;
-use App\Domains\Inventory\Domain\Models\Inventory;
+
 
 class GoodsReceiptController extends Controller
 {
@@ -115,103 +114,34 @@ class GoodsReceiptController extends Controller
         ], 201);
     }
 
-    public function approve(string $id): JsonResponse
+    public function approve(string $id, ApproveGoodsReceipt $approveGoodsReceipt): JsonResponse
     {
-        $receipt = GoodsReceipt::with(['items', 'purchaseOrder.items.receiptItems.goodsReceipt'])
-            ->findOrFail($id);
+        try {
+            $receipt = $approveGoodsReceipt->execute($id);
 
-        if ($receipt->status !== 'DRAFT') {
             return response()->json([
-                'message' => 'Only draft goods receipts can be approved.',
-            ], 422);
-        }
+                'message' => 'Goods receipt approved. Inventory updated successfully.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (RuntimeException $e) {
+            $status = $e->getCode();
 
-        DB::transaction(function () use ($receipt) {
-            foreach ($receipt->items as $item) {
-                if ($item->quantity_received <= 0) {
-                    continue;
-                }
-
-                $inventory = Inventory::firstOrCreate(
-                    [
-                        'productID' => $item->product_id,
-                        'product_supplier_id' => $item->product_supplier_id,
-                        'location_id' => self::DEFAULT_LOCATION_ID,
-                    ],
-                    [
-                        'quantity_on_hand' => 0,
-                        'reserved_quantity' => 0,
-                        'reorder_level' => 5,
-                        'reorder_qty' => 10,
-                        'sell_price' => null,
-                    ]
-                );
-
-                $inventory->increment('quantity_on_hand', $item->quantity_received);
-
-                StockMovement::create([
-                    'inventory_id' => $inventory->id,
-                    'product_id' => $item->product_id,
-                    'product_supplier_id' => $item->product_supplier_id,
-                    'movement_type' => 'IN_RECEIPT',
-                    'quantity' => $item->quantity_received,
-                    'reference_type' => 'GOODS_RECEIPT',
-                    'reference_id' => $receipt->id,
-                    'notes' => 'Goods receipt from PO ' . $receipt->purchaseOrder?->po_number,
-                ]);
+            if (!in_array($status, [400, 404, 409, 422], true)) {
+                $status = 400;
             }
 
-            $receipt->update([
-                'status' => 'APPROVED',
-                'approved_at' => now(),
-            ]);
-
-            $this->updatePurchaseOrderReceiptStatus($receipt->purchaseOrder);
-        });
-
-        $receipt->refresh()->load(['purchaseOrder.supplier', 'items.product']);
-
-        return response()->json([
-            'message' => 'Goods receipt approved. Inventory updated successfully.',
-            'goods_receipt' => $receipt,
-        ]);
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $status);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to approve goods receipt.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    private function updatePurchaseOrderReceiptStatus(PurchaseOrder $purchaseOrder): void
-    {
-        $purchaseOrder->load('items.receiptItems.goodsReceipt');
-
-        $allFullyReceived = true;
-        $anyReceived = false;
-
-        foreach ($purchaseOrder->items as $item) {
-            $approvedReceived = $item->receiptItems
-                ->filter(fn ($receiptItem) => $receiptItem->goodsReceipt?->status === 'APPROVED')
-                ->sum('quantity_received');
-
-            if ($approvedReceived > 0) {
-                $anyReceived = true;
-            }
-
-            if ($approvedReceived < $item->quantity_ordered) {
-                $allFullyReceived = false;
-            }
-        }
-
-        if ($allFullyReceived) {
-            $purchaseOrder->update([
-                'status' => 'RECEIVED',
-                'date_received' => now(),
-            ]);
-            return;
-        }
-
-        if ($anyReceived) {
-            $purchaseOrder->update([
-                'status' => 'PARTIALLY_RECEIVED',
-            ]);
-        }
-    }
+   
 
     private function generateReceiptNumber(): string
     {

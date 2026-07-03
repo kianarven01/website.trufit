@@ -139,6 +139,16 @@ const navItems: NavItem[] = [
         icon: PackageReceive01Icon,
       },
       {
+        label: "Goods Receipts",
+        path: "/webapp/purchasing/goods-receipts",
+        icon: TaskDone01Icon,
+      },
+      {
+        label: "Stock Ledger",
+        path: "/webapp/purchasing/stock-ledger",
+        icon: Exchange01Icon,
+      },
+      {
         label: "Suppliers",
         path: "/webapp/purchasing/suppliers",
         icon: Briefcase01Icon,

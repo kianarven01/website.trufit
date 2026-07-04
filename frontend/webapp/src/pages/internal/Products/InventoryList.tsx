@@ -34,14 +34,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /* ================= TYPES ================= */
-interface InventoryItem {
-  id: string; // Inventory row id
-  productId: string;
+interface SupplierInfo {
+  id: string;
+  inventoryId: string;
   productSupplierId?: string | null;
+  name: string;
+  cost: number | null;
+  price: number | null;
+  quantityOnHand: number;
+  reservedQuantity: number;
+  reorderLevel: number;
+  reorderQty: number;
+}
+
+interface InventoryItem {
+  id: string;
+  productId: string;
   image?: string;
   name: string;
   brand: string;
-  supplierName: string;
+  suppliers: SupplierInfo[];
   sku: string;
   partNumber: string;
   unit: string;
@@ -49,8 +61,11 @@ interface InventoryItem {
   reservedQuantity: number;
   reorderLevel: number;
   reorderQty: number;
-  sellPrice: number;
+  lowestPrice: number | null;
+  highestPrice: number | null;
   priceLabel: string;
+  statusValue: string;
+  isArchived: boolean;
 }
 
 const toNumberOrNull = (value: unknown): number | null => {
@@ -65,70 +80,19 @@ const formatPeso = (value: number | null) => {
   return `₱${value.toFixed(2)}`;
 };
 
-const getSupplierName = (row: any) => {
-  return (
-    row.supplier?.CompanyName ||
-    row.supplier?.name ||
-    row.supplier_name ||
-    "No supplier"
-  );
-};
-
-const getInventoryPrice = (row: any): {
-  label: string;
-  primaryPrice: number;
-} => {
-  const price = toNumberOrNull(
-    row.active_price?.Price ??
-      row.active_price?.price ??
-      row.price ??
-      null
-  );
-
-  return {
-    label: formatPeso(price),
-    primaryPrice: price ?? 0,
-  };
-};
-
-/* ================= STOCK STATUS ================= */
-const getStockStatus = (stock: number, reorderLevel: number) => {
-  if (stock <= 0) {
-    return {
-      label: "Out of Stock",
-      value: "out-of-stock",
-      className: "bg-red-100/10 text-red-400 border border-red-500/20",
-    };
-  }
-
-  if (reorderLevel > 0 && stock <= reorderLevel) {
-    return {
-      label: "Low Stock",
-      value: "low-stock",
-      className: "bg-yellow-100/10 text-yellow-400 border border-yellow-500/20",
-    };
-  }
-
-  return {
-    label: "In Stock",
-    value: "in-stock",
-    className: "bg-green-100/10 text-green-400 border border-green-500/20",
-  };
-};
-
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
   const navigate = useNavigate();
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   // Adjust stock modal state
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
-  const [selectedInventoryForAdjust, setSelectedInventoryForAdjust] =
-    useState<InventoryItem | null>(null);
+  const [adjustProductId, setAdjustProductId] = useState<string>("");
   const [adjustInventoryId, setAdjustInventoryId] = useState<string>("");
   const [adjustQty, setAdjustQty] = useState<number>(0);
   const [adjustReservedQty, setAdjustReservedQty] = useState<number>(0);
@@ -152,28 +116,49 @@ const Inventory: React.FC = () => {
       const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map(
         (row: any) => {
           const product = row.product || {};
-          const inventoryPrice = getInventoryPrice(row);
+          const suppliers: SupplierInfo[] = (row.suppliers || []).map(
+            (s: any) => ({
+              id: s.id,
+              inventoryId: s.inventory_id,
+              productSupplierId: s.product_supplier_id,
+              name:
+                s.supplier?.CompanyName ||
+                s.supplier?.name ||
+                s.supplier_name ||
+                "No supplier",
+              cost: toNumberOrNull(s.supplier_cost),
+              price: toNumberOrNull(s.price),
+              quantityOnHand: Number(s.quantity_on_hand ?? 0),
+              reservedQuantity: Number(s.reserved_quantity ?? 0),
+              reorderLevel: Number(s.reorder_level ?? 5),
+              reorderQty: Number(s.reorder_qty ?? 10),
+            })
+          );
+
+          const lowestPrice = toNumberOrNull(row.lowest_price);
+          const priceLabel =
+            lowestPrice !== null
+              ? row.highest_price && row.highest_price !== lowestPrice
+                ? `₱${lowestPrice.toFixed(2)} – ₱${Number(row.highest_price).toFixed(2)}`
+                : formatPeso(lowestPrice)
+              : "No price set";
 
           return {
-            id: String(row.id),
+            id: String(row.product_id),
             productId: String(row.product_id || product.id || ""),
-            productSupplierId: row.product_supplier_id || null,
-
             image:
               product.image_URL ||
               product.image ||
               product.image_path ||
               undefined,
-
             name: String(product.name || ""),
             brand:
               product.manufacturer_name ||
               product.manufacturer?.name ||
               "-",
-            supplierName: getSupplierName(row),
+            suppliers,
             sku: String(product.SKU || product.sku || ""),
             partNumber: String(product.part_number || ""),
-
             unit:
               product.unit_abbreviation ||
               product.unitAbbreviation ||
@@ -182,14 +167,15 @@ const Inventory: React.FC = () => {
               product.unit_name ||
               product.unit ||
               "-",
-
             stock: Number(row.quantity_on_hand ?? 0),
             reservedQuantity: Number(row.reserved_quantity ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             reorderQty: Number(row.reorder_qty ?? 10),
-
-            sellPrice: inventoryPrice.primaryPrice,
-            priceLabel: inventoryPrice.label,
+            lowestPrice,
+            highestPrice: toNumberOrNull(row.highest_price),
+            priceLabel,
+            statusValue: row.status === "Low Stock" ? "low-stock" : row.status === "Out of Stock" ? "out-of-stock" : "in-stock",
+            isArchived: Boolean(row.is_archived),
           };
         }
       );
@@ -211,28 +197,30 @@ const Inventory: React.FC = () => {
   }, [search, setPage]);
 
   /* ================= ADJUST STOCK ================= */
-  const applyAdjustValues = (item: InventoryItem) => {
-    setAdjustInventoryId(item.id);
-    setAdjustQty(item.stock);
-    setAdjustReservedQty(item.reservedQuantity);
-    setAdjustReorderLevel(item.reorderLevel);
-    setAdjustReorderQty(item.reorderQty);
-  };
-
   const handleOpenAdjust = (item: InventoryItem) => {
-    setSelectedInventoryForAdjust(item);
-    applyAdjustValues(item);
+    setAdjustProductId(item.productId);
+    const firstSupplier = item.suppliers[0];
+    setAdjustInventoryId(firstSupplier?.inventoryId || "");
+    setAdjustQty(firstSupplier?.quantityOnHand ?? item.stock);
+    setAdjustReservedQty(firstSupplier?.reservedQuantity ?? item.reservedQuantity);
+    setAdjustReorderLevel(firstSupplier?.reorderLevel ?? item.reorderLevel);
+    setAdjustReorderQty(firstSupplier?.reorderQty ?? item.reorderQty);
     setIsAdjustOpen(true);
   };
 
   const handleOpenAdjustNew = () => {
     const firstItem = items[0];
 
-    setSelectedInventoryForAdjust(null);
-
     if (firstItem) {
-      applyAdjustValues(firstItem);
+      setAdjustProductId(firstItem.productId);
+      const firstSupplier = firstItem.suppliers[0];
+      setAdjustInventoryId(firstSupplier?.inventoryId || "");
+      setAdjustQty(firstSupplier?.quantityOnHand ?? firstItem.stock);
+      setAdjustReservedQty(firstSupplier?.reservedQuantity ?? firstItem.reservedQuantity);
+      setAdjustReorderLevel(firstSupplier?.reorderLevel ?? firstItem.reorderLevel);
+      setAdjustReorderQty(firstSupplier?.reorderQty ?? firstItem.reorderQty);
     } else {
+      setAdjustProductId("");
       setAdjustInventoryId("");
       setAdjustQty(0);
       setAdjustReservedQty(0);
@@ -246,14 +234,27 @@ const Inventory: React.FC = () => {
   const handleInventorySelectChange = (inventoryId: string) => {
     setAdjustInventoryId(inventoryId);
 
-    const selectedItem = items.find((item) => item.id === inventoryId);
+    const selectedItem = items.find(
+      (item) => item.productId === adjustProductId
+    );
+    const supplier = selectedItem?.suppliers.find(
+      (s) => s.inventoryId === inventoryId
+    );
 
-    if (selectedItem) {
-      applyAdjustValues(selectedItem);
+    if (selectedItem && supplier) {
+      setAdjustQty(supplier.quantityOnHand);
+      setAdjustReservedQty(supplier.reservedQuantity);
+      setAdjustReorderLevel(supplier.reorderLevel);
+      setAdjustReorderQty(supplier.reorderQty);
     }
   };
 
-  const selectedAdjustItem = items.find((item) => item.id === adjustInventoryId);
+  const selectedAdjustItem = items.find(
+    (item) => item.productId === adjustProductId
+  );
+  const selectedSupplier = selectedAdjustItem?.suppliers.find(
+    (s) => s.inventoryId === adjustInventoryId
+  );
 
   const handleSaveAdjust = async () => {
     if (!selectedAdjustItem) return;
@@ -263,7 +264,7 @@ const Inventory: React.FC = () => {
     try {
       await api.post("/inventory/adjust-stock", {
         product_id: selectedAdjustItem.productId,
-        product_supplier_id: selectedAdjustItem.productSupplierId ?? null,
+        product_supplier_id: selectedSupplier?.productSupplierId ?? null,
         quantity_on_hand: adjustQty,
         reserved_quantity: adjustReservedQty,
         reorder_level: adjustReorderLevel,
@@ -280,11 +281,24 @@ const Inventory: React.FC = () => {
   };
 
   /* ================= FILTER ================= */
-  const filtered = items.filter((p) =>
-    `${p.name} ${p.brand} ${p.supplierName} ${p.sku} ${p.partNumber}`
+  const filtered = items.filter((p) => {
+    const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber} ${p.suppliers.map((s) => s.name).join(" ")}`
       .toLowerCase()
-      .includes(search.toLowerCase())
-  );
+      .includes(search.toLowerCase());
+
+    const statusFilter = activeFilters.status;
+    const matchesStatus =
+      !statusFilter || statusFilter === "all" || p.statusValue === statusFilter;
+
+    const archivedFilter = activeFilters.archived;
+    const matchesArchived =
+      !archivedFilter ||
+      archivedFilter === "all" ||
+      (archivedFilter === "true") ||
+      (archivedFilter === "false" && !p.isArchived);
+
+    return matchesSearch && matchesStatus && matchesArchived;
+  });
 
   const paginated = paginate(filtered);
 
@@ -297,6 +311,29 @@ const Inventory: React.FC = () => {
           onSearch={setSearch}
           onAdd={handleOpenAdjustNew}
           addLabel="Adjust Stock"
+          filters={[
+            {
+              key: "status",
+              label: "Status",
+              options: [
+                { label: "In Stock", value: "in-stock" },
+                { label: "Low Stock", value: "low-stock" },
+                { label: "Out of Stock", value: "out-of-stock" },
+              ],
+            },
+            {
+              key: "archived",
+              label: "Archived",
+              options: [
+                { label: "Show Archived", value: "true" },
+                { label: "Hide Archived", value: "false" },
+              ],
+            },
+          ]}
+          activeFilters={activeFilters}
+          onFilterChange={(key, value) =>
+            setActiveFilters((prev) => ({ ...prev, [key]: value }))
+          }
         />
 
         {/* ================= TABLE ================= */}
@@ -342,7 +379,12 @@ const Inventory: React.FC = () => {
                 <TableBody>
                   {filtered.length > 0 ? (
                     paginated.map((p) => {
-                      const status = getStockStatus(p.stock, p.reorderLevel);
+                      const status =
+                        p.statusValue === "out-of-stock"
+                          ? { label: "Out of Stock", className: "bg-red-100/10 text-red-400 border border-red-500/20" }
+                          : p.statusValue === "low-stock"
+                          ? { label: "Low Stock", className: "bg-yellow-100/10 text-yellow-400 border border-yellow-500/20" }
+                          : { label: "In Stock", className: "bg-green-100/10 text-green-400 border border-green-500/20" };
 
                       return (
                         <TableRow
@@ -384,7 +426,9 @@ const Inventory: React.FC = () => {
                                   {p.brand}
                                 </span>
                                 <span className="text-[11px] text-muted-foreground/80">
-                                  {p.supplierName}
+                                  {p.suppliers.length > 0
+                                    ? p.suppliers.map((s) => s.name).join(", ")
+                                    : "No supplier"}
                                 </span>
                               </div>
                             </div>
@@ -528,13 +572,13 @@ const Inventory: React.FC = () => {
                 className="col-span-3 border border-border/80 rounded-lg px-3 py-2 bg-background text-foreground focus:ring-1 focus:ring-blue-900 transition text-sm"
                 value={adjustInventoryId}
                 onChange={(e) => handleInventorySelectChange(e.target.value)}
-                disabled={!!selectedInventoryForAdjust}
+                disabled={!!selectedAdjustItem && selectedAdjustItem.suppliers.length <= 1}
               >
-                {items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} ({item.sku}) - {item.supplierName}
+                {selectedAdjustItem?.suppliers.map((s) => (
+                  <option key={s.inventoryId} value={s.inventoryId}>
+                    {s.name} {s.price !== null ? `- ₱${s.price.toFixed(2)}` : ""}
                   </option>
-                ))}
+                )) || []}
               </select>
             </div>
 

@@ -14,7 +14,9 @@ use App\Domains\Supplier\Application\UseCases\LinkProductToSupplier;
 use App\Domains\Supplier\Application\UseCases\UnlinkProductFromSupplier;
 use App\Domains\Supplier\Application\UseCases\UpdateSupplierProductCost;
 use App\Domains\Supplier\Application\DTOs\SupplierDTO;
+use App\Domains\Inventory\Domain\Models\Inventory;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 
 class SupplierController extends Controller
 {
@@ -46,6 +48,11 @@ class SupplierController extends Controller
             $productSupplierIds = $supplier->products->map(fn ($p) => $p->pivot->id)->filter()->all();
             $prices = \App\Domains\Product\Domain\Models\ProductPrice::whereIn('product_supplier_id', $productSupplierIds)->get()->keyBy('product_supplier_id');
 
+            $stockByProductSupplier = Inventory::whereIn('product_supplier_id', $productSupplierIds)
+                ->select('product_supplier_id', DB::raw('SUM(quantity_on_hand) as total_stock'))
+                ->groupBy('product_supplier_id')
+                ->pluck('total_stock', 'product_supplier_id');
+
             return response()->json([
                 'data' => [
                     'id' => $supplier->id,
@@ -57,7 +64,7 @@ class SupplierController extends Controller
                     'viber' => $supplier->Viber,
                     'address' => $supplier->address,
                     'supplierCode' => $supplier->supplier_code,
-                    'products' => $supplier->products->map(function ($product) use ($prices) {
+                    'products' => $supplier->products->map(function ($product) use ($prices, $stockByProductSupplier) {
                         $pivotId = $product->pivot->id;
                         $priceObj = $prices->get($pivotId);
                         return [
@@ -67,7 +74,7 @@ class SupplierController extends Controller
                             'price' => $product->pivot->supplier_cost ?? 0,
                             'isVat' => $product->pivot->is_vat ?? false,
                             'vatPercent' => $product->pivot->vat_percent ?? null,
-                            'stock' => $product->inventory->quantity ?? 0,
+                            'stock' => $stockByProductSupplier->get($pivotId, 0),
                             'sellingPrice' => $priceObj ? $priceObj->Price : null,
                             'markup' => $priceObj ? $priceObj->Markup : null,
                         ];

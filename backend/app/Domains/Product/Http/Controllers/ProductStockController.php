@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Product\Application\Services\ProductFormatterService;
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,6 +21,7 @@ class ProductStockController extends Controller
     public function adjust(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
+            'product_supplier_id' => ['nullable', 'uuid'],
             'quantity_on_hand' => ['required', 'integer', 'min:0'],
             'reserved_quantity' => ['nullable', 'integer', 'min:0'],
             'reorder_level' => ['nullable', 'integer', 'min:0'],
@@ -29,9 +31,29 @@ class ProductStockController extends Controller
 
         $product = Product::findOrFail($id);
 
+        $productSupplierId = $validated['product_supplier_id'] ?? null;
+
+        if (empty($productSupplierId)) {
+            $suppliersForProduct = ProductSupplier::where('product_id', $product->id)->get();
+
+            if ($suppliersForProduct->count() === 1) {
+                $productSupplierId = $suppliersForProduct->first()->id;
+            } elseif ($suppliersForProduct->count() > 1) {
+                return response()->json([
+                    'message' => 'This product has multiple suppliers. Please select a specific supplier to adjust stock.',
+                ], 422);
+            }
+        } else {
+            ProductSupplier::query()
+                ->where('id', $productSupplierId)
+                ->where('product_id', $product->id)
+                ->firstOrFail();
+        }
+
         Inventory::updateOrCreate(
             [
                 'productID' => $product->id,
+                'product_supplier_id' => $productSupplierId,
                 'location_id' => $validated['location_id'] ?? self::DEFAULT_LOCATION_ID,
             ],
             [

@@ -38,8 +38,12 @@ import BillingList from "./pages/internal/Sales/Billing/BillingList";
 import BillingForm from "./pages/internal/Sales/Billing/BillingForm";
 import BillingDetail from "./pages/internal/Sales/Billing/BillingDetail";
 
-import PurchaseOrderList from "./pages/internal/Purchasing/PurchaseOrders/POList";
-import PurchaseOrderDetails from "./pages/internal/Purchasing/PurchaseOrders/PODetail";
+import Purchasing from "./pages/internal/Purchasing/PurchaseOrders/Purchasing";
+import PurchaseOrders from "./pages/internal/Purchasing/PurchaseOrders/PurchaseOrders";
+import PurchaseOrderDetail from "./pages/internal/Purchasing/PurchaseOrders/PurchaseOrderDetail";
+import GoodsReceipts from "./pages/internal/Purchasing/PurchaseOrders/GoodsReceipts";
+import GoodsReceiptDetail from "./pages/internal/Purchasing/PurchaseOrders/GoodsReceiptDetail";
+import StockLedger from "./pages/internal/Purchasing/PurchaseOrders/StockLedger";
 
 import SupplierList from "./pages/internal/Purchasing/Suppliers/SupplierList";
 import SupplierDetails from "./pages/internal/Purchasing/Suppliers/SupplierDetail";
@@ -132,11 +136,21 @@ const App: React.FC = () => {
               </Route>
 
               {/* Purchasing */}
+              {/* Purchasing */}
               <Route path="purchasing">
+                <Route index element={<Purchasing />} />
+
                 <Route path="purchase-orders">
-                  <Route index element={<PurchaseOrderList />} />
-                  <Route path=":id" element={<PurchaseOrderDetails />} />
+                  <Route index element={<PurchaseOrders />} />
+                  <Route path=":id" element={<PurchaseOrderDetail />} />
                 </Route>
+
+                <Route path="goods-receipts">
+                  <Route index element={<GoodsReceipts />} />
+                  <Route path=":id" element={<GoodsReceiptDetail />} />
+                </Route>
+
+                <Route path="stock-ledger" element={<StockLedger />} />
 
                 <Route path="suppliers">
                   <Route index element={<SupplierList />} />

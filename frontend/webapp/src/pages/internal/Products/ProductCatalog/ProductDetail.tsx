@@ -696,8 +696,25 @@ const ProductDetail: React.FC = () => {
         preferred_supplier_id: productSupplierId,
       });
 
-      showToast("success", "Preferred supplier updated", "The preferred supplier has been set successfully.");
+      const chosenSupplier = product?.suppliers?.find(
+        (s) => (s.id ?? s.supplier_id) === productSupplierId
+      );
+      const chosenStock = chosenSupplier?.stock_quantity ?? 0;
+      const hasOtherSupplierWithStock = product?.suppliers?.some(
+        (s) => (s.id ?? s.supplier_id) !== productSupplierId && (s.stock_quantity ?? 0) > 0
+      ) ?? false;
+
       await loadProduct();
+
+      if (chosenStock <= 0 && hasOtherSupplierWithStock) {
+        showToast(
+          "info",
+          "Preferred supplier saved",
+          "This supplier has no stock. The system will display the supplier with available stock instead."
+        );
+      } else {
+        showToast("success", "Preferred supplier updated", "The preferred supplier has been set successfully.");
+      }
     } catch (error: any) {
       console.error("Failed to set preferred supplier:", error);
       const errorMsg = error?.response?.data?.message || "Failed to update preferred supplier.";

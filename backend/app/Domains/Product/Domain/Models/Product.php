@@ -96,6 +96,25 @@ class Product extends Model
         );
     }
 
+    public function resolvePreferredSupplier()
+    {
+        $preferred = $this->preferredSupplier;
+
+        if ($preferred && $preferred->inventory && (int) $preferred->inventory->quantity_on_hand > 0) {
+            return $preferred;
+        }
+
+        $productSuppliers = $this->relationLoaded('productSuppliers')
+            ? $this->productSuppliers
+            : $this->productSuppliers()->with('inventory')->get();
+
+        return $productSuppliers
+            ->filter(fn ($ps) => $ps->inventory && (int) $ps->inventory->quantity_on_hand > 0)
+            ->sortByDesc(fn ($ps) => (int) $ps->inventory->quantity_on_hand)
+            ->sortBy(fn ($ps) => (float) $ps->supplier_cost)
+            ->first() ?? $preferred;
+    }
+
     public function suppliers()
     {
         return $this->belongsToMany(

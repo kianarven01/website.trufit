@@ -27,6 +27,7 @@ interface ProductSupplier {
   supplier_id: string | number;
   supplier_cost?: number | string | null;
   is_preferred?: boolean;
+  stock_quantity?: number;
 
   active_price?: ProductPrice | null;
   activePrice?: ProductPrice | null;
@@ -952,7 +953,7 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto px-6 pt-1 pb-6 space-y-6">
+    <div className="w-full h-full overflow-y-auto px-6 pt-1 pb-6 flex flex-col gap-6">
       {toast && (
         <AppToast
           type={toast.type}
@@ -1071,7 +1072,7 @@ const ProductDetail: React.FC = () => {
       )}
       
       {/* Product Header and Actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <Button
           variant="outline"
           size="sm"
@@ -1107,9 +1108,9 @@ const ProductDetail: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-        <div className="lg:col-span-2">
-          <Card className="p-6 space-y-6 min-h-[620px] h-full">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 items-stretch">
+        <div className="lg:col-span-2 h-full">
+          <Card className="p-6 flex flex-col gap-6 h-full">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
@@ -1143,9 +1144,9 @@ const ProductDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-stretch">
-              <div className="md:col-span-2 flex flex-col h-full gap-4">
-                <div className="bg-muted rounded-xl flex-1 min-h-[300px] flex items-center justify-center overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch flex-1">
+              <div className="flex flex-col h-full gap-4">
+                <div className="bg-muted rounded-xl flex-1 flex items-center justify-center overflow-hidden">
                   {product.image ? (
                     <img
                       src={product.image}
@@ -1190,7 +1191,7 @@ const ProductDetail: React.FC = () => {
                 </div>
               </div>
 
-              <Card className="md:col-span-3 p-4 h-full min-h-[440px] flex flex-col">
+              <Card className="p-4 h-full flex flex-col">
                 <CardContent className="p-0 flex flex-col h-full space-y-4">
                   <h2 className="font-semibold">Product Details</h2>
 
@@ -1258,9 +1259,9 @@ const ProductDetail: React.FC = () => {
           </Card>
         </div>
 
-        <div className="flex flex-col gap-4 min-h-[620px] h-full">
-          <Card className="p-4 flex-1 min-h-0">
-            <CardContent className="p-0 space-y-4 h-full flex flex-col">
+        <div className="flex flex-col gap-4">
+          <Card className="p-4">
+            <CardContent className="p-0 space-y-4 flex flex-col">
               <div className="flex justify-between items-center">
                 <h2 className="font-semibold">Suppliers</h2>
                 <Button
@@ -1305,12 +1306,16 @@ const ProductDetail: React.FC = () => {
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  Cost:{" "}
-                                  {supplierCost !== null
-                                    ? `₱${supplierCost.toFixed(2)}`
-                                    : "-"}
-                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>
+                                    Cost:{" "}
+                                    {supplierCost !== null
+                                      ? `₱${supplierCost.toFixed(2)}`
+                                      : "-"}
+                                  </span>
+                                  <span>•</span>
+                                  <span>Stock: {supplier.stock_quantity ?? 0}</span>
+                                </div>
                               </div>
 
                               <div className="text-right">

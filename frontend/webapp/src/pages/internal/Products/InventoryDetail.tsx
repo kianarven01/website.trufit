@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -230,6 +230,7 @@ const getStockStatus = (item: InventoryDetailItem) => {
 
 const InventoryDetail: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { productId: inventoryId } = useParams<{ productId: string }>();
 
   const [item, setItem] = useState<InventoryDetailItem | null>(null);
@@ -259,6 +260,32 @@ const InventoryDetail: React.FC = () => {
     void loadInventoryDetail();
   }, [inventoryId]);
 
+  useEffect(() => {
+    if (!item?.name) return;
+
+    const breadcrumbKey = `breadcrumb-${location.pathname}`;
+    sessionStorage.setItem(breadcrumbKey, item.name);
+
+    const currentState = (location.state || {}) as Record<string, any>;
+
+    if (
+      currentState.breadcrumbLabel === item.name
+    ) {
+      window.dispatchEvent(new Event("breadcrumb-update"));
+      return;
+    }
+
+    navigate(`${location.pathname}${location.search}`, {
+      replace: true,
+      state: {
+        ...currentState,
+        breadcrumbLabel: item.name,
+      },
+    });
+
+    window.dispatchEvent(new Event("breadcrumb-update"));
+  }, [item?.name, location.pathname, location.search, location.state, navigate]);
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -287,8 +314,8 @@ const InventoryDetail: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen p-6 space-y-5">
-        <div className="flex items-center justify-between gap-3">
+      <div className="p-6 space-y-5 h-full flex flex-col overflow-y-auto">
+        <div className="flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
@@ -307,8 +334,8 @@ const InventoryDetail: React.FC = () => {
           <Badge className={status.className}>{status.label}</Badge>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
-          <Card className="xl:col-span-2 p-5 min-h-[580px]">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch flex-1">
+          <Card className="xl:col-span-2 p-5">
             <CardContent className="p-0 space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
                 <div className="md:col-span-2 space-y-4">
@@ -409,7 +436,7 @@ const InventoryDetail: React.FC = () => {
             </CardContent>
           </Card>
 
-          <div className="flex flex-col gap-4 min-h-[580px]">
+          <div className="flex flex-col gap-4">
             {/* Compatible Vehicles */}
             <Card className="p-4 flex-1 min-h-0">
               <CardContent className="p-0 h-full flex flex-col space-y-4">

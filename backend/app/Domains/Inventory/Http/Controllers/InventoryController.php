@@ -26,6 +26,7 @@ class InventoryController extends Controller
                 'product.unitRelation',
                 'product.preferredSupplier.supplier',
                 'product.preferredSupplier.price',
+                'product.productSuppliers.inventory',
             ])
             ->when(! $showArchived, function ($query) {
                 $query->whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
@@ -74,6 +75,7 @@ class InventoryController extends Controller
                 'product.unitRelation',
                 'product.preferredSupplier.supplier',
                 'product.preferredSupplier.price',
+                'product.productSuppliers.inventory',
                 'product.vehicleCompatibilities.vehicleVariant.vehicleModel.manufacturer',
                 'product.equivalentGroups.items.product.manufacturer',
                 'product.equivalentGroups.items.product.inventoryRows',
@@ -110,8 +112,9 @@ class InventoryController extends Controller
         $productSupplierId = $validated['product_supplier_id'] ?? null;
 
         if (empty($productSupplierId)) {
-            if ($product->preferred_supplier_id) {
-                $productSupplierId = $product->preferred_supplier_id;
+            $resolved = $product->resolvePreferredSupplier();
+            if ($resolved) {
+                $productSupplierId = $resolved->id;
             } else {
                 $suppliersForProduct = ProductSupplier::where('product_id', $product->id)->get();
 
@@ -166,7 +169,7 @@ class InventoryController extends Controller
 
     private function getSellingPrice(Product $product): ?float
     {
-        $preferredSupplier = $product->preferredSupplier;
+        $preferredSupplier = $product->resolvePreferredSupplier();
 
         if (!$preferredSupplier) {
             return null;

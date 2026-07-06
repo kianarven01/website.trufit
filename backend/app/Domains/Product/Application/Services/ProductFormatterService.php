@@ -19,9 +19,7 @@ class ProductFormatterService
 
         $firstProductSupplier = $productSuppliers->first();
 
-        $preferredSupplier = $product->relationLoaded('preferredSupplier')
-            ? $product->preferredSupplier
-            : null;
+        $preferredSupplier = $product->resolvePreferredSupplier();
 
         $preferredPrice = $preferredSupplier?->price;
         $preferredSellingPrice = $preferredPrice?->Price;
@@ -75,6 +73,9 @@ class ProductFormatterService
                     'is_vat' => $productSupplier->is_vat,
                     'vat_percent' => $productSupplier->vat_percent,
                     'is_preferred' => $preferredSupplier && $preferredSupplier->id === $productSupplier->id,
+                    'stock_quantity' => $productSupplier->inventory
+                        ? (int) $productSupplier->inventory->quantity_on_hand
+                        : 0,
                     'supplier' => $productSupplier->supplier ? [
                         'id' => $productSupplier->supplier->id,
                         'CompanyName' => $productSupplier->supplier->CompanyName,
@@ -88,6 +89,7 @@ class ProductFormatterService
                         'Markup' => $productSupplier->price->Markup,
                     ] : null,
                 ])
+                ->sortBy(fn ($s) => $s['is_preferred'] ? 0 : 1)
                 ->values(),
 
             'vehicle_compatibilities' => $this->formatVehicleCompatibilities($product),

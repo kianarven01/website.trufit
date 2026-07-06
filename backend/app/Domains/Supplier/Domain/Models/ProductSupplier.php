@@ -4,6 +4,7 @@ namespace App\Domains\Supplier\Domain\Models;
 
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Domain\Models\ProductPrice;
+use App\Domains\Inventory\Domain\Models\Inventory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -54,5 +55,10 @@ class ProductSupplier extends Model
     public function activePrice()
     {
         return $this->hasOne(ProductPrice::class, 'product_supplier_id', 'id');
+    }
+
+    public function inventory()
+    {
+        return $this->hasOne(Inventory::class, 'product_supplier_id', 'id');
     }
 }

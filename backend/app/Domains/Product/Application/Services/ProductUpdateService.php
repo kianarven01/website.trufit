@@ -55,6 +55,7 @@ class ProductUpdateService
                 'unit',
                 'part_id',
                 'manufacturer_id',
+                'preferred_supplier_id',
             ]));
 
             $product->fill($updateData);

@@ -19,32 +19,12 @@ class ProductFormatterService
 
         $firstProductSupplier = $productSuppliers->first();
 
-        $inventoryRows = $product->relationLoaded('inventoryRows')
-            ? $product->inventoryRows
-            : collect();
-
-        $inventoryRelation = $product->relationLoaded('inventoryRelation')
-            ? $product->inventoryRelation
+        $preferredSupplier = $product->relationLoaded('preferredSupplier')
+            ? $product->preferredSupplier
             : null;
 
-        $totalStock = $inventoryRows->isNotEmpty()
-            ? $inventoryRows->sum(fn ($inventory) => (int) $inventory->quantity_on_hand)
-            : (int) ($inventoryRelation?->quantity_on_hand ?? 0);
-
-        $totalReserved = $inventoryRows->isNotEmpty()
-            ? $inventoryRows->sum(fn ($inventory) => (int) $inventory->reserved_quantity)
-            : (int) ($inventoryRelation?->reserved_quantity ?? 0);
-
-        $availableStock = max($totalStock - $totalReserved, 0);
-        $maxReorderLevel = $inventoryRows->isNotEmpty()
-            ? (int) ($inventoryRows->max('reorder_level') ?? 0)
-            : (int) ($inventoryRelation?->reorder_level ?? 0);
-
-        $stockStatus = match (true) {
-            $availableStock <= 0 => 'Out of Stock',
-            $maxReorderLevel > 0 && $availableStock <= $maxReorderLevel => 'Low Stock',
-            default => 'In Stock',
-        };
+        $preferredPrice = $preferredSupplier?->price;
+        $preferredSellingPrice = $preferredPrice?->Price;
 
         return [
             'id' => $product->id,
@@ -78,14 +58,14 @@ class ProductFormatterService
             'supplier_code' => $firstProductSupplier?->supplier?->supplier_code,
             'cost' => $firstProductSupplier?->supplier_cost,
 
-            'quantity_on_hand' => $totalStock,
-            'reserved_quantity' => $totalReserved,
-            'available_quantity' => $availableStock,
-            'reorder_level' => $maxReorderLevel,
-            'reorder_qty' => $inventoryRelation?->reorder_qty,
-            'location_id' => $inventoryRelation?->location_id,
-            'sell_price' => $inventoryRelation?->sell_price,
-            'stock_status' => $stockStatus,
+            'preferred_supplier_id' => $preferredSupplier?->id,
+            'preferred_supplier' => $preferredSupplier?->supplier ? [
+                'id' => $preferredSupplier->supplier->id,
+                'CompanyName' => $preferredSupplier->supplier->CompanyName,
+                'name' => $preferredSupplier->supplier->CompanyName,
+                'supplier_code' => $preferredSupplier->supplier->supplier_code,
+            ] : null,
+            'preferred_selling_price' => $preferredSellingPrice,
 
             'suppliers' => $productSuppliers
                 ->map(fn ($productSupplier) => [
@@ -94,6 +74,7 @@ class ProductFormatterService
                     'supplier_cost' => $productSupplier->supplier_cost,
                     'is_vat' => $productSupplier->is_vat,
                     'vat_percent' => $productSupplier->vat_percent,
+                    'is_preferred' => $preferredSupplier && $preferredSupplier->id === $productSupplier->id,
                     'supplier' => $productSupplier->supplier ? [
                         'id' => $productSupplier->supplier->id,
                         'CompanyName' => $productSupplier->supplier->CompanyName,
@@ -106,18 +87,6 @@ class ProductFormatterService
                         'Price' => $productSupplier->price->Price,
                         'Markup' => $productSupplier->price->Markup,
                     ] : null,
-                ])
-                ->values(),
-
-            'inventory_rows' => $inventoryRows
-                ->map(fn ($inventory) => [
-                    'id' => $inventory->id,
-                    'product_supplier_id' => $inventory->product_supplier_id,
-                    'quantity_on_hand' => $inventory->quantity_on_hand,
-                    'reserved_quantity' => $inventory->reserved_quantity,
-                    'reorder_level' => $inventory->reorder_level,
-                    'reorder_qty' => $inventory->reorder_qty,
-                    'location_id' => $inventory->location_id,
                 ])
                 ->values(),
 

@@ -65,16 +65,12 @@ interface Product {
   description: string;
   unit: string;
   unitAbbreviation?: string | null;
-  quantityOnHand?: number;
-  reservedQuantity?: number;
-  availableQuantity?: number;
-  stockStatus?: "In Stock" | "Low Stock" | "Out of Stock" | string;
   price: number | null;
   category: string;
   manufacturer: string;
-  location?: string;
   barcode?: string;
   categoryId?: string | number | null;
+  preferredSupplierId?: string | null;
   suppliers?: ProductSupplier[];
   compatibleVehicles?: {
     id?: string;
@@ -96,8 +92,6 @@ interface EquivalentProduct {
   sku: string;
   partNumber: string;
   manufacturer: string;
-  stockStatus: string;
-  quantityOnHand: number;
 }
 
 interface EquivalentGroup {
@@ -345,7 +339,7 @@ const normalizeProduct = (row: any): Product => ({
     row.unit_abbreviation ||
     row.unitAbbreviation ||
     null,
-  price: toNumberOrNull(row.selling_price ?? row.price ?? row.sell_price),
+  price: toNumberOrNull(row.selling_price ?? row.preferred_selling_price ?? row.price ?? row.sell_price),
   category: row.category?.name || row.Category?.name || row.category_name || "-",
   manufacturer:
     row.manufacturer?.name ||
@@ -355,24 +349,9 @@ const normalizeProduct = (row: any): Product => ({
     row.Brand?.name ||
     row.brand_name ||
     "-",
-  location: row.location || row.warehouse_location || "-",
   barcode: row.barcode || "",
   categoryId: row.category_id ?? row.categoryId ?? null,
-  quantityOnHand: toNumberOrNull(row.quantity_on_hand) ?? 0,
-  reservedQuantity: toNumberOrNull(row.reserved_quantity) ?? 0,
-  availableQuantity:
-    toNumberOrNull(row.available_quantity) ??
-    Math.max(
-      (toNumberOrNull(row.quantity_on_hand) ?? 0) -
-        (toNumberOrNull(row.reserved_quantity) ?? 0),
-      0
-    ),
-  stockStatus:
-    row.stock_status ||
-    row.stockStatus ||
-    ((toNumberOrNull(row.available_quantity ?? row.quantity_on_hand) ?? 0) > 0
-      ? "In Stock"
-      : "Out of Stock"),
+  preferredSupplierId: row.preferred_supplier_id ?? row.preferredSupplierId ?? null,
   suppliers: normalizeSuppliers(row),
   compatibleVehicles: normalizeCompatibleVehicles(row),
   crossReferences: Array.isArray(row.crossReferences) ? row.crossReferences : [],
@@ -390,8 +369,6 @@ const normalizeEquivalentProduct = (row: any): EquivalentProduct => ({
     row.brand?.name ||
     row.Brand?.name ||
     "-",
-  stockStatus: String(row.stock_status || row.stockStatus || "Out of Stock"),
-  quantityOnHand: Number(row.quantity_on_hand || row.quantityOnHand || 0),
 });
 
 const normalizeEquivalentGroup = (row: any): EquivalentGroup => {
@@ -411,18 +388,6 @@ const normalizeEquivalentGroup = (row: any): EquivalentGroup => {
     products: productRows.map(normalizeEquivalentProduct),
     equivalentProducts: equivalentRows.map(normalizeEquivalentProduct),
   };
-};
-
-const getStockBadgeClass = (status?: string) => {
-  if (status === "In Stock") {
-    return "bg-green-100 text-green-700";
-  }
-
-  if (status === "Low Stock") {
-    return "bg-yellow-100 text-yellow-700";
-  }
-
-  return "bg-red-100 text-red-700";
 };
 
 const ProductDetail: React.FC = () => {
@@ -719,6 +684,23 @@ const ProductDetail: React.FC = () => {
       console.error("Failed to remove vehicle compatibility:", error);
       const errorMsg = error?.response?.data?.message || "Failed to remove vehicle compatibility.";
       showToast("error", "Failed to remove vehicle", errorMsg);
+    }
+  };
+
+  const handleSetPreferredSupplier = async (productSupplierId: string) => {
+    if (!product?.id) return;
+
+    try {
+      await api.patch(`/products/${product.id}`, {
+        preferred_supplier_id: productSupplierId,
+      });
+
+      showToast("success", "Preferred supplier updated", "The preferred supplier has been set successfully.");
+      await loadProduct();
+    } catch (error: any) {
+      console.error("Failed to set preferred supplier:", error);
+      const errorMsg = error?.response?.data?.message || "Failed to update preferred supplier.";
+      showToast("error", "Failed to update preferred supplier", errorMsg);
     }
   };
 
@@ -1131,12 +1113,6 @@ const ProductDetail: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold">{product.name}</h1>
-                <Badge
-                  variant="secondary"
-                  className={getStockBadgeClass(product.stockStatus)}
-                >
-                  {product.stockStatus || "Out of Stock"}
-                </Badge>
               </div>
             </div>
 
@@ -1255,29 +1231,12 @@ const ProductDetail: React.FC = () => {
 
                     <Separator className="col-span-2" />
 
-                    <span className="text-muted-foreground">Total Stock</span>
-                    <span>{product.quantityOnHand ?? 0}</span>
-
-                    <Separator className="col-span-2" />
-
-                    <span className="text-muted-foreground">Available Stock</span>
-                    <span>{product.availableQuantity ?? 0}</span>
-
-                    <Separator className="col-span-2" />
-
                     <span className="text-muted-foreground">Stock Unit</span>
                     <span>
                       {product.unitAbbreviation
                         ? `${product.unit} (${product.unitAbbreviation})`
                         : product.unit}
                     </span>
-
-                    <Separator className="col-span-2" />
-
-                    <span className="text-muted-foreground">
-                      Warehouse Location
-                    </span>
-                    <span>{product.location || "-"}</span>
 
                     <Separator className="col-span-2" />
 
@@ -1319,6 +1278,7 @@ const ProductDetail: React.FC = () => {
                     {product.suppliers.map((supplier) => {
                       const supplierRowId = getSupplierRowId(supplier);
                       const isSelected = supplierRowId === selectedSupplierId;
+                      const isPreferred = supplierRowId === product.preferredSupplierId;
                       const supplierCost = toNumberOrNull(supplier.supplier_cost);
                       const sellingPrice = getSupplierSellingPrice(supplier);
 
@@ -1327,7 +1287,7 @@ const ProductDetail: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setSelectedSupplierId(supplierRowId)}
-                            className={`w-full rounded-lg border p-3 pr-10 text-left transition ${
+                            className={`w-full rounded-lg border p-3 pr-20 text-left transition ${
                               isSelected
                                 ? "border-primary bg-primary/10"
                                 : "border-border hover:bg-muted"
@@ -1335,9 +1295,16 @@ const ProductDetail: React.FC = () => {
                           >
                             <div className="flex items-center justify-between gap-3">
                               <div>
-                                <p className="text-sm font-medium">
-                                  {getSupplierName(supplier)}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium">
+                                    {getSupplierName(supplier)}
+                                  </p>
+                                  {isPreferred && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                                      Preferred
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">
                                   Cost:{" "}
                                   {supplierCost !== null
@@ -1356,17 +1323,34 @@ const ProductDetail: React.FC = () => {
                               </div>
                             </div>
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleRemoveSupplier(supplierRowId);
-                            }}
-                            className="absolute top-1/2 -translate-y-1/2 right-3 p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive opacity-0 group-hover/supplier:opacity-100 transition-opacity"
-                            title="Remove supplier"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1 opacity-0 group-hover/supplier:opacity-100 transition-opacity">
+                            {!isPreferred && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleSetPreferredSupplier(supplierRowId);
+                                }}
+                                className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary transition"
+                                title="Set as preferred supplier"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void handleRemoveSupplier(supplierRowId);
+                              }}
+                              className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
+                              title="Remove supplier"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -1483,14 +1467,11 @@ const ProductDetail: React.FC = () => {
                                     SKU: {equivalentProduct.sku || "-"} • Part No: {equivalentProduct.partNumber || "-"}
                                   </p>
                                   <p className="text-[11px] text-muted-foreground truncate">
-                                    Brand: {equivalentProduct.manufacturer || "-"} • Stock: {equivalentProduct.quantityOnHand}
+                                    Brand: {equivalentProduct.manufacturer || "-"}
                                   </p>
                                 </div>
 
                                 <div className="flex items-center gap-2 shrink-0">
-                                  <Badge variant="secondary" className="text-[10px]">
-                                    {equivalentProduct.stockStatus}
-                                  </Badge>
                                   <button
                                     type="button"
                                     title="Remove equivalent product"
@@ -1605,7 +1586,7 @@ const ProductDetail: React.FC = () => {
                         </div>
 
                         <Badge variant={selected ? "default" : "secondary"}>
-                          {selected ? "Selected" : candidate.stockStatus}
+                          {selected ? "Selected" : "Available"}
                         </Badge>
                       </div>
                     </button>

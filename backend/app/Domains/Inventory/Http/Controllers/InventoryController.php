@@ -24,8 +24,8 @@ class InventoryController extends Controller
                 'product.part',
                 'product.manufacturer',
                 'product.unitRelation',
-                'productSupplier.supplier',
-                'productSupplier.price',
+                'product.preferredSupplier.supplier',
+                'product.preferredSupplier.price',
             ])
             ->when(! $showArchived, function ($query) {
                 $query->whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
@@ -72,10 +72,11 @@ class InventoryController extends Controller
                 'product.part',
                 'product.manufacturer',
                 'product.unitRelation',
-                'product.productSuppliers.supplier',
-                'product.productSuppliers.price',
-                'productSupplier.supplier',
-                'productSupplier.price',
+                'product.preferredSupplier.supplier',
+                'product.preferredSupplier.price',
+                'product.vehicleCompatibilities.vehicleVariant.vehicleModel.manufacturer',
+                'product.equivalentGroups.items.product.manufacturer',
+                'product.equivalentGroups.items.product.inventoryRows',
             ])
             ->where('productID', $id)
             ->orderBy('id')
@@ -85,7 +86,7 @@ class InventoryController extends Controller
             return response()->json(['message' => 'Inventory not found'], 404);
         }
 
-        $grouped = $this->formatGroupedInventory($inventoryRows);
+        $grouped = $this->formatGroupedInventory($inventoryRows, includeDetails: true);
 
         return response()->json([
             'data' => $grouped,
@@ -106,18 +107,21 @@ class InventoryController extends Controller
 
         $product = Product::findOrFail($validated['product_id']);
 
-        // Auto-resolve product_supplier_id when not provided
         $productSupplierId = $validated['product_supplier_id'] ?? null;
 
         if (empty($productSupplierId)) {
-            $suppliersForProduct = ProductSupplier::where('product_id', $product->id)->get();
+            if ($product->preferred_supplier_id) {
+                $productSupplierId = $product->preferred_supplier_id;
+            } else {
+                $suppliersForProduct = ProductSupplier::where('product_id', $product->id)->get();
 
-            if ($suppliersForProduct->count() === 1) {
-                $productSupplierId = $suppliersForProduct->first()->id;
-            } elseif ($suppliersForProduct->count() > 1) {
-                return response()->json([
-                    'message' => 'This product has multiple suppliers. Please select a specific supplier to adjust stock.',
-                ], 422);
+                if ($suppliersForProduct->count() === 1) {
+                    $productSupplierId = $suppliersForProduct->first()->id;
+                } elseif ($suppliersForProduct->count() > 1) {
+                    return response()->json([
+                        'message' => 'This product has multiple suppliers. Please select a specific supplier to adjust stock.',
+                    ], 422);
+                }
             }
         } else {
             ProductSupplier::query()
@@ -150,8 +154,8 @@ class InventoryController extends Controller
             'product.part',
             'product.manufacturer',
             'product.unitRelation',
-            'productSupplier.supplier',
-            'productSupplier.price',
+            'product.preferredSupplier.supplier',
+            'product.preferredSupplier.price',
         ]);
 
         return response()->json([
@@ -160,16 +164,27 @@ class InventoryController extends Controller
         ]);
     }
 
-    private function formatInventory(Inventory $inventory, bool $includeProductSuppliers = false): array
+    private function getSellingPrice(Product $product): ?float
+    {
+        $preferredSupplier = $product->preferredSupplier;
+
+        if (!$preferredSupplier) {
+            return null;
+        }
+
+        $price = $preferredSupplier->price;
+
+        return $price ? (float) $price->Price : null;
+    }
+
+    private function formatInventory(Inventory $inventory): array
     {
         $product = $inventory->product;
-        $productSupplier = $inventory->productSupplier;
-        $price = $productSupplier?->price;
 
         $availableQuantity =
             (int) $inventory->quantity_on_hand - (int) $inventory->reserved_quantity;
 
-        $data = [
+        return [
             'id' => $inventory->id,
             'product_id' => $inventory->productID,
             'product_supplier_id' => $inventory->product_supplier_id,
@@ -204,60 +219,15 @@ class InventoryController extends Controller
                 'unit_abbreviation' => $product->unitRelation?->abbreviation,
             ] : null,
 
-            'supplier' => $productSupplier?->supplier ? [
-                'id' => $productSupplier->supplier->id,
-                'CompanyName' => $productSupplier->supplier->CompanyName,
-                'name' => $productSupplier->supplier->CompanyName,
-                'supplier_code' => $productSupplier->supplier->supplier_code,
-            ] : null,
-
-            'supplier_cost' => $productSupplier?->supplier_cost,
-
-            'active_price' => $price ? [
-                'id' => $price->id,
-                'product_supplier_id' => $price->product_supplier_id,
-                'Price' => $price->Price,
-                'Markup' => $price->Markup,
-            ] : null,
-
-            'price' => $price?->Price,
-            'markup' => $price?->Markup,
+            'selling_price' => $product ? $this->getSellingPrice($product) : null,
 
             'status' => ((int) $inventory->quantity_on_hand > 0)
                 ? 'In Stock'
                 : 'Out of Stock',
         ];
-
-        if ($includeProductSuppliers && $product) {
-            $data['product_suppliers'] = $product->productSuppliers
-                ->map(function ($productSupplier) {
-                    return [
-                        'id' => $productSupplier->id,
-                        'supplier_id' => $productSupplier->supplier_id,
-                        'supplier_cost' => $productSupplier->supplier_cost,
-
-                        'supplier' => $productSupplier->supplier ? [
-                            'id' => $productSupplier->supplier->id,
-                            'CompanyName' => $productSupplier->supplier->CompanyName,
-                            'name' => $productSupplier->supplier->CompanyName,
-                            'supplier_code' => $productSupplier->supplier->supplier_code,
-                        ] : null,
-
-                        'active_price' => $productSupplier->price ? [
-                            'id' => $productSupplier->price->id,
-                            'product_supplier_id' => $productSupplier->price->product_supplier_id,
-                            'Price' => $productSupplier->price->Price,
-                            'Markup' => $productSupplier->price->Markup,
-                        ] : null,
-                    ];
-                })
-                ->values();
-        }
-
-        return $data;
     }
 
-    private function formatGroupedInventory($rows): array
+    private function formatGroupedInventory($rows, bool $includeDetails = false): array
     {
         $first = $rows->first();
         $product = $first->product;
@@ -269,33 +239,6 @@ class InventoryController extends Controller
         $reorderLevel = (int) $first->reorder_level;
         $reorderQty = (int) $first->reorder_qty;
 
-        $suppliers = $rows->map(function ($row) {
-            $ps = $row->productSupplier;
-            $price = $ps?->price;
-
-            return [
-                'id' => $row->id,
-                'product_supplier_id' => $row->product_supplier_id,
-                'supplier' => $ps?->supplier ? [
-                    'id' => $ps->supplier->id,
-                    'CompanyName' => $ps->supplier->CompanyName,
-                    'name' => $ps->supplier->CompanyName,
-                    'supplier_code' => $ps->supplier->supplier_code,
-                ] : null,
-                'supplier_cost' => $ps?->supplier_cost,
-                'price' => $price?->Price,
-                'markup' => $price?->Markup,
-                'inventory_id' => $row->id,
-                'quantity_on_hand' => (int) $row->quantity_on_hand,
-                'reserved_quantity' => (int) $row->reserved_quantity,
-                'reorder_level' => (int) $row->reorder_level,
-                'reorder_qty' => (int) $row->reorder_qty,
-            ];
-        })->values();
-
-        $lowestPrice = $suppliers->pluck('price')->filter()->min() ?? null;
-        $highestPrice = $suppliers->pluck('price')->filter()->max() ?? null;
-
         $status = match (true) {
             $totalOnHand <= 0 => 'Out of Stock',
             $reorderLevel > 0 && $totalOnHand <= $reorderLevel => 'Low Stock',
@@ -304,7 +247,7 @@ class InventoryController extends Controller
 
         $locationId = $first->location_id;
 
-        return [
+        $result = [
             'product_id' => $first->productID,
             'product' => $product ? [
                 'id' => $product->id,
@@ -324,18 +267,97 @@ class InventoryController extends Controller
                 'unit_name' => $product->unitRelation?->name,
                 'unit_abbreviation' => $product->unitRelation?->abbreviation,
             ] : null,
-            'suppliers' => $suppliers,
             'quantity_on_hand' => $totalOnHand,
             'reserved_quantity' => $totalReserved,
             'available_quantity' => $availableQuantity,
             'reorder_level' => $reorderLevel,
             'reorder_qty' => $reorderQty,
             'location_id' => $locationId,
-            'lowest_price' => $lowestPrice,
-            'highest_price' => $highestPrice,
-            'price' => $lowestPrice,
+            'selling_price' => $product ? $this->getSellingPrice($product) : null,
             'status' => $status,
             'is_archived' => $product && $product->trashed(),
         ];
+
+        if ($includeDetails && $product) {
+            $result['compatible_vehicles'] = $this->formatVehicleCompatibilities($product);
+            $result['equivalent_groups'] = $this->formatEquivalentGroups($product);
+        }
+
+        return $result;
+    }
+
+    private function formatVehicleCompatibilities(Product $product): array
+    {
+        if (!$product->relationLoaded('vehicleCompatibilities')) {
+            return [];
+        }
+
+        $product->vehicleCompatibilities->loadMissing('vehicleVariant.vehicleModel.manufacturer');
+
+        return $product->vehicleCompatibilities
+            ->map(function ($compatibility) {
+                $variant = $compatibility->vehicleVariant;
+
+                return [
+                    'id' => $compatibility->id,
+                    'product_id' => $compatibility->product_id,
+                    'car_variant_id' => $compatibility->car_variant_id,
+                    'notes' => $compatibility->notes,
+                    'vehicle_variant' => $variant ? [
+                        'id' => $variant->id,
+                        'variant_name' => $variant->variant_name,
+                        'variant' => $variant->variant_name,
+                        'year' => $variant->year,
+                        'model' => $variant->vehicleModel?->model,
+                        'make' => $variant->vehicleModel?->manufacturer?->name,
+                        'vehicle_model' => $variant->vehicleModel ? [
+                            'id' => $variant->vehicleModel->id,
+                            'model' => $variant->vehicleModel->model,
+                            'make' => $variant->vehicleModel->manufacturer?->name,
+                        ] : null,
+                    ] : null,
+                    'name' => $variant?->variant_name,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function formatEquivalentGroups(Product $product): array
+    {
+        if (!$product->relationLoaded('equivalentGroups')) {
+            return [];
+        }
+
+        return $product->equivalentGroups
+            ->map(function ($group) use ($product) {
+                $items = $group->items
+                    ->filter(fn ($item) => $item->product_id !== $product->id)
+                    ->map(function ($item) {
+                        $equivProduct = $item->product;
+                        $totalStock = $equivProduct
+                            ? $equivProduct->inventoryRows->sum('quantity_on_hand')
+                            : 0;
+
+                        return [
+                            'id' => $equivProduct?->id,
+                            'name' => $equivProduct?->name ?? 'Unknown',
+                            'SKU' => $equivProduct?->SKU,
+                            'part_number' => $equivProduct?->part_number,
+                            'manufacturer_name' => $equivProduct?->manufacturer?->name,
+                            'quantity_on_hand' => (int) $totalStock,
+                        ];
+                    })
+                    ->values();
+
+                return [
+                    'id' => $group->id,
+                    'name' => $group->name,
+                    'notes' => $group->notes,
+                    'products' => $items,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

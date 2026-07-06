@@ -5,7 +5,6 @@ use App\Domains\Product\Http\Controllers\ProductController;
 use App\Domains\Product\Http\Controllers\ProductReferenceController;
 use App\Domains\Product\Http\Controllers\ProductEquivalentGroupController;
 use App\Domains\Product\Http\Controllers\ProductSkuController;
-use App\Domains\Product\Http\Controllers\ProductStockController;
 use App\Domains\Product\Http\Controllers\ProductSupplierController;
 use App\Domains\Product\Http\Controllers\ProductVehicleCompatibilityController;
 use App\Domains\Supplier\Http\Controllers\SupplierController;
@@ -69,9 +68,6 @@ Route::prefix('products')->group(function () {
 
     // SKU preview route
     Route::get('/sku-preview', [ProductSkuController::class, 'preview']);
-
-    // Stock adjustment route
-    Route::post('/{id}/adjust-stock', [ProductStockController::class, 'adjust']);
 
     // Product edit route
     Route::patch('/{id}', [ProductController::class, 'update']);

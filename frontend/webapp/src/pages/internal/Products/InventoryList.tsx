@@ -34,26 +34,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /* ================= TYPES ================= */
-interface SupplierInfo {
-  id: string;
-  inventoryId: string;
-  productSupplierId?: string | null;
-  name: string;
-  cost: number | null;
-  price: number | null;
-  quantityOnHand: number;
-  reservedQuantity: number;
-  reorderLevel: number;
-  reorderQty: number;
-}
-
 interface InventoryItem {
   id: string;
   productId: string;
   image?: string;
   name: string;
   brand: string;
-  suppliers: SupplierInfo[];
   sku: string;
   partNumber: string;
   unit: string;
@@ -61,9 +47,7 @@ interface InventoryItem {
   reservedQuantity: number;
   reorderLevel: number;
   reorderQty: number;
-  lowestPrice: number | null;
-  highestPrice: number | null;
-  priceLabel: string;
+  sellingPrice: number | null;
   statusValue: string;
   isArchived: boolean;
 }
@@ -93,7 +77,6 @@ const Inventory: React.FC = () => {
   // Adjust stock modal state
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [adjustProductId, setAdjustProductId] = useState<string>("");
-  const [adjustInventoryId, setAdjustInventoryId] = useState<string>("");
   const [adjustQty, setAdjustQty] = useState<number>(0);
   const [adjustReservedQty, setAdjustReservedQty] = useState<number>(0);
   const [adjustReorderLevel, setAdjustReorderLevel] = useState<number>(5);
@@ -116,32 +99,8 @@ const Inventory: React.FC = () => {
       const normalized: InventoryItem[] = (Array.isArray(rows) ? rows : []).map(
         (row: any) => {
           const product = row.product || {};
-          const suppliers: SupplierInfo[] = (row.suppliers || []).map(
-            (s: any) => ({
-              id: s.id,
-              inventoryId: s.inventory_id,
-              productSupplierId: s.product_supplier_id,
-              name:
-                s.supplier?.CompanyName ||
-                s.supplier?.name ||
-                s.supplier_name ||
-                "No supplier",
-              cost: toNumberOrNull(s.supplier_cost),
-              price: toNumberOrNull(s.price),
-              quantityOnHand: Number(s.quantity_on_hand ?? 0),
-              reservedQuantity: Number(s.reserved_quantity ?? 0),
-              reorderLevel: Number(s.reorder_level ?? 5),
-              reorderQty: Number(s.reorder_qty ?? 10),
-            })
-          );
 
-          const lowestPrice = toNumberOrNull(row.lowest_price);
-          const priceLabel =
-            lowestPrice !== null
-              ? row.highest_price && row.highest_price !== lowestPrice
-                ? `₱${lowestPrice.toFixed(2)} – ₱${Number(row.highest_price).toFixed(2)}`
-                : formatPeso(lowestPrice)
-              : "No price set";
+          const sellingPrice = toNumberOrNull(row.selling_price);
 
           return {
             id: String(row.product_id),
@@ -156,7 +115,6 @@ const Inventory: React.FC = () => {
               product.manufacturer_name ||
               product.manufacturer?.name ||
               "-",
-            suppliers,
             sku: String(product.SKU || product.sku || ""),
             partNumber: String(product.part_number || ""),
             unit:
@@ -171,9 +129,7 @@ const Inventory: React.FC = () => {
             reservedQuantity: Number(row.reserved_quantity ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             reorderQty: Number(row.reorder_qty ?? 10),
-            lowestPrice,
-            highestPrice: toNumberOrNull(row.highest_price),
-            priceLabel,
+            sellingPrice,
             statusValue: row.status === "Low Stock" ? "low-stock" : row.status === "Out of Stock" ? "out-of-stock" : "in-stock",
             isArchived: Boolean(row.is_archived),
           };
@@ -199,12 +155,10 @@ const Inventory: React.FC = () => {
   /* ================= ADJUST STOCK ================= */
   const handleOpenAdjust = (item: InventoryItem) => {
     setAdjustProductId(item.productId);
-    const firstSupplier = item.suppliers[0];
-    setAdjustInventoryId(firstSupplier?.inventoryId || "");
-    setAdjustQty(firstSupplier?.quantityOnHand ?? item.stock);
-    setAdjustReservedQty(firstSupplier?.reservedQuantity ?? item.reservedQuantity);
-    setAdjustReorderLevel(firstSupplier?.reorderLevel ?? item.reorderLevel);
-    setAdjustReorderQty(firstSupplier?.reorderQty ?? item.reorderQty);
+    setAdjustQty(item.stock);
+    setAdjustReservedQty(item.reservedQuantity);
+    setAdjustReorderLevel(item.reorderLevel);
+    setAdjustReorderQty(item.reorderQty);
     setIsAdjustOpen(true);
   };
 
@@ -213,15 +167,12 @@ const Inventory: React.FC = () => {
 
     if (firstItem) {
       setAdjustProductId(firstItem.productId);
-      const firstSupplier = firstItem.suppliers[0];
-      setAdjustInventoryId(firstSupplier?.inventoryId || "");
-      setAdjustQty(firstSupplier?.quantityOnHand ?? firstItem.stock);
-      setAdjustReservedQty(firstSupplier?.reservedQuantity ?? firstItem.reservedQuantity);
-      setAdjustReorderLevel(firstSupplier?.reorderLevel ?? firstItem.reorderLevel);
-      setAdjustReorderQty(firstSupplier?.reorderQty ?? firstItem.reorderQty);
+      setAdjustQty(firstItem.stock);
+      setAdjustReservedQty(firstItem.reservedQuantity);
+      setAdjustReorderLevel(firstItem.reorderLevel);
+      setAdjustReorderQty(firstItem.reorderQty);
     } else {
       setAdjustProductId("");
-      setAdjustInventoryId("");
       setAdjustQty(0);
       setAdjustReservedQty(0);
       setAdjustReorderLevel(5);
@@ -231,40 +182,14 @@ const Inventory: React.FC = () => {
     setIsAdjustOpen(true);
   };
 
-  const handleInventorySelectChange = (inventoryId: string) => {
-    setAdjustInventoryId(inventoryId);
-
-    const selectedItem = items.find(
-      (item) => item.productId === adjustProductId
-    );
-    const supplier = selectedItem?.suppliers.find(
-      (s) => s.inventoryId === inventoryId
-    );
-
-    if (selectedItem && supplier) {
-      setAdjustQty(supplier.quantityOnHand);
-      setAdjustReservedQty(supplier.reservedQuantity);
-      setAdjustReorderLevel(supplier.reorderLevel);
-      setAdjustReorderQty(supplier.reorderQty);
-    }
-  };
-
-  const selectedAdjustItem = items.find(
-    (item) => item.productId === adjustProductId
-  );
-  const selectedSupplier = selectedAdjustItem?.suppliers.find(
-    (s) => s.inventoryId === adjustInventoryId
-  );
-
   const handleSaveAdjust = async () => {
-    if (!selectedAdjustItem) return;
+    if (!adjustProductId) return;
 
     setIsSavingAdjust(true);
 
     try {
       await api.post("/inventory/adjust-stock", {
-        product_id: selectedAdjustItem.productId,
-        product_supplier_id: selectedSupplier?.productSupplierId ?? null,
+        product_id: adjustProductId,
         quantity_on_hand: adjustQty,
         reserved_quantity: adjustReservedQty,
         reorder_level: adjustReorderLevel,
@@ -282,7 +207,7 @@ const Inventory: React.FC = () => {
 
   /* ================= FILTER ================= */
   const filtered = items.filter((p) => {
-    const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber} ${p.suppliers.map((s) => s.name).join(" ")}`
+    const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
       .toLowerCase()
       .includes(search.toLowerCase());
 
@@ -425,11 +350,6 @@ const Inventory: React.FC = () => {
                                 <span className="text-xs text-muted-foreground">
                                   {p.brand}
                                 </span>
-                                <span className="text-[11px] text-muted-foreground/80">
-                                  {p.suppliers.length > 0
-                                    ? p.suppliers.map((s) => s.name).join(", ")
-                                    : "No supplier"}
-                                </span>
                               </div>
                             </div>
                           </TableCell>
@@ -445,7 +365,7 @@ const Inventory: React.FC = () => {
                           {/* PRICE */}
                           <TableCell>
                             <span className="font-medium text-foreground text-sm">
-                              {p.priceLabel}
+                              {formatPeso(p.sellingPrice)}
                             </span>
                           </TableCell>
 
@@ -562,28 +482,6 @@ const Inventory: React.FC = () => {
           <div className="grid gap-5 py-4 text-sm">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label
-                htmlFor="adjust-product"
-                className="text-right text-muted-foreground font-medium"
-              >
-                Inventory Row
-              </Label>
-              <select
-                id="adjust-product"
-                className="col-span-3 border border-border/80 rounded-lg px-3 py-2 bg-background text-foreground focus:ring-1 focus:ring-blue-900 transition text-sm"
-                value={adjustInventoryId}
-                onChange={(e) => handleInventorySelectChange(e.target.value)}
-                disabled={!!selectedAdjustItem && selectedAdjustItem.suppliers.length <= 1}
-              >
-                {selectedAdjustItem?.suppliers.map((s) => (
-                  <option key={s.inventoryId} value={s.inventoryId}>
-                    {s.name} {s.price !== null ? `- ₱${s.price.toFixed(2)}` : ""}
-                  </option>
-                )) || []}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label
                 htmlFor="adjust-qty"
                 className="text-right text-muted-foreground font-medium"
               >
@@ -677,7 +575,7 @@ const Inventory: React.FC = () => {
 
             <Button
               onClick={handleSaveAdjust}
-              disabled={isSavingAdjust || !selectedAdjustItem}
+              disabled={isSavingAdjust || !adjustProductId}
               className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSavingAdjust ? "Saving..." : "Save Adjustments"}

@@ -68,6 +68,7 @@ class UpdateProductRequest extends FormRequest
             'unit' => ['sometimes', 'nullable', 'integer'],
             'part_id' => ['sometimes', 'nullable', 'integer'],
             'manufacturer_id' => ['sometimes', 'nullable', 'integer'],
+            'preferred_supplier_id' => ['sometimes', 'nullable', 'string', 'uuid'],
             'auto_generate_sku' => ['sometimes', 'boolean'],
         ];
     }

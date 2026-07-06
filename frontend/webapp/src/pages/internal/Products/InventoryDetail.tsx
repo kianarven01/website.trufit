@@ -11,43 +11,10 @@ import {
   Package,
   Warehouse,
   AlertTriangle,
-  ShoppingCart,
+  Car,
+  Repeat,
 } from "lucide-react";
 import api from "@/api/axios";
-
-interface ProductPrice {
-  id?: string;
-  product_supplier_id?: string;
-  Price?: number | string | null;
-  price?: number | string | null;
-  Markup?: number | string | null;
-  markup?: number | string | null;
-  is_active?: boolean;
-}
-
-interface ProductSupplier {
-  id?: string;
-  supplier_id?: string | number;
-  supplier_cost?: number | string | null;
-  active_price?: ProductPrice | null;
-  activePrice?: ProductPrice | null;
-  price?: ProductPrice | number | string | null;
-  prices?: ProductPrice[];
-  supplier?: {
-    id?: string | number;
-    CompanyName?: string;
-    name?: string;
-    supplier_code?: string;
-  };
-  Supplier?: {
-    id?: string | number;
-    CompanyName?: string;
-    name?: string;
-    supplier_code?: string;
-  };
-  supplier_name?: string;
-  CompanyName?: string;
-}
 
 interface InventoryDetailItem {
   id: string;
@@ -67,7 +34,45 @@ interface InventoryDetailItem {
   reorderQty: number | null;
   locationId?: string | null;
   description: string;
-  suppliers: ProductSupplier[];
+  sellingPrice: number | null;
+  compatibleVehicles: CompatibleVehicle[];
+  equivalentGroups: EquivalentGroup[];
+}
+
+interface CompatibleVehicle {
+  id: string;
+  car_variant_id: string;
+  notes?: string;
+  vehicle_variant?: {
+    id: string;
+    variant_name: string;
+    variant?: string;
+    year?: string;
+    model?: string;
+    make?: string;
+    vehicle_model?: {
+      id: string;
+      model: string;
+      make?: string;
+    };
+  };
+  name?: string;
+}
+
+interface EquivalentGroup {
+  id: string;
+  name: string;
+  notes?: string;
+  products: EquivalentProduct[];
+}
+
+interface EquivalentProduct {
+  id: string;
+  name: string;
+  SKU?: string;
+  part_number?: string;
+  manufacturer_name?: string;
+  quantity_on_hand?: number;
 }
 
 const toNumberOrNull = (value: unknown): number | null => {
@@ -82,69 +87,6 @@ const formatPeso = (value: number | null) => {
   return `₱${value.toFixed(2)}`;
 };
 
-const getSupplierName = (supplier: ProductSupplier) => {
-  return (
-    supplier.supplier?.CompanyName ||
-    supplier.supplier?.name ||
-    supplier.Supplier?.CompanyName ||
-    supplier.Supplier?.name ||
-    supplier.supplier_name ||
-    supplier.CompanyName ||
-    `Supplier #${supplier.supplier_id || "-"}`
-  );
-};
-
-const getActivePrice = (supplier?: ProductSupplier | null): ProductPrice | null => {
-  if (!supplier) return null;
-
-  if (supplier.active_price) return supplier.active_price;
-  if (supplier.activePrice) return supplier.activePrice;
-
-  if (Array.isArray(supplier.prices)) {
-    return supplier.prices.find((price) => price.is_active) || supplier.prices[0] || null;
-  }
-
-  if (supplier.price && typeof supplier.price === "object") {
-    return supplier.price as ProductPrice;
-  }
-
-  return null;
-};
-
-const getSupplierSellingPrice = (supplier?: ProductSupplier | null): number | null => {
-  if (!supplier) return null;
-
-  const activePrice = getActivePrice(supplier);
-
-  if (activePrice) {
-    return toNumberOrNull(activePrice.Price ?? activePrice.price);
-  }
-
-  if (
-    supplier.price !== null &&
-    supplier.price !== undefined &&
-    typeof supplier.price !== "object"
-  ) {
-    return toNumberOrNull(supplier.price);
-  }
-
-  return null;
-};
-
-const getSupplierMarkup = (supplier?: ProductSupplier | null): number | null => {
-  const activePrice = getActivePrice(supplier);
-  return activePrice ? toNumberOrNull(activePrice.Markup ?? activePrice.markup) : null;
-};
-
-const normalizeSuppliers = (row: any): ProductSupplier[] => {
-  if (Array.isArray(row.suppliers)) return row.suppliers;
-  if (Array.isArray(row.product_suppliers)) return row.product_suppliers;
-  if (Array.isArray(row.productSuppliers)) return row.productSuppliers;
-  if (Array.isArray(row.ProductSuppliers)) return row.ProductSuppliers;
-
-  return [];
-};
-
 const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
   const product = row.product || {};
   const quantityOnHand = Number(row.quantity_on_hand ?? row.stock ?? 0);
@@ -153,7 +95,6 @@ const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
   return {
     id: String(row.id),
 
-    // Image comes from the related product returned by GET /api/inventory/{id}
     image:
       product.image_URL ||
       product.image_url ||
@@ -228,8 +169,38 @@ const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
     reorderQty: toNumberOrNull(row.reorder_qty),
     locationId: row.location_id || null,
     description: product.description || row.description || "-",
-    suppliers: normalizeSuppliers(row),
+    sellingPrice: toNumberOrNull(row.selling_price),
+    compatibleVehicles: Array.isArray(row.compatible_vehicles)
+      ? row.compatible_vehicles
+      : [],
+    equivalentGroups: Array.isArray(row.equivalent_groups)
+      ? row.equivalent_groups
+      : [],
   };
+};
+
+const getVehicleLabel = (vehicle: CompatibleVehicle): string => {
+  const variant = vehicle.vehicle_variant;
+  if (!variant) return vehicle.name || "-";
+
+  const make =
+    variant.make ||
+    variant.vehicle_model?.make ||
+    "";
+
+  const model =
+    variant.model ||
+    variant.vehicle_model?.model ||
+    "";
+
+  const variantName =
+    variant.variant_name ||
+    variant.variant ||
+    "";
+
+  const year = variant.year || "";
+
+  return [make, model, variantName, year].filter(Boolean).join(" ") || "-";
 };
 
 const getStockStatus = (item: InventoryDetailItem) => {
@@ -287,22 +258,6 @@ const InventoryDetail: React.FC = () => {
   useEffect(() => {
     void loadInventoryDetail();
   }, [inventoryId]);
-
-  const supplierPriceRange = useMemo(() => {
-    const prices =
-      item?.suppliers
-        .map((supplier) => getSupplierSellingPrice(supplier))
-        .filter((price): price is number => price !== null) || [];
-
-    if (prices.length === 0) return "No price set";
-
-    const min = Math.min(...prices);
-    const max = Math.max(...prices);
-
-    if (min === max) return formatPeso(min);
-
-    return `${formatPeso(min)} - ${formatPeso(max)}`;
-  }, [item]);
 
   if (loading) {
     return (
@@ -436,16 +391,8 @@ const InventoryDetail: React.FC = () => {
                       <span className="break-all">{item.locationId || "-"}</span>
                       <Separator className="col-span-2" />
 
-                      <span className="text-muted-foreground">Supplier Price Range</span>
-                      <span className="font-semibold">{supplierPriceRange}</span>
-                    </div>
-
-                    <div className="rounded-lg bg-muted/30 p-3 text-xs text-muted-foreground flex gap-2">
-                      <AlertTriangle className="w-4 h-4 shrink-0" />
-                      <p>
-                        Selling price is read from supplier pricing/ProductPrice. Inventory should
-                        stay focused on stock quantities.
-                      </p>
+                      <span className="text-muted-foreground">Selling Price</span>
+                      <span className="font-semibold">{formatPeso(item.sellingPrice)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -463,54 +410,89 @@ const InventoryDetail: React.FC = () => {
           </Card>
 
           <div className="flex flex-col gap-4 min-h-[580px]">
+            {/* Compatible Vehicles */}
             <Card className="p-4 flex-1 min-h-0">
               <CardContent className="p-0 h-full flex flex-col space-y-4">
                 <div className="flex items-center gap-2">
-                  <ShoppingCart className="w-4 h-4 text-muted-foreground" />
-                  <h2 className="font-semibold">Supplier Pricing</h2>
+                  <Car className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="font-semibold">Compatible Vehicles</h2>
                 </div>
 
-                {item.suppliers.length > 0 ? (
+                {item.compatibleVehicles.length > 0 ? (
                   <div className="space-y-2 overflow-auto pr-1">
-                    {item.suppliers.map((supplier) => {
-                      const supplierCost = toNumberOrNull(supplier.supplier_cost);
-                      const sellingPrice = getSupplierSellingPrice(supplier);
-                      const markup = getSupplierMarkup(supplier);
-
-                      return (
-                        <div
-                          key={String(supplier.id || supplier.supplier_id)}
-                          className="rounded-lg border border-border/60 p-3 bg-card/60"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-medium">{getSupplierName(supplier)}</p>
-                              <p className="text-xs text-muted-foreground">
-                                Cost: {supplierCost !== null ? formatPeso(supplierCost) : "-"}
-                              </p>
-                            </div>
-
-                            <div className="text-right">
-                              <p className="text-xs text-muted-foreground">Price</p>
-                              <p className="text-sm font-semibold">{formatPeso(sellingPrice)}</p>
-                            </div>
-                          </div>
-
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            Markup: {markup !== null ? `${markup.toFixed(2)}%` : "-"}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {item.compatibleVehicles.map((vehicle, idx) => (
+                      <div
+                        key={vehicle.id || idx}
+                        className="rounded-lg border border-border/60 p-3 bg-card/60"
+                      >
+                        <p className="text-sm font-medium">
+                          {getVehicleLabel(vehicle)}
+                        </p>
+                        {vehicle.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {vehicle.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground italic">
-                    No supplier pricing added yet.
+                    No compatible vehicles added yet.
                   </p>
                 )}
               </CardContent>
             </Card>
 
+            {/* Equivalent Parts */}
+            <Card className="p-4 flex-1 min-h-0">
+              <CardContent className="p-0 h-full flex flex-col space-y-4">
+                <div className="flex items-center gap-2">
+                  <Repeat className="w-4 h-4 text-muted-foreground" />
+                  <h2 className="font-semibold">Equivalent Parts</h2>
+                </div>
+
+                {item.equivalentGroups.length > 0 ? (
+                  <div className="space-y-3 overflow-auto pr-1">
+                    {item.equivalentGroups.map((group) => (
+                      <div key={group.id} className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {group.name}
+                        </p>
+                        {group.products.length > 0 ? (
+                          group.products.map((product) => (
+                            <div
+                              key={product.id}
+                              className="rounded-lg border border-border/60 p-3 bg-card/60"
+                            >
+                              <p className="text-sm font-medium">{product.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                SKU: {product.SKU || "-"} • Part No: {product.part_number || "-"}
+                              </p>
+                              {product.manufacturer_name && (
+                                <p className="text-xs text-muted-foreground">
+                                  Brand: {product.manufacturer_name}
+                                </p>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">
+                            No equivalent products in this group.
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">
+                    No equivalent parts added yet.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Stock Planning */}
             <Card className="p-4 flex-1 min-h-0">
               <CardContent className="p-0 h-full flex flex-col space-y-4">
                 <h2 className="font-semibold">Stock Planning</h2>

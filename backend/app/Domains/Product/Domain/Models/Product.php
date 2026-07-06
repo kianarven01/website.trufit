@@ -41,6 +41,7 @@ class Product extends Model
         'unit',
         'part_id',
         'manufacturer_id',
+        'preferred_supplier_id',
     ];
 
     protected $casts = [
@@ -82,6 +83,15 @@ class Product extends Model
         return $this->hasMany(
             ProductSupplier::class,
             'product_id',
+            'id'
+        );
+    }
+
+    public function preferredSupplier()
+    {
+        return $this->belongsTo(
+            ProductSupplier::class,
+            'preferred_supplier_id',
             'id'
         );
     }

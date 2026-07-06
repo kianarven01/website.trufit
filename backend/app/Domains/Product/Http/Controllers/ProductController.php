@@ -228,9 +228,8 @@ class ProductController extends Controller
             'part',
             'productSuppliers.supplier',
             'productSuppliers.price',
-            'inventoryRelation',
-            'inventoryRows.productSupplier.supplier',
-            'inventoryRows.productSupplier.price',
+            'preferredSupplier.supplier',
+            'preferredSupplier.price',
             'vehicleCompatibilities.vehicleVariant',
         ];
     }

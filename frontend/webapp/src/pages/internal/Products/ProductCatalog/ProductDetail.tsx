@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
+import SpolProductModal from "@/components/popupModal/ProductCatalog/spolProduct";
 import { ArrowLeft, AlertTriangle, Trash2, Pencil, Printer } from "lucide-react";
 import AppToast, { AppToastType } from "@/components/ui/AppToast";
 import { Separator } from "@/components/ui/separator";
@@ -61,13 +62,13 @@ interface Product {
   partId?: string | number | null;
   manufacturerId?: string | number | null;
   unitId?: string | number | null;
-  isOEM: boolean;
   oemRef?: string | null;
   description: string;
   unit: string;
   unitAbbreviation?: string | null;
   price: number | null;
   category: string;
+  categoryIsSpol: boolean;
   manufacturer: string;
   barcode?: string;
   categoryId?: string | number | null;
@@ -108,6 +109,7 @@ interface CategoryOption {
   id: string;
   name: string;
   code?: string;
+  is_spol?: boolean;
 }
 
 interface SupplierOption {
@@ -330,7 +332,6 @@ const normalizeProduct = (row: any): Product => ({
     (typeof row.unit === "number" || typeof row.unit === "string"
       ? row.unit
       : null),
-  isOEM: Boolean(row.is_oem || row.isOEM || false),
   oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
   unit: row.unit?.name || row.Unit?.name || row.unit_name || row.unit || "-",
@@ -342,6 +343,7 @@ const normalizeProduct = (row: any): Product => ({
     null,
   price: toNumberOrNull(row.selling_price ?? row.preferred_selling_price ?? row.price ?? row.sell_price),
   category: row.category?.name || row.Category?.name || row.category_name || "-",
+  categoryIsSpol: Boolean(row.category_is_spol),
   manufacturer:
     row.manufacturer?.name ||
     row.Manufacturer?.name ||
@@ -395,6 +397,7 @@ const ProductDetail: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSpolEditOpen, setIsSpolEditOpen] = useState(false);
   const [isAddSupplierOpen, setIsAddSupplierOpen] = useState(false);
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isPrintingBarcodeLabels, setIsPrintingBarcodeLabels] = useState(false);
@@ -464,6 +467,7 @@ const ProductDetail: React.FC = () => {
         id: String(row.id),
         name: String(row.name),
         code: row.code || undefined,
+        is_spol: Boolean(row.is_spol),
       }))
     );
   };
@@ -895,8 +899,6 @@ const ProductDetail: React.FC = () => {
     category_id: product.categoryId || null,
     manufacturer_id: product.manufacturerId || null,
     unit: product.unitId || null,
-    is_oem: product.isOEM,
-    oem_reference_number: product.oemRef || null,
   };
 
   const handlePrintBarcodeLabels = () => {
@@ -917,6 +919,9 @@ const ProductDetail: React.FC = () => {
     setIsDeleteOpen(true);
   };
 
+  const isSundriesProduct = product?.category === "Sundries";
+  const isSpolProduct = Boolean(product?.categoryIsSpol);
+
   const handleArchiveProduct = async () => {
     if (!product?.id) return;
 
@@ -924,26 +929,43 @@ const ProductDetail: React.FC = () => {
     setDeleteError("");
 
     try {
-      await api.delete(`/products/${product.id}`);
+      if (isSundriesProduct) {
+        await api.delete(`/products/${product.id}/force`);
 
-      setIsDeleteOpen(false);
+        setIsDeleteOpen(false);
 
-      navigate(backToProductsPath, {
-        replace: true,
-        state: {
-          toast: {
-            type: "success",
-            title: "Product archived",
-            message: `${product.name} was removed from the active product list.`,
+        navigate(backToProductsPath, {
+          replace: true,
+          state: {
+            toast: {
+              type: "success",
+              title: "Product deleted",
+              message: `${product.name} was permanently deleted.`,
+            },
           },
-        },
-      });
+        });
+      } else {
+        await api.delete(`/products/${product.id}`);
 
-      
+        setIsDeleteOpen(false);
+
+        navigate(backToProductsPath, {
+          replace: true,
+          state: {
+            toast: {
+              type: "success",
+              title: "Product archived",
+              message: `${product.name} was removed from the active product list.`,
+            },
+          },
+        });
+      }
     } catch (error: any) {
       const message =
         error?.response?.data?.message ||
-        "Failed to archive product. Please try again.";
+        (isSundriesProduct
+          ? "Failed to delete product. Please try again."
+          : "Failed to archive product. Please try again.");
 
       const toastType: AppToastType =
         message.toLowerCase().includes("stock") ||
@@ -961,7 +983,9 @@ const ProductDetail: React.FC = () => {
           ? "Product still has stock"
           : toastType === "info"
             ? "Product already archived"
-            : "Unable to archive product",
+            : isSundriesProduct
+              ? "Unable to delete product"
+              : "Unable to archive product",
         message
       );
     } finally {
@@ -1106,7 +1130,7 @@ const ProductDetail: React.FC = () => {
             size="sm"
             type="button"
             className="flex items-center gap-2"
-            onClick={() => setIsEditOpen(true)}
+            onClick={() => isSpolProduct ? setIsSpolEditOpen(true) : setIsEditOpen(true)}
           >
             <Pencil size={16} />
             Edit Product
@@ -1147,14 +1171,6 @@ const ProductDetail: React.FC = () => {
                 <span className="font-medium text-foreground">Brand:</span>{" "}
                 {product.manufacturer || "-"}
               </div>
-              {product.isOEM && (
-                <div>
-                  <span className="font-medium text-foreground">
-                    OEM Reference:
-                  </span>{" "}
-                  {product.oemRef || "-"}
-                </div>
-              )}
               <div>
                 <span className="font-medium text-foreground">Category:</span>{" "}
                 {product.category || "-"}
@@ -1277,6 +1293,7 @@ const ProductDetail: React.FC = () => {
         </div>
 
         <div className="flex flex-col gap-4">
+          {!isSundriesProduct && (
           <Card className="p-4">
             <CardContent className="p-0 space-y-4 flex flex-col">
               <div className="flex justify-between items-center">
@@ -1385,7 +1402,9 @@ const ProductDetail: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+          )}
 
+          {!isSpolProduct && (
           <Card className="p-4 flex-1 min-h-0">
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center">
@@ -1434,7 +1453,9 @@ const ProductDetail: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+          )}
 
+          {!isSpolProduct && (
           <Card className="p-4 flex-1 min-h-0">
             <CardContent className="p-0 space-y-4 h-full flex flex-col">
               <div className="flex justify-between items-center gap-2">
@@ -1523,6 +1544,7 @@ const ProductDetail: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
 
@@ -1655,10 +1677,13 @@ const ProductDetail: React.FC = () => {
               </div>
 
               <div className="space-y-1">
-                <h2 className="text-lg font-semibold">Remove Product?</h2>
+                <h2 className="text-lg font-semibold">
+                  {isSundriesProduct ? "Delete Product?" : "Remove Product?"}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  This will archive the product and hide it from the product list.
-                  The product record will still remain in the database.
+                  {isSundriesProduct
+                    ? "This will permanently delete the product. This action cannot be undone."
+                    : "This will archive the product and hide it from the product list. The product record will still remain in the database."}
                 </p>
               </div>
             </div>
@@ -1692,7 +1717,9 @@ const ProductDetail: React.FC = () => {
                 onClick={handleArchiveProduct}
                 disabled={isDeleting}
               >
-                {isDeleting ? "Removing..." : "Remove Product"}
+                {isDeleting
+                  ? (isSundriesProduct ? "Deleting..." : "Removing...")
+                  : (isSundriesProduct ? "Delete Permanently" : "Remove Product")}
               </Button>
             </div>
           </div>
@@ -1716,6 +1743,32 @@ const ProductDetail: React.FC = () => {
           setIsEditOpen(false);
           await loadProduct();
 
+          showToast(
+            "success",
+            "Product updated",
+            `${product.name} was updated successfully.`
+          );
+        }}
+        onError={(message: string) => {
+          showToast(
+            "error",
+            "Unable to update product",
+            message || "Failed to update product. Please try again."
+          );
+        }}
+      />
+
+      <SpolProductModal
+        open={isSpolEditOpen}
+        onOpenChange={setIsSpolEditOpen}
+        mode="edit"
+        product={product}
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
+        onSaved={async () => {
+          setIsSpolEditOpen(false);
+          await loadProduct();
           showToast(
             "success",
             "Product updated",

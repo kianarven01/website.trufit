@@ -35,10 +35,16 @@ class InventoryController extends Controller
                 'product.inventoryRows',
             ])
             ->when(! $showArchived, function ($query) {
-                $query->whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
+                $query->whereHas('product', function ($q) {
+                    $q->whereNull('deleted_at')
+                      ->whereDoesntHave('category', fn ($cq) => $cq->where('name', 'Sundries'));
+                });
             })
             ->when($showArchived, function ($query) {
-                $query->whereHas('product', fn ($q) => $q->withTrashed());
+                $query->whereHas('product', function ($q) {
+                    $q->withTrashed()
+                      ->whereDoesntHave('category', fn ($cq) => $cq->where('name', 'Sundries'));
+                });
             })
             ->when($search, function ($query) use ($search) {
                 $query->whereHas('product', function ($productQuery) use ($search) {
@@ -60,6 +66,7 @@ class InventoryController extends Controller
 
             $archivedWithoutInventory = Product::onlyTrashed()
                 ->with(['category', 'manufacturer', 'unitRelation'])
+                ->whereDoesntHave('category', fn ($q) => $q->where('name', 'Sundries'))
                 ->when($search, function ($query) use ($search) {
                     $query->where('name', 'ILIKE', "%{$search}%")
                         ->orWhere('SKU', 'ILIKE', "%{$search}%")

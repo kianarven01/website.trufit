@@ -70,6 +70,12 @@ class UpdateProductRequest extends FormRequest
             'manufacturer_id' => ['sometimes', 'nullable', 'integer'],
             'preferred_supplier_id' => ['sometimes', 'nullable', 'string', 'uuid'],
             'auto_generate_sku' => ['sometimes', 'boolean'],
+            'selling_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'is_spol' => ['sometimes', 'boolean'],
+            'item_type' => ['sometimes', 'nullable', 'string', 'in:part,spol'],
+            'suppliers' => ['sometimes', 'nullable', 'array'],
+            'suppliers.*.supplier_id' => ['required_with:suppliers', 'string'],
+            'suppliers.*.supplier_cost' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

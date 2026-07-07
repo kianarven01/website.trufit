@@ -45,6 +45,7 @@ interface Product {
   barcode?: string;
   categoryId?: string | number | null;
   category?: string;
+  categoryIsSpol?: boolean;
   supplierCode?: string;
 
   fitmentType?: "direct" | "equivalent" | "unfiltered";
@@ -204,6 +205,7 @@ const normalizeProduct = (row: any): Product => {
     categoryId: row.category_id ?? row.categoryId ?? null,
     category:
       row.category?.name || row.Category?.name || row.category_name || "",
+    categoryIsSpol: Boolean(row.category_is_spol),
     supplierCode:
       row.supplier_code ||
       row.supplier?.supplier_code ||
@@ -295,6 +297,7 @@ const ProductsList: React.FC = () => {
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
   const [openModal, setOpenModal] = useState(false);
   const [openSpolModal, setOpenSpolModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"parts" | "spol">("parts");
 
   const [resolvedVehicleId, setResolvedVehicleId] = useState<string | null>(
     routeState?.vehicleId || null
@@ -527,6 +530,31 @@ const ProductsList: React.FC = () => {
 
   const paginated = paginate(filtered);
 
+  const partsOnly = useMemo(() => filtered.filter((p) => !p.categoryIsSpol), [filtered]);
+  const spolOnly = useMemo(() => filtered.filter((p) => p.categoryIsSpol), [filtered]);
+  const activeTabItems = activeTab === "parts" ? partsOnly : spolOnly;
+  const paginatedTab = paginate(activeTabItems);
+
+  const navigateProduct = (product: Product) => {
+    const path = isGeneralView
+      ? `/webapp/products/product-catalog/products/${product.id}`
+      : `/webapp/products/product-catalog/vehicles/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`;
+    navigate(path, {
+      state: {
+        productId: product.id,
+        product,
+        productName: product.name,
+        breadcrumbLabel: product.name,
+        vehicleId: resolvedVehicleId,
+        variantId: resolvedVariantId,
+        categoryId: resolvedCategoryId,
+        vehicleSlug,
+        variantSlug,
+        categorySlug,
+      },
+    });
+  };
+
   const refreshProducts = async () => {
     await Promise.all([
       loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId),
@@ -556,43 +584,77 @@ const ProductsList: React.FC = () => {
         onFilterChange={(key, value) =>
           setFiltersState((prev) => ({ ...prev, [key]: value }))
         }
-        onAdd={() => setOpenModal(true)}
-        addLabel="Add Part"
+        onAdd={() => activeTab === "parts" ? setOpenModal(true) : setOpenSpolModal(true)}
+        addLabel={activeTab === "parts" ? "Add Part" : "Add SPOL"}
         beforeAdd={
-          <Button size="sm" variant="outline" onClick={() => setOpenSpolModal(true)} className="flex items-center gap-2">
-            <Droplets className="h-4 w-4" />
-            Add SPOL
-          </Button>
+          activeTab === "parts" ? (
+            <Button size="sm" variant="outline" onClick={() => setOpenSpolModal(true)} className="flex items-center gap-2">
+              <Droplets className="h-4 w-4" />
+              Add SPOL
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => setOpenModal(true)} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Part
+            </Button>
+          )
         }
       />
 
-      <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
-        <button
-          onClick={() => {
-            if (!isGeneralView) {
-              navigate("/webapp/products/product-catalog");
-            }
-          }}
-          className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-            isGeneralView
-              ? "bg-blue-900 text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Browse All Products
-        </button>
-        <button
-          onClick={() => navigate("/webapp/products/product-catalog/vehicles")}
-          className={cn(
-            "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-            !isGeneralView
-              ? "bg-blue-900 text-white shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Browse by Vehicle
-        </button>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
+          <button
+            onClick={() => {
+              if (!isGeneralView) {
+                navigate("/webapp/products/product-catalog");
+              }
+            }}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              isGeneralView
+                ? "bg-blue-900 text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Browse All Products
+          </button>
+          <button
+            onClick={() => navigate("/webapp/products/product-catalog/vehicles")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              !isGeneralView
+                ? "bg-blue-900 text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Browse by Vehicle
+          </button>
+        </div>
+
+        <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
+          <button
+            onClick={() => setActiveTab("parts")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeTab === "parts"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Parts ({partsOnly.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("spol")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeTab === "spol"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            SPOL ({spolOnly.length})
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -607,103 +669,132 @@ const ProductsList: React.FC = () => {
       ) : products.length > 0 ? (
         <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background">
           <div className="flex-1 overflow-auto">
-            <Table className="table-fixed w-full border-separate border-spacing-y-2">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-2/6">Product</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Part Number</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Selling Price</TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {filtered.length > 0 ? (
-                  paginated.map((product) => (
-                    <TableRow
-                      key={product.id}
-                      onClick={() => {
-                        const path = isGeneralView
-                          ? `/webapp/products/product-catalog/products/${product.id}`
-                          : `/webapp/products/product-catalog/vehicles/${vehicleSlug}/${variantSlug}/${categorySlug}/products/${product.id}`;
-                        navigate(path, {
-                          state: {
-                            productId: product.id,
-                            product,
-                            productName: product.name,
-                            breadcrumbLabel: product.name,
-                            vehicleId: resolvedVehicleId,
-                            variantId: resolvedVariantId,
-                            categoryId: resolvedCategoryId,
-                            vehicleSlug,
-                            variantSlug,
-                            categorySlug,
-                          },
-                        });
-                      }}
-                      className={cn(
-                        "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
-                        "hover:bg-accent/30"
-                      )}
-                    >
-                      <TableCell className="py-2">
-                        <div className="flex items-center gap-3">
-                          {product.image && !imgError[product.id] ? (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-12 h-10 rounded-md object-cover border"
-                              onError={() =>
-                                setImgError((prev) => ({
-                                  ...prev,
-                                  [product.id]: true,
-                                }))
-                              }
-                            />
-                          ) : (
-                            <div className="w-12 h-10 flex items-center justify-center rounded-md border">
-                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
+            {activeTab === "parts" ? (
+              <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-2/6">Product</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Part Number</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Selling Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTab.length > 0 ? (
+                    paginatedTab.map((product) => (
+                      <TableRow
+                        key={product.id}
+                        onClick={() => navigateProduct(product)}
+                        className={cn(
+                          "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                          "hover:bg-accent/30"
+                        )}
+                      >
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-3">
+                            {product.image && !imgError[product.id] ? (
+                              <img src={product.image} alt={product.name} className="w-12 h-10 rounded-md object-cover border" onError={() => setImgError((prev) => ({ ...prev, [product.id]: true }))} />
+                            ) : (
+                              <div className="w-12 h-10 flex items-center justify-center rounded-md border">
+                                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium">{product.name}</span>
+                              <span className="text-[11px] text-muted-foreground leading-none">{product.manufacturer || product.brand || "-"}</span>
+                              <FitmentBadge product={product} />
                             </div>
-                          )}
-
-                          <div className="flex flex-col gap-1">
-                            <span className="font-medium">{product.name}</span>
-                            <span className="text-[11px] text-muted-foreground leading-none">
-                              {product.manufacturer || product.brand || "-"}
-                            </span>
-                            <FitmentBadge product={product} />
                           </div>
+                        </TableCell>
+                        <TableCell>{product.sku || "-"}</TableCell>
+                        <TableCell>{product.partNumber || "-"}</TableCell>
+                        <TableCell>{product.unitAbbreviation || product.unit || "-"}</TableCell>
+                        <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5}>
+                        <div className="py-16 flex flex-col items-center text-center">
+                          <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                          <p className="text-sm font-medium">No parts found</p>
+                          <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
                         </div>
                       </TableCell>
-
-                      <TableCell>{product.sku || "-"}</TableCell>
-                      <TableCell>{product.partNumber || "-"}</TableCell>
-                      <TableCell>{product.unitAbbreviation || product.unit || "-"}</TableCell>
-                      <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
                     </TableRow>
-                  ))
-                ) : (
+                  )}
+                </TableBody>
+              </Table>
+            ) : (
+              <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5}>
-                      <div className="py-16 flex flex-col items-center text-center">
-                        <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">No products found</p>
-                        <p className="text-xs text-muted-foreground">
-                          Try adjusting your search or filters
-                        </p>
-                      </div>
-                    </TableCell>
+                    <TableHead className="w-3/6">Product</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Part Number</TableHead>
+                    <TableHead>Selling Price</TableHead>
+                    <TableHead>Description</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTab.length > 0 ? (
+                    paginatedTab.map((product) => (
+                      <TableRow
+                        key={product.id}
+                        onClick={() => navigateProduct(product)}
+                        className={cn(
+                          "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                          "hover:bg-accent/30"
+                        )}
+                      >
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-3">
+                            {product.image && !imgError[product.id] ? (
+                              <img src={product.image} alt={product.name} className="w-12 h-10 rounded-md object-cover border" onError={() => setImgError((prev) => ({ ...prev, [product.id]: true }))} />
+                            ) : (
+                              <div className="w-12 h-10 flex items-center justify-center rounded-md border">
+                                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="flex flex-col gap-1">
+                              <span className="font-medium">{product.name}</span>
+                              <span className="text-[11px] text-muted-foreground leading-none">
+                                {product.category || "-"}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+                            {product.category || "-"}
+                          </span>
+                        </TableCell>
+                        <TableCell>{product.partNumber || "-"}</TableCell>
+                        <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{product.description || "-"}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5}>
+                        <div className="py-16 flex flex-col items-center text-center">
+                          <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+                          <p className="text-sm font-medium">No SPOL products found</p>
+                          <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
 
-          {filtered.length > 25 && (
+          {activeTabItems.length > 25 && (
             <div className="sticky bottom-0 bg-background z-10">
               <Pagination
-                totalItems={filtered.length}
+                totalItems={activeTabItems.length}
                 page={page}
                 pageSize={pageSize}
                 onPageChange={setPage}

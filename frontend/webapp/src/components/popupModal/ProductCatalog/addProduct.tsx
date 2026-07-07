@@ -34,9 +34,15 @@ interface PartOption {
   category_name?: string | null;
 }
 
+type PricingMode = "manual" | "markup";
+
 interface ProductSupplierInput {
   supplier_id: string;
   supplier_cost: string;
+  markup: string;
+  price: string;
+  pricing_mode: PricingMode;
+  is_vat: boolean;
 }
 
 interface ProductModalProps {
@@ -116,8 +122,6 @@ export default function ProductModal({
     manufacturer_id: "",
     barcode: "",
     part_number: "",
-    is_oem: false,
-    oem_reference_number: "",
   });
 
   const [productSuppliers, setProductSuppliers] = useState<
@@ -198,8 +202,6 @@ export default function ProductModal({
         : "",
       barcode: product.barcode || "",
       part_number: product.part_number || "",
-      is_oem: Boolean(product.is_oem),
-      oem_reference_number: product.oem_reference_number || "",
     });
 
     if (fileInputRef.current) {
@@ -384,12 +386,29 @@ export default function ProductModal({
     return supplierId !== "" && supplierId !== "0";
   });
 
+  const PH_VAT_PERCENT = 12;
+
+  const toNumberOrNull = (value: string): number | null => {
+    if (value.trim() === "") return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const formatNum = (value: number | null): string => {
+    if (value === null || !Number.isFinite(value)) return "";
+    return value.toFixed(2);
+  };
+
   const addSupplierRow = () => {
     setProductSuppliers((prev) => [
       ...prev,
       {
         supplier_id: "",
         supplier_cost: "",
+        markup: "",
+        price: "",
+        pricing_mode: "manual",
+        is_vat: false,
       },
     ]);
   };
@@ -444,8 +463,6 @@ export default function ProductModal({
       manufacturer_id: "",
       barcode: "",
       part_number: "",
-      is_oem: false,
-      oem_reference_number: "",
     });
 
     setProductSuppliers([]);
@@ -637,7 +654,6 @@ export default function ProductModal({
       }
 
       payload.append("part_number", form.part_number.trim());
-      payload.append("is_oem", form.is_oem ? "1" : "0");
 
       if (form.description.trim() || isEditMode) {
         payload.append("description", form.description.trim());
@@ -663,10 +679,6 @@ export default function ProductModal({
         payload.append("barcode", form.barcode.trim());
       }
 
-      if (form.oem_reference_number.trim() || isEditMode) {
-        payload.append("oem_reference_number", form.oem_reference_number.trim());
-      }
-
       /**
        * Supplier IDs are UUIDs, so keep them as strings.
        * Only remove blank placeholder values.
@@ -689,6 +701,36 @@ export default function ProductModal({
               `suppliers[${index}][supplier_cost]`,
               supplier.supplier_cost.trim()
             );
+          }
+
+          const costVal = toNumberOrNull(supplier.supplier_cost);
+          const markupVal = toNumberOrNull(supplier.markup);
+          const priceVal = toNumberOrNull(supplier.price);
+
+          const finalMarkup =
+            supplier.pricing_mode === "manual"
+              ? (costVal !== null && costVal > 0 && priceVal !== null
+                  ? ((priceVal - costVal) / costVal) * 100
+                  : null)
+              : markupVal;
+
+          const finalPrice =
+            supplier.pricing_mode === "markup"
+              ? (costVal !== null && markupVal !== null
+                  ? costVal + costVal * (markupVal / 100)
+                  : null)
+              : priceVal;
+
+          if (finalMarkup !== null) {
+            payload.append(`suppliers[${index}][markup]`, String(Math.round(finalMarkup * 100) / 100));
+          }
+          if (finalPrice !== null) {
+            payload.append(`suppliers[${index}][price]`, String(finalPrice));
+          }
+
+          if (supplier.is_vat) {
+            payload.append(`suppliers[${index}][is_vat]`, "1");
+            payload.append(`suppliers[${index}][vat_percent]`, String(PH_VAT_PERCENT));
           }
         });
 
@@ -1131,84 +1173,190 @@ export default function ProductModal({
                 this product.
               </div>
             ) : (
-              <div className="space-y-3">
-                {productSuppliers.map((supplierRow, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-12 gap-3 items-center"
-                  >
-                    <select
-                      className="col-span-6 border rounded-md px-3 py-2 bg-background"
-                      value={supplierRow.supplier_id}
-                      onChange={(e) =>
-                        updateSupplierRow(index, "supplier_id", e.target.value)
-                      }
-                    >
-                      <option value="">Select supplier</option>
+              <div className="space-y-4">
+                {productSuppliers.map((supplierRow, index) => {
+                  const costVal = toNumberOrNull(supplierRow.supplier_cost);
+                  const markupVal = toNumberOrNull(supplierRow.markup);
+                  const priceVal = toNumberOrNull(supplierRow.price);
 
-                      {validSupplierOptions.map((supplier) => (
-                        <option
-                          key={supplier.id}
-                          value={supplier.id}
-                          disabled={isSupplierAlreadySelected(
-                            supplier.id,
-                            index
-                          )}
+                  const computedPrice =
+                    costVal !== null && markupVal !== null
+                      ? costVal + costVal * (markupVal / 100)
+                      : null;
+                  const computedMarkup =
+                    costVal !== null && costVal > 0 && priceVal !== null
+                      ? ((priceVal - costVal) / costVal) * 100
+                      : null;
+
+                  const displayedPrice =
+                    supplierRow.pricing_mode === "markup"
+                      ? formatNum(computedPrice)
+                      : supplierRow.price;
+                  const displayedMarkup =
+                    supplierRow.pricing_mode === "manual"
+                      ? formatNum(computedMarkup)
+                      : supplierRow.markup;
+
+                  return (
+                    <div
+                      key={index}
+                      className="rounded-lg border border-border p-3 space-y-3"
+                    >
+                      <div className="grid grid-cols-12 gap-3 items-center">
+                        <select
+                          className="col-span-9 border rounded-md px-3 py-2 bg-background text-sm"
+                          value={supplierRow.supplier_id}
+                          onChange={(e) =>
+                            updateSupplierRow(index, "supplier_id", e.target.value)
+                          }
                         >
-                          {getOptionLabel(supplier)}
-                        </option>
-                      ))}
-                    </select>
+                          <option value="">Select supplier</option>
+                          {validSupplierOptions.map((supplier) => (
+                            <option
+                              key={supplier.id}
+                              value={supplier.id}
+                              disabled={isSupplierAlreadySelected(supplier.id, index)}
+                            >
+                              {getOptionLabel(supplier)}
+                            </option>
+                          ))}
+                        </select>
 
-                    <Input
-                      className="col-span-5"
-                      placeholder="Supplier cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={supplierRow.supplier_cost}
-                      onChange={(e) =>
-                        updateSupplierRow(
-                          index,
-                          "supplier_cost",
-                          e.target.value
-                        )
-                      }
-                    />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="col-span-3 px-2"
+                          onClick={() => removeSupplierRow(index)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="col-span-1 px-2"
-                      onClick={() => removeSupplierRow(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
+                      <div className="flex items-center justify-between rounded-md border p-2">
+                        <span className="text-xs text-muted-foreground">
+                          {supplierRow.pricing_mode === "markup"
+                            ? "Markup mode: calculates selling price."
+                            : "Manual mode: calculates markup."}
+                        </span>
+                        <div className="flex rounded-md border overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateSupplierRow(index, "pricing_mode", "manual");
+                              updateSupplierRow(index, "markup", "");
+                            }}
+                            className={`px-2 py-1 text-[11px] ${
+                              supplierRow.pricing_mode === "manual"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-background text-muted-foreground"
+                            }`}
+                          >
+                            Manual
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateSupplierRow(index, "pricing_mode", "markup");
+                              updateSupplierRow(index, "price", "");
+                            }}
+                            className={`px-2 py-1 text-[11px] border-l ${
+                              supplierRow.pricing_mode === "markup"
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-background text-muted-foreground"
+                            }`}
+                          >
+                            Markup
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Supplier Cost
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={supplierRow.supplier_cost}
+                          onChange={(e) =>
+                            updateSupplierRow(index, "supplier_cost", e.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Markup %
+                          </span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder={
+                              supplierRow.pricing_mode === "manual"
+                                ? "Auto-calculated"
+                                : "e.g. 40"
+                            }
+                            value={displayedMarkup}
+                            disabled={supplierRow.pricing_mode === "manual"}
+                            onChange={(e) =>
+                              updateSupplierRow(index, "markup", e.target.value)
+                            }
+                            className={supplierRow.pricing_mode === "manual" ? "opacity-70" : ""}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Selling Price
+                          </span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder={
+                              supplierRow.pricing_mode === "markup"
+                                ? "Auto-calculated"
+                                : "Enter selling price"
+                            }
+                            value={displayedPrice}
+                            disabled={supplierRow.pricing_mode === "markup"}
+                            onChange={(e) =>
+                              updateSupplierRow(index, "price", e.target.value)
+                            }
+                            className={supplierRow.pricing_mode === "markup" ? "opacity-70" : ""}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`vat_${index}`}
+                          checked={supplierRow.is_vat}
+                          onChange={(e) =>
+                            updateSupplierRow(index, "is_vat", e.target.checked ? "true" : "")
+                          }
+                          className="rounded"
+                        />
+                        <label htmlFor={`vat_${index}`} className="text-xs text-muted-foreground">
+                          VAT
+                        </label>
+                        {supplierRow.is_vat && (
+                          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {PH_VAT_PERCENT}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
-          )}
-
-          <label className="col-span-2 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.is_oem}
-              onChange={(e) => updateField("is_oem", e.target.checked)}
-            />
-            OEM Product
-          </label>
-
-          {form.is_oem && (
-            <Input
-              className="col-span-2"
-              placeholder="OEM reference number"
-              value={form.oem_reference_number}
-              onChange={(e) =>
-                updateField("oem_reference_number", e.target.value)
-              }
-            />
           )}
         </div>
 

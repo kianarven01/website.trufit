@@ -49,6 +49,7 @@ class ProductFormatterService
             'category_id' => $product->category_id,
             'category' => $product->category?->name,
             'category_name' => $product->category?->name,
+            'category_is_spol' => $product->category?->is_spol ?? false,
 
             'unit' => $product->unit,
             'unit_name' => $product->unitRelation?->name,

@@ -2,7 +2,6 @@
 
 namespace App\Domains\Product\Application\Services;
 
-use Illuminate\Support\Facades\DB;
 use App\Domains\Product\Domain\Models\Category;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Domain\Models\Part;
@@ -16,28 +15,15 @@ class CategoryArchiveService
         $productsCount = Product::where('category_id', $category->id)->count();
         $partsCount = Part::where('category_id', $category->id)->count();
 
-        DB::transaction(function () use ($category) {
-            Product::where('category_id', $category->id)
-                ->update([
-                    'category_id' => null,
-                ]);
+        if ($productsCount > 0 || $partsCount > 0) {
+            abort(409, "Cannot delete category. It is assigned to {$productsCount} product(s) and {$partsCount} part(s). Reassign or remove them first.");
+        }
 
-            Part::where('category_id', $category->id)
-                ->update([
-                    'category_id' => null,
-                ]);
-
-            $category->update([
-                'is_active' => false,
-                'archived_at' => now(),
-            ]);
-        });
+        $category->delete();
 
         return [
             'category_id' => $category->id,
             'category_name' => $category->name,
-            'unassigned_products_count' => $productsCount,
-            'unassigned_parts_count' => $partsCount,
         ];
     }
 }

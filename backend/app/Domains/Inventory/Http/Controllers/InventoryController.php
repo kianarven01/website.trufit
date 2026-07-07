@@ -147,7 +147,6 @@ class InventoryController extends Controller
                     'reserved_quantity' => $validated['reserved_quantity'] ?? 0,
                     'reorder_level' => $validated['reorder_level'] ?? 5,
                     'reorder_qty' => $validated['reorder_qty'] ?? 10,
-                    'sell_price' => null,
                 ]
             );
         });
@@ -210,6 +209,7 @@ class InventoryController extends Controller
 
                 'category_id' => $product->category_id,
                 'category_name' => $product->category?->name,
+                'category_is_spol' => $product->category?->is_spol ?? false,
 
                 'part_id' => $product->part_id,
                 'part_name' => $product->part?->name,
@@ -262,6 +262,7 @@ class InventoryController extends Controller
                 'image_URL' => $product->image_path,
                 'category_id' => $product->category_id,
                 'category_name' => $product->category?->name,
+                'category_is_spol' => $product->category?->is_spol ?? false,
                 'part_id' => $product->part_id,
                 'part_name' => $product->part?->name,
                 'manufacturer_id' => $product->manufacturer_id,

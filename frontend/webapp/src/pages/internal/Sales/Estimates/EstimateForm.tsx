@@ -85,6 +85,7 @@ interface Product {
   reorderLevel: number | null;
   productId?: string;
   supplierName?: string;
+  categoryIsSpol?: boolean;
 }
 
 interface JOServiceLine {
@@ -229,6 +230,9 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       partsCatalog.map(p => [p.id, p])
     );
   }, [partsCatalog]);
+
+  const partsOnly = useMemo(() => partsCatalog.filter(p => !p.categoryIsSpol), [partsCatalog]);
+  const spolOnly = useMemo(() => partsCatalog.filter(p => p.categoryIsSpol), [partsCatalog]);
 
   const getStockStatus = (product: Product | undefined) => {
     if (!product) return null;
@@ -473,6 +477,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             supplierName,
+            categoryIsSpol: Boolean(row.product?.category_is_spol),
           };
         });
 
@@ -1560,7 +1565,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 <Combobox
                                   value={l.ProductId}
                                   onChange={(val) => updateSO(idx, "ProductId", val)}
-                                  items={partsCatalog.map((p) => ({
+                                  items={partsOnly.map((p) => ({
                                     label: `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
                                     value: p.id,
                                     description: `Price: ₱${Number(p.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
@@ -1726,7 +1731,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 <Combobox
                                   value={l.ProductId}
                                   onChange={(val) => updateSPOL(idx, "ProductId", val)}
-                                  items={partsCatalog.map((p) => ({
+                                  items={spolOnly.map((p) => ({
                                     label: `${p.name} - SKU: ${p.sku}`,
                                     value: p.id,
                                   }))}

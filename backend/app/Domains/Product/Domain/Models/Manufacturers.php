@@ -27,6 +27,11 @@ class Manufacturers extends Model
         'id' => 'integer',
         'code' => 'string',
     ];
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'manufacturer_id', 'id');
+    }
+
     public function vehicleModels()
     {
         return $this->hasMany(VehicleModel::class, 'manufacturer_id', 'id');

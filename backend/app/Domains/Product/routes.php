@@ -33,12 +33,18 @@ Route::prefix('products')->group(function () {
 
     Route::get('/units', [ProductReferenceController::class, 'units']);
     Route::post('/units', [ProductReferenceController::class, 'storeUnit']);
+    Route::put('/units/{id}', [ProductReferenceController::class, 'updateUnit']);
+    Route::delete('/units/{id}', [ProductReferenceController::class, 'deleteUnit']);
 
     Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
     Route::post('/manufacturers', [ProductReferenceController::class, 'storeManufacturer']);
+    Route::put('/manufacturers/{id}', [ProductReferenceController::class, 'updateManufacturer']);
+    Route::delete('/manufacturers/{id}', [ProductReferenceController::class, 'deleteManufacturer']);
 
     Route::get('/parts', [ProductController::class, 'parts']);
     Route::post('/parts', [ProductReferenceController::class, 'storePart']);
+    Route::put('/parts/{id}', [ProductReferenceController::class, 'updatePart']);
+    Route::delete('/parts/{id}', [ProductReferenceController::class, 'deletePart']);
 
     Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
     Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);

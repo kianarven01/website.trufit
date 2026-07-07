@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import api from "@/api/axios";
-import ManageProductCategories from "./manageProductCategories";
+import ProductReferencesModal from "./productReferencesModal";
 
 import {
   Dialog,
@@ -79,7 +79,7 @@ export default function ProductModal({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [localCategories, setLocalCategories] = useState<Option[]>(categories);
-  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [referencesModalOpen, setReferencesModalOpen] = useState(false);
   const [localManufacturers, setLocalManufacturers] = useState<Option[]>(manufacturers);
   const [referenceModalType, setReferenceModalType] = useState<ReferenceModalType>(null);
   const [savingReference, setSavingReference] = useState(false);
@@ -91,6 +91,10 @@ export default function ProductModal({
     description: "",
   });
   const [pendingPartReferenceForm, setPendingPartReferenceForm] = useState<typeof referenceForm | null>(null);
+
+  const [showInlineCategoryForm, setShowInlineCategoryForm] = useState(false);
+  const [inlineCategoryName, setInlineCategoryName] = useState("");
+  const [savingInlineCategory, setSavingInlineCategory] = useState(false);
 
   const [units, setUnits] = useState<Option[]>([]);
   const [parts, setParts] = useState<PartOption[]>([]);
@@ -124,45 +128,6 @@ export default function ProductModal({
     setLocalCategories(categories);
   }, [categories]);
 
-  type ManagedProductCategory = {
-    id: string | number;
-    name: string;
-    code?: string | null;
-  };
-
-  const handleManagedCategoriesChanged = (
-    nextCategories: ManagedProductCategory[]
-  ) => {
-    setLocalCategories(
-      nextCategories.map((category) => ({
-        id: String(category.id),
-        name: category.name,
-        code: category.code ?? undefined,
-      }))
-    );
-
-    setForm((prev) => {
-      if (!prev.part_id) return prev;
-
-      const selectedPart = parts.find(
-        (part) => String(part.id) === String(prev.part_id)
-      );
-
-      if (!selectedPart?.category_id) return prev;
-
-      const categoryStillExists = nextCategories.some(
-        (category) => String(category.id) === String(selectedPart.category_id)
-      );
-
-      return categoryStillExists
-        ? prev
-        : {
-            ...prev,
-            category_id: "",
-            part_id: "",
-          };
-    });
-  };
 
   useEffect(() => {
     setLocalManufacturers(manufacturers);
@@ -405,37 +370,10 @@ export default function ProductModal({
     return parts.find((part) => String(part.id) === String(form.part_id)) || null;
   }, [parts, form.part_id]);
 
-  const selectedCategoryName = useMemo(() => {
-    if (selectedPart?.category_name) {
-      return selectedPart.category_name;
-    }
-
-    const selectedCategory = localCategories.find(
-      (category) => String(category.id) === String(selectedPart?.category_id)
-    );
-
-    return selectedCategory
-      ? getOptionLabel(selectedCategory)
-      : "Uncategorized";
-  }, [form.part_id, parts, localCategories]);
-
   const filteredParts = useMemo(() => {
-    return parts;
-  }, [parts]);
-
-  const handlePartChange = (partIdValue: string) => {
-    const selectedPart = parts.find(
-      (part) => String(part.id) === String(partIdValue)
-    );
-
-    setForm((prev) => ({
-      ...prev,
-      part_id: partIdValue,
-      category_id: selectedPart
-        ? String(selectedPart.category_id)
-        : prev.category_id,
-    }));
-  };
+    if (!form.category_id) return parts;
+    return parts.filter((p) => String(p.category_id) === String(form.category_id));
+  }, [parts, form.category_id]);
 
   /**
    * Supplier IDs are UUIDs in your Supabase table.
@@ -803,7 +741,7 @@ export default function ProductModal({
     }
   };
 
-  const canSave = form.name.trim() && form.part_number.trim() && form.part_id;
+  const canSave = form.name.trim() && form.category_id;
 
   return (
     <>
@@ -811,6 +749,13 @@ export default function ProductModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Edit Product" : "Add Product"}</DialogTitle>
+          <button
+            type="button"
+            className="text-xs font-medium text-primary hover:underline self-end"
+            onClick={() => setReferencesModalOpen(true)}
+          >
+            Manage References
+          </button>
         </DialogHeader>
 
         <div className="grid grid-cols-2 gap-4">
@@ -984,7 +929,12 @@ export default function ProductModal({
                   return;
                 }
 
-                handlePartChange(value);
+                const selectedPart = parts.find((part) => String(part.id) === String(value));
+                setForm((prev) => ({
+                  ...prev,
+                  part_id: value,
+                  category_id: selectedPart ? String(selectedPart.category_id) : "",
+                }));
               }}
             >
               <option value="">Select part</option>
@@ -1004,18 +954,89 @@ export default function ProductModal({
               <span className="text-xs font-medium text-muted-foreground">
                 Category
               </span>
-              <button
-                type="button"
-                className="text-xs font-medium text-primary hover:underline"
-                onClick={() => setManageCategoriesOpen(true)}
-              >
-                Manage Categories
-              </button>
             </div>
 
-            <div className="w-full border rounded-md px-3 py-2 bg-muted/30 text-sm min-h-10 flex items-center">
-              {form.part_id ? selectedCategoryName || "Uncategorized part" : "Select a part first"}
-            </div>
+            <select
+              className="w-full border rounded-md px-3 py-2 bg-background"
+              value={showInlineCategoryForm ? ADD_NEW_CATEGORY : form.category_id}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === ADD_NEW_CATEGORY) {
+                  setShowInlineCategoryForm(true);
+                  return;
+                }
+                setShowInlineCategoryForm(false);
+                setForm((prev) => ({
+                  ...prev,
+                  category_id: value,
+                  part_id: "",
+                }));
+              }}
+            >
+              <option value="">Select category</option>
+              {localCategories
+                .filter((c) => !(c as any).is_spol)
+                .map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getOptionLabel(category)}
+                  </option>
+                ))}
+              <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
+            </select>
+
+            {showInlineCategoryForm && (
+              <div className="mt-2 p-3 border rounded-lg bg-muted/30 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={inlineCategoryName}
+                    onChange={(e) => setInlineCategoryName(e.target.value)}
+                    placeholder="Category name *"
+                    className="flex-1 border rounded-md px-3 py-1.5 text-sm bg-background"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInlineCategoryForm(false);
+                      setInlineCategoryName("");
+                    }}
+                    className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingInlineCategory || !inlineCategoryName.trim()}
+                    onClick={async () => {
+                      if (!inlineCategoryName.trim()) return;
+                      setSavingInlineCategory(true);
+                      try {
+                        const res = await api.post("/products/categories", {
+                          name: inlineCategoryName.trim(),
+                          is_spol: false,
+                        });
+                        const newCat = res.data?.data;
+                        if (newCat) {
+                          setLocalCategories((prev) => [...prev, { id: String(newCat.id), name: newCat.name }]);
+                          setForm((prev) => ({ ...prev, category_id: String(newCat.id), part_id: "" }));
+                        }
+                        setShowInlineCategoryForm(false);
+                        setInlineCategoryName("");
+                      } catch (err: any) {
+                        alert(err?.response?.data?.message || "Failed to create category.");
+                      } finally {
+                        setSavingInlineCategory(false);
+                      }
+                    }}
+                    className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {savingInlineCategory ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <select
@@ -1211,10 +1232,13 @@ export default function ProductModal({
       </DialogContent>
     </Dialog>
 
-    <ManageProductCategories
-      open={manageCategoriesOpen}
-      onOpenChange={setManageCategoriesOpen}
-      onChanged={handleManagedCategoriesChanged}
+    <ProductReferencesModal
+      open={referencesModalOpen}
+      onOpenChange={setReferencesModalOpen}
+      mode="parts"
+      onChanged={async () => {
+        await onSaved();
+      }}
     />
 
     <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {

@@ -21,8 +21,10 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ImageIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ImageIcon, Plus, Droplets } from "lucide-react";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
+import SpolProductModal from "@/components/popupModal/ProductCatalog/spolProduct";
 import api from "@/api/axios";
 import AppToast, { AppToastType } from "@/components/ui/AppToast";
 
@@ -55,6 +57,7 @@ interface CategoryOption {
   id: string;
   name: string;
   code?: string;
+  is_spol?: boolean;
 }
 
 interface SupplierOption {
@@ -290,6 +293,7 @@ const ProductsList: React.FC = () => {
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
   const [openModal, setOpenModal] = useState(false);
+  const [openSpolModal, setOpenSpolModal] = useState(false);
 
   const [resolvedVehicleId, setResolvedVehicleId] = useState<string | null>(
     routeState?.vehicleId || null
@@ -382,6 +386,7 @@ const ProductsList: React.FC = () => {
         id: String(row.id),
         name: String(row.name),
         code: row.code || undefined,
+        is_spol: Boolean(row.is_spol),
       })
     );
 
@@ -522,7 +527,12 @@ const ProductsList: React.FC = () => {
   const paginated = paginate(filtered);
 
   const refreshProducts = async () => {
-    await loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId);
+    await Promise.all([
+      loadProducts(resolvedVehicleId, resolvedVariantId, resolvedCategoryId),
+      loadCategories(),
+      loadManufacturers(),
+      loadSuppliers(),
+    ]);
   };
 
   return (
@@ -546,7 +556,13 @@ const ProductsList: React.FC = () => {
           setFiltersState((prev) => ({ ...prev, [key]: value }))
         }
         onAdd={() => setOpenModal(true)}
-        addLabel="Add Product"
+        addLabel="Add Part"
+        beforeAdd={
+          <Button size="sm" variant="outline" onClick={() => setOpenSpolModal(true)} className="flex items-center gap-2">
+            <Droplets className="h-4 w-4" />
+            Add SPOL
+          </Button>
+        }
       />
 
       <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
@@ -715,6 +731,15 @@ const ProductsList: React.FC = () => {
         suppliers={suppliers}
         variantId={resolvedVariantId}
         categoryId={resolvedCategoryId}
+        onSaved={refreshProducts}
+      />
+
+      <SpolProductModal
+        open={openSpolModal}
+        onOpenChange={setOpenSpolModal}
+        categories={categories}
+        manufacturers={manufacturers}
+        suppliers={suppliers}
         onSaved={refreshProducts}
       />
     </div>

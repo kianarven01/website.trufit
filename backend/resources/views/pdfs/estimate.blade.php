@@ -350,22 +350,8 @@
     <!-- Labour / Services Section -->
     @php
         $serviceItems = $estimate->items->where('item_type', 'service');
-        $partItems = $estimate->items->where('item_type', 'part')->filter(function($item) {
-            if ($item->product && $item->product->category) {
-                $catName = is_object($item->product->category) ? $item->product->category->name : '';
-                return !in_array($catName, ['Supplies', 'Oil', 'Lubricant']);
-            }
-            return true;
-        });
-        $supplyItems = $estimate->items->where('item_type', 'part')->filter(function($item) {
-            if ($item->product && $item->product->category) {
-                $catName = is_object($item->product->category) ? $item->product->category->name : '';
-                return in_array($catName, ['Supplies', 'Oil', 'Lubricant']);
-            }
-            return false;
-        });
-        $supplyTypeItems = $estimate->items->where('item_type', 'supply');
-        $supplyItems = $supplyItems->merge($supplyTypeItems);
+        $partItems = $estimate->items->where('item_type', 'part');
+        $supplyItems = $estimate->items->where('item_type', 'supply');
 
         $includeTentative = $includeTentative ?? false;
         if (!$includeTentative) {
@@ -465,7 +451,7 @@
     </table>
 
     <!-- Supplies Section -->
-    <div class="section-header">Supplies, Petrol, Oils, and Lubricants</div>
+    <div class="section-header">Supplies, Parts & Lubricants (SPOL)</div>
     <table class="items-table" style="border:none;">
         <tbody>
             @foreach($supplyItems as $item)

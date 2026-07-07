@@ -14,7 +14,6 @@ class GetCategories
             ->map(fn ($category) => [
                 'id' => $category->id,
                 'name' => $category->name,
-                'code' => $category->code,
             ])
             ->toArray();
     }

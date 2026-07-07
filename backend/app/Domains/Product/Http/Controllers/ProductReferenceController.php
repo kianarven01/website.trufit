@@ -28,7 +28,7 @@ class ProductReferenceController extends Controller
     public function categories(): JsonResponse
     {
         $categories = Category::query()
-            ->select('id', 'name', 'code', 'is_active')
+            ->select('id', 'name', 'is_active', 'is_spol')
             ->where('is_active', true)
             ->withCount('products')
             ->orderBy('name')
@@ -109,17 +109,14 @@ class ProductReferenceController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50'],
+            'is_spol' => ['nullable', 'boolean'],
         ]);
 
         $name = trim($validated['name']);
-        $code = isset($validated['code']) && trim($validated['code']) !== ''
-            ? Str::upper(trim($validated['code']))
-            : Str::upper(Str::slug($name, '_'));
 
         $existing = Category::query()
+            ->where('is_active', true)
             ->whereRaw('LOWER(name) = ?', [strtolower($name)])
-            ->orWhereRaw('LOWER(code) = ?', [strtolower($code)])
             ->first();
 
         if ($existing) {
@@ -131,9 +128,8 @@ class ProductReferenceController extends Controller
 
         $category = Category::create([
             'name' => $name,
-            'code' => $code,
             'is_active' => true,
-            'archived_at' => null,
+            'is_spol' => $validated['is_spol'] ?? false,
         ]);
 
         return response()->json([
@@ -147,34 +143,34 @@ class ProductReferenceController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50'],
+            'is_spol' => ['nullable', 'boolean'],
         ]);
 
         $category = Category::query()->where('id', $id)->firstOrFail();
 
         $name = trim($validated['name']);
-        $code = isset($validated['code']) && trim($validated['code']) !== ''
-            ? Str::upper(trim($validated['code']))
-            : ($category->code ?: Str::upper(Str::slug($name, '_')));
 
         $duplicate = Category::query()
             ->where('id', '!=', $category->id)
-            ->where(function ($query) use ($name, $code) {
-                $query->whereRaw('LOWER(name) = ?', [strtolower($name)])
-                    ->orWhereRaw('LOWER(code) = ?', [strtolower($code)]);
-            })
+            ->where('is_active', true)
+            ->whereRaw('LOWER(name) = ?', [strtolower($name)])
             ->first();
 
         if ($duplicate) {
             return response()->json([
-                'message' => 'Another category with the same name or code already exists.',
+                'message' => 'Another category with the same name already exists.',
             ], 409);
         }
 
-        $category->update([
+        $updateData = [
             'name' => $name,
-            'code' => $code,
-        ]);
+        ];
+
+        if (array_key_exists('is_spol', $validated)) {
+            $updateData['is_spol'] = $validated['is_spol'];
+        }
+
+        $category->update($updateData);
 
         return response()->json([
             'message' => 'Category updated successfully.',
@@ -240,14 +236,71 @@ class ProductReferenceController extends Controller
         ], 201);
     }
 
+    public function updateUnit(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'abbreviation' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $unit = Unit::findOrFail($id);
+
+        $duplicate = Unit::query()
+            ->where('id', '!=', $id)
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->first();
+
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'Another unit with the same name already exists.',
+            ], 409);
+        }
+
+        $unit->update([
+            'name' => trim($validated['name']),
+            'abbreviation' => $validated['abbreviation'] ?? $unit->abbreviation,
+        ]);
+
+        return response()->json([
+            'message' => 'Unit updated successfully.',
+            'data' => $unit,
+        ]);
+    }
+
+    public function deleteUnit(int $id): JsonResponse
+    {
+        $unit = Unit::findOrFail($id);
+
+        $hasProducts = Product::where('unit', $id)->exists();
+        if ($hasProducts) {
+            return response()->json([
+                'message' => 'Cannot delete unit. It is assigned to existing products.',
+            ], 422);
+        }
+
+        $unit->delete();
+
+        return response()->json([
+            'message' => 'Unit deleted successfully.',
+        ]);
+    }
+
     // New method to create units of measurement for products
     public function manufacturers(): JsonResponse
     {
         $manufacturers = Manufacturers::query()
             ->select('id', 'name', 'type', 'code')
             ->where('type', 'Part')
+            ->withCount('products')
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->map(function ($manufacturer) {
+                $manufacturer->parts_count = Part::query()
+                    ->whereHas('products', fn($q) => $q->where('manufacturer_id', $manufacturer->id))
+                    ->count();
+
+                return $manufacturer;
+            });
 
         return response()->json([
             'data' => $manufacturers,
@@ -286,6 +339,58 @@ class ProductReferenceController extends Controller
             'message' => 'Manufacturer created successfully.',
             'data' => $manufacturer,
         ], 201);
+    }
+
+    public function updateManufacturer(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $manufacturer = Manufacturers::findOrFail($id);
+
+        $duplicate = Manufacturers::query()
+            ->where('id', '!=', $id)
+            ->where('type', 'Part')
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->first();
+
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'Another manufacturer with the same name already exists.',
+            ], 409);
+        }
+
+        $manufacturer->update([
+            'name' => trim($validated['name']),
+            'code' => !empty($validated['code'])
+                ? strtoupper(trim($validated['code']))
+                : $manufacturer->code,
+        ]);
+
+        return response()->json([
+            'message' => 'Manufacturer updated successfully.',
+            'data' => $manufacturer,
+        ]);
+    }
+
+    public function deleteManufacturer(int $id): JsonResponse
+    {
+        $manufacturer = Manufacturers::findOrFail($id);
+
+        $hasProducts = Product::where('manufacturer_id', $id)->exists();
+        if ($hasProducts) {
+            return response()->json([
+                'message' => 'Cannot delete manufacturer. It is assigned to existing products.',
+            ], 422);
+        }
+
+        $manufacturer->delete();
+
+        return response()->json([
+            'message' => 'Manufacturer deleted successfully.',
+        ]);
     }
 
     // New method to generate unique reference code based on name, with fallback to random string to ensure uniqueness
@@ -334,6 +439,73 @@ class ProductReferenceController extends Controller
                 'code' => $part->code,
             ],
         ], 201);
+    }
+
+    public function updatePart(Request $request, int $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'integer'],
+            'code' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $part = Part::findOrFail($id);
+
+        $category = Category::query()
+            ->where('id', $validated['category_id'])
+            ->firstOrFail();
+
+        $duplicate = Part::query()
+            ->where('id', '!=', $id)
+            ->where('category_id', $category->id)
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->first();
+
+        if ($duplicate) {
+            return response()->json([
+                'message' => 'Another part with the same name exists in this category.',
+            ], 409);
+        }
+
+        $part->update([
+            'name' => trim($validated['name']),
+            'category_id' => $category->id,
+            'code' => !empty($validated['code'])
+                ? strtoupper(trim($validated['code']))
+                : $part->code,
+            'description' => $validated['description'] ?? $part->description,
+        ]);
+
+        return response()->json([
+            'message' => 'Part updated successfully.',
+            'data' => [
+                'id' => $part->id,
+                'name' => $part->name,
+                'description' => $part->description,
+                'category_id' => $part->category_id,
+                'category_name' => $category->name,
+                'code' => $part->code,
+            ],
+        ]);
+    }
+
+    public function deletePart(int $id): JsonResponse
+    {
+        $part = Part::findOrFail($id);
+
+        $hasProducts = Product::where('part_id', $id)->exists();
+        if ($hasProducts) {
+            return response()->json([
+                'message' => 'Cannot delete part. It is assigned to existing products.',
+            ], 422);
+        }
+
+        $part->delete();
+
+        return response()->json([
+            'message' => 'Part deleted successfully.',
+        ]);
     }
 
     // New method to retrieve all vehicles (vehicle models with manufacturer and variants) for product association

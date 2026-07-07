@@ -18,17 +18,16 @@ class Category extends Model
 
     protected $fillable = [
         'name',
-        'code',
         'seq_counter',
         'is_active',
-        'archived_at',
+        'is_spol',
     ];
 
     protected $casts = [
         'id' => 'integer',
         'seq_counter' => 'integer',
         'is_active' => 'boolean',
-        'archived_at' => 'datetime',
+        'is_spol' => 'boolean',
     ];
 
     public function products()

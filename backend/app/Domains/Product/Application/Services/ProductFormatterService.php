@@ -24,6 +24,12 @@ class ProductFormatterService
         $preferredPrice = $preferredSupplier?->price;
         $preferredSellingPrice = $preferredPrice?->Price;
 
+        // Fallback: read from Inventory.sell_price when no suppliers
+        if ($preferredSellingPrice === null) {
+            $inventory = $product->inventoryRows->first();
+            $preferredSellingPrice = $inventory?->sell_price;
+        }
+
         return [
             'id' => $product->id,
             'name' => $product->name,

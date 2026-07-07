@@ -12,6 +12,10 @@ class CategoryArchiveService
     {
         $category = Category::findOrFail($categoryId);
 
+        if ($category->isSystem()) {
+            abort(403, 'The Sundries category is system-owned and cannot be deleted.');
+        }
+
         $productsCount = Product::where('category_id', $category->id)->count();
         $partsCount = Part::where('category_id', $category->id)->count();
 

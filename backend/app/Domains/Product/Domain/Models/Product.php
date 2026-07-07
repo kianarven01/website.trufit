@@ -30,6 +30,7 @@ class Product extends Model
     protected $fillable = [
         'id',
         'name',
+        'item_type',
         'SKU',
         'description',
         'image_path',
@@ -46,6 +47,7 @@ class Product extends Model
 
     protected $casts = [
         'id' => 'string',
+        'item_type' => 'string',
         'category_id' => 'integer',
         'manufacturer_id' => 'integer',
         'unit' => 'integer',

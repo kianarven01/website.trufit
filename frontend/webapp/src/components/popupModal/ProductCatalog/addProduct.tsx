@@ -630,6 +630,7 @@ export default function ProductModal({
       const payload = new FormData();
 
       payload.append("name", form.name.trim());
+      payload.append("item_type", "part");
 
       if (form.SKU.trim() || isEditMode) {
         payload.append("SKU", form.SKU.trim());
@@ -1238,6 +1239,9 @@ export default function ProductModal({
       mode="parts"
       onChanged={async () => {
         await onSaved();
+        const res = await api.get("/products/units");
+        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+        setUnits(Array.isArray(rows) ? rows : []);
       }}
     />
 

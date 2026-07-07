@@ -39,6 +39,10 @@ interface SpolProductModalProps {
 }
 
 const ADD_NEW_CATEGORY = "__add_new_category__";
+const ADD_NEW_MANUFACTURER = "__add_new_manufacturer__";
+const ADD_NEW_UNIT = "__add_new_unit__";
+
+type ReferenceModalType = "manufacturer" | "unit" | null;
 
 export default function SpolProductModal({
   open,
@@ -52,6 +56,11 @@ export default function SpolProductModal({
   const [saving, setSaving] = useState(false);
   const [units, setUnits] = useState<Option[]>([]);
   const [referencesModalOpen, setReferencesModalOpen] = useState(false);
+  const [localManufacturers, setLocalManufacturers] = useState<Option[]>(manufacturers);
+
+  const [referenceModalType, setReferenceModalType] = useState<ReferenceModalType>(null);
+  const [savingReference, setSavingReference] = useState(false);
+  const [referenceForm, setReferenceForm] = useState({ name: "", code: "", abbreviation: "" });
 
   const [form, setForm] = useState({
     name: "",
@@ -74,6 +83,10 @@ export default function SpolProductModal({
   useEffect(() => {
     setLocalCategories(categories);
   }, [categories]);
+
+  useEffect(() => {
+    setLocalManufacturers(manufacturers);
+  }, [manufacturers]);
 
   const spolCategories = localCategories.filter((c) => {
     return (c as any).is_spol === true || (c as any).is_spol === "true";
@@ -112,6 +125,8 @@ export default function SpolProductModal({
       setProductSuppliers([]);
       setShowInlineCategoryForm(false);
       setInlineCategoryName("");
+      setReferenceModalType(null);
+      setSavingReference(false);
     }
   }, [open]);
 
@@ -122,7 +137,11 @@ export default function SpolProductModal({
   const hasSuppliers = productSuppliers.length > 0 &&
     productSuppliers.some((s) => String(s.supplier_id || "").trim() !== "");
 
-  const canSave = form.name.trim() && form.category_id && form.unit;
+  const isSundriesCategory = spolCategories.some(
+    (c) => String(c.id) === String(form.category_id) && c.name === "Sundries"
+  );
+
+  const canSave = form.name.trim() && form.category_id && (isSundriesCategory || form.unit);
 
   const addSupplierRow = () => {
     setProductSuppliers((prev) => [...prev, { supplier_id: "", supplier_cost: "" }]);
@@ -144,6 +163,64 @@ export default function SpolProductModal({
     );
   };
 
+  const openReferenceModal = (type: ReferenceModalType) => {
+    if (!type) return;
+    setReferenceModalType(type);
+    setReferenceForm({ name: "", code: "", abbreviation: "" });
+  };
+
+  const closeReferenceModal = () => {
+    setReferenceModalType(null);
+    setSavingReference(false);
+    setReferenceForm({ name: "", code: "", abbreviation: "" });
+  };
+
+  const handleSaveReference = async () => {
+    if (!referenceModalType) return;
+    const name = referenceForm.name.trim();
+    if (!name) { alert("Name is required."); return; }
+    setSavingReference(true);
+
+    try {
+      if (referenceModalType === "manufacturer") {
+        const res = await api.post("/products/manufacturers", {
+          name,
+          code: referenceForm.code.trim() || undefined,
+        });
+        const created = res.data?.data || res.data?.manufacturer || res.data;
+        const newMfg: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          code: created.code ?? (referenceForm.code.trim() || undefined),
+        };
+        setLocalManufacturers((prev) => [...prev, newMfg]);
+        setForm((prev) => ({ ...prev, manufacturer_id: newMfg.id }));
+      }
+
+      if (referenceModalType === "unit") {
+        const res = await api.post("/products/units", {
+          name,
+          abbreviation: referenceForm.abbreviation.trim() || undefined,
+        });
+        const created = res.data?.data || res.data?.unit || res.data;
+        const newUnit: Option = {
+          id: String(created.id),
+          name: String(created.name || name),
+          label: created.abbreviation || referenceForm.abbreviation.trim() || undefined,
+        };
+        setUnits((prev) => [...prev, newUnit]);
+        setForm((prev) => ({ ...prev, unit: newUnit.id }));
+      }
+
+      closeReferenceModal();
+    } catch (error: any) {
+      const message = error?.response?.data?.message || "Failed to save.";
+      alert(message);
+    } finally {
+      setSavingReference(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
 
@@ -152,6 +229,8 @@ export default function SpolProductModal({
       payload.append("name", form.name.trim());
       payload.append("category_id", form.category_id);
       payload.append("unit", form.unit);
+      payload.append("is_spol", "true");
+      payload.append("item_type", "spol");
 
       if (form.description.trim()) {
         payload.append("description", form.description.trim());
@@ -329,59 +408,77 @@ export default function SpolProductModal({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                Unit <span className="text-destructive">*</span>
-              </span>
-              <select
-                className="w-full border rounded-md px-3 py-2 bg-background text-sm"
-                value={form.unit}
-                onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              >
-                <option value="">Select unit</option>
-                {units.map((unit) => (
-                  <option key={unit.id} value={unit.id}>
-                    {getOptionLabel(unit)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {!hasSuppliers && (
+            {!isSundriesCategory && (
               <div className="space-y-1">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Default Selling Price
+                  Unit <span className="text-destructive">*</span>
                 </span>
-                <Input
-                  type="number"
-                  value={form.selling_price}
-                  onChange={(e) => setForm({ ...form, selling_price: e.target.value })}
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                />
+                <select
+                  className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                  value={form.unit}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === ADD_NEW_UNIT) {
+                      openReferenceModal("unit");
+                      return;
+                    }
+                    setForm({ ...form, unit: value });
+                  }}
+                >
+                  <option value="">Select unit</option>
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {getOptionLabel(unit)}
+                    </option>
+                  ))}
+                  <option value={ADD_NEW_UNIT}>+ Add new unit</option>
+                </select>
               </div>
             )}
+
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                Default Selling Price
+              </span>
+              <Input
+                type="number"
+                value={form.selling_price}
+                onChange={(e) => setForm({ ...form, selling_price: e.target.value })}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                Manufacturer
-              </span>
-              <select
-                className="w-full border rounded-md px-3 py-2 bg-background text-sm"
-                value={form.manufacturer_id}
-                onChange={(e) => setForm({ ...form, manufacturer_id: e.target.value })}
-              >
-                <option value="">Select manufacturer</option>
-                {manufacturers.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {getOptionLabel(m)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isSundriesCategory && (
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Manufacturer
+                </span>
+                <select
+                  className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                  value={form.manufacturer_id}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === ADD_NEW_MANUFACTURER) {
+                      openReferenceModal("manufacturer");
+                      return;
+                    }
+                    setForm({ ...form, manufacturer_id: value });
+                  }}
+                >
+                  <option value="">Select manufacturer</option>
+                  {localManufacturers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {getOptionLabel(m)}
+                    </option>
+                  ))}
+                  <option value={ADD_NEW_MANUFACTURER}>+ Add new manufacturer</option>
+                </select>
+              </div>
+            )}
 
             <div className="space-y-1">
               <span className="text-xs font-medium text-muted-foreground">
@@ -406,12 +503,13 @@ export default function SpolProductModal({
             />
           </div>
 
+          {!isSundriesCategory && (
           <div className="border rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">Suppliers</p>
                 <p className="text-xs text-muted-foreground">
-                  Optional. Add suppliers for tracked items (brake cleaner, oil, etc.). Skip for sundries.
+                  Optional. Add suppliers for tracked items (brake cleaner, oil, etc.).
                 </p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={addSupplierRow}>
@@ -466,6 +564,7 @@ export default function SpolProductModal({
               </div>
             )}
           </div>
+          )}
         </div>
 
         <DialogFooter className="mt-6">
@@ -485,8 +584,57 @@ export default function SpolProductModal({
       mode="spol"
       onChanged={async () => {
         await onSaved();
+        const res = await api.get("/products/units");
+        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+        setUnits(Array.isArray(rows) ? rows : []);
       }}
     />
+
+    <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {
+      if (!nextOpen) closeReferenceModal();
+    }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {referenceModalType === "manufacturer" && "Add Manufacturer"}
+            {referenceModalType === "unit" && "Add Unit"}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <Input
+            placeholder="Name"
+            value={referenceForm.name}
+            onChange={(e) => setReferenceForm((prev) => ({ ...prev, name: e.target.value }))}
+          />
+
+          {referenceModalType === "manufacturer" && (
+            <Input
+              placeholder="Code (optional)"
+              value={referenceForm.code}
+              onChange={(e) => setReferenceForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+            />
+          )}
+
+          {referenceModalType === "unit" && (
+            <Input
+              placeholder="Abbreviation, example: pcs"
+              value={referenceForm.abbreviation}
+              onChange={(e) => setReferenceForm((prev) => ({ ...prev, abbreviation: e.target.value }))}
+            />
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={closeReferenceModal} disabled={savingReference}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleSaveReference} disabled={savingReference}>
+            {savingReference ? "Saving..." : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

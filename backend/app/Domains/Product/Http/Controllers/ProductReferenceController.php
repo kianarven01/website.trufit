@@ -148,6 +148,12 @@ class ProductReferenceController extends Controller
 
         $category = Category::query()->where('id', $id)->firstOrFail();
 
+        if ($category->isSystem() && strtolower(trim($validated['name'])) !== strtolower($category->name)) {
+            return response()->json([
+                'message' => 'The Sundries category cannot be renamed.',
+            ], 403);
+        }
+
         $name = trim($validated['name']);
 
         $duplicate = Category::query()
@@ -166,7 +172,7 @@ class ProductReferenceController extends Controller
             'name' => $name,
         ];
 
-        if (array_key_exists('is_spol', $validated)) {
+        if (array_key_exists('is_spol', $validated) && !$category->isSystem()) {
             $updateData['is_spol'] = $validated['is_spol'];
         }
 

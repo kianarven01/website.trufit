@@ -94,6 +94,7 @@ const toNumberOrZero = (value: unknown): number => {
 
 const getProductSellingPrice = (row: any): number => {
   const directPrice =
+    row.preferred_selling_price ??
     row.selling_price ??
     row.price ??
     row.sell_price ??

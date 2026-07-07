@@ -90,9 +90,15 @@ const Inventory: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.get("/inventory", {
-        params: search ? { search } : undefined,
-      });
+      const params: Record<string, string> = {};
+      if (search) params.search = search;
+
+      const archivedFilter = activeFilters.archived;
+      if (archivedFilter === "true") {
+        params.archived = "1";
+      }
+
+      const res = await api.get("/inventory", { params });
 
       const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
 
@@ -147,6 +153,10 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     void loadInventory();
   }, []);
+
+  useEffect(() => {
+    void loadInventory();
+  }, [activeFilters.archived]);
 
   useEffect(() => {
     setPage(1);
@@ -205,6 +215,30 @@ const Inventory: React.FC = () => {
     }
   };
 
+  /* ================= FORCE DELETE ================= */
+  const handleForceDelete = async (item: InventoryItem) => {
+    if (!window.confirm(`Permanently delete "${item.name}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/products/${item.productId}/force`);
+      await loadInventory();
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+    }
+  };
+
+  /* ================= RESTORE ================= */
+  const handleRestore = async (item: InventoryItem) => {
+    try {
+      await api.patch(`/products/${item.productId}/restore`);
+      await loadInventory();
+    } catch (error) {
+      console.error("Failed to restore product:", error);
+    }
+  };
+
   /* ================= FILTER ================= */
   const filtered = items.filter((p) => {
     const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
@@ -219,7 +253,7 @@ const Inventory: React.FC = () => {
     const matchesArchived =
       !archivedFilter ||
       archivedFilter === "all" ||
-      (archivedFilter === "true") ||
+      archivedFilter === "true" ||
       (archivedFilter === "false" && !p.isArchived);
 
     return matchesSearch && matchesStatus && matchesArchived;
@@ -411,12 +445,29 @@ const Inventory: React.FC = () => {
                                 align="end"
                                 className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]"
                               >
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenAdjust(p)}
-                                  className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
-                                >
-                                  Adjust Stock
-                                </DropdownMenuItem>
+                                {p.isArchived ? (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => handleRestore(p)}
+                                      className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
+                                    >
+                                      Restore
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleForceDelete(p)}
+                                      className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                                    >
+                                      Delete Permanently
+                                    </DropdownMenuItem>
+                                  </>
+                                ) : (
+                                  <DropdownMenuItem
+                                    onClick={() => handleOpenAdjust(p)}
+                                    className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
+                                  >
+                                    Adjust Stock
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>

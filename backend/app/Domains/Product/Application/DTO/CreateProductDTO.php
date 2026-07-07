@@ -23,6 +23,7 @@ class CreateProductDTO
     {
         return [
             'name' => $data['name'],
+            'item_type' => $data['item_type'] ?? 'part',
             'SKU' => $data['SKU'] ?? $data['sku'] ?? null,
             'part_number' => $data['part_number'] ?? null,
             'description' => $data['description'] ?? null,
@@ -34,6 +35,7 @@ class CreateProductDTO
             'part_id' => $data['part_id'] ?? null,
             'is_oem' => filter_var($data['is_oem'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'oem_reference_number' => $data['oem_reference_number'] ?? null,
+            'selling_price' => isset($data['selling_price']) ? (float) $data['selling_price'] : null,
         ];
     }
 

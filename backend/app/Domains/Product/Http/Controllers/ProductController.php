@@ -19,6 +19,8 @@ use App\Domains\Product\Http\Requests\StoreProductRequest;
 use App\Domains\Product\Http\Requests\UpdateProductRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
@@ -48,6 +50,10 @@ class ProductController extends Controller
     ): JsonResponse {
         $validated = $request->validated();
 
+        if (!isset($validated['item_type']) || empty($validated['item_type'])) {
+            $validated['item_type'] = 'part';
+        }
+
         if (!empty($validated['part_id'])) {
             $part = Part::query()
                 ->where('id', (int) $validated['part_id'])
@@ -57,6 +63,7 @@ class ProductController extends Controller
         }
 
         if (
+            $validated['item_type'] === 'part' &&
             empty($validated['SKU']) &&
             !empty($validated['manufacturer_id']) &&
             !empty($validated['part_id'])
@@ -190,6 +197,63 @@ class ProductController extends Controller
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Failed to archive product.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function forceDelete(string $id): JsonResponse
+    {
+        try {
+            $product = Product::withTrashed()->findOrFail($id);
+
+            DB::transaction(function () use ($product) {
+                $productId = $product->id;
+
+                $supplierIds = DB::table('Main.ProductSuppliers')
+                    ->where('product_id', $productId)
+                    ->pluck('id');
+
+                if ($supplierIds->isNotEmpty()) {
+                    DB::table('Main.ProductPrice')
+                        ->whereIn('product_supplier_id', $supplierIds)->delete();
+                }
+
+                DB::table('Main.Inventory')->where('productID', $productId)->delete();
+                DB::table('Main.ProductSuppliers')->where('product_id', $productId)->delete();
+                DB::table('Main.ProductEquivalentGroupItems')->where('product_id', $productId)->delete();
+                DB::table('Main.AttributeValue')->where('productID', $productId)->delete();
+
+                $product->forceDelete();
+            });
+
+            return response()->json([
+                'message' => 'Product permanently deleted.',
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to delete product.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function restore(string $id): JsonResponse
+    {
+        try {
+            $product = Product::onlyTrashed()->findOrFail($id);
+            $product->restore();
+
+            return response()->json([
+                'message' => 'Product restored successfully.',
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Product not found.'], 404);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to restore product.',
                 'error' => $e->getMessage(),
             ], 500);
         }

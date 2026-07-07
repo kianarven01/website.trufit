@@ -86,6 +86,8 @@ interface Product {
   productId?: string;
   supplierName?: string;
   categoryIsSpol?: boolean;
+  categoryId?: number | null;
+  categoryName?: string | null;
 }
 
 interface JOServiceLine {
@@ -124,6 +126,8 @@ interface SPOLLine {
 interface AddEstimateProps {
   mode?: "create" | "edit";
 }
+
+const SUNDRIES_CATEGORY_NAME = "Sundries";
 
 const generateId = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -478,6 +482,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             reorderLevel: Number(row.reorder_level ?? 5),
             supplierName,
             categoryIsSpol: Boolean(row.product?.category_is_spol),
+            categoryId: row.product?.category_id ?? null,
+            categoryName: row.product?.category_name ?? null,
           };
         });
 
@@ -1717,6 +1723,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                         const isCustom = l.customName !== undefined;
                         const product = partsMap[l.ProductId];
                         const stockStatus = getStockStatus(product);
+                        const isSundries = !isCustom && product?.categoryName === SUNDRIES_CATEGORY_NAME;
 
                         return (
                           <TableRow key={l.id} className="hover:bg-transparent">
@@ -1745,6 +1752,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
                                   Custom Item
                                 </span>
+                              ) : isSundries ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
+                                  Sundries
+                                </span>
                               ) : stockStatus ? (
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${stockStatus.bg} ${stockStatus.color}`}>
                                   {stockStatus.label}
@@ -1766,19 +1777,23 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             </TableCell>
 
                             <TableCell>
-                              <Input
-                                type="number"
-                                min={0}
-                                value={l.quantity === 0 || l.quantity === "" ? "" : String(l.quantity)}
-                                placeholder="0"
-                                onFocus={() => { if (!l.quantity) updateSPOL(idx, "quantity", ""); }}
-                                onBlur={(e) => { if (e.target.value === "") updateSPOL(idx, "quantity", 0); }}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (!/^\d*$/.test(val)) return;
-                                  updateSPOL(idx, "quantity", val === "" ? "" : Number(val));
-                                }}
-                              />
+                              {isSundries ? (
+                                <span className="text-sm text-muted-foreground font-medium px-2">1</span>
+                              ) : (
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={l.quantity === 0 || l.quantity === "" ? "" : String(l.quantity)}
+                                  placeholder="0"
+                                  onFocus={() => { if (!l.quantity) updateSPOL(idx, "quantity", ""); }}
+                                  onBlur={(e) => { if (e.target.value === "") updateSPOL(idx, "quantity", 0); }}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (!/^\d*$/.test(val)) return;
+                                    updateSPOL(idx, "quantity", val === "" ? "" : Number(val));
+                                  }}
+                                />
+                              )}
                             </TableCell>
 
                             <TableCell className="text-center">

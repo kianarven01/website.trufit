@@ -31,6 +31,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
             $product = Product::create([
                 'id' => $productId,
                 'name' => $productData['name'],
+                'item_type' => $productData['item_type'] ?? 'part',
                 'SKU' => $productData['SKU'] ?? $productData['sku'] ?? null,
                 'description' => $productData['description'] ?? null,
                 'image_path' => $productData['image_path'] ?? null,
@@ -95,6 +96,23 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     ]
                 );
 
+            }
+
+            // Create inventory record for supplier-less products (SPOL with selling price)
+            if (empty($suppliers) && !empty($productData['selling_price'])) {
+                Inventory::firstOrCreate(
+                    [
+                        'productID' => $productId,
+                        'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                    ],
+                    [
+                        'product_supplier_id' => null,
+                        'quantity_on_hand' => 0,
+                        'sell_price' => $productData['selling_price'],
+                        'reserved_quantity' => 0,
+                        'reorder_level' => 0,
+                    ]
+                );
             }
 
             if ($compatibility && !empty($compatibility['car_variant_id'])) {

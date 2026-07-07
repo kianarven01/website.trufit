@@ -6,4 +6,5 @@ return [
     App\Domains\Audit\Infrastructure\Providers\AuditServiceProvider::class,
     App\Domains\Customer\Infrastructure\Providers\CustomerServiceProvider::class,
     App\Domains\Estimate\Infrastructure\Providers\EstimateServiceProvider::class,
+    App\Domains\Product\Infrastructure\Providers\ProductServiceProvider::class,
 ];

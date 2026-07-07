@@ -445,9 +445,16 @@ export default function ProductReferencesModal({
                               <span className="text-xs">SPOL</span>
                             </div>
                           ) : (
-                            <span className={`text-xs font-medium ${item.is_spol ? "text-blue-600" : "text-muted-foreground"}`}>
-                              {item.is_spol ? "SPOL" : "Parts"}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs font-medium ${item.is_spol ? "text-blue-600" : "text-muted-foreground"}`}>
+                                {item.is_spol ? "SPOL" : "Parts"}
+                              </span>
+                              {item.name === "Sundries" && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">
+                                  System
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="col-span-3 text-muted-foreground">
@@ -461,14 +468,14 @@ export default function ProductReferencesModal({
                             </>
                           ) : (
                             <>
-                              <Button size="sm" variant="ghost" onClick={() => startEdit(item)} disabled={saving}><Pencil className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="ghost" onClick={() => startEdit(item)} disabled={saving || item.name === "Sundries"} title={item.name === "Sundries" ? "System category cannot be edited" : "Edit category"}><Pencil className="w-4 h-4" /></Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => confirmDelete("categories", item.id, item.name)}
-                                disabled={saving || (item.products_count || 0) > 0 || (item.parts_count || 0) > 0}
-                                title={(item.products_count || 0) > 0 || (item.parts_count || 0) > 0 ? "Reassign or remove products/parts first" : "Delete category"}
+                                disabled={saving || item.name === "Sundries" || (item.products_count || 0) > 0 || (item.parts_count || 0) > 0}
+                                title={item.name === "Sundries" ? "System category cannot be deleted" : (item.products_count || 0) > 0 || (item.parts_count || 0) > 0 ? "Reassign or remove products/parts first" : "Delete category"}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>

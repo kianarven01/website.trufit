@@ -29,14 +29,17 @@ class StoreProductRequest extends FormRequest
             'manufacturer_id' => ['nullable', 'integer'],
 
             'barcode' => ['nullable', 'string', 'max:255'],
-            'part_number' => ['required', 'string', 'max:255'],
-            'part_id' => ['required', 'integer'],
+            'part_number' => ['required_if:item_type,part', 'nullable', 'string', 'max:255'],
+            'part_id' => ['required_if:item_type,part', 'nullable', 'integer'],
 
             'is_oem' => ['nullable', 'boolean'],
             'oem_reference_number' => ['nullable', 'string', 'max:255'],
 
             'car_variant_id' => ['nullable', 'integer'],
             'compatibility_notes' => ['nullable', 'string'],
+
+            'item_type' => ['nullable', 'string', 'in:part,spol'],
+            'selling_price' => ['nullable', 'numeric', 'min:0'],
 
             'suppliers' => ['nullable', 'array'],
             'suppliers.*.supplier_id' => ['required_with:suppliers', 'uuid', 'distinct'],
@@ -60,7 +63,7 @@ class StoreProductRequest extends FormRequest
 
             $partId = $this->input('part_id');
 
-            if (!$partId || !DB::table('Main.Parts')->where('id', $partId)->exists()) {
+            if ($partId && !DB::table('Main.Parts')->where('id', $partId)->exists()) {
                 $validator->errors()->add('part_id', 'Please select a valid part.');
             }
         });

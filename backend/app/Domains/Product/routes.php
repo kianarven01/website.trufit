@@ -8,13 +8,6 @@ use App\Domains\Product\Http\Controllers\ProductSkuController;
 use App\Domains\Product\Http\Controllers\ProductSupplierController;
 use App\Domains\Product\Http\Controllers\ProductVehicleCompatibilityController;
 use App\Domains\Supplier\Http\Controllers\SupplierController;
-use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
-use App\Domains\Product\Infrastructure\Repositories\EloquentProductRepository;
-
-app()->bind(
-    ProductRepositoryInterface::class,
-    EloquentProductRepository::class
-);
 
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);
@@ -78,6 +71,12 @@ Route::prefix('products')->group(function () {
     // Product edit route
     Route::patch('/{id}', [ProductController::class, 'update']);
     Route::put('/{id}', [ProductController::class, 'update']);
+
+    // Product permanent delete route (must be before /{id} to avoid catch-all)
+    Route::delete('/{id}/force', [ProductController::class, 'forceDelete']);
+
+    // Product restore route
+    Route::patch('/{id}/restore', [ProductController::class, 'restore']);
 
     // Product archive route
     Route::delete('/{id}', [ProductController::class, 'archive']);

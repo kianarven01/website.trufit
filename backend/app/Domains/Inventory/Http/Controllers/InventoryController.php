@@ -20,6 +20,11 @@ class InventoryController extends Controller
 
         $inventoryRows = Inventory::query()
             ->with([
+                'product' => function ($q) use ($showArchived) {
+                    if ($showArchived) {
+                        $q->withTrashed();
+                    }
+                },
                 'product.category',
                 'product.part',
                 'product.manufacturer',
@@ -27,6 +32,7 @@ class InventoryController extends Controller
                 'product.preferredSupplier.supplier',
                 'product.preferredSupplier.price',
                 'product.productSuppliers.inventory',
+                'product.inventoryRows',
             ])
             ->when(! $showArchived, function ($query) {
                 $query->whereHas('product', fn ($q) => $q->whereNull('deleted_at'));
@@ -47,6 +53,25 @@ class InventoryController extends Controller
             ->groupBy('productID')
             ->map(fn ($rows) => $this->formatGroupedInventory($rows))
             ->values();
+
+        // When showing archived, also include soft-deleted products that have NO inventory records
+        if ($showArchived) {
+            $existingProductIds = $inventoryRows->pluck('product_id')->filter()->values();
+
+            $archivedWithoutInventory = Product::onlyTrashed()
+                ->with(['category', 'manufacturer', 'unitRelation'])
+                ->when($search, function ($query) use ($search) {
+                    $query->where('name', 'ILIKE', "%{$search}%")
+                        ->orWhere('SKU', 'ILIKE', "%{$search}%")
+                        ->orWhere('part_number', 'ILIKE', "%{$search}%");
+                })
+                ->whereDoesntHave('inventoryRows')
+                ->get()
+                ->map(fn ($product) => $this->formatArchivedProductWithoutInventory($product))
+                ->values();
+
+            $inventoryRows = $inventoryRows->merge($archivedWithoutInventory)->values();
+        }
 
         if ($statusFilter) {
             $statusMap = [
@@ -170,13 +195,16 @@ class InventoryController extends Controller
     {
         $preferredSupplier = $product->resolvePreferredSupplier();
 
-        if (!$preferredSupplier) {
-            return null;
+        if ($preferredSupplier) {
+            $price = $preferredSupplier->price;
+            if ($price) {
+                return (float) $price->Price;
+            }
         }
 
-        $price = $preferredSupplier->price;
-
-        return $price ? (float) $price->Price : null;
+        // Fallback: read from Inventory.sell_price when no suppliers
+        $inventory = $product->inventoryRows->first();
+        return $inventory?->sell_price ? (float) $inventory->sell_price : null;
     }
 
     private function formatInventory(Inventory $inventory): array
@@ -288,6 +316,41 @@ class InventoryController extends Controller
         }
 
         return $result;
+    }
+
+    private function formatArchivedProductWithoutInventory(Product $product): array
+    {
+        return [
+            'product_id' => $product->id,
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'SKU' => $product->SKU,
+                'part_number' => $product->part_number,
+                'barcode' => $product->barcode,
+                'description' => $product->description,
+                'image_URL' => $product->image_path,
+                'category_id' => $product->category_id,
+                'category_name' => $product->category?->name,
+                'category_is_spol' => $product->category?->is_spol ?? false,
+                'part_id' => $product->part_id,
+                'part_name' => $product->part?->name,
+                'manufacturer_id' => $product->manufacturer_id,
+                'manufacturer_name' => $product->manufacturer?->name,
+                'unit' => $product->unit,
+                'unit_name' => $product->unitRelation?->name,
+                'unit_abbreviation' => $product->unitRelation?->abbreviation,
+            ],
+            'quantity_on_hand' => 0,
+            'reserved_quantity' => 0,
+            'available_quantity' => 0,
+            'reorder_level' => 0,
+            'reorder_qty' => 0,
+            'location_id' => null,
+            'selling_price' => null,
+            'status' => 'Out of Stock',
+            'is_archived' => true,
+        ];
     }
 
     private function formatVehicleCompatibilities(Product $product): array

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
+    const SUNDRIES_CATEGORY_NAME = 'Sundries';
+
     protected $table = 'Main.Category';
 
     protected $primaryKey = 'id';
@@ -38,5 +40,10 @@ class Category extends Model
     public function parts()
     {
         return $this->hasMany(Part::class, 'category_id', 'id');
+    }
+
+    public function isSystem(): bool
+    {
+        return $this->name === self::SUNDRIES_CATEGORY_NAME;
     }
 }

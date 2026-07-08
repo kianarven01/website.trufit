@@ -1,4 +1,3 @@
-import { PageShell } from "@/components/PageShell";
 import Vehicles from "./ProductCatalog/Vehicles";
 import { DashboardLayout } from "@/components/DashboardLayout";
 

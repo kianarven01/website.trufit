@@ -17,6 +17,7 @@ import {
   BreadcrumbLink,
 } from "@/components/ui/breadcrumb";
 import api from "@/api/axios";
+import { slugify } from "@/lib/slug";
 
 export interface MakeOption {
   id: string;
@@ -52,13 +53,6 @@ type VehicleApiRow = {
   } | null;
   variants_count?: number;
 };
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
 
 const getVehicleSlug = (vehicle: Vehicle) =>
   `${slugify(vehicle.makeName)}-${slugify(vehicle.model)}`;

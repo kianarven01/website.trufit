@@ -13,6 +13,18 @@ import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addV
 import api from "@/api/axios";
 import Barcode from "react-barcode";
 import { formatPeso, toNumberOrNull } from "@/lib/format";
+import { fromSlug } from "@/lib/slug";
+import { getRows } from "@/lib/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ProductPrice {
   id?: string;
@@ -121,23 +133,9 @@ interface ManufacturerOption {
 interface SupplierOption {
   id: string;
   name: string;
-  supplier_code?: string;
 }
 
-const fromSlug = (slug?: string) =>
-  slug
-    ?.split("-")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ") || "";
-
 const BARCODE_LABEL_COUNT = 40;
-
-const getRows = (payload: any): any[] => {
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.products)) return payload.products;
-  if (Array.isArray(payload)) return payload;
-  return [];
-};
 
 const getVehicleLabel = (variant: any): string => {
   if (!variant) return "-";
@@ -401,12 +399,13 @@ const ProductDetail: React.FC = () => {
   const [editingPriceSupplierId, setEditingPriceSupplierId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<string>("");
   const [editMarkup, setEditMarkup] = useState<string>("");
-  const [editSupplierCost, setEditSupplierCost] = useState<string>("");
   const [editPricingMode, setEditPricingMode] = useState<"manual" | "markup">("manual");
   const [isSavingPrice, setIsSavingPrice] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editDescription, setEditDescription] = useState("");
   const [isSavingDescription, setIsSavingDescription] = useState(false);
+  const [confirmRemoveSupplierId, setConfirmRemoveSupplierId] = useState<string | null>(null);
+  const [confirmRemoveVehicleId, setConfirmRemoveVehicleId] = useState<string | null>(null);
   
   const [toast, setToast] = useState<{
     type: AppToastType;
@@ -658,9 +657,6 @@ const ProductDetail: React.FC = () => {
   const handleRemoveSupplier = async (supplierRowId: string) => {
     if (!product?.id) return;
 
-    const confirmed = window.confirm("Are you sure you want to remove this supplier from the product?");
-    if (!confirmed) return;
-
     try {
       const res = await api.delete(`/products/${product.id}/suppliers/${supplierRowId}`);
       
@@ -671,14 +667,13 @@ const ProductDetail: React.FC = () => {
       const errorMsg = error?.response?.data?.message || "Failed to remove supplier from product.";
       showToast("error", "Failed to remove supplier", errorMsg);
     }
+    setConfirmRemoveSupplierId(null);
   };
 
   const handleStartEditPrice = (supplier: ProductSupplier) => {
-    const supplierCost = toNumberOrNull(supplier.supplier_cost);
     const currentPrice = getSupplierSellingPrice(supplier);
     const currentMarkup = getSupplierMarkup(supplier);
 
-    setEditSupplierCost(supplierCost !== null ? String(supplierCost) : "");
     setEditPrice(currentPrice !== null ? String(currentPrice) : "");
     setEditMarkup(currentMarkup !== null ? String(currentMarkup) : "");
     setEditPricingMode(currentMarkup !== null && currentPrice === null ? "markup" : "manual");
@@ -689,7 +684,7 @@ const ProductDetail: React.FC = () => {
     setEditingPriceSupplierId(null);
     setEditPrice("");
     setEditMarkup("");
-    setEditSupplierCost("");
+    setEditPricingMode("manual");
   };
 
   const handleStartEditDescription = () => {
@@ -722,28 +717,18 @@ const ProductDetail: React.FC = () => {
   const handleSavePrice = async () => {
     if (!product?.id || !editingPriceSupplierId) return;
 
-    const cost = toNumberOrNull(editSupplierCost);
     const priceVal = editPricingMode === "manual" ? toNumberOrNull(editPrice) : null;
     const markupVal = editPricingMode === "markup" ? toNumberOrNull(editMarkup) : null;
 
-    // Calculate markup from cost and price when in manual mode
-    const finalMarkup = editPricingMode === "manual"
-      ? (cost !== null && cost > 0 && priceVal !== null
-          ? Math.round(((priceVal - cost) / cost) * 100 * 100) / 100
-          : null)
-      : markupVal;
+    // Calculate markup from price when in manual mode
+    const finalMarkup = editPricingMode === "manual" ? markupVal : markupVal;
 
-    // Calculate price from cost and markup when in markup mode
-    const finalPrice = editPricingMode === "markup"
-      ? (cost !== null && markupVal !== null
-          ? cost + cost * (markupVal / 100)
-          : null)
-      : priceVal;
+    // Calculate price from markup when in markup mode
+    const finalPrice = editPricingMode === "markup" ? priceVal : priceVal;
 
     setIsSavingPrice(true);
     try {
       await api.put(`/products/${product.id}/suppliers/${editingPriceSupplierId}`, {
-        supplier_cost: cost,
         price: finalPrice,
         markup: finalMarkup,
       });
@@ -762,9 +747,6 @@ const ProductDetail: React.FC = () => {
   const handleRemoveVehicleCompatibility = async (compatibilityId: string) => {
     if (!product?.id) return;
 
-    const confirmed = window.confirm("Are you sure you want to remove this vehicle compatibility?");
-    if (!confirmed) return;
-
     try {
       await api.delete(`/products/${product.id}/vehicle-compatibilities/${compatibilityId}`);
       
@@ -776,6 +758,7 @@ const ProductDetail: React.FC = () => {
       const errorMsg = error?.response?.data?.message || "Failed to remove vehicle compatibility.";
       showToast("error", "Failed to remove vehicle", errorMsg);
     }
+    setConfirmRemoveVehicleId(null);
   };
 
   const handleSetPreferredSupplier = async (productSupplierId: string) => {
@@ -814,12 +797,6 @@ const ProductDetail: React.FC = () => {
 
   const handleSyncVehicleCompatibility = async () => {
     if (!product?.id) return;
-
-    const confirmed = window.confirm(
-      "This will copy this product's compatible vehicles to its equivalent products. Existing records will not be duplicated. Continue?"
-    );
-
-    if (!confirmed) return;
 
     setVehicleSyncing(true);
 
@@ -906,11 +883,17 @@ const ProductDetail: React.FC = () => {
       return;
     }
 
-    const preferredSupplier =
-      product.suppliers.find((supplier) => supplier.is_preferred) ||
-      product.suppliers[0];
+    // Only reset if current selection is not in the supplier list
+    const currentStillValid = product.suppliers.some(
+      (s) => getSupplierRowId(s) === selectedSupplierId
+    );
 
-    setSelectedSupplierId(getSupplierRowId(preferredSupplier));
+    if (!currentStillValid) {
+      const preferredSupplier =
+        product.suppliers.find((supplier) => supplier.is_preferred) ||
+        product.suppliers[0];
+      setSelectedSupplierId(getSupplierRowId(preferredSupplier));
+    }
   }, [product]);
 
   const backToProductsPath = useMemo(
@@ -931,7 +914,7 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="px-6 py-4 flex flex-col items-center justify-center py-20">
+      <div className="px-6 py-20 flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
         <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading product...</p>
       </div>
@@ -1574,7 +1557,7 @@ const ProductDetail: React.FC = () => {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                void handleRemoveSupplier(supplierRowId);
+                                setConfirmRemoveSupplierId(supplierRowId);
                               }}
                               className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition"
                               title="Remove supplier"
@@ -1629,7 +1612,7 @@ const ProductDetail: React.FC = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => vehicle.id && void handleRemoveVehicleCompatibility(vehicle.id)}
+                        onClick={() => vehicle.id && setConfirmRemoveVehicleId(vehicle.id)}
                         className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition shrink-0"
                         title="Remove compatibility"
                       >
@@ -1996,6 +1979,50 @@ const ProductDetail: React.FC = () => {
           await loadEquivalentGroups(product.id);
         }}
       />
+
+      {/* Remove Supplier Confirmation */}
+      <AlertDialog open={!!confirmRemoveSupplierId} onOpenChange={(open) => !open && setConfirmRemoveSupplierId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Supplier</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this supplier from the product?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRemoveSupplierId) void handleRemoveSupplier(confirmRemoveSupplierId);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Vehicle Compatibility Confirmation */}
+      <AlertDialog open={!!confirmRemoveVehicleId} onOpenChange={(open) => !open && setConfirmRemoveVehicleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Vehicle Compatibility</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this vehicle compatibility?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRemoveVehicleId) void handleRemoveVehicleCompatibility(confirmRemoveVehicleId);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

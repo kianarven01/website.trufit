@@ -1,14 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import { slugify, fromSlug } from "@/lib/slug";
+import { getRows } from "@/lib/api";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -72,22 +66,6 @@ interface VariantInfo {
   id: string;
   name: string;
 }
-
-const slugify = (str: string) =>
-  str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-
-const fromSlug = (slug?: string) =>
-  slug
-    ?.split("-")
-    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join(" ") || "";
-
-const getRows = (payload: any): any[] => {
-  if (Array.isArray(payload?.data)) return payload.data;
-  if (Array.isArray(payload?.products)) return payload.products;
-  if (Array.isArray(payload)) return payload;
-  return [];
-};
 
 const toNumberOrZero = (value: unknown): number => {
   const parsed = Number(value);
@@ -327,79 +305,91 @@ const ProductsList: React.FC = () => {
     routeState?.category?.name || (categorySlug ? fromSlug(categorySlug) : "All Categories");
 
   const loadVehiclesAndResolveIds = async () => {
-    const vehiclesRes = await api.get("/vehicles");
-    const vehicleRows = getRows(vehiclesRes.data);
+    try {
+      const vehiclesRes = await api.get("/vehicles");
+      const vehicleRows = getRows(vehiclesRes.data);
 
-    const normalizedVehicles = (Array.isArray(vehicleRows) ? vehicleRows : []).map(
-      (row: any) => ({
-        id: String(row.id),
-        makeName: String(
-          row.makeName ||
-            row.make ||
-            row.make_name ||
-            row.Manufacturer?.name ||
-            row.manufacturer ||
-            "Unknown"
-        ),
-        model: String(row.model || row.Model || ""),
-      })
-    );
-
-    const matchedVehicle =
-      routeState?.vehicle ||
-      normalizedVehicles.find(
-        (vehicle: any) =>
-          `${slugify(vehicle.makeName)}-${slugify(vehicle.model)}` === vehicleSlug
+      const normalizedVehicles = (Array.isArray(vehicleRows) ? vehicleRows : []).map(
+        (row: any) => ({
+          id: String(row.id),
+          makeName: String(
+            row.makeName ||
+              row.make ||
+              row.make_name ||
+              row.Manufacturer?.name ||
+              row.manufacturer ||
+              "Unknown"
+          ),
+          model: String(row.model || row.Model || ""),
+        })
       );
 
-    const vehicleId = matchedVehicle?.id ? String(matchedVehicle.id) : null;
-    setResolvedVehicleId(vehicleId);
+      const matchedVehicle =
+        routeState?.vehicle ||
+        normalizedVehicles.find(
+          (vehicle: any) =>
+            `${slugify(vehicle.makeName)}-${slugify(vehicle.model)}` === vehicleSlug
+        );
 
-    if (!vehicleId) {
+      const vehicleId = matchedVehicle?.id ? String(matchedVehicle.id) : null;
+      setResolvedVehicleId(vehicleId);
+
+      if (!vehicleId) {
+        setResolvedVariantId(null);
+        return;
+      }
+
+      const variantsRes = await api.get(`/vehicles/models/${vehicleId}/variants`);
+      const variantRows = getRows(variantsRes.data);
+
+      const normalizedVariants: VariantInfo[] = (Array.isArray(variantRows)
+        ? variantRows
+        : []
+      ).map((row: any) => ({
+        id: String(row.id),
+        name: String(row.name || row.variant || row.variant_name || ""),
+      }));
+
+      setVariants(normalizedVariants);
+
+      const matchedVariant =
+        routeState?.variant ||
+        normalizedVariants.find((variant) => slugify(variant.name) === variantSlug);
+
+      setResolvedVariantId(matchedVariant?.id ? String(matchedVariant.id) : null);
+    } catch (error) {
+      console.error("Failed to load vehicles:", error);
+      setResolvedVehicleId(null);
       setResolvedVariantId(null);
-      return;
     }
-
-    const variantsRes = await api.get(`/vehicles/models/${vehicleId}/variants`);
-    const variantRows = getRows(variantsRes.data);
-
-    const normalizedVariants: VariantInfo[] = (Array.isArray(variantRows)
-      ? variantRows
-      : []
-    ).map((row: any) => ({
-      id: String(row.id),
-      name: String(row.name || row.variant || row.variant_name || ""),
-    }));
-
-    setVariants(normalizedVariants);
-
-    const matchedVariant =
-      routeState?.variant ||
-      normalizedVariants.find((variant) => slugify(variant.name) === variantSlug);
-
-    setResolvedVariantId(matchedVariant?.id ? String(matchedVariant.id) : null);
   };
 
   const loadCategories = async () => {
-    const res = await api.get("/products/categories");
-    const rows = getRows(res.data);
+    try {
+      const res = await api.get("/products/categories");
+      const rows = getRows(res.data);
 
-    const normalized: CategoryOption[] = (Array.isArray(rows) ? rows : []).map(
-      (row: any) => ({
-        id: String(row.id),
-        name: String(row.name),
-        code: row.code || undefined,
-        is_spol: Boolean(row.is_spol),
-      })
-    );
+      const normalized: CategoryOption[] = (Array.isArray(rows) ? rows : []).map(
+        (row: any) => ({
+          id: String(row.id),
+          name: String(row.name),
+          code: row.code || undefined,
+          is_spol: Boolean(row.is_spol),
+        })
+      );
 
-    setCategories(normalized);
+      setCategories(normalized);
 
-    const matchedCategory =
-      routeState?.category ||
-      normalized.find((category) => slugify(category.name) === categorySlug);
+      const matchedCategory =
+        routeState?.category ||
+        normalized.find((category) => slugify(category.name) === categorySlug);
 
-    setResolvedCategoryId(matchedCategory?.id ? String(matchedCategory.id) : null);
+      setResolvedCategoryId(matchedCategory?.id ? String(matchedCategory.id) : null);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+      setCategories([]);
+      setResolvedCategoryId(null);
+    }
   };
 
   const loadManufacturers = async () => {
@@ -489,13 +479,13 @@ const ProductsList: React.FC = () => {
     setPage(1);
   }, [search, filtersState, activeTab]);
 
-  const manufacturerOptions = Array.from(
+  const manufacturerOptions = useMemo(() => Array.from(
     new Set(products.map((product) => product.manufacturer).filter(Boolean))
-  ).map((m) => ({ label: m, value: m }));
+  ).map((m) => ({ label: m, value: m })), [products]);
 
-  const supplierOptions = Array.from(
+  const supplierOptions = useMemo(() => Array.from(
     new Set(products.map((product) => product.supplier).filter(Boolean))
-  ).map((s) => ({ label: s, value: s }));
+  ).map((s) => ({ label: s, value: s })), [products]);
 
   const categoryOptions = useMemo(
     () => categories.map((c) => ({ label: c.name, value: c.id })),

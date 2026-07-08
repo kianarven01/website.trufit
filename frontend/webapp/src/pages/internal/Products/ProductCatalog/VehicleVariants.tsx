@@ -16,6 +16,7 @@ import {
   VehicleModal,
   VehicleMakerOption,
 } from "@/components/popupModal/ProductCatalog/addVehicle";
+import { slugify } from "@/lib/slug";
 
 import {
   Car,
@@ -90,13 +91,6 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Interior: Circle,
   "Tyres & Wheels": Disc,
 };
-
-const slugify = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
 
 const fromVehicleSlug = (slug?: string) => {
   if (!slug) return { make: "", model: "" };

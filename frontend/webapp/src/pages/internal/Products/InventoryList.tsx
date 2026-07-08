@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -26,6 +26,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -105,7 +115,7 @@ const Inventory: React.FC = () => {
           const sellingPrice = toNumberOrNull(row.selling_price);
 
           return {
-            id: String(row.product_id),
+            id: String(row.product_id || product.id || ""),
             productId: String(row.product_id || product.id || ""),
             image:
               product.image_URL ||
@@ -132,7 +142,13 @@ const Inventory: React.FC = () => {
             reorderLevel: Number(row.reorder_level ?? 5),
             reorderQty: Number(row.reorder_qty ?? 10),
             sellingPrice,
-            statusValue: row.status === "Low Stock" ? "low-stock" : row.status === "Out of Stock" ? "out-of-stock" : "in-stock",
+            statusValue: (() => {
+              const rawStatus = String(row.status || "").toLowerCase();
+              if (rawStatus === "low stock") return "low-stock";
+              if (rawStatus === "out of stock") return "out-of-stock";
+              if (rawStatus === "in stock") return "in-stock";
+              return "in-stock";
+            })(),
             isArchived: Boolean(row.is_archived),
             categoryIsSpol: Boolean(product.category?.is_spol || row.category_is_spol),
           };
@@ -190,12 +206,10 @@ const Inventory: React.FC = () => {
     }
   };
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
   /* ================= FORCE DELETE ================= */
   const handleForceDelete = async (item: InventoryItem) => {
-    if (!window.confirm(`Permanently delete "${item.name}"? This cannot be undone.`)) {
-      return;
-    }
-
     try {
       await api.delete(`/products/${item.productId}/force`);
       await loadInventory();
@@ -204,6 +218,7 @@ const Inventory: React.FC = () => {
       console.error("Failed to delete product:", error);
       setToast({ type: "error", title: "Delete Failed", message: "Failed to delete product. Please try again." });
     }
+    setConfirmDeleteId(null);
   };
 
   /* ================= RESTORE ================= */
@@ -219,7 +234,7 @@ const Inventory: React.FC = () => {
   };
 
   /* ================= FILTER ================= */
-  const filtered = items.filter((p) => {
+  const filtered = useMemo(() => items.filter((p) => {
     const matchesSearch = `${p.name} ${p.brand} ${p.sku} ${p.partNumber}`
       .toLowerCase()
       .includes(search.toLowerCase());
@@ -236,7 +251,7 @@ const Inventory: React.FC = () => {
       (archivedFilter === "false" && !p.isArchived);
 
     return matchesSearch && matchesStatus && matchesArchived;
-  });
+  }), [items, search, activeFilters]);
 
   const paginated = paginate(filtered);
 
@@ -451,7 +466,7 @@ const Inventory: React.FC = () => {
                                       Restore
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
-                                      onClick={() => handleForceDelete(p)}
+                                      onClick={() => setConfirmDeleteId(p.id)}
                                       className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
                                     >
                                       Delete Permanently
@@ -631,6 +646,30 @@ const Inventory: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Force Delete Confirmation */}
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => !open && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this product? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const item = items.find((i) => i.id === confirmDeleteId);
+                if (item) void handleForceDelete(item);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

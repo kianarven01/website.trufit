@@ -1967,6 +1967,7 @@ const ProductDetail: React.FC = () => {
         onOpenChange={setIsAddSupplierOpen}
         productId={product.id}
         suppliers={suppliers}
+        existingSupplierIds={product?.suppliers?.map((s: any) => s.supplier_id || s.id) || []}
         onSaved={async () => {
           await loadProduct();
         }}

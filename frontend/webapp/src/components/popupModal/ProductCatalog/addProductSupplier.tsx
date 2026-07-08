@@ -22,6 +22,7 @@ interface AddProductSupplierModalProps {
   onOpenChange: (open: boolean) => void;
   productId: string;
   suppliers: SupplierOption[];
+  existingSupplierIds?: string[];
   onSaved?: () => void | Promise<void>;
 }
 
@@ -37,6 +38,7 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
   onOpenChange,
   productId,
   suppliers,
+  existingSupplierIds = [],
   onSaved,
 }) => {
   const [supplierId, setSupplierId] = useState("");
@@ -54,6 +56,10 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
   const priceValue = useMemo(() => toNumberOrNull(price), [price]);
 
   const PH_VAT_PERCENT = 12;
+
+  const availableSuppliers = useMemo(() => {
+    return suppliers.filter((s) => !existingSupplierIds.includes(s.id));
+  }, [suppliers, existingSupplierIds]);
 
   const computedPrice = useMemo(() => {
     if (costValue === null || markupValue === null) return null;
@@ -173,7 +179,7 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="">Select supplier</option>
-              {suppliers.map((supplier) => (
+              {availableSuppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>
                   {supplier.name}
                   {supplier.supplier_code ? ` (${supplier.supplier_code})` : ""}

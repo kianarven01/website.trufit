@@ -25,6 +25,11 @@ class ProductSupplierService
                 'vat_percent' => $data['vat_percent'] ?? null,
             ]);
 
+            // Set as preferred if this is the first supplier
+            if (!$product->preferred_supplier_id) {
+                $product->update(['preferred_supplier_id' => $productSupplier->id]);
+            }
+
             ProductPrice::create([
                 'id' => (string) Str::uuid(),
                 'product_supplier_id' => $productSupplier->id,

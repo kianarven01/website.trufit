@@ -93,6 +93,20 @@ class EloquentProductRepository implements ProductRepositoryInterface
 
             }
 
+            // Set preferred supplier to the first one if exists
+            if (!empty($suppliers)) {
+                $firstSupplierId = $suppliers[0]['supplier_id'] ?? null;
+                if ($firstSupplierId) {
+                    $productSupplier = ProductSupplier::where('product_id', $productId)
+                        ->where('supplier_id', $firstSupplierId)
+                        ->first();
+                    if ($productSupplier) {
+                        Product::where('id', $productId)
+                            ->update(['preferred_supplier_id' => $productSupplier->id]);
+                    }
+                }
+            }
+
             // Create inventory record for supplier-less products (SPOL with selling price)
             if (empty($suppliers) && !empty($productData['selling_price'])) {
                 Inventory::firstOrCreate(

@@ -51,6 +51,7 @@ Route::prefix('products')->group(function () {
     // Supplier routes used by Product screens
     Route::get('/suppliers', [SupplierController::class, 'index']);
     Route::post('/{productId}/suppliers', [ProductSupplierController::class, 'store']);
+    Route::put('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'update']);
     Route::delete('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'destroy']);
 
     // Equivalent group routes

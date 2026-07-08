@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toNumberOrNull } from "@/lib/format";
 
 interface SupplierOption {
   id: string;
@@ -25,13 +26,6 @@ interface AddProductSupplierModalProps {
 }
 
 type PricingMode = "markup" | "manual";
-
-const toNumberOrNull = (value: string): number | null => {
-  if (value.trim() === "") return null;
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : null;
-};
 
 const formatNumberInput = (value: number | null): string => {
   if (value === null || !Number.isFinite(value)) return "";
@@ -52,6 +46,7 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
   const [pricingMode, setPricingMode] = useState<PricingMode>("manual");
   const [isVat, setIsVat] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   
 
   const costValue = useMemo(() => toNumberOrNull(supplierCost), [supplierCost]);
@@ -114,15 +109,16 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
       pricingMode === "markup" ? computedPrice : priceValue;
 
     if (finalCost === null) {
-      alert("Please enter supplier cost.");
+      setValidationError("Please enter supplier cost.");
       return;
     }
 
     if (finalPrice === null) {
-      alert("Please enter a selling price or provide markup to calculate it.");
+      setValidationError("Please enter a selling price or provide markup to calculate it.");
       return;
     }
 
+    setValidationError(null);
     setSaving(true);
 
     try {
@@ -140,7 +136,7 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
       await onSaved?.();
     } catch (error) {
       console.error("Failed to add supplier to product:", error);
-      alert("Failed to add supplier. Please check the console or backend response.");
+      setValidationError("Failed to add supplier. Please check the console or backend response.");
     } finally {
       setSaving(false);
     }
@@ -149,6 +145,7 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
   const handleClose = (nextOpen: boolean) => {
     if (!nextOpen) {
       resetForm();
+      setValidationError(null);
     }
 
     onOpenChange(nextOpen);
@@ -160,6 +157,12 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
         <DialogHeader>
           <DialogTitle>Add Supplier</DialogTitle>
         </DialogHeader>
+
+        {validationError && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+            {validationError}
+          </div>
+        )}
 
         <div className="space-y-4">
           <div className="space-y-2">

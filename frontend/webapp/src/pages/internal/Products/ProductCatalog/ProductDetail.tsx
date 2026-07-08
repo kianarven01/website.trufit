@@ -12,6 +12,7 @@ import AddProductSupplierModal from "@/components/popupModal/ProductCatalog/addP
 import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addVehicleCompatibility";
 import api from "@/api/axios";
 import Barcode from "react-barcode";
+import { formatPeso, toNumberOrNull } from "@/lib/format";
 
 interface ProductPrice {
   id?: string;
@@ -110,6 +111,11 @@ interface CategoryOption {
   name: string;
   code?: string;
   is_spol?: boolean;
+}
+
+interface ManufacturerOption {
+  id: string;
+  name: string;
 }
 
 interface SupplierOption {
@@ -226,18 +232,6 @@ const normalizeSuppliers = (row: any): ProductSupplier[] => {
 
 const getSupplierRowId = (supplier: ProductSupplier) =>
   String(supplier.id || supplier.supplier_id);
-
-const toNumberOrNull = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") return null;
-
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : null;
-};
-
-const formatPeso = (value: number | null) => {
-  if (value === null) return "No price set";
-  return `₱${value.toFixed(2)}`;
-};
 
 const getSupplierName = (supplier: ProductSupplier) => {
   return (
@@ -404,6 +398,15 @@ const ProductDetail: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [editingPriceSupplierId, setEditingPriceSupplierId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState<string>("");
+  const [editMarkup, setEditMarkup] = useState<string>("");
+  const [editSupplierCost, setEditSupplierCost] = useState<string>("");
+  const [editPricingMode, setEditPricingMode] = useState<"manual" | "markup">("manual");
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
   
   const [toast, setToast] = useState<{
     type: AppToastType;
@@ -443,7 +446,7 @@ const ProductDetail: React.FC = () => {
     routeState?.product || null
   );
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
+  const [manufacturers, setManufacturers] = useState<ManufacturerOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [loading, setLoading] = useState(!routeState?.product);
   const [selectedSupplierId, setSelectedSupplierId] = useState("");
@@ -631,10 +634,7 @@ const ProductDetail: React.FC = () => {
       await loadEquivalentGroups(product.id);
     } catch (error: any) {
       console.error("Failed to create equivalent group:", error);
-      alert(
-        error?.response?.data?.message ||
-          "Failed to save equivalent products. Please check the selected products."
-      );
+      showToast("error", "Save Failed", error?.response?.data?.message || "Failed to save equivalent products. Please check the selected products.");
     } finally {
       setEquivalentSaving(false);
     }
@@ -651,7 +651,7 @@ const ProductDetail: React.FC = () => {
       await loadEquivalentGroups(product.id);
     } catch (error: any) {
       console.error("Failed to remove equivalent product:", error);
-      alert(error?.response?.data?.message || "Failed to remove equivalent product.");
+      showToast("error", "Remove Failed", error?.response?.data?.message || "Failed to remove equivalent product.");
     }
   };
 
@@ -670,6 +670,78 @@ const ProductDetail: React.FC = () => {
       console.error("Failed to remove supplier:", error);
       const errorMsg = error?.response?.data?.message || "Failed to remove supplier from product.";
       showToast("error", "Failed to remove supplier", errorMsg);
+    }
+  };
+
+  const handleStartEditPrice = (supplier: ProductSupplier) => {
+    const supplierCost = toNumberOrNull(supplier.supplier_cost);
+    const currentPrice = getSupplierSellingPrice(supplier);
+    const currentMarkup = getSupplierMarkup(supplier);
+
+    setEditSupplierCost(supplierCost !== null ? String(supplierCost) : "");
+    setEditPrice(currentPrice !== null ? String(currentPrice) : "");
+    setEditMarkup(currentMarkup !== null ? String(currentMarkup) : "");
+    setEditPricingMode(currentMarkup !== null && currentPrice === null ? "markup" : "manual");
+    setEditingPriceSupplierId(getSupplierRowId(supplier));
+  };
+
+  const handleCancelEditPrice = () => {
+    setEditingPriceSupplierId(null);
+    setEditPrice("");
+    setEditMarkup("");
+    setEditSupplierCost("");
+  };
+
+  const handleStartEditDescription = () => {
+    setEditDescription(product?.description || "");
+    setIsEditingDescription(true);
+  };
+
+  const handleCancelEditDescription = () => {
+    setIsEditingDescription(false);
+    setEditDescription("");
+  };
+
+  const handleSaveDescription = async () => {
+    if (!product?.id) return;
+
+    setIsSavingDescription(true);
+    try {
+      await api.put(`/products/${product.id}`, { description: editDescription });
+      showToast("success", "Description Updated", "Product description has been updated.");
+      setIsEditingDescription(false);
+      await loadProduct();
+    } catch (error: any) {
+      console.error("Failed to update description:", error);
+      showToast("error", "Update Failed", error?.response?.data?.message || "Failed to update description.");
+    } finally {
+      setIsSavingDescription(false);
+    }
+  };
+
+  const handleSavePrice = async () => {
+    if (!product?.id || !editingPriceSupplierId) return;
+
+    const cost = toNumberOrNull(editSupplierCost);
+    const price = editPricingMode === "manual" ? toNumberOrNull(editPrice) : null;
+    const markup = editPricingMode === "markup" ? toNumberOrNull(editMarkup) : null;
+
+    setIsSavingPrice(true);
+    try {
+      await api.put(`/products/${product.id}/suppliers/${editingPriceSupplierId}`, {
+        supplier_cost: cost,
+        price,
+        markup,
+      });
+      showToast("success", "Price Updated", "Supplier price has been updated.");
+      setEditingPriceSupplierId(null);
+      await loadProduct();
+    } catch (error: any) {
+      console.error("Failed to update price:", error);
+      const errorMsg = error?.response?.data?.message || "Failed to update price.";
+      showToast("error", "Update Failed", errorMsg);
+    } finally {
+      setIsSavingPrice(false);
     }
   };
 
@@ -742,19 +814,13 @@ const ProductDetail: React.FC = () => {
         `/products/${product.id}/vehicle-compatibilities/sync-equivalents`
       );
 
-      alert(
-        res.data?.message ||
-          `Vehicle compatibility synced. Added ${res.data?.synced_count ?? 0} records.`
-      );
+      showToast("success", "Sync Complete", res.data?.message || `Vehicle compatibility synced. Added ${res.data?.synced_count ?? 0} records.`);
 
       await loadProduct();
       await loadEquivalentGroups(product.id);
     } catch (error: any) {
       console.error("Failed to sync vehicle compatibility:", error);
-      alert(
-        error?.response?.data?.message ||
-          "Failed to sync vehicle compatibility to equivalents."
-      );
+      showToast("error", "Sync Failed", error?.response?.data?.message || "Failed to sync vehicle compatibility to equivalents.");
     } finally {
       setVehicleSyncing(false);
     }
@@ -833,10 +899,6 @@ const ProductDetail: React.FC = () => {
     setSelectedSupplierId(getSupplierRowId(preferredSupplier));
   }, [product]);
 
-  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "All Vehicles";
-  const variantName = variantSlug ? fromSlug(variantSlug) : "All Variants";
-  const categoryName = categorySlug ? fromSlug(categorySlug) : "All Categories";
-
   const backToProductsPath = useMemo(
     () =>
       vehicleSlug
@@ -855,8 +917,9 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="px-6 py-4 text-center text-muted-foreground">
-        <p>Loading product...</p>
+      <div className="px-6 py-4 flex flex-col items-center justify-center py-20">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading product...</p>
       </div>
     );
   }
@@ -903,7 +966,7 @@ const ProductDetail: React.FC = () => {
 
   const handlePrintBarcodeLabels = () => {
     if (!barcodeValue) {
-      alert("No barcode or SKU available to print.");
+      showToast("warning", "No Barcode", "No barcode or SKU available to print.");
       return;
     }
 
@@ -1275,15 +1338,54 @@ const ProductDetail: React.FC = () => {
                     <Separator className="col-span-2" />
 
                     <div className="col-span-2 flex flex-col gap-2 mt-auto">
-                      <span className="text-muted-foreground">Description</span>
-
-                      <div className="rounded-xl border border-border bg-muted/20 p-4 min-h-[90px]">
-                        <p className="text-sm whitespace-pre-wrap text-foreground">
-                          {product.description && product.description.trim()
-                            ? product.description
-                            : "-"}
-                        </p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Description</span>
+                        {!isEditingDescription && (
+                          <button
+                            type="button"
+                            onClick={handleStartEditDescription}
+                            className="text-xs text-muted-foreground hover:text-foreground transition"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </div>
+
+                      {isEditingDescription ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            className="rounded-xl border border-border bg-background p-4 min-h-[90px] text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="Enter description..."
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void handleSaveDescription()}
+                              disabled={isSavingDescription}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+                            >
+                              {isSavingDescription ? "Saving..." : "Save"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEditDescription}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-muted text-muted-foreground hover:bg-muted/80"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-border bg-muted/20 p-4 min-h-[90px]">
+                          <p className="text-sm whitespace-pre-wrap text-foreground">
+                            {product.description && product.description.trim()
+                              ? product.description
+                              : "-"}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -1353,12 +1455,88 @@ const ProductDetail: React.FC = () => {
                               </div>
 
                               <div className="text-right">
-                                <p className="text-xs text-muted-foreground">
-                                  Selling Price
-                                </p>
-                                <p className="text-sm font-semibold">
-                                  {formatPeso(sellingPrice)}
-                                </p>
+                                {editingPriceSupplierId === supplierRowId ? (
+                                  <div className="flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1 text-[10px]">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditPricingMode("manual")}
+                                        className={`px-1 py-0.5 rounded ${editPricingMode === "manual" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                                      >
+                                        Manual
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditPricingMode("markup")}
+                                        className={`px-1 py-0.5 rounded ${editPricingMode === "markup" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                                      >
+                                        Markup
+                                      </button>
+                                    </div>
+                                    {editPricingMode === "manual" ? (
+                                      <input
+                                        type="number"
+                                        value={editPrice}
+                                        onChange={(e) => setEditPrice(e.target.value)}
+                                        className="w-24 text-right text-sm font-semibold border rounded px-1 py-0.5 bg-background"
+                                        placeholder="Price"
+                                        min="0"
+                                        step="0.01"
+                                      />
+                                    ) : (
+                                      <div className="flex items-center gap-1 justify-end">
+                                        <input
+                                          type="number"
+                                          value={editMarkup}
+                                          onChange={(e) => setEditMarkup(e.target.value)}
+                                          className="w-16 text-right text-xs border rounded px-1 py-0.5 bg-background"
+                                          placeholder="%"
+                                          step="0.01"
+                                        />
+                                        <span className="text-[10px]">%</span>
+                                      </div>
+                                    )}
+                                    <div className="flex items-center gap-1 justify-end">
+                                      <button
+                                        type="button"
+                                        onClick={() => void handleSavePrice()}
+                                        disabled={isSavingPrice}
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
+                                      >
+                                        {isSavingPrice ? "..." : "Save"}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={handleCancelEditPrice}
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/80"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="group/price flex items-center gap-1">
+                                    <p className="text-xs text-muted-foreground">
+                                      Selling Price
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStartEditPrice(supplier);
+                                      }}
+                                      className="p-0.5 rounded hover:bg-blue-500/10 text-muted-foreground hover:text-blue-500 transition opacity-0 group-hover/price:opacity-100"
+                                      title="Edit selling price"
+                                    >
+                                      <Pencil size={12} />
+                                    </button>
+                                  </div>
+                                )}
+                                {editingPriceSupplierId !== supplierRowId && (
+                                  <p className="text-sm font-semibold">
+                                    {formatPeso(sellingPrice)}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </button>

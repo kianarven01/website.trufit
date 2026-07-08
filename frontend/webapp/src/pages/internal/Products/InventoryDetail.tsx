@@ -15,6 +15,7 @@ import {
   Repeat,
 } from "lucide-react";
 import api from "@/api/axios";
+import { formatPeso, toNumberOrNull } from "@/lib/format";
 
 interface InventoryDetailItem {
   id: string;
@@ -74,18 +75,6 @@ interface EquivalentProduct {
   manufacturer_name?: string;
   quantity_on_hand?: number;
 }
-
-const toNumberOrNull = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") return null;
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : null;
-};
-
-const formatPeso = (value: number | null) => {
-  if (value === null) return "No price set";
-  return `₱${value.toFixed(2)}`;
-};
 
 const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
   const product = row.product || {};
@@ -289,7 +278,10 @@ const InventoryDetail: React.FC = () => {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="p-6 text-sm text-muted-foreground">Loading inventory item...</div>
+        <div className="p-6 flex flex-col items-center justify-center py-20">
+          <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+          <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading inventory item...</p>
+        </div>
       </DashboardLayout>
     );
   }

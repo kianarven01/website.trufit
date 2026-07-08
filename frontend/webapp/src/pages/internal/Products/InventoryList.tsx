@@ -17,6 +17,8 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ImageIcon, Ellipsis } from "lucide-react";
 import api from "@/api/axios";
+import AppToast, { AppToastType } from "@/components/ui/AppToast";
+import { formatPeso, toNumberOrNull } from "@/lib/format";
 import {
   Dialog,
   DialogContent,
@@ -50,19 +52,9 @@ interface InventoryItem {
   sellingPrice: number | null;
   statusValue: string;
   isArchived: boolean;
+  categoryIsSpol: boolean;
 }
 
-const toNumberOrNull = (value: unknown): number | null => {
-  if (value === null || value === undefined || value === "") return null;
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : null;
-};
-
-const formatPeso = (value: number | null) => {
-  if (value === null) return "No price set";
-  return `₱${value.toFixed(2)}`;
-};
 
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
@@ -70,9 +62,14 @@ const Inventory: React.FC = () => {
 
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({ archived: "false" });
   const [imgError, setImgError] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{
+    type: AppToastType;
+    title: string;
+    message: string;
+  } | null>(null);
 
   // Adjust stock modal state
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
@@ -91,7 +88,6 @@ const Inventory: React.FC = () => {
 
     try {
       const params: Record<string, string> = {};
-      if (search) params.search = search;
 
       const archivedFilter = activeFilters.archived;
       if (archivedFilter === "true") {
@@ -138,6 +134,7 @@ const Inventory: React.FC = () => {
             sellingPrice,
             statusValue: row.status === "Low Stock" ? "low-stock" : row.status === "Out of Stock" ? "out-of-stock" : "in-stock",
             isArchived: Boolean(row.is_archived),
+            categoryIsSpol: Boolean(product.category?.is_spol || row.category_is_spol),
           };
         }
       );
@@ -149,10 +146,6 @@ const Inventory: React.FC = () => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    void loadInventory();
-  }, []);
 
   useEffect(() => {
     void loadInventory();
@@ -172,26 +165,6 @@ const Inventory: React.FC = () => {
     setIsAdjustOpen(true);
   };
 
-  const handleOpenAdjustNew = () => {
-    const firstItem = items[0];
-
-    if (firstItem) {
-      setAdjustProductId(firstItem.productId);
-      setAdjustQty(firstItem.stock);
-      setAdjustReservedQty(firstItem.reservedQuantity);
-      setAdjustReorderLevel(firstItem.reorderLevel);
-      setAdjustReorderQty(firstItem.reorderQty);
-    } else {
-      setAdjustProductId("");
-      setAdjustQty(0);
-      setAdjustReservedQty(0);
-      setAdjustReorderLevel(5);
-      setAdjustReorderQty(10);
-    }
-
-    setIsAdjustOpen(true);
-  };
-
   const handleSaveAdjust = async () => {
     if (!adjustProductId) return;
 
@@ -208,8 +181,10 @@ const Inventory: React.FC = () => {
 
       await loadInventory();
       setIsAdjustOpen(false);
+      setToast({ type: "success", title: "Stock Adjusted", message: "Inventory stock has been updated." });
     } catch (error) {
       console.error("Failed to adjust stock:", error);
+      setToast({ type: "error", title: "Adjust Failed", message: "Failed to adjust stock. Please try again." });
     } finally {
       setIsSavingAdjust(false);
     }
@@ -224,8 +199,10 @@ const Inventory: React.FC = () => {
     try {
       await api.delete(`/products/${item.productId}/force`);
       await loadInventory();
+      setToast({ type: "success", title: "Product Deleted", message: `"${item.name}" has been permanently deleted.` });
     } catch (error) {
       console.error("Failed to delete product:", error);
+      setToast({ type: "error", title: "Delete Failed", message: "Failed to delete product. Please try again." });
     }
   };
 
@@ -234,8 +211,10 @@ const Inventory: React.FC = () => {
     try {
       await api.patch(`/products/${item.productId}/restore`);
       await loadInventory();
+      setToast({ type: "success", title: "Product Restored", message: `"${item.name}" has been restored.` });
     } catch (error) {
       console.error("Failed to restore product:", error);
+      setToast({ type: "error", title: "Restore Failed", message: "Failed to restore product. Please try again." });
     }
   };
 
@@ -264,12 +243,19 @@ const Inventory: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-4 p-4 h-full w-full">
+        {toast && (
+          <AppToast
+            type={toast.type}
+            title={toast.title}
+            message={toast.message}
+            duration={4000}
+            onClose={() => setToast(null)}
+          />
+        )}
         {/* toolbar */}
         <DataToolbar
           searchPlaceholder="Search inventory..."
           onSearch={setSearch}
-          onAdd={handleOpenAdjustNew}
-          addLabel="Adjust Stock"
           filters={[
             {
               key: "status",
@@ -299,12 +285,13 @@ const Inventory: React.FC = () => {
         {loading ? (
           <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
             <CardContent className="py-20 flex flex-col items-center justify-center">
-              <p className="text-muted-foreground text-sm font-medium">
+              <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+              <p className="text-muted-foreground text-sm font-medium animate-pulse">
                 Loading inventory...
               </p>
             </CardContent>
           </Card>
-        ) : items.length > 0 ? (
+        ) : filtered.length > 0 ? (
           <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
             <div className="flex-1 overflow-auto">
               <Table className="table-fixed w-full border-separate border-spacing-y-2">
@@ -318,6 +305,9 @@ const Inventory: React.FC = () => {
                     </TableHead>
                     <TableHead className="text-muted-foreground font-semibold">
                       Part No.
+                    </TableHead>
+                    <TableHead className="text-muted-foreground font-semibold">
+                      Type
                     </TableHead>
                     <TableHead className="text-muted-foreground font-semibold">
                       Price
@@ -394,6 +384,13 @@ const Inventory: React.FC = () => {
 
                           <TableCell className="text-foreground/80 text-sm">
                             {p.partNumber}
+                          </TableCell>
+
+                          {/* TYPE */}
+                          <TableCell>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.categoryIsSpol ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
+                              {p.categoryIsSpol ? "SPOL" : "Part"}
+                            </span>
                           </TableCell>
 
                           {/* PRICE */}
@@ -476,7 +473,7 @@ const Inventory: React.FC = () => {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8}>
+                      <TableCell colSpan={9}>
                         <div className="py-16 flex flex-col items-center text-center">
                           <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
                           <p className="text-sm font-semibold text-foreground">
@@ -494,7 +491,7 @@ const Inventory: React.FC = () => {
             </div>
 
             {/* ================= PAGINATION ================= */}
-            {filtered.length > 25 && (
+            {filtered.length > pageSize && (
               <div className="sticky bottom-0 bg-background z-10 py-2 border-t border-border/40">
                 <Pagination
                   totalItems={filtered.length}
@@ -526,7 +523,7 @@ const Inventory: React.FC = () => {
         <DialogContent className="sm:max-w-[475px] bg-card border border-border/40 shadow-2xl rounded-2xl p-6 backdrop-blur-xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
-              Adjust Inventory Stock
+              Adjust Stock — {items.find(i => i.productId === adjustProductId)?.name ?? ""}
             </DialogTitle>
           </DialogHeader>
 

@@ -27,6 +27,7 @@ import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import SpolProductModal from "@/components/popupModal/ProductCatalog/spolProduct";
 import api from "@/api/axios";
 import AppToast, { AppToastType } from "@/components/ui/AppToast";
+import { formatPeso } from "@/lib/format";
 
 interface Product {
   id: string;
@@ -322,8 +323,6 @@ const ProductsList: React.FC = () => {
     });
   }, [routeState?.toast, location.pathname, location.search, navigate]);
 
-  const makeModel = vehicleSlug ? fromSlug(vehicleSlug) : "All Vehicles";
-  const variantName = routeState?.variant?.name || (variantSlug ? fromSlug(variantSlug) : "All Variants");
   const categoryName =
     routeState?.category?.name || (categorySlug ? fromSlug(categorySlug) : "All Categories");
 
@@ -467,6 +466,7 @@ const ProductsList: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed initial load on products page:", error);
+      setToast({ type: "error", title: "Load Failed", message: "Failed to load products. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -487,7 +487,7 @@ const ProductsList: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, filtersState]);
+  }, [search, filtersState, activeTab]);
 
   const manufacturerOptions = Array.from(
     new Set(products.map((product) => product.manufacturer).filter(Boolean))
@@ -497,7 +497,17 @@ const ProductsList: React.FC = () => {
     new Set(products.map((product) => product.supplier).filter(Boolean))
   ).map((s) => ({ label: s, value: s }));
 
+  const categoryOptions = useMemo(
+    () => categories.map((c) => ({ label: c.name, value: c.id })),
+    [categories]
+  );
+
   const filters: FilterOption[] = [
+    {
+      key: "category",
+      label: "Category",
+      options: categoryOptions,
+    },
     {
       key: "manufacturer",
       label: "Manufacturer",
@@ -516,6 +526,11 @@ const ProductsList: React.FC = () => {
         .toLowerCase()
         .includes(search.toLowerCase());
 
+      const matchesCategory =
+        !filtersState.category ||
+        filtersState.category === "all" ||
+        product.categoryId === filtersState.category;
+
       const matchesManufacturer =
         filtersState.manufacturer === "all" ||
         product.manufacturer === filtersState.manufacturer;
@@ -524,11 +539,9 @@ const ProductsList: React.FC = () => {
         filtersState.supplier === "all" ||
         product.supplier === filtersState.supplier;
 
-      return matchesSearch && matchesManufacturer && matchesSupplier;
+      return matchesSearch && matchesCategory && matchesManufacturer && matchesSupplier;
     });
   }, [products, search, filtersState]);
-
-  const paginated = paginate(filtered);
 
   const partsOnly = useMemo(() => filtered.filter((p) => !p.categoryIsSpol), [filtered]);
   const spolOnly = useMemo(() => filtered.filter((p) => p.categoryIsSpol), [filtered]);
@@ -710,7 +723,7 @@ const ProductsList: React.FC = () => {
                         <TableCell>{product.sku || "-"}</TableCell>
                         <TableCell>{product.partNumber || "-"}</TableCell>
                         <TableCell>{product.unitAbbreviation || product.unit || "-"}</TableCell>
-                        <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
+                        <TableCell>{formatPeso(product.price ? Number(product.price) : null)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
@@ -771,7 +784,7 @@ const ProductsList: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell>{product.partNumber || "-"}</TableCell>
-                        <TableCell>₱ {Number(product.price || 0).toLocaleString()}</TableCell>
+                        <TableCell>{formatPeso(product.price ? Number(product.price) : null)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{product.description || "-"}</TableCell>
                       </TableRow>
                     ))
@@ -791,7 +804,7 @@ const ProductsList: React.FC = () => {
             )}
           </div>
 
-          {activeTabItems.length > 25 && (
+          {activeTabItems.length > pageSize && (
             <div className="sticky bottom-0 bg-background z-10">
               <Pagination
                 totalItems={activeTabItems.length}

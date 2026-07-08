@@ -641,6 +641,29 @@ export default function ProductModal({
   };
 
   const handleSave = async () => {
+    if (!isEditMode) {
+      const validSuppliers = productSuppliers.filter((s) => {
+        const id = String(s.supplier_id || "").trim();
+        return id !== "" && id !== "0";
+      });
+
+      for (let i = 0; i < validSuppliers.length; i++) {
+        const s = validSuppliers[i];
+        if (!s.supplier_cost.trim()) {
+          alert(`Supplier ${i + 1}: Supplier Cost is required.`);
+          return;
+        }
+        if (s.pricing_mode === "manual" && !s.price.trim()) {
+          alert(`Supplier ${i + 1}: Selling Price is required in Manual mode.`);
+          return;
+        }
+        if (s.pricing_mode === "markup" && !s.markup.trim()) {
+          alert(`Supplier ${i + 1}: Markup % is required in Markup mode.`);
+          return;
+        }
+      }
+    }
+
     setSaving(true);
 
     try {

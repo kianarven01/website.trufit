@@ -12,7 +12,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectTrigger,
@@ -88,7 +87,7 @@ export default function ProductReferencesModal({
   const [unitForm, setUnitForm] = useState({ name: "", abbreviation: "" });
 
   const [partEditForm, setPartEditForm] = useState({ name: "", description: "", category_id: "" });
-  const [categoryEditForm, setCategoryEditForm] = useState({ name: "", is_spol: false });
+  const [categoryEditForm, setCategoryEditForm] = useState({ name: "" });
   const [manufacturerEditForm, setManufacturerEditForm] = useState({ name: "", type: "" });
   const [unitEditForm, setUnitEditForm] = useState({ name: "", abbreviation: "" });
 
@@ -183,7 +182,7 @@ export default function ProductReferencesModal({
     if (activeTab === "parts") {
       setPartEditForm({ name: item.name, description: item.description || "", category_id: item.category_id || "" });
     } else if (activeTab === "categories") {
-      setCategoryEditForm({ name: item.name, is_spol: Boolean(item.is_spol) });
+      setCategoryEditForm({ name: item.name });
     } else if (activeTab === "manufacturers") {
       setManufacturerEditForm({ name: item.name, type: item.type || "" });
     } else {
@@ -202,7 +201,7 @@ export default function ProductReferencesModal({
       if (activeTab === "parts" && editingId) {
         await api.put(`/products/parts/${editingId}`, { name: partEditForm.name, description: partEditForm.description || undefined, category_id: partEditForm.category_id || undefined });
       } else if (activeTab === "categories" && editingId) {
-        await api.put(`/products/categories/${editingId}`, { name: categoryEditForm.name, is_spol: categoryEditForm.is_spol });
+        await api.put(`/products/categories/${editingId}`, { name: categoryEditForm.name });
       } else if (activeTab === "manufacturers" && editingId) {
         await api.put(`/products/manufacturers/${editingId}`, { name: manufacturerEditForm.name, type: manufacturerEditForm.type || undefined });
       } else if (activeTab === "units" && editingId) {
@@ -273,17 +272,6 @@ export default function ProductReferencesModal({
       alert(err?.response?.data?.message || "Failed to delete.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const toggleCategorySpol = async (cat: Category) => {
-    try {
-      await api.put(`/products/categories/${cat.id}`, { ...cat, is_spol: !cat.is_spol });
-      await loadAll();
-      onChanged?.();
-    } catch (err: any) {
-      console.error("Failed to toggle SPOL:", err);
-      alert(err?.response?.data?.message || "Failed to toggle SPOL.");
     }
   };
 
@@ -436,26 +424,16 @@ export default function ProductReferencesModal({
                           )}
                         </div>
                         <div className="col-span-2">
-                          {isEditing && mode === "parts" ? (
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={categoryEditForm.is_spol}
-                                onCheckedChange={(checked: boolean) => setCategoryEditForm({ ...categoryEditForm, is_spol: checked })}
-                              />
-                              <span className="text-xs">SPOL</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-xs font-medium ${item.is_spol ? "text-blue-600" : "text-muted-foreground"}`}>
-                                {item.is_spol ? "SPOL" : "Parts"}
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-medium ${item.is_spol ? "text-blue-600" : "text-muted-foreground"}`}>
+                              {item.is_spol ? "SPOL" : "Parts"}
+                            </span>
+                            {item.name === "Sundries" && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">
+                                System
                               </span>
-                              {item.name === "Sundries" && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">
-                                  System
-                                </span>
-                              )}
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                         <div className="col-span-3 text-muted-foreground">
                           {item.products_count || 0}P / {item.parts_count || 0}Pt

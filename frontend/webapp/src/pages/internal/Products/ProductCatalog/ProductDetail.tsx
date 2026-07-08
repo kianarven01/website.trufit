@@ -13,7 +13,6 @@ import AddVehicleCompatibility from "@/components/popupModal/ProductCatalog/addV
 import api from "@/api/axios";
 import Barcode from "react-barcode";
 import { formatPeso, toNumberOrNull } from "@/lib/format";
-import { fromSlug } from "@/lib/slug";
 import { getRows } from "@/lib/api";
 import {
   AlertDialog,
@@ -461,17 +460,22 @@ const ProductDetail: React.FC = () => {
   const [vehicleSyncing, setVehicleSyncing] = useState(false);
 
   const loadCategories = async () => {
-    const res = await api.get("/products/categories");
-    const rows = getRows(res.data);
+    try {
+      const res = await api.get("/products/categories");
+      const rows = getRows(res.data);
 
-    setCategories(
-      (Array.isArray(rows) ? rows : []).map((row: any) => ({
-        id: String(row.id),
-        name: String(row.name),
-        code: row.code || undefined,
-        is_spol: Boolean(row.is_spol),
-      }))
-    );
+      setCategories(
+        (Array.isArray(rows) ? rows : []).map((row: any) => ({
+          id: String(row.id),
+          name: String(row.name),
+          code: row.code || undefined,
+          is_spol: Boolean(row.is_spol),
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+      setCategories([]);
+    }
   };
 
   const loadManufacturers = async () => {
@@ -526,7 +530,7 @@ const ProductDetail: React.FC = () => {
             return;
           }
         } catch (error) {
-          console.warn(
+          console.error(
             `GET /products/${selectedProductId} failed, falling back to list fetch`,
             error
           );
@@ -720,17 +724,11 @@ const ProductDetail: React.FC = () => {
     const priceVal = editPricingMode === "manual" ? toNumberOrNull(editPrice) : null;
     const markupVal = editPricingMode === "markup" ? toNumberOrNull(editMarkup) : null;
 
-    // Calculate markup from price when in manual mode
-    const finalMarkup = editPricingMode === "manual" ? markupVal : markupVal;
-
-    // Calculate price from markup when in markup mode
-    const finalPrice = editPricingMode === "markup" ? priceVal : priceVal;
-
     setIsSavingPrice(true);
     try {
       await api.put(`/products/${product.id}/suppliers/${editingPriceSupplierId}`, {
-        price: finalPrice,
-        markup: finalMarkup,
+        price: priceVal,
+        markup: markupVal,
       });
       showToast("success", "Price Updated", "Supplier price has been updated.");
       setEditingPriceSupplierId(null);

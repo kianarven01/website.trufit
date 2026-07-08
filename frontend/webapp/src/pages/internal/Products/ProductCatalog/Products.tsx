@@ -431,15 +431,20 @@ const ProductsList: React.FC = () => {
     variantId?: string | null,
     categoryId?: string | null
   ) => {
-    const params: Record<string, string> = {};
+    try {
+      const params: Record<string, string> = {};
 
-    if (vehicleId) params.vehicle_model_id = vehicleId;
-    if (variantId) params.variant_id = variantId;
-    if (categoryId) params.category_id = categoryId;
+      if (vehicleId) params.vehicle_model_id = vehicleId;
+      if (variantId) params.variant_id = variantId;
+      if (categoryId) params.category_id = categoryId;
 
-    const res = await api.get("/products", { params });
-    const rows = getRows(res.data);
-    setProducts((Array.isArray(rows) ? rows : []).map(normalizeProduct));
+      const res = await api.get("/products", { params });
+      const rows = getRows(res.data);
+      setProducts((Array.isArray(rows) ? rows : []).map(normalizeProduct));
+    } catch (error) {
+      console.error("Failed to load products:", error);
+      setProducts([]);
+    }
   };
 
   const loadPageData = async () => {

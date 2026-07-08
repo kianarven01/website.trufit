@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, UploadCloud, X } from "lucide-react";
+import { toast } from "sonner";
 import api from "@/api/axios";
 import ProductReferencesModal from "./productReferencesModal";
 
@@ -23,6 +24,7 @@ interface Option {
   label?: string;
   products_count?: number;
   parts_count?: number;
+  is_spol?: boolean;
 }
 
 interface PartOption {
@@ -526,7 +528,7 @@ export default function ProductModal({
     const name = referenceForm.name.trim();
 
     if (!name) {
-      alert("Name is required.");
+      toast.error("Name is required.");
       return;
     }
 
@@ -597,7 +599,7 @@ export default function ProductModal({
         const selectedCategoryId = referenceForm.category_id || form.category_id;
 
         if (!selectedCategoryId) {
-          alert("Please select a category for the new part.");
+          toast.error("Please select a category for the new part.");
           return;
         }
 
@@ -650,15 +652,15 @@ export default function ProductModal({
       for (let i = 0; i < validSuppliers.length; i++) {
         const s = validSuppliers[i];
         if (!s.supplier_cost.trim()) {
-          alert(`Supplier ${i + 1}: Supplier Cost is required.`);
+          toast.error(`Supplier ${i + 1}: Supplier Cost is required.`);
           return;
         }
         if (s.pricing_mode === "manual" && !s.price.trim()) {
-          alert(`Supplier ${i + 1}: Selling Price is required in Manual mode.`);
+          toast.error(`Supplier ${i + 1}: Selling Price is required in Manual mode.`);
           return;
         }
         if (s.pricing_mode === "markup" && !s.markup.trim()) {
-          alert(`Supplier ${i + 1}: Markup % is required in Markup mode.`);
+          toast.error(`Supplier ${i + 1}: Markup % is required in Markup mode.`);
           return;
         }
       }
@@ -800,7 +802,7 @@ export default function ProductModal({
       if (onError) {
         onError(message);
       } else {
-        alert(message);
+      toast.error(message);
       }
     } finally {
       setSaving(false);
@@ -1041,7 +1043,7 @@ export default function ProductModal({
             >
               <option value="">Select category</option>
               {localCategories
-                .filter((c) => !(c as any).is_spol)
+                .filter((c) => !c.is_spol)
                 .map((category) => (
                   <option key={category.id} value={category.id}>
                     {getOptionLabel(category)}
@@ -1091,7 +1093,7 @@ export default function ProductModal({
                         setShowInlineCategoryForm(false);
                         setInlineCategoryName("");
                       } catch (err: any) {
-                        alert(err?.response?.data?.message || "Failed to create category.");
+                        toast.error(err?.response?.data?.message || "Failed to create category.");
                       } finally {
                         setSavingInlineCategory(false);
                       }
@@ -1509,7 +1511,7 @@ export default function ProductModal({
                 }}
               >
                 <option value="">Select category for this part</option>
-                {localCategories.filter((c) => !(c as any).is_spol).map((category) => (
+                {localCategories.filter((c) => !c.is_spol).map((category) => (
                   <option key={category.id} value={category.id}>
                     {getOptionLabel(category)}
                   </option>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import api from "@/api/axios";
 import ProductReferencesModal from "./productReferencesModal";
 
@@ -21,6 +22,7 @@ interface Option {
   CompanyName?: string;
   company_name?: string;
   label?: string;
+  is_spol?: boolean;
 }
 
 type PricingMode = "manual" | "markup";
@@ -99,7 +101,7 @@ export default function SpolProductModal({
   }, [manufacturers]);
 
   const spolCategories = localCategories.filter((c) => {
-    return (c as any).is_spol === true || (c as any).is_spol === "true";
+    return c.is_spol === true;
   });
 
   const validSupplierOptions = useMemo(() => {
@@ -231,7 +233,7 @@ export default function SpolProductModal({
   const handleSaveReference = async () => {
     if (!referenceModalType) return;
     const name = referenceForm.name.trim();
-    if (!name) { alert("Name is required."); return; }
+    if (!name) { toast.error("Name is required."); return; }
     setSavingReference(true);
 
     try {
@@ -268,7 +270,7 @@ export default function SpolProductModal({
       closeReferenceModal();
     } catch (error: any) {
       const message = error?.response?.data?.message || "Failed to save.";
-      alert(message);
+      toast.error(message);
     } finally {
       setSavingReference(false);
     }
@@ -283,15 +285,15 @@ export default function SpolProductModal({
     for (let i = 0; i < validSuppliersForCheck.length; i++) {
       const s = validSuppliersForCheck[i];
       if (!s.supplier_cost.trim()) {
-        alert(`Supplier ${i + 1}: Supplier Cost is required.`);
+        toast.error(`Supplier ${i + 1}: Supplier Cost is required.`);
         return;
       }
       if (s.pricing_mode === "manual" && !s.price.trim()) {
-        alert(`Supplier ${i + 1}: Selling Price is required in Manual mode.`);
+        toast.error(`Supplier ${i + 1}: Selling Price is required in Manual mode.`);
         return;
       }
       if (s.pricing_mode === "markup" && !s.markup.trim()) {
-        alert(`Supplier ${i + 1}: Markup % is required in Markup mode.`);
+        toast.error(`Supplier ${i + 1}: Markup % is required in Markup mode.`);
         return;
       }
     }
@@ -380,7 +382,7 @@ export default function SpolProductModal({
       if (onError) {
         onError(message);
       } else {
-        alert(message);
+        toast.error(message);
       }
     } finally {
       setSaving(false);
@@ -411,13 +413,13 @@ export default function SpolProductModal({
     >
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit SPOL Product" : "Add SPOL Product"}</DialogTitle>
+          <DialogTitle>{mode === "edit" ? "Edit Supplies & Oils Product" : "Add Supplies & Oils Product"}</DialogTitle>
           <button
             type="button"
             className="text-xs font-medium text-primary hover:underline self-end"
             onClick={() => setReferencesModalOpen(true)}
           >
-            Manage SPOL References
+            Manage References
           </button>
         </DialogHeader>
 
@@ -451,7 +453,7 @@ export default function SpolProductModal({
                 setForm({ ...form, category_id: value });
               }}
             >
-              <option value="">Select SPOL category</option>
+              <option value="">Select category</option>
               {spolCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {getOptionLabel(category)}
@@ -472,7 +474,7 @@ export default function SpolProductModal({
                   />
                   <label className="flex items-center gap-1.5 text-sm whitespace-nowrap">
                     <input type="checkbox" checked disabled className="rounded" />
-                    SPOL
+                    Supplies & Oils
                   </label>
                 </div>
                 <div className="flex justify-end gap-2">
@@ -505,7 +507,7 @@ export default function SpolProductModal({
                         setShowInlineCategoryForm(false);
                         setInlineCategoryName("");
                       } catch (err: any) {
-                        alert(err?.response?.data?.message || "Failed to create category.");
+                        toast.error(err?.response?.data?.message || "Failed to create category.");
                       } finally {
                         setSavingInlineCategory(false);
                       }

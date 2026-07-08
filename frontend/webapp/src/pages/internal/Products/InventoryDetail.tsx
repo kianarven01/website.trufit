@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,6 @@ import {
   ImageIcon,
   Package,
   Warehouse,
-  AlertTriangle,
   Car,
   Repeat,
 } from "lucide-react";

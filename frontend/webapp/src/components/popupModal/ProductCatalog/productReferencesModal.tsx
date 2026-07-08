@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2, X, Plus } from "lucide-react";
+import { toast } from "sonner";
 import api from "@/api/axios";
 
 import {
@@ -212,7 +213,7 @@ export default function ProductReferencesModal({
       onChanged?.();
     } catch (err: any) {
       console.error("Failed to save:", err);
-      alert(err?.response?.data?.message || "Failed to save.");
+      toast.error(err?.response?.data?.message || "Failed to save.");
     } finally {
       setSaving(false);
     }
@@ -222,16 +223,16 @@ export default function ProductReferencesModal({
     setSaving(true);
     try {
       if (activeTab === "parts") {
-        if (!partForm.name.trim()) { alert("Part name is required."); setSaving(false); return; }
+        if (!partForm.name.trim()) { toast.error("Part name is required."); setSaving(false); return; }
         await api.post("/products/parts", { name: partForm.name, description: partForm.description || undefined, category_id: partForm.category_id || undefined });
       } else if (activeTab === "categories") {
-        if (!categoryForm.name.trim()) { alert("Category name is required."); setSaving(false); return; }
+        if (!categoryForm.name.trim()) { toast.error("Category name is required."); setSaving(false); return; }
         await api.post("/products/categories", { name: categoryForm.name, is_spol: mode === "spol" });
       } else if (activeTab === "manufacturers") {
-        if (!manufacturerForm.name.trim()) { alert("Manufacturer name is required."); setSaving(false); return; }
+        if (!manufacturerForm.name.trim()) { toast.error("Manufacturer name is required."); setSaving(false); return; }
         await api.post("/products/manufacturers", { name: manufacturerForm.name, type: manufacturerForm.type || undefined });
       } else {
-        if (!unitForm.name.trim()) { alert("Unit name is required."); setSaving(false); return; }
+        if (!unitForm.name.trim()) { toast.error("Unit name is required."); setSaving(false); return; }
         await api.post("/products/units", { name: unitForm.name, abbreviation: unitForm.abbreviation || undefined });
       }
       await loadAll();
@@ -243,7 +244,7 @@ export default function ProductReferencesModal({
       onChanged?.();
     } catch (err: any) {
       console.error("Failed to create:", err);
-      alert(err?.response?.data?.message || "Failed to create.");
+      toast.error(err?.response?.data?.message || "Failed to create.");
     } finally {
       setSaving(false);
     }
@@ -269,7 +270,7 @@ export default function ProductReferencesModal({
       onChanged?.();
     } catch (err: any) {
       console.error("Failed to delete:", err);
-      alert(err?.response?.data?.message || "Failed to delete.");
+      toast.error(err?.response?.data?.message || "Failed to delete.");
     } finally {
       setSaving(false);
     }
@@ -315,7 +316,7 @@ export default function ProductReferencesModal({
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>{mode === "spol" ? "SPOL References" : "Product References"}</DialogTitle>
+              <DialogTitle>{mode === "spol" ? "Supplies & Oils References" : "Product References"}</DialogTitle>
             </DialogHeader>
 
             <div className="flex gap-1 border-b">
@@ -355,7 +356,10 @@ export default function ProductReferencesModal({
 
             <div className="flex-1 overflow-y-auto rounded-lg border min-h-0">
               {loading ? (
-                <div className="px-4 py-6 text-sm text-muted-foreground">Loading...</div>
+                <div className="px-4 py-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  Loading...
+                </div>
               ) : filtered.length === 0 ? (
                 <div className="px-4 py-6 text-sm text-muted-foreground">
                   {searchQuery ? "No results found." : `No ${activeTab} yet.`}
@@ -426,7 +430,7 @@ export default function ProductReferencesModal({
                         <div className="col-span-2">
                           <div className="flex items-center gap-1.5">
                             <span className={`text-xs font-medium ${item.is_spol ? "text-blue-600" : "text-muted-foreground"}`}>
-                              {item.is_spol ? "SPOL" : "Parts"}
+                              {item.is_spol ? "Supplies & Oils" : "Parts"}
                             </span>
                             {item.name === "Sundries" && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-50 text-amber-600 border border-amber-200">

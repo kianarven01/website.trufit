@@ -169,7 +169,7 @@ const Inventory: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, setPage]);
+  }, [search, activeFilters, setPage]);
 
   /* ================= ADJUST STOCK ================= */
   const handleOpenAdjust = (item: InventoryItem) => {
@@ -341,7 +341,7 @@ const Inventory: React.FC = () => {
                 </TableHeader>
 
                 <TableBody>
-                  {filtered.length > 0 ? (
+                  {filtered.length > 0 &&
                     paginated.map((p) => {
                       const status =
                         p.statusValue === "out-of-stock"
@@ -404,7 +404,7 @@ const Inventory: React.FC = () => {
                           {/* TYPE */}
                           <TableCell>
                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.categoryIsSpol ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
-                              {p.categoryIsSpol ? "SPOL" : "Part"}
+                              {p.categoryIsSpol ? "Supplies & Oils" : "Part"}
                             </span>
                           </TableCell>
 
@@ -485,22 +485,7 @@ const Inventory: React.FC = () => {
                           </TableCell>
                         </TableRow>
                       );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={9}>
-                        <div className="py-16 flex flex-col items-center text-center">
-                          <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-                          <p className="text-sm font-semibold text-foreground">
-                            No inventory found
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Try adjusting your search query
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
+                    })}
                 </TableBody>
               </Table>
             </div>

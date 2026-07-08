@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Purchasing\Domain\Models\StockMovement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
@@ -196,6 +198,97 @@ class InventoryController extends Controller
             'message' => 'Inventory stock adjusted successfully.',
             'data' => $this->formatInventory($inventory),
         ]);
+    }
+
+    public function deductSundries(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'product_id' => ['required', 'uuid'],
+            'quantity' => ['required', 'integer', 'min:1'],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $product = Product::findOrFail($validated['product_id']);
+
+        $locationId = 'd3b07384-d113-4ec6-a55d-752007414777';
+
+        $result = DB::transaction(function () use ($validated, $product, $locationId) {
+            $inventory = Inventory::query()
+                ->where('productID', $product->id)
+                ->where('location_id', $locationId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $inventory) {
+                return ['error' => 'No inventory record found for this product.', 'code' => 404];
+            }
+
+            $quantityToDeduct = (int) $validated['quantity'];
+
+            if ((int) $inventory->quantity_on_hand < $quantityToDeduct) {
+                return [
+                    'error' => "Insufficient stock. Available: {$inventory->quantity_on_hand}, requested: {$quantityToDeduct}.",
+                    'code' => 422,
+                ];
+            }
+
+            $inventory->quantity_on_hand = (int) $inventory->quantity_on_hand - $quantityToDeduct;
+            $inventory->save();
+
+            StockMovement::create([
+                'inventory_id' => $inventory->id,
+                'product_id' => $product->id,
+                'product_supplier_id' => $inventory->product_supplier_id,
+                'movement_type' => 'OUT_SUNDRIES',
+                'quantity' => $quantityToDeduct,
+                'reference_type' => null,
+                'reference_id' => null,
+                'notes' => $validated['notes'] ?? null,
+                'created_by' => null,
+            ]);
+
+            return ['inventory' => $inventory];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], $result['code']);
+        }
+
+        $inventory = $result['inventory'];
+        $inventory->load([
+            'product.category',
+            'product.part',
+            'product.manufacturer',
+            'product.unitRelation',
+            'product.preferredSupplier.supplier',
+            'product.preferredSupplier.price',
+        ]);
+
+        return response()->json([
+            'message' => 'Sundries usage deducted successfully.',
+            'data' => $this->formatInventory($inventory),
+        ]);
+    }
+
+    public function sundriesMovements(Request $request): JsonResponse
+    {
+        $movements = StockMovement::with(['product.category', 'product.manufacturer'])
+            ->where('movement_type', 'OUT_SUNDRIES')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($movement) => [
+                'id' => $movement->id,
+                'product_id' => $movement->product_id,
+                'product_name' => $movement->product?->name ?? 'Unknown',
+                'product_image' => $movement->product?->image_path,
+                'product_brand' => $movement->product?->manufacturer?->name ?? '-',
+                'quantity' => $movement->quantity,
+                'notes' => $movement->notes,
+                'created_by' => $movement->created_by,
+                'created_at' => $movement->created_at?->toIso8601String(),
+            ]);
+
+        return response()->json(['data' => $movements]);
     }
 
     private function getSellingPrice(Product $product): ?float

@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ImageIcon, Ellipsis } from "lucide-react";
+import { ImageIcon, Ellipsis, Plus } from "lucide-react";
 import api from "@/api/axios";
 import AppToast, { AppToastType } from "@/components/ui/AppToast";
 import { formatPeso, toNumberOrNull } from "@/lib/format";
@@ -44,6 +44,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import StockMovementTypeBadge from "@/components/purchasing/StockMovementTypeBadge";
+import { format } from "date-fns";
 
 /* ================= TYPES ================= */
 interface InventoryItem {
@@ -65,11 +74,30 @@ interface InventoryItem {
   categoryIsSpol: boolean;
 }
 
+interface SundriesMovement {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_image?: string;
+  product_brand: string;
+  quantity: number;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string | null;
+}
+
+interface SundriesProduct {
+  id: string;
+  name: string;
+  stock: number;
+}
+
 
 /* ================= COMPONENT ================= */
 const Inventory: React.FC = () => {
   const navigate = useNavigate();
 
+  const [activeTab, setActiveTab] = useState<"inventory" | "sundries">("inventory");
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({ archived: "false" });
@@ -89,6 +117,17 @@ const Inventory: React.FC = () => {
   const [adjustReorderLevel, setAdjustReorderLevel] = useState<number>(5);
   const [adjustReorderQty, setAdjustReorderQty] = useState<number>(10);
   const [isSavingAdjust, setIsSavingAdjust] = useState(false);
+
+  // Sundries state
+  const [sundriesMovements, setSundriesMovements] = useState<SundriesMovement[]>([]);
+  const [sundriesLoading, setSundriesLoading] = useState(false);
+  const [sundriesSearch, setSundriesSearch] = useState("");
+  const [isSundriesModalOpen, setIsSundriesModalOpen] = useState(false);
+  const [sundriesProducts, setSundriesProducts] = useState<SundriesProduct[]>([]);
+  const [sundriesProductId, setSundriesProductId] = useState<string>("");
+  const [sundriesQty, setSundriesQty] = useState<number>(1);
+  const [sundriesNotes, setSundriesNotes] = useState<string>("");
+  const [isSavingSundries, setIsSavingSundries] = useState(false);
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
@@ -170,6 +209,81 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     setPage(1);
   }, [search, activeFilters, setPage]);
+
+  /* ================= SUNDRIES ================= */
+  const loadSundriesMovements = async () => {
+    setSundriesLoading(true);
+    try {
+      const res = await api.get("/inventory/sundries-movements");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      setSundriesMovements(rows);
+    } catch (error) {
+      console.error("Failed to load sundries movements:", error);
+    } finally {
+      setSundriesLoading(false);
+    }
+  };
+
+  const loadSundriesProducts = async () => {
+    try {
+      const res = await api.get("/inventory", { params: { archived: "false" } });
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      const products: SundriesProduct[] = rows
+        .filter((row: any) => row.product?.category_is_spol)
+        .map((row: any) => ({
+          id: String(row.product_id || row.product?.id || ""),
+          name: String(row.product?.name || ""),
+          stock: Number(row.quantity_on_hand ?? 0),
+        }));
+      setSundriesProducts(products);
+    } catch (error) {
+      console.error("Failed to load sundries products:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "sundries") {
+      void loadSundriesMovements();
+    }
+  }, [activeTab]);
+
+  const filteredSundries = useMemo(() => {
+    if (!sundriesSearch) return sundriesMovements;
+    const q = sundriesSearch.toLowerCase();
+    return sundriesMovements.filter(
+      (m) =>
+        m.product_name.toLowerCase().includes(q) ||
+        m.notes?.toLowerCase().includes(q)
+    );
+  }, [sundriesMovements, sundriesSearch]);
+
+  const handleOpenSundriesModal = async () => {
+    await loadSundriesProducts();
+    setSundriesProductId("");
+    setSundriesQty(1);
+    setSundriesNotes("");
+    setIsSundriesModalOpen(true);
+  };
+
+  const handleSaveSundries = async () => {
+    if (!sundriesProductId || sundriesQty < 1) return;
+    setIsSavingSundries(true);
+    try {
+      await api.post("/inventory/deduct-sundries", {
+        product_id: sundriesProductId,
+        quantity: sundriesQty,
+        notes: sundriesNotes || null,
+      });
+      await loadSundriesMovements();
+      setIsSundriesModalOpen(false);
+      setToast({ type: "success", title: "Sundries Deducted", message: "Stock has been deducted for sundries usage." });
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "Failed to deduct sundries. Please try again.";
+      setToast({ type: "error", title: "Deduction Failed", message: msg });
+    } finally {
+      setIsSavingSundries(false);
+    }
+  };
 
   /* ================= ADJUST STOCK ================= */
   const handleOpenAdjust = (item: InventoryItem) => {
@@ -267,254 +381,405 @@ const Inventory: React.FC = () => {
             onClose={() => setToast(null)}
           />
         )}
+        {/* tabs */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("inventory")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeTab === "inventory"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Inventory
+          </button>
+          <button
+            onClick={() => setActiveTab("sundries")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeTab === "sundries"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Sundries Usage
+          </button>
+        </div>
+
         {/* toolbar */}
-        <DataToolbar
-          searchPlaceholder="Search inventory..."
-          onSearch={setSearch}
-          filters={[
-            {
-              key: "status",
-              label: "Status",
-              options: [
-                { label: "In Stock", value: "in-stock" },
-                { label: "Low Stock", value: "low-stock" },
-                { label: "Out of Stock", value: "out-of-stock" },
-              ],
-            },
-            {
-              key: "archived",
-              label: "Archived",
-              options: [
-                { label: "Show Archived", value: "true" },
-                { label: "Hide Archived", value: "false" },
-              ],
-            },
-          ]}
-          activeFilters={activeFilters}
-          onFilterChange={(key, value) =>
-            setActiveFilters((prev) => ({ ...prev, [key]: value }))
-          }
-        />
+        {activeTab === "inventory" ? (
+          <DataToolbar
+            searchPlaceholder="Search inventory..."
+            onSearch={setSearch}
+            filters={[
+              {
+                key: "status",
+                label: "Status",
+                options: [
+                  { label: "In Stock", value: "in-stock" },
+                  { label: "Low Stock", value: "low-stock" },
+                  { label: "Out of Stock", value: "out-of-stock" },
+                ],
+              },
+              {
+                key: "archived",
+                label: "Archived",
+                options: [
+                  { label: "Show Archived", value: "true" },
+                  { label: "Hide Archived", value: "false" },
+                ],
+              },
+            ]}
+            activeFilters={activeFilters}
+            onFilterChange={(key, value) =>
+              setActiveFilters((prev) => ({ ...prev, [key]: value }))
+            }
+          />
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <Input
+                placeholder="Search sundries usage..."
+                value={sundriesSearch}
+                onChange={(e) => setSundriesSearch(e.target.value)}
+                className="max-w-sm border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+              />
+            </div>
+            <Button
+              onClick={handleOpenSundriesModal}
+              className="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Sundries Usage
+            </Button>
+          </div>
+        )}
 
         {/* ================= TABLE ================= */}
-        {loading ? (
-          <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
-            <CardContent className="py-20 flex flex-col items-center justify-center">
-              <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-              <p className="text-muted-foreground text-sm font-medium animate-pulse">
-                Loading inventory...
-              </p>
-            </CardContent>
-          </Card>
-        ) : filtered.length > 0 ? (
-          <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
-            <div className="flex-1 overflow-auto">
-              <Table className="table-fixed w-full border-separate border-spacing-y-2">
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="w-4/12 text-muted-foreground font-semibold">
-                      Product
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      SKU
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      Part No.
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      Type
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      Price
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      Stock
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      Unit
-                    </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
-                      Status
-                    </TableHead>
-                    <TableHead className="w-[8%] text-muted-foreground font-semibold" />
-                  </TableRow>
-                </TableHeader>
+        {activeTab === "inventory" ? (
+          loading ? (
+            <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
+              <CardContent className="py-20 flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                <p className="text-muted-foreground text-sm font-medium animate-pulse">
+                  Loading inventory...
+                </p>
+              </CardContent>
+            </Card>
+          ) : filtered.length > 0 ? (
+            <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
+              <div className="flex-1 overflow-auto">
+                <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-none">
+                      <TableHead className="w-4/12 text-muted-foreground font-semibold">
+                        Product
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        SKU
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Part No.
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Type
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Price
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Stock
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Unit
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Status
+                      </TableHead>
+                      <TableHead className="w-[8%] text-muted-foreground font-semibold" />
+                    </TableRow>
+                  </TableHeader>
 
-                <TableBody>
-                  {filtered.length > 0 &&
-                    paginated.map((p) => {
-                      const status =
-                        p.statusValue === "out-of-stock"
-                          ? { label: "Out of Stock", className: "bg-red-100/10 text-red-400 border border-red-500/20" }
-                          : p.statusValue === "low-stock"
-                          ? { label: "Low Stock", className: "bg-yellow-100/10 text-yellow-400 border border-yellow-500/20" }
-                          : { label: "In Stock", className: "bg-green-100/10 text-green-400 border border-green-500/20" };
+                  <TableBody>
+                    {filtered.length > 0 &&
+                      paginated.map((p) => {
+                        const status =
+                          p.statusValue === "out-of-stock"
+                            ? { label: "Out of Stock", className: "bg-red-100/10 text-red-400 border border-red-500/20" }
+                            : p.statusValue === "low-stock"
+                            ? { label: "Low Stock", className: "bg-yellow-100/10 text-yellow-400 border border-yellow-500/20" }
+                            : { label: "In Stock", className: "bg-green-100/10 text-green-400 border border-green-500/20" };
 
-                      return (
-                        <TableRow
-                          key={p.id}
-                          onClick={() =>
-                            navigate(`/webapp/products/inventory/${p.id}`)
-                          }
-                          className={cn(
-                            "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
-                            "hover:bg-accent/30"
-                          )}
-                        >
-                          {/* PRODUCT */}
-                          <TableCell className="py-2">
-                            <div className="flex items-center gap-3">
-                              {p.image && !imgError[p.id] ? (
-                                <img
-                                  src={p.image}
-                                  alt={p.name}
-                                  className="w-12 h-10 rounded-md object-cover border border-border/40"
-                                  onError={() =>
-                                    setImgError((prev) => ({
-                                      ...prev,
-                                      [p.id]: true,
-                                    }))
-                                  }
-                                />
-                              ) : (
-                                <div className="w-12 h-10 flex items-center justify-center rounded-md border border-border/40 bg-muted/30">
-                                  <ImageIcon className="w-5 h-5 text-muted-foreground/60" />
-                                </div>
-                              )}
-
-                              <div className="flex flex-col">
-                                <span className="font-medium text-foreground text-sm leading-tight">
-                                  {p.name}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {p.brand}
-                                </span>
-                              </div>
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="text-foreground/80 text-sm">
-                            {p.sku}
-                          </TableCell>
-
-                          <TableCell className="text-foreground/80 text-sm">
-                            {p.partNumber}
-                          </TableCell>
-
-                          {/* TYPE */}
-                          <TableCell>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.categoryIsSpol ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
-                              {p.categoryIsSpol ? "Supplies & Oils" : "Part"}
-                            </span>
-                          </TableCell>
-
-                          {/* PRICE */}
-                          <TableCell>
-                            <span className="font-medium text-foreground text-sm">
-                              {formatPeso(p.sellingPrice)}
-                            </span>
-                          </TableCell>
-
-                          {/* STOCK */}
-                          <TableCell>
-                            <span className="font-semibold text-foreground text-sm">
-                              {p.stock}
-                            </span>
-                          </TableCell>
-
-                          <TableCell className="text-foreground/80 text-sm">
-                            {p.unit}
-                          </TableCell>
-
-                          {/* STATUS */}
-                          <TableCell>
-                            <span
-                              className={cn(
-                                "text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit",
-                                status.className
-                              )}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                              {status.label}
-                            </span>
-                          </TableCell>
-
-                          <TableCell
-                            className="text-right"
-                            onClick={(event) => event.stopPropagation()}
+                        return (
+                          <TableRow
+                            key={p.id}
+                            onClick={() =>
+                              navigate(`/webapp/products/inventory/${p.id}`)
+                            }
+                            className={cn(
+                              "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                              "hover:bg-accent/30"
+                            )}
                           >
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon_xs"
-                                  className="hover:bg-accent/40"
-                                >
-                                  <Ellipsis className="h-4 w-4 text-muted-foreground" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                align="end"
-                                className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]"
+                            {/* PRODUCT */}
+                            <TableCell className="py-2">
+                              <div className="flex items-center gap-3">
+                                {p.image && !imgError[p.id] ? (
+                                  <img
+                                    src={p.image}
+                                    alt={p.name}
+                                    className="w-12 h-10 rounded-md object-cover border border-border/40"
+                                    onError={() =>
+                                      setImgError((prev) => ({
+                                        ...prev,
+                                        [p.id]: true,
+                                      }))
+                                    }
+                                  />
+                                ) : (
+                                  <div className="w-12 h-10 flex items-center justify-center rounded-md border border-border/40 bg-muted/30">
+                                    <ImageIcon className="w-5 h-5 text-muted-foreground/60" />
+                                  </div>
+                                )}
+
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-foreground text-sm leading-tight">
+                                    {p.name}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {p.brand}
+                                  </span>
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            <TableCell className="text-foreground/80 text-sm">
+                              {p.sku}
+                            </TableCell>
+
+                            <TableCell className="text-foreground/80 text-sm">
+                              {p.partNumber}
+                            </TableCell>
+
+                            {/* TYPE */}
+                            <TableCell>
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.categoryIsSpol ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
+                                {p.categoryIsSpol ? "Supplies & Oils" : "Part"}
+                              </span>
+                            </TableCell>
+
+                            {/* PRICE */}
+                            <TableCell>
+                              <span className="font-medium text-foreground text-sm">
+                                {formatPeso(p.sellingPrice)}
+                              </span>
+                            </TableCell>
+
+                            {/* STOCK */}
+                            <TableCell>
+                              <span className="font-semibold text-foreground text-sm">
+                                {p.stock}
+                              </span>
+                            </TableCell>
+
+                            <TableCell className="text-foreground/80 text-sm">
+                              {p.unit}
+                            </TableCell>
+
+                            {/* STATUS */}
+                            <TableCell>
+                              <span
+                                className={cn(
+                                  "text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit",
+                                  status.className
+                                )}
                               >
-                                {p.isArchived ? (
-                                  <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                                {status.label}
+                              </span>
+                            </TableCell>
+
+                            <TableCell
+                              className="text-right"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon_xs"
+                                    className="hover:bg-accent/40"
+                                  >
+                                    <Ellipsis className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]"
+                                >
+                                  {p.isArchived ? (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => handleRestore(p)}
+                                        className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
+                                      >
+                                        Restore
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => setConfirmDeleteId(p.id)}
+                                        className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                                      >
+                                        Delete Permanently
+                                      </DropdownMenuItem>
+                                    </>
+                                  ) : (
                                     <DropdownMenuItem
-                                      onClick={() => handleRestore(p)}
+                                      onClick={() => handleOpenAdjust(p)}
                                       className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
                                     >
-                                      Restore
+                                      Adjust Stock
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setConfirmDeleteId(p.id)}
-                                      className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
-                                    >
-                                      Delete Permanently
-                                    </DropdownMenuItem>
-                                  </>
-                                ) : (
-                                  <DropdownMenuItem
-                                    onClick={() => handleOpenAdjust(p)}
-                                    className="cursor-pointer font-medium text-xs rounded-lg hover:bg-accent/40 px-3 py-2 transition"
-                                  >
-                                    Adjust Stock
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* ================= PAGINATION ================= */}
-            {filtered.length > pageSize && (
-              <div className="sticky bottom-0 bg-background z-10 py-2 border-t border-border/40">
-                <Pagination
-                  totalItems={filtered.length}
-                  page={page}
-                  pageSize={pageSize}
-                  onPageChange={setPage}
-                  onPageSizeChange={setPageSize}
-                />
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-          </ScrollArea>
+
+              {/* ================= PAGINATION ================= */}
+              {filtered.length > pageSize && (
+                <div className="sticky bottom-0 bg-background z-10 py-2 border-t border-border/40">
+                  <Pagination
+                    totalItems={filtered.length}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={setPage}
+                    onPageSizeChange={setPageSize}
+                  />
+                </div>
+              )}
+            </ScrollArea>
+          ) : (
+            <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
+              <CardContent className="py-20 flex flex-col items-center text-center">
+                <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
+                <p className="text-sm font-semibold text-foreground">
+                  No inventory available
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add suppliers to products to create inventory rows
+                </p>
+              </CardContent>
+            </Card>
+          )
         ) : (
-          <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
-            <CardContent className="py-20 flex flex-col items-center text-center">
-              <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
-              <p className="text-sm font-semibold text-foreground">
-                No inventory available
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Add suppliers to products to create inventory rows
-              </p>
-            </CardContent>
-          </Card>
+          /* ================= SUNDRIES USAGE TABLE ================= */
+          sundriesLoading ? (
+            <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
+              <CardContent className="py-20 flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                <p className="text-muted-foreground text-sm font-medium animate-pulse">
+                  Loading sundries usage...
+                </p>
+              </CardContent>
+            </Card>
+          ) : filteredSundries.length > 0 ? (
+            <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
+              <div className="flex-1 overflow-auto">
+                <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-none">
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Date
+                      </TableHead>
+                      <TableHead className="w-4/12 text-muted-foreground font-semibold">
+                        Product
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Type
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Qty Used
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
+                        Notes
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {filteredSundries.map((m) => (
+                      <TableRow
+                        key={m.id}
+                        className="rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30 transition-all"
+                      >
+                        <TableCell className="text-foreground/80 text-sm">
+                          {m.created_at
+                            ? format(new Date(m.created_at), "MMM d, yyyy h:mm a")
+                            : "-"}
+                        </TableCell>
+
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-3">
+                            {m.product_image ? (
+                              <img
+                                src={m.product_image}
+                                alt={m.product_name}
+                                className="w-10 h-8 rounded-md object-cover border border-border/40"
+                              />
+                            ) : (
+                              <div className="w-10 h-8 flex items-center justify-center rounded-md border border-border/40 bg-muted/30">
+                                <ImageIcon className="w-4 h-4 text-muted-foreground/60" />
+                              </div>
+                            )}
+                            <div className="flex flex-col">
+                              <span className="font-medium text-foreground text-sm leading-tight">
+                                {m.product_name}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {m.product_brand}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <StockMovementTypeBadge type="OUT_SUNDRIES" />
+                        </TableCell>
+
+                        <TableCell>
+                          <span className="font-semibold text-foreground text-sm">
+                            -{m.quantity}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="text-foreground/80 text-sm max-w-[200px] truncate">
+                          {m.notes || "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
+          ) : (
+            <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
+              <CardContent className="py-20 flex flex-col items-center text-center">
+                <ImageIcon className="h-8 w-8 mb-2 text-muted-foreground/60" />
+                <p className="text-sm font-semibold text-foreground">
+                  No sundries usage recorded
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Click "Add Sundries Usage" to deduct items from inventory
+                </p>
+              </CardContent>
+            </Card>
+          )
         )}
       </div>
 
@@ -627,6 +892,93 @@ const Inventory: React.FC = () => {
               className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSavingAdjust ? "Saving..." : "Save Adjustments"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ================= SUNDRIES USAGE MODAL ================= */}
+      <Dialog open={isSundriesModalOpen} onOpenChange={setIsSundriesModalOpen}>
+        <DialogContent className="sm:max-w-[475px] bg-card border border-border/40 shadow-2xl rounded-2xl p-6 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+              Add Sundries Usage
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-5 py-4 text-sm">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-muted-foreground font-medium">
+                Product
+              </Label>
+              <div className="col-span-3">
+                <Select value={sundriesProductId} onValueChange={setSundriesProductId}>
+                  <SelectTrigger className="border border-border/80 rounded-lg bg-background text-foreground focus:ring-blue-900">
+                    <SelectValue placeholder="Select a product" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border border-border/40 shadow-xl rounded-xl max-h-[300px] overflow-auto">
+                    {sundriesProducts.map((p) => (
+                      <SelectItem key={p.id} value={p.id} className="text-sm">
+                        {p.name} (Stock: {p.stock})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label
+                htmlFor="sundries-qty"
+                className="text-right text-muted-foreground font-medium"
+              >
+                Quantity
+              </Label>
+              <Input
+                id="sundries-qty"
+                type="number"
+                min="1"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={sundriesQty}
+                onChange={(e) =>
+                  setSundriesQty(Math.max(1, parseInt(e.target.value) || 1))
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label
+                htmlFor="sundries-notes"
+                className="text-right text-muted-foreground font-medium"
+              >
+                Notes
+              </Label>
+              <Input
+                id="sundries-notes"
+                placeholder="Optional: what was it used for?"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                value={sundriesNotes}
+                onChange={(e) => setSundriesNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsSundriesModalOpen(false)}
+              disabled={isSavingSundries}
+              className="border-border/80 hover:bg-accent/40 text-sm px-4 py-2"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleSaveSundries}
+              disabled={isSavingSundries || !sundriesProductId || sundriesQty < 1}
+              className="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+            >
+              {isSavingSundries ? "Saving..." : "Deduct Stock"}
             </Button>
           </DialogFooter>
         </DialogContent>

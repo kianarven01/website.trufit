@@ -11,6 +11,10 @@ const movementConfig: Record<string, { label: string; className: string }> = {
     label: "OUT_SALES",
     className: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
   },
+  OUT_SUNDRIES: {
+    label: "OUT_SUNDRIES",
+    className: "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+  },
   ADJ_SHRINKAGE: {
     label: "ADJ_SHRINKAGE",
     className: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-300",

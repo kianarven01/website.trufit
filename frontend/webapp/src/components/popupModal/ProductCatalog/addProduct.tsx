@@ -807,7 +807,7 @@ export default function ProductModal({
     }
   };
 
-  const canSave = form.name.trim() && form.category_id;
+  const canSave = form.name.trim() && form.category_id && form.unit;
 
   return (
     <>
@@ -1410,9 +1410,23 @@ export default function ProductModal({
       mode="parts"
       onChanged={async () => {
         await onSaved();
-        const res = await api.get("/products/units");
-        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
-        setUnits(Array.isArray(rows) ? rows : []);
+        const [unitsRes, partsRes] = await Promise.all([
+          api.get("/products/units"),
+          api.get("/products/parts"),
+        ]);
+        const uRows = Array.isArray(unitsRes.data?.data) ? unitsRes.data.data : unitsRes.data;
+        setUnits(Array.isArray(uRows) ? uRows : []);
+        const pRows = Array.isArray(partsRes.data?.data) ? partsRes.data.data : partsRes.data;
+        setParts(
+          (Array.isArray(pRows) ? pRows : []).map((row: any) => ({
+            id: String(row.id),
+            name: String(row.name || ""),
+            code: row.code ?? null,
+            description: row.description ?? null,
+            category_id: String(row.category_id ?? ""),
+            category_name: row.category_name ?? null,
+          }))
+        );
       }}
     />
 
@@ -1495,7 +1509,7 @@ export default function ProductModal({
                 }}
               >
                 <option value="">Select category for this part</option>
-                {localCategories.map((category) => (
+                {localCategories.filter((c) => !(c as any).is_spol).map((category) => (
                   <option key={category.id} value={category.id}>
                     {getOptionLabel(category)}
                   </option>

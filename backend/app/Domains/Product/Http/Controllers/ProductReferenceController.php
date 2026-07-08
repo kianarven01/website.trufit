@@ -12,6 +12,8 @@ use App\Domains\Product\Domain\Models\ServicePricing;
 use App\Domains\Product\Domain\Models\ServiceCategory;
 use App\Domains\Product\Domain\Models\Part;
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Product\Domain\Models\ProductEquivalentGroup;
+use App\Domains\Product\Domain\Models\ProductEquivalentGroupItem;
 use App\Domains\Product\Domain\Models\VehicleVariant;
 use App\Domains\Product\Application\DTO\ArchiveCategoryDTO;
 use App\Domains\Product\Application\UseCases\ArchiveCategory;
@@ -505,6 +507,13 @@ class ProductReferenceController extends Controller
             return response()->json([
                 'message' => 'Cannot delete part. It is assigned to existing products.',
             ], 422);
+        }
+
+        // Delete equivalent group items and groups that reference this part
+        $groupIds = ProductEquivalentGroup::where('part_id', $id)->pluck('id');
+        if ($groupIds->isNotEmpty()) {
+            ProductEquivalentGroupItem::whereIn('group_id', $groupIds)->delete();
+            ProductEquivalentGroup::whereIn('id', $groupIds)->delete();
         }
 
         $part->delete();

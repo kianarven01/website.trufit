@@ -37,6 +37,7 @@ interface DataToolbarProps {
 
   onAdd?: () => void;
   addLabel?: string;
+  addButtonClassName?: string;
 
   title?: React.ReactNode;
   actions?: React.ReactNode;
@@ -58,6 +59,7 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
   
   onAdd,
   addLabel = "Add",
+  addButtonClassName,
 
   title,
   actions,
@@ -120,7 +122,7 @@ const DataToolbar: React.FC<DataToolbarProps> = ({
             {beforeAdd}
 
             {onAdd && (
-              <Button size="sm" onClick={onAdd} className="flex items-center gap-2">
+              <Button size="sm" onClick={onAdd} className={cn("flex items-center gap-2", addButtonClassName)}>
                 <Plus className="h-4 w-4" />
                 {addLabel}
               </Button>

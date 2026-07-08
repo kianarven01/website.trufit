@@ -16,7 +16,7 @@ import {
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
-import { ImageIcon, Plus, Droplets } from "lucide-react";
+import { ImageIcon, Plus } from "lucide-react";
 import ProductModal from "@/components/popupModal/ProductCatalog/addProduct";
 import SpolProductModal from "@/components/popupModal/ProductCatalog/spolProduct";
 import api from "@/api/axios";
@@ -588,15 +588,20 @@ const ProductsList: React.FC = () => {
           setFiltersState((prev) => ({ ...prev, [key]: value }))
         }
         onAdd={() => activeTab === "parts" ? setOpenModal(true) : setOpenSpolModal(true)}
-        addLabel={activeTab === "parts" ? "Add Part" : "Add SPOL"}
+        addLabel={activeTab === "parts" ? "Add Part" : "Add Supplies and Oils"}
+        addButtonClassName={activeTab === "spol" ? "bg-amber-500 hover:bg-amber-600 text-white" : undefined}
         beforeAdd={
           activeTab === "parts" ? (
-            <Button size="sm" variant="outline" onClick={() => setOpenSpolModal(true)} className="flex items-center gap-2">
-              <Droplets className="h-4 w-4" />
-              Add SPOL
-            </Button>
+            <button
+              type="button"
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-amber-500 px-3 text-xs font-semibold text-white hover:bg-amber-600"
+              onClick={() => setOpenSpolModal(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Supplies and Oils
+            </button>
           ) : (
-            <Button size="sm" variant="outline" onClick={() => setOpenModal(true)} className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setOpenModal(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Add Part
             </Button>
@@ -655,7 +660,7 @@ const ProductsList: React.FC = () => {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            SPOL ({spolOnly.length})
+            Supplies & Oils ({spolOnly.length})
           </button>
         </div>
       </div>
@@ -783,7 +788,7 @@ const ProductsList: React.FC = () => {
                       <TableCell colSpan={5}>
                         <div className="py-16 flex flex-col items-center text-center">
                           <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                          <p className="text-sm font-medium">No SPOL products found</p>
+                          <p className="text-sm font-medium">No Supplies & Oils products found</p>
                           <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
                         </div>
                       </TableCell>

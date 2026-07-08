@@ -723,15 +723,29 @@ const ProductDetail: React.FC = () => {
     if (!product?.id || !editingPriceSupplierId) return;
 
     const cost = toNumberOrNull(editSupplierCost);
-    const price = editPricingMode === "manual" ? toNumberOrNull(editPrice) : null;
-    const markup = editPricingMode === "markup" ? toNumberOrNull(editMarkup) : null;
+    const priceVal = editPricingMode === "manual" ? toNumberOrNull(editPrice) : null;
+    const markupVal = editPricingMode === "markup" ? toNumberOrNull(editMarkup) : null;
+
+    // Calculate markup from cost and price when in manual mode
+    const finalMarkup = editPricingMode === "manual"
+      ? (cost !== null && cost > 0 && priceVal !== null
+          ? Math.round(((priceVal - cost) / cost) * 100 * 100) / 100
+          : null)
+      : markupVal;
+
+    // Calculate price from cost and markup when in markup mode
+    const finalPrice = editPricingMode === "markup"
+      ? (cost !== null && markupVal !== null
+          ? cost + cost * (markupVal / 100)
+          : null)
+      : priceVal;
 
     setIsSavingPrice(true);
     try {
       await api.put(`/products/${product.id}/suppliers/${editingPriceSupplierId}`, {
         supplier_cost: cost,
-        price,
-        markup,
+        price: finalPrice,
+        markup: finalMarkup,
       });
       showToast("success", "Price Updated", "Supplier price has been updated.");
       setEditingPriceSupplierId(null);

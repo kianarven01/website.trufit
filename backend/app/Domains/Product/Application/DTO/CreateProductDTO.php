@@ -53,6 +53,12 @@ class CreateProductDTO
                     'supplier_cost' => isset($row['supplier_cost'])
                         ? (float) $row['supplier_cost']
                         : null,
+                    'markup' => isset($row['markup'])
+                        ? (float) $row['markup']
+                        : null,
+                    'price' => isset($row['price'])
+                        ? (float) $row['price']
+                        : null,
                     'is_vat' => filter_var($row['is_vat'] ?? false, FILTER_VALIDATE_BOOLEAN),
                     'vat_percent' => isset($row['vat_percent'])
                         ? (float) $row['vat_percent']

@@ -71,14 +71,9 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 // Create the product price record
                 ProductPrice::create([
                     'id' => (string) Str::uuid(),
-                    'ProductID' => $productId,
                     'product_supplier_id' => $productSupplier->id,
-                    'supplier_id' => $supplier['supplier_id'],
                     'Price' => $price,
                     'Markup' => $markup,
-                    'is_active' => true,
-                    'effective_from' => now(),
-                    'effective_until' => null,
                 ]);
 
                 Inventory::firstOrCreate(

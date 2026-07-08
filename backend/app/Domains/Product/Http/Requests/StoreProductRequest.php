@@ -44,6 +44,10 @@ class StoreProductRequest extends FormRequest
             'suppliers' => ['nullable', 'array'],
             'suppliers.*.supplier_id' => ['required_with:suppliers', 'uuid', 'distinct'],
             'suppliers.*.supplier_cost' => ['nullable', 'numeric', 'min:0'],
+            'suppliers.*.markup' => ['nullable', 'numeric'],
+            'suppliers.*.price' => ['nullable', 'numeric', 'min:0'],
+            'suppliers.*.is_vat' => ['nullable', 'boolean'],
+            'suppliers.*.vat_percent' => ['nullable', 'numeric', 'min:0'],
         ];
     }
 

@@ -219,10 +219,10 @@ class ProductUpdateService
 
             if ($price !== null) {
                 \App\Domains\Product\Domain\Models\ProductPrice::create([
+                    'id' => (string) \Illuminate\Support\Str::uuid(),
                     'product_supplier_id' => $productSupplier->id,
-                    'supplier_id' => $supplier['supplier_id'],
-                    'price' => $price,
-                    'markup' => $markup,
+                    'Price' => $price,
+                    'Markup' => $markup,
                 ]);
             }
         }

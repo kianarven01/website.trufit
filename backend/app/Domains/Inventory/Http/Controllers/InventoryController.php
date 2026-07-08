@@ -291,6 +291,54 @@ class InventoryController extends Controller
         return response()->json(['data' => $movements]);
     }
 
+    public function reverseSundries(string $id): JsonResponse
+    {
+        $result = DB::transaction(function () use ($id) {
+            $movement = StockMovement::where('id', $id)
+                ->where('movement_type', 'OUT_SUNDRIES')
+                ->first();
+
+            if (! $movement) {
+                return ['error' => 'Stock movement not found or is not a sundries deduction.', 'code' => 404];
+            }
+
+            $inventory = null;
+            if ($movement->inventory_id) {
+                $inventory = Inventory::where('id', $movement->inventory_id)->lockForUpdate()->first();
+            }
+
+            if (! $inventory) {
+                $locationId = 'd3b07384-d113-4ec6-a55d-752007414777';
+                $inventory = Inventory::query()
+                    ->where('productID', $movement->product_id)
+                    ->where('location_id', $locationId)
+                    ->lockForUpdate()
+                    ->first();
+            }
+
+            if (! $inventory) {
+                return ['error' => 'No inventory record found for this product.', 'code' => 404];
+            }
+
+            // Restore the stock
+            $inventory->quantity_on_hand = (int) $inventory->quantity_on_hand + (int) $movement->quantity;
+            $inventory->save();
+
+            // Delete the movement record
+            $movement->delete();
+
+            return ['inventory' => $inventory];
+        });
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], $result['code']);
+        }
+
+        return response()->json([
+            'message' => 'Sundries deduction reversed successfully.',
+        ]);
+    }
+
     private function getSellingPrice(Product $product): ?float
     {
         $preferredSupplier = $product->resolvePreferredSupplier();

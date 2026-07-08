@@ -128,6 +128,7 @@ const Inventory: React.FC = () => {
   const [sundriesQty, setSundriesQty] = useState<number>(1);
   const [sundriesNotes, setSundriesNotes] = useState<string>("");
   const [isSavingSundries, setIsSavingSundries] = useState(false);
+  const [reverseMovement, setReverseMovement] = useState<SundriesMovement | null>(null);
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
@@ -244,6 +245,8 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     if (activeTab === "sundries") {
       void loadSundriesMovements();
+    } else {
+      void loadInventory();
     }
   }, [activeTab]);
 
@@ -274,7 +277,7 @@ const Inventory: React.FC = () => {
         quantity: sundriesQty,
         notes: sundriesNotes || null,
       });
-      await loadSundriesMovements();
+      await Promise.all([loadSundriesMovements(), loadInventory()]);
       setIsSundriesModalOpen(false);
       setToast({ type: "success", title: "Sundries Deducted", message: "Stock has been deducted for sundries usage." });
     } catch (error: any) {
@@ -283,6 +286,23 @@ const Inventory: React.FC = () => {
     } finally {
       setIsSavingSundries(false);
     }
+  };
+
+  const handleReverseSundries = async (movement: SundriesMovement) => {
+    try {
+      await api.post(`/inventory/sundries-movements/${movement.id}/reverse`);
+      await Promise.all([loadSundriesMovements(), loadInventory()]);
+      setToast({
+        type: "success",
+        title: "Deduction Reversed",
+        message: `Successfully returned ${movement.quantity} units of "${movement.product_name}" to stock.`,
+      });
+    } catch (error: any) {
+      console.error("Failed to reverse sundries deduction:", error);
+      const msg = error?.response?.data?.message || "Failed to reverse deduction. Please try again.";
+      setToast({ type: "error", title: "Reverse Failed", message: msg });
+    }
+    setReverseMovement(null);
   };
 
   /* ================= ADJUST STOCK ================= */
@@ -381,32 +401,6 @@ const Inventory: React.FC = () => {
             onClose={() => setToast(null)}
           />
         )}
-        {/* tabs */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("inventory")}
-            className={cn(
-              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-              activeTab === "inventory"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Inventory
-          </button>
-          <button
-            onClick={() => setActiveTab("sundries")}
-            className={cn(
-              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-              activeTab === "sundries"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Sundries Usage
-          </button>
-        </div>
-
         {/* toolbar */}
         {activeTab === "inventory" ? (
           <DataToolbar
@@ -437,24 +431,40 @@ const Inventory: React.FC = () => {
             }
           />
         ) : (
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <Input
-                placeholder="Search sundries usage..."
-                value={sundriesSearch}
-                onChange={(e) => setSundriesSearch(e.target.value)}
-                className="max-w-sm border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
-              />
-            </div>
-            <Button
-              onClick={handleOpenSundriesModal}
-              className="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Add Sundries Usage
-            </Button>
-          </div>
+          <DataToolbar
+            searchPlaceholder="Search sundries usage..."
+            onSearch={setSundriesSearch}
+            onAdd={handleOpenSundriesModal}
+            addLabel="Add Sundries Usage"
+            addButtonClassName="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+          />
         )}
+
+        {/* tabs */}
+        <div className="flex items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
+          <button
+            onClick={() => setActiveTab("inventory")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeTab === "inventory"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Inventory
+          </button>
+          <button
+            onClick={() => setActiveTab("sundries")}
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeTab === "sundries"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Sundries Usage
+          </button>
+        </div>
 
         {/* ================= TABLE ================= */}
         {activeTab === "inventory" ? (
@@ -709,6 +719,7 @@ const Inventory: React.FC = () => {
                       <TableHead className="text-muted-foreground font-semibold">
                         Notes
                       </TableHead>
+                      <TableHead className="w-[8%] text-muted-foreground font-semibold" />
                     </TableRow>
                   </TableHeader>
 
@@ -754,12 +765,40 @@ const Inventory: React.FC = () => {
 
                         <TableCell>
                           <span className="font-semibold text-foreground text-sm">
-                            -{m.quantity}
+                            {m.quantity}
                           </span>
                         </TableCell>
 
                         <TableCell className="text-foreground/80 text-sm max-w-[200px] truncate">
                           {m.notes || "-"}
+                        </TableCell>
+
+                        <TableCell
+                          className="text-right"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon_xs"
+                                className="hover:bg-accent/40"
+                              >
+                                <Ellipsis className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="bg-card border border-border/40 shadow-xl rounded-xl p-1 min-w-[120px]"
+                            >
+                              <DropdownMenuItem
+                                onClick={() => setReverseMovement(m)}
+                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                              >
+                                Reverse
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1003,6 +1042,29 @@ const Inventory: React.FC = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reverse Deduction Confirmation */}
+      <AlertDialog open={!!reverseMovement} onOpenChange={(open) => !open && setReverseMovement(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reverse Sundries Deduction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reverse the deduction of {reverseMovement?.quantity} units of "{reverseMovement?.product_name}"? This will return the quantity back to inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (reverseMovement) void handleReverseSundries(reverseMovement);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reverse Deduction
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

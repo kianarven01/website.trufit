@@ -4,23 +4,23 @@ interface StockMovementTypeBadgeProps {
 
 const movementConfig: Record<string, { label: string; className: string }> = {
   IN_RECEIPT: {
-    label: "IN_RECEIPT",
+    label: "Received",
     className: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
   },
   OUT_SALES: {
-    label: "OUT_SALES",
+    label: "Sold",
     className: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
   },
   OUT_SUNDRIES: {
-    label: "OUT_SUNDRIES",
+    label: "Sundries Usage",
     className: "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
   },
   ADJ_SHRINKAGE: {
-    label: "ADJ_SHRINKAGE",
+    label: "Shrinkage Adjustment",
     className: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
   },
   ADJ_RETURN: {
-    label: "ADJ_RETURN",
+    label: "Return Adjustment",
     className: "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   },
 };

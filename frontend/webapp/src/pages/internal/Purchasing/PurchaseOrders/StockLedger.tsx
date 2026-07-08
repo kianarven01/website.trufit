@@ -38,6 +38,7 @@ const getQuantityDisplay = (movementType: string, quantity: number) => {
   const isOut =
     movementType === "OUT_SALES" ||
     movementType === "ADJ_SHRINKAGE" ||
+    movementType === "OUT_SUNDRIES" ||
     movementType === "OUT_RETURN";
 
   const signedQuantity = isOut ? -Math.abs(quantity) : Math.abs(quantity);

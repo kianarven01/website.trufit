@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Part extends Model
 {
-    protected $table = 'Main.Parts';
+    protected $table = 'Parts';
 
     protected $primaryKey = 'id';
 

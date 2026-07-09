@@ -9,7 +9,7 @@ use App\Domains\Supplier\Domain\Models\ProductSupplier;
 
 class GoodsReceiptItem extends Model
 {
-    protected $table = 'Main.GoodsReceiptItems';
+    protected $table = 'GoodsReceiptItems';
     protected $primaryKey = 'id';
 
     public $incrementing = false;

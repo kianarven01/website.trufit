@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 class GoodsReceipt extends Model
 {
-    protected $table = 'Main.GoodsReceipts';
+    protected $table = 'GoodsReceipts';
     protected $primaryKey = 'id';
 
     public $incrementing = false;

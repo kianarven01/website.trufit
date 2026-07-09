@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 class ProductEquivalentGroup extends Model
 {
-    protected $table = 'Main.ProductEquivalentGroups';
+    protected $table = 'ProductEquivalentGroups';
     protected $primaryKey = 'id';
 
     public $incrementing = false;
@@ -56,7 +56,7 @@ class ProductEquivalentGroup extends Model
     {
         return $this->belongsToMany(
             Product::class,
-            'Main.ProductEquivalentGroupItems',
+            'ProductEquivalentGroupItems',
             'group_id',
             'product_id'
         )->withPivot(['id']);

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
-    protected $table = 'Main.Employees';
+    protected $table = 'Employees';
     public $timestamps = false;
 
     public $incrementing = false;

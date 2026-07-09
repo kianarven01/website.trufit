@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ResetPasswordRequest extends FormRequest
 {
-    protected $table = 'Main.Employees';
+    protected $table = 'Employees';
 
     public function authorize(): bool
     {

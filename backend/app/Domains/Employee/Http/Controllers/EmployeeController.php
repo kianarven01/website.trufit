@@ -42,7 +42,7 @@ class EmployeeController extends Controller
     public function storeRole(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:Main.Roles,name',
+            'name' => 'required|string|max:255|unique:Roles,name',
             'permissions' => 'nullable|array',
         ]);
 
@@ -60,7 +60,7 @@ class EmployeeController extends Controller
         $role = Role::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:Main.Roles,name,' . $id,
+            'name' => 'required|string|max:255|unique:Roles,name,' . $id,
             'permissions' => 'nullable|array',
         ]);
 

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductEquivalent extends Model
 {
-    protected $table = 'Main.ProductEquivalents';
+    protected $table = 'ProductEquivalents';
 
     protected $primaryKey = 'id';
 

@@ -10,7 +10,7 @@ use App\Domains\Inventory\Domain\Models\Inventory;
 
 class StockMovement extends Model
 {
-    protected $table = 'Main.StockMovements';
+    protected $table = 'StockMovements';
     protected $primaryKey = 'id';
 
     public $incrementing = false;

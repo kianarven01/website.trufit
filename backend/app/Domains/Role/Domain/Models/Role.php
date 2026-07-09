@@ -8,7 +8,7 @@ class Role extends Model
 {
 
    
-    protected $table = 'Main.Roles';
+    protected $table = 'Roles';
     public $timestamps = false;
 
     protected $fillable = [

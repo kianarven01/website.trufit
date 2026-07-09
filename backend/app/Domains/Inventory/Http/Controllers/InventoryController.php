@@ -216,6 +216,37 @@ class InventoryController extends Controller
         ]);
     }
 
+    public function updateLocation(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'location_id' => ['required', 'string', 'exists:StockLocations,id'],
+            'bin_id' => ['nullable', 'string', 'exists:BinLocations,id'],
+        ]);
+
+        $inventory = Inventory::findOrFail($id);
+
+        $inventory->update([
+            'location_id' => $validated['location_id'],
+            'bin_id' => $validated['bin_id'] ?? null,
+        ]);
+
+        $inventory->load([
+            'product.category',
+            'product.part',
+            'product.manufacturer',
+            'product.unitRelation',
+            'product.preferredSupplier.supplier',
+            'product.preferredSupplier.price',
+            'location',
+            'bin',
+        ]);
+
+        return response()->json([
+            'message' => 'Location updated successfully.',
+            'data' => $this->formatInventory($inventory),
+        ]);
+    }
+
     public function deductSundries(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -467,6 +498,7 @@ class InventoryController extends Controller
             ->all();
 
         $result = [
+            'id' => $first->id,
             'product_id' => $first->productID,
             'product' => $product ? [
                 'id' => $product->id,

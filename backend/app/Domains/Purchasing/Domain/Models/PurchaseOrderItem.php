@@ -9,7 +9,7 @@ use App\Domains\Supplier\Domain\Models\ProductSupplier;
 
 class PurchaseOrderItem extends Model
 {
-    protected $table = 'Main.PurchaseOrderItems';
+    protected $table = 'PurchaseOrderItems';
     protected $primaryKey = 'id';
 
     public $incrementing = false;

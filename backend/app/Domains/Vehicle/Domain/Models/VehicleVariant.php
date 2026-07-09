@@ -8,7 +8,7 @@ class VehicleVariant extends Model
 {
     public $timestamps = false;
 
-    protected $table = 'Main.VehicleVariants';
+    protected $table = 'VehicleVariants';
 
     protected $fillable = [
         'car_model_id',

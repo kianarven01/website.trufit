@@ -9,7 +9,7 @@ class Manufacturers extends Model
 {
     public $timestamps = false;
 
-    protected $table = 'Main.Manufacturers';
+    protected $table = 'Manufacturers';
 
     protected $primaryKey = 'id';
 

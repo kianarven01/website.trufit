@@ -12,7 +12,7 @@ class ProductSupplier extends Model
 {
     use HasUuids;
 
-    protected $table = 'Main.ProductSuppliers';
+    protected $table = 'ProductSuppliers';
 
     public $timestamps = false;
 

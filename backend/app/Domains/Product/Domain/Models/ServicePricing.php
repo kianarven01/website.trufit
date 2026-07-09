@@ -9,7 +9,7 @@ class ServicePricing extends Model
 {
     use HasUuids;
 
-    protected $table = 'Main.ServicePricing';
+    protected $table = 'ServicePricing';
     public $timestamps = false;
 
     protected $fillable = [

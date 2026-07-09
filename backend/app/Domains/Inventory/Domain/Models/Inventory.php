@@ -11,7 +11,7 @@ class Inventory extends Model
 {
     public $timestamps = false;
 
-    protected $table = 'Main.Inventory';
+    protected $table = 'Inventory';
 
     protected $primaryKey = 'id';
 

@@ -12,7 +12,7 @@ class ProductVehicleCompatibility extends Model
 
     public $timestamps = false;
 
-    protected $table = 'Main.ProductVehicleCompatibility';
+    protected $table = 'ProductVehicleCompatibility';
 
     protected $primaryKey = 'id';
 

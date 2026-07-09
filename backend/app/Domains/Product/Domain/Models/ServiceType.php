@@ -9,7 +9,7 @@ class ServiceType extends Model
 {
     use HasUuids;
 
-    protected $table = 'Main.ServiceType';
+    protected $table = 'ServiceType';
     public $timestamps = false; 
     protected $fillable = [
         'name',

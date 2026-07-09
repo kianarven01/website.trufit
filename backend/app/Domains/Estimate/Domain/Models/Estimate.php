@@ -11,7 +11,7 @@ class Estimate extends Model
 {
     use HasUuids;
 
-    protected $table = 'Main.Estimates';
+    protected $table = 'Estimates';
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;

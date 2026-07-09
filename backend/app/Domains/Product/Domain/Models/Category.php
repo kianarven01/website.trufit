@@ -8,7 +8,7 @@ class Category extends Model
 {
     const SUNDRIES_CATEGORY_NAME = 'Sundries';
 
-    protected $table = 'Main.Category';
+    protected $table = 'Category';
 
     protected $primaryKey = 'id';
 

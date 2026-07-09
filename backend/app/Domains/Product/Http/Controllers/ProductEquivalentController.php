@@ -55,7 +55,7 @@ class ProductEquivalentController extends Controller
                 'required',
                 'uuid',
                 'distinct',
-                Rule::exists('Main.Products', 'id'),
+                Rule::exists('Products', 'id'),
             ],
             'notes' => ['nullable', 'string'],
         ]);

@@ -9,7 +9,7 @@ use App\Domains\Supplier\Domain\Models\Supplier;
 
 class ProductPrice extends Model
 {
-    protected $table = 'Main.ProductPrice';
+    protected $table = 'ProductPrice';
 
     protected $primaryKey = 'id';
 

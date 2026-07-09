@@ -10,6 +10,7 @@ Route::prefix('inventory')->group(function () {
     Route::get('/sundries-movements', [InventoryController::class, 'sundriesMovements']);
     Route::post('/sundries-movements/{id}/reverse', [InventoryController::class, 'reverseSundries']);
     Route::get('/{id}', [InventoryController::class, 'show']);
+    Route::put('/{id}/location', [InventoryController::class, 'updateLocation']);
     Route::post('/adjust-stock', [InventoryController::class, 'adjustStock']);
     Route::post('/deduct-sundries', [InventoryController::class, 'deductSundries']);
 });

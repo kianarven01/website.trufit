@@ -8,7 +8,7 @@ use App\Domains\Product\Domain\Models\Product;
 
 class Supplier extends Model
 {
-    protected $table = 'Main.Suppliers';
+    protected $table = 'Suppliers';
 
     protected $primaryKey = 'id';
 
@@ -38,7 +38,7 @@ class Supplier extends Model
     {
         return $this->belongsToMany(
             Product::class,
-            'Main.ProductSuppliers',
+            'ProductSuppliers',
             'supplier_id',
             'product_id'
         )->withPivot([

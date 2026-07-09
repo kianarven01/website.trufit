@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class VehicleVariant extends Model
 {
-    protected $table = 'Main.VehicleVariants';
+    protected $table = 'VehicleVariants';
     public $timestamps = false;
 
     protected $fillable = [

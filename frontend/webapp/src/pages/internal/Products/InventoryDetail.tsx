@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,18 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeft,
   ImageIcon,
   Package,
   Warehouse,
   Car,
   Repeat,
+  Pencil,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 import api from "@/api/axios";
 import { formatPeso, toNumberOrNull } from "@/lib/format";
 
 interface InventoryDetailItem {
   id: string;
+  inventoryId: string;
   image?: string;
   name: string;
   brand: string;
@@ -78,13 +90,27 @@ interface EquivalentProduct {
   quantity_on_hand?: number;
 }
 
+interface WarehouseOption {
+  id: string;
+  code: string;
+  name: string;
+  bins: BinOption[];
+}
+
+interface BinOption {
+  id: string;
+  code: string;
+  name: string | null;
+}
+
 const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
   const product = row.product || {};
   const quantityOnHand = Number(row.quantity_on_hand ?? row.stock ?? 0);
   const reservedQuantity = Number(row.reserved_quantity ?? 0);
 
   return {
-    id: String(row.id),
+    id: String(row.product_id || product.id || ""),
+    inventoryId: String(row.id),
 
     image:
       product.image_URL ||
@@ -231,6 +257,12 @@ const InventoryDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [imgError, setImgError] = useState(false);
 
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+  const [editWarehouseId, setEditWarehouseId] = useState<string>("");
+  const [editBinId, setEditBinId] = useState<string>("__none__");
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
+
   const loadInventoryDetail = async () => {
     if (!inventoryId) return;
 
@@ -249,6 +281,56 @@ const InventoryDetail: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const loadWarehouses = useCallback(async () => {
+    try {
+      const res = await api.get("/warehouses");
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      setWarehouses(rows);
+    } catch (error) {
+      console.error("Failed to load warehouses:", error);
+    }
+  }, []);
+
+  const handleStartEditLocation = async () => {
+    if (warehouses.length === 0) {
+      await loadWarehouses();
+    }
+    setEditWarehouseId(item?.locationId || "");
+    setEditBinId(item?.binId || "__none__");
+    setIsEditingLocation(true);
+  };
+
+  const handleSaveLocation = async () => {
+    if (!item || !editWarehouseId) return;
+    setIsSavingLocation(true);
+    try {
+      const payload: Record<string, string> = { location_id: editWarehouseId };
+      if (editBinId && editBinId !== "__none__") {
+        payload.bin_id = editBinId;
+      } else {
+        payload.bin_id = "";
+      }
+      const res = await api.put(`/inventory/${item.inventoryId}/location`, payload);
+      const updated = res.data?.data;
+      if (updated) {
+        setItem(normalizeInventoryDetail(updated));
+      }
+      setIsEditingLocation(false);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "Failed to update location.";
+      console.error("Location update failed:", msg);
+    } finally {
+      setIsSavingLocation(false);
+    }
+  };
+
+  const handleCancelEditLocation = () => {
+    setIsEditingLocation(false);
+  };
+
+  const selectedWarehouse = warehouses.find((w) => w.id === editWarehouseId);
+  const availableBins = selectedWarehouse?.bins || [];
 
   useEffect(() => {
     void loadInventoryDetail();
@@ -412,12 +494,88 @@ const InventoryDetail: React.FC = () => {
                       <Separator className="col-span-2" />
 
                       <span className="text-muted-foreground">Location</span>
-                      <span>
-                        {item.locationName || "-"}
-                        {item.binName && (
-                          <span className="text-muted-foreground"> &rarr; {item.binName}</span>
-                        )}
-                      </span>
+                      {isEditingLocation ? (
+                        <div className="flex flex-col gap-2">
+                          <Select
+                            value={editWarehouseId}
+                            onValueChange={(val) => {
+                              setEditWarehouseId(val);
+                              setEditBinId("__none__");
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select warehouse" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {warehouses.map((w) => (
+                                <SelectItem key={w.id} value={w.id}>
+                                  {w.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {availableBins.length > 0 && (
+                            <Select
+                              value={editBinId}
+                              onValueChange={setEditBinId}
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Select bin (optional)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">No bin</SelectItem>
+                                {availableBins.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>
+                                    {b.code}{b.name ? ` — ${b.name}` : ""}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              onClick={handleSaveLocation}
+                              disabled={isSavingLocation || !editWarehouseId}
+                              className="h-7 px-2 text-xs"
+                            >
+                              {isSavingLocation ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelEditLocation}
+                              disabled={isSavingLocation}
+                              className="h-7 px-2 text-xs"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {item.locationName || "-"}
+                            {item.binName && (
+                              <span className="text-muted-foreground"> &rarr; {item.binName}</span>
+                            )}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleStartEditLocation}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      )}
                       <Separator className="col-span-2" />
 
                       <span className="text-muted-foreground">Selling Price</span>

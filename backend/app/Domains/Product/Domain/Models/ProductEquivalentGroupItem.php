@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 
 class ProductEquivalentGroupItem extends Model
 {
-    protected $table = 'Main.ProductEquivalentGroupItems';
+    protected $table = 'ProductEquivalentGroupItems';
     protected $primaryKey = 'id';
 
     public $incrementing = false;

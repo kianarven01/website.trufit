@@ -7,7 +7,7 @@ use App\Domains\Auth\Domain\Models\User;
 
 class AppointmentNote extends Model
 {
-    protected $table = 'Main.AppointmentNotes';
+    protected $table = 'AppointmentNotes';
 
     protected $fillable = [
         'user_id',

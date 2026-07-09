@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Appointment extends Model
 {
-    protected $table = 'Main.Appointments';
+    protected $table = 'Appointments';
 
     protected $fillable = [
         'appointment_code',

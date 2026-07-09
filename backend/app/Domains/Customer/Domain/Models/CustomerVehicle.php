@@ -10,7 +10,7 @@ use App\Domains\Product\Domain\Models\VehicleVariant;
  */
 class CustomerVehicle extends Model
 {
-    protected $table = 'Main.CustomerVehicles';
+    protected $table = 'CustomerVehicles';
     protected $primaryKey = 'id';
     public $timestamps = false;
 

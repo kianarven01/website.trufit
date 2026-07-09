@@ -11,7 +11,7 @@ class User extends Authenticatable
 {
     use HasApiTokens;
 
-    protected $table = 'Main.UserCredentials';
+    protected $table = 'UserCredentials';
     public $timestamps = false;
 
     protected $fillable = [

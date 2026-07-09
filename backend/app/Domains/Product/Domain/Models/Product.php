@@ -21,7 +21,7 @@ class Product extends Model
 
     public $timestamps = false;
 
-    protected $table = 'Main.Products';
+    protected $table = 'Products';
     protected $primaryKey = 'id';
 
     public $incrementing = false;
@@ -121,7 +121,7 @@ class Product extends Model
     {
         return $this->belongsToMany(
             Supplier::class,
-            'Main.ProductSuppliers',
+            'ProductSuppliers',
             'product_id',
             'supplier_id'
         )->withPivot([
@@ -176,7 +176,7 @@ class Product extends Model
     {
         return $this->belongsToMany(
             ProductEquivalentGroup::class,
-            'Main.ProductEquivalentGroupItems',
+            'ProductEquivalentGroupItems',
             'product_id',
             'group_id'
         )->withPivot(['id']);

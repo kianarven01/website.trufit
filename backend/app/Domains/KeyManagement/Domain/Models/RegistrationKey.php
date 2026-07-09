@@ -22,7 +22,7 @@ class RegistrationKey extends Model
         return $this->belongsTo(Role::class, 'role_id', 'id');
     }
 
-    protected $table = 'Main.RegistrationKeys';
+    protected $table = 'RegistrationKeys';
     //public $timestamps = false;
 
     protected $fillable = [

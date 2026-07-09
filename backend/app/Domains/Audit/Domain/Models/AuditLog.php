@@ -7,7 +7,7 @@ use App\Domains\Employee\Domain\Models\Employee;
 
 class AuditLog extends Model
 {
-    protected $table = 'Main.AuditLogs';
+    protected $table = 'AuditLogs';
     public $timestamps = false; // We use created_at only
 
     protected $fillable = [

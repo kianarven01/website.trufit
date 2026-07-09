@@ -9,7 +9,7 @@ class VehicleModel extends Model
 {
     public $timestamps = false;
 
-    protected $table = 'Main.VehicleModels';
+    protected $table = 'VehicleModels';
 
     protected $fillable = [
         'manufacturer_id',

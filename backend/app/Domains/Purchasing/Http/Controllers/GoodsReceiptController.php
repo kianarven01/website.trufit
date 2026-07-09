@@ -10,11 +10,11 @@ use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrderItem;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 
 
 class GoodsReceiptController extends Controller
 {
-    private const DEFAULT_LOCATION_ID = 'd3b07384-d113-4ec6-a55d-752007414777';
 
     public function index(): JsonResponse
     {

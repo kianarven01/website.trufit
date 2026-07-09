@@ -3,17 +3,23 @@
 namespace App\Domains\Purchasing\Application\Services;
 
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\StockMovement;
 use RuntimeException;
 
 class StockReceivingService
 {
-    private const DEFAULT_LOCATION_ID = 'd3b07384-d113-4ec6-a55d-752007414777';
+    private function getDefaultLocationId(): string
+    {
+        $location = StockLocation::where('is_active', true)->orderBy('name')->first();
+        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+    }
 
     public function receiveGoods(GoodsReceipt $receipt): int
     {
         $createdMovementCount = 0;
+        $defaultLocationId = $this->getDefaultLocationId();
 
         $receipt->loadMissing(['items', 'purchaseOrder']);
 
@@ -35,7 +41,7 @@ class StockReceivingService
             $inventory = Inventory::query()
                 ->where('productID', $item->product_id)
                 ->where('product_supplier_id', $item->product_supplier_id)
-                ->where('location_id', self::DEFAULT_LOCATION_ID)
+                ->where('location_id', $defaultLocationId)
                 ->lockForUpdate()
                 ->first();
 
@@ -43,7 +49,7 @@ class StockReceivingService
                 $inventory = Inventory::create([
                     'productID' => $item->product_id,
                     'product_supplier_id' => $item->product_supplier_id,
-                    'location_id' => self::DEFAULT_LOCATION_ID,
+                    'location_id' => $defaultLocationId,
                     'quantity_on_hand' => 0,
                     'reserved_quantity' => 0,
                     'reorder_level' => 5,

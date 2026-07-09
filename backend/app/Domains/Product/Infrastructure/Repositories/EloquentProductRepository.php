@@ -9,15 +9,23 @@ use App\Domains\Product\Domain\Models\ProductVehicleCompatibility;
 use App\Domains\Product\Domain\Repositories\ProductRepositoryInterface;
 use App\Domains\Product\Domain\Models\ProductPrice;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class EloquentProductRepository implements ProductRepositoryInterface
 {
+    private function getDefaultLocationId(): string
+    {
+        $location = StockLocation::where('is_active', true)->orderBy('name')->first();
+        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+    }
+
     public function create(array $productData, array $suppliers = [], ?array $compatibility = null): Product
     {
         return DB::transaction(function () use ($productData, $suppliers, $compatibility) {
             $productId = (string) Str::uuid();
+            $defaultLocationId = $this->getDefaultLocationId();
 
             $categoryId = $productData['category_id'] ?? null;
 
@@ -80,7 +88,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                     [
                         'productID' => $productId,
                         'product_supplier_id' => $productSupplier->id,
-                        'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                        'location_id' => $defaultLocationId,
                     ],
                     [
                         'quantity_on_hand' => 0,
@@ -112,7 +120,7 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 Inventory::firstOrCreate(
                     [
                         'productID' => $productId,
-                        'location_id' => 'd3b07384-d113-4ec6-a55d-752007414777',
+                        'location_id' => $defaultLocationId,
                     ],
                     [
                         'product_supplier_id' => null,

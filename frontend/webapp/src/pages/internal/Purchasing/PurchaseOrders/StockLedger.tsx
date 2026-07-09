@@ -19,7 +19,7 @@ interface StockMovementRow {
   createdBy?: string | null;
 }
 
-const movementFilters = ["ALL", "IN_RECEIPT", "OUT_SALES", "ADJ_SHRINKAGE", "ADJ_RETURN"];
+const movementFilters = ["ALL", "IN_RECEIPT", "OUT_SALES", "OUT_SUNDRIES", "ADJ_SHRINKAGE", "ADJ_RETURN"];
 
 const normalizeStockMovement = (row: any): StockMovementRow => ({
   id: String(row.id ?? ""),

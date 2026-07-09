@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { ImageIcon, Ellipsis, Plus } from "lucide-react";
+import { ImageIcon, Ellipsis, Plus, SlidersHorizontal, Search, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import api from "@/api/axios";
 import AppToast, { AppToastType } from "@/components/ui/AppToast";
 import { formatPeso, toNumberOrNull } from "@/lib/format";
@@ -72,6 +73,8 @@ interface InventoryItem {
   statusValue: string;
   isArchived: boolean;
   categoryIsSpol: boolean;
+  binId: string | null;
+  binName: string | null;
 }
 
 interface SundriesMovement {
@@ -117,6 +120,7 @@ const Inventory: React.FC = () => {
   const [adjustReorderLevel, setAdjustReorderLevel] = useState<number>(5);
   const [adjustReorderQty, setAdjustReorderQty] = useState<number>(10);
   const [isSavingAdjust, setIsSavingAdjust] = useState(false);
+  const [adjustBinId, setAdjustBinId] = useState<string | null>(null);
 
   // Sundries state
   const [sundriesMovements, setSundriesMovements] = useState<SundriesMovement[]>([]);
@@ -129,6 +133,9 @@ const Inventory: React.FC = () => {
   const [sundriesNotes, setSundriesNotes] = useState<string>("");
   const [isSavingSundries, setIsSavingSundries] = useState(false);
   const [reverseMovement, setReverseMovement] = useState<SundriesMovement | null>(null);
+  const [sundriesDateFrom, setSundriesDateFrom] = useState<string>("");
+  const [sundriesDateTo, setSundriesDateTo] = useState<string>("");
+  const [showSundriesFilter, setShowSundriesFilter] = useState(false);
 
   const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
@@ -191,6 +198,8 @@ const Inventory: React.FC = () => {
             })(),
             isArchived: Boolean(row.is_archived),
             categoryIsSpol: Boolean(product.category?.is_spol || row.category_is_spol),
+            binId: row.bin_id || null,
+            binName: row.bin_name || row.bin?.name || null,
           };
         }
       );
@@ -215,7 +224,10 @@ const Inventory: React.FC = () => {
   const loadSundriesMovements = async () => {
     setSundriesLoading(true);
     try {
-      const res = await api.get("/inventory/sundries-movements");
+      const params: Record<string, string> = {};
+      if (sundriesDateFrom) params.from = sundriesDateFrom;
+      if (sundriesDateTo) params.to = sundriesDateTo;
+      const res = await api.get("/inventory/sundries-movements", { params });
       const rows = Array.isArray(res.data?.data) ? res.data.data : [];
       setSundriesMovements(rows);
     } catch (error) {
@@ -248,7 +260,7 @@ const Inventory: React.FC = () => {
     } else {
       void loadInventory();
     }
-  }, [activeTab]);
+  }, [activeTab, sundriesDateFrom, sundriesDateTo]);
 
   const filteredSundries = useMemo(() => {
     if (!sundriesSearch) return sundriesMovements;
@@ -312,6 +324,7 @@ const Inventory: React.FC = () => {
     setAdjustReservedQty(item.reservedQuantity);
     setAdjustReorderLevel(item.reorderLevel);
     setAdjustReorderQty(item.reorderQty);
+    setAdjustBinId(item.binId);
     setIsAdjustOpen(true);
   };
 
@@ -327,6 +340,7 @@ const Inventory: React.FC = () => {
         reserved_quantity: adjustReservedQty,
         reorder_level: adjustReorderLevel,
         reorder_qty: adjustReorderQty,
+        bin_id: adjustBinId,
       });
 
       await loadInventory();
@@ -431,13 +445,81 @@ const Inventory: React.FC = () => {
             }
           />
         ) : (
-          <DataToolbar
-            searchPlaceholder="Search sundries usage..."
-            onSearch={setSundriesSearch}
-            onAdd={handleOpenSundriesModal}
-            addLabel="Add Sundries Usage"
-            addButtonClassName="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
-          />
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              {/* SEARCH + FILTER */}
+              <div className="flex items-center gap-2 w-full max-w-sm">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search sundries usage..."
+                    value={sundriesSearch}
+                    onChange={(e) => setSundriesSearch(e.target.value)}
+                    className="pl-9 bg-card"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSundriesFilter(!showSundriesFilter)}
+                  className="relative h-9 w-9"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {(sundriesDateFrom || sundriesDateTo) && (
+                    <span className="absolute -top-1 -right-1">
+                      <Badge className="h-4 min-w-[16px] px-1 text-[10px] font-semibold leading-none flex items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        {(sundriesDateFrom ? 1 : 0) + (sundriesDateTo ? 1 : 0)}
+                      </Badge>
+                    </span>
+                  )}
+                </Button>
+              </div>
+
+              {/* ACTIONS */}
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleOpenSundriesModal}
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add Sundries Usage
+                </Button>
+              </div>
+            </div>
+
+            {/* FILTER PANEL */}
+            {showSundriesFilter && (
+              <div>
+                <hr className="my-1" />
+                <div className="flex items-center gap-3 text-sm">
+                  <Label className="text-muted-foreground font-medium">From</Label>
+                  <Input
+                    type="date"
+                    className="w-[160px] border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                    value={sundriesDateFrom}
+                    onChange={(e) => setSundriesDateFrom(e.target.value)}
+                  />
+                  <Label className="text-muted-foreground font-medium">To</Label>
+                  <Input
+                    type="date"
+                    className="w-[160px] border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                    value={sundriesDateTo}
+                    onChange={(e) => setSundriesDateTo(e.target.value)}
+                  />
+                  {(sundriesDateFrom || sundriesDateTo) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setSundriesDateFrom(""); setSundriesDateTo(""); }}
+                      className="h-8 gap-1 text-xs text-muted-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* tabs */}

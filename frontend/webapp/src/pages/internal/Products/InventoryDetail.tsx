@@ -33,6 +33,9 @@ interface InventoryDetailItem {
   reorderLevel: number | null;
   reorderQty: number | null;
   locationId?: string | null;
+  locationName?: string | null;
+  binId?: string | null;
+  binName?: string | null;
   description: string;
   sellingPrice: number | null;
   compatibleVehicles: CompatibleVehicle[];
@@ -156,6 +159,9 @@ const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
     reorderLevel: toNumberOrNull(row.reorder_level),
     reorderQty: toNumberOrNull(row.reorder_qty),
     locationId: row.location_id || null,
+    locationName: row.location_name || row.location_id || null,
+    binId: row.bin_id || null,
+    binName: row.bin_name || row.bin?.name || null,
     description: product.description || row.description || "-",
     sellingPrice: toNumberOrNull(row.selling_price),
     compatibleVehicles: Array.isArray(row.compatible_vehicles)
@@ -406,7 +412,12 @@ const InventoryDetail: React.FC = () => {
                       <Separator className="col-span-2" />
 
                       <span className="text-muted-foreground">Location</span>
-                      <span className="break-all">{item.locationId || "-"}</span>
+                      <span>
+                        {item.locationName || "-"}
+                        {item.binName && (
+                          <span className="text-muted-foreground"> &rarr; {item.binName}</span>
+                        )}
+                      </span>
                       <Separator className="col-span-2" />
 
                       <span className="text-muted-foreground">Selling Price</span>

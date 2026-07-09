@@ -4,6 +4,7 @@ namespace App\Domains\Inventory\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Purchasing\Domain\Models\StockMovement;
@@ -14,6 +15,12 @@ use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
+    private function getDefaultLocationId(): string
+    {
+        $location = StockLocation::where('is_active', true)->orderBy('name')->first();
+        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+    }
+
     public function index(Request $request): JsonResponse
     {
         $search = $request->query('search');
@@ -35,6 +42,8 @@ class InventoryController extends Controller
                 'product.preferredSupplier.price',
                 'product.productSuppliers.inventory',
                 'product.inventoryRows',
+                'location',
+                'bin',
             ])
             ->when(! $showArchived, function ($query) {
                 $query->whereHas('product', function ($q) {
@@ -113,6 +122,8 @@ class InventoryController extends Controller
                 'product.vehicleCompatibilities.vehicleVariant.vehicleModel.manufacturer',
                 'product.equivalentGroups.items.product.manufacturer',
                 'product.equivalentGroups.items.product.inventoryRows',
+                'location',
+                'bin',
             ])
             ->where('productID', $id)
             ->orderBy('id')
@@ -135,6 +146,7 @@ class InventoryController extends Controller
             'product_id' => ['required', 'uuid'],
             'product_supplier_id' => ['nullable', 'uuid'],
             'location_id' => ['nullable', 'uuid'],
+            'bin_id' => ['nullable', 'uuid'],
             'quantity_on_hand' => ['required', 'integer', 'min:0'],
             'reserved_quantity' => ['nullable', 'integer', 'min:0'],
             'reorder_level' => ['nullable', 'integer', 'min:0'],
@@ -167,9 +179,10 @@ class InventoryController extends Controller
                 ->firstOrFail();
         }
 
-        $locationId = $validated['location_id'] ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+        $locationId = $validated['location_id'] ?? $this->getDefaultLocationId();
+        $binId = $validated['bin_id'] ?? null;
 
-        $inventory = DB::transaction(function () use ($validated, $product, $productSupplierId, $locationId) {
+        $inventory = DB::transaction(function () use ($validated, $product, $productSupplierId, $locationId, $binId) {
             return Inventory::updateOrCreate(
                 [
                     'productID' => $product->id,
@@ -181,6 +194,7 @@ class InventoryController extends Controller
                     'reserved_quantity' => $validated['reserved_quantity'] ?? 0,
                     'reorder_level' => $validated['reorder_level'] ?? 5,
                     'reorder_qty' => $validated['reorder_qty'] ?? 10,
+                    'bin_id' => $binId,
                 ]
             );
         });
@@ -192,6 +206,8 @@ class InventoryController extends Controller
             'product.unitRelation',
             'product.preferredSupplier.supplier',
             'product.preferredSupplier.price',
+            'location',
+            'bin',
         ]);
 
         return response()->json([
@@ -210,7 +226,7 @@ class InventoryController extends Controller
 
         $product = Product::findOrFail($validated['product_id']);
 
-        $locationId = 'd3b07384-d113-4ec6-a55d-752007414777';
+        $locationId = $this->getDefaultLocationId();
 
         $result = DB::transaction(function () use ($validated, $product, $locationId) {
             $inventory = Inventory::query()
@@ -262,6 +278,8 @@ class InventoryController extends Controller
             'product.unitRelation',
             'product.preferredSupplier.supplier',
             'product.preferredSupplier.price',
+            'location',
+            'bin',
         ]);
 
         return response()->json([
@@ -272,9 +290,21 @@ class InventoryController extends Controller
 
     public function sundriesMovements(Request $request): JsonResponse
     {
-        $movements = StockMovement::with(['product.category', 'product.manufacturer'])
-            ->where('movement_type', 'OUT_SUNDRIES')
-            ->orderByDesc('created_at')
+        $query = StockMovement::with(['product.category', 'product.manufacturer'])
+            ->where('movement_type', 'OUT_SUNDRIES');
+
+        $from = $request->query('from');
+        $to = $request->query('to');
+
+        if ($from) {
+            $query->where('created_at', '>=', $from);
+        }
+
+        if ($to) {
+            $query->where('created_at', '<=', $to . ' 23:59:59');
+        }
+
+        $movements = $query->orderByDesc('created_at')
             ->get()
             ->map(fn ($movement) => [
                 'id' => $movement->id,
@@ -308,7 +338,7 @@ class InventoryController extends Controller
             }
 
             if (! $inventory) {
-                $locationId = 'd3b07384-d113-4ec6-a55d-752007414777';
+                $locationId = $this->getDefaultLocationId();
                 $inventory = Inventory::query()
                     ->where('productID', $movement->product_id)
                     ->where('location_id', $locationId)
@@ -373,6 +403,9 @@ class InventoryController extends Controller
             'reorder_level' => $inventory->reorder_level,
             'reorder_qty' => $inventory->reorder_qty,
             'location_id' => $inventory->location_id,
+            'location_name' => $inventory->location?->name ?? $inventory->location_id,
+            'bin_id' => $inventory->bin_id,
+            'bin_name' => $inventory->bin?->name ?? $inventory->bin?->code,
 
             'product' => $product ? [
                 'id' => $product->id,
@@ -425,6 +458,13 @@ class InventoryController extends Controller
         };
 
         $locationId = $first->location_id;
+        $locationName = $first->location?->name ?? $locationId;
+
+        $bins = $rows->filter(fn ($r) => $r->bin_id)
+            ->map(fn ($r) => ['id' => $r->bin_id, 'name' => $r->bin?->name ?? $r->bin?->code])
+            ->unique('id')
+            ->values()
+            ->all();
 
         $result = [
             'product_id' => $first->productID,
@@ -453,6 +493,10 @@ class InventoryController extends Controller
             'reorder_level' => $reorderLevel,
             'reorder_qty' => $reorderQty,
             'location_id' => $locationId,
+            'location_name' => $locationName,
+            'bin_id' => $first->bin_id,
+            'bin_name' => $first->bin?->name ?? $first->bin?->code,
+            'bins' => $bins,
             'selling_price' => $product ? $this->getSellingPrice($product) : null,
             'status' => $status,
             'is_archived' => $product && $product->trashed(),
@@ -495,6 +539,7 @@ class InventoryController extends Controller
             'reorder_level' => 0,
             'reorder_qty' => 0,
             'location_id' => null,
+            'bin_id' => null,
             'selling_price' => null,
             'status' => 'Out of Stock',
             'is_archived' => true,

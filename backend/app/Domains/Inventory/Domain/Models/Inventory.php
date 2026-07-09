@@ -5,6 +5,7 @@ namespace App\Domains\Inventory\Domain\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 
 class Inventory extends Model
 {
@@ -21,6 +22,7 @@ class Inventory extends Model
         'reorder_level',
         'sell_price',
         'location_id',
+        'bin_id',
         'reserved_quantity',
         'reorder_qty',
     ];
@@ -33,6 +35,7 @@ class Inventory extends Model
         'reorder_level' => 'integer',
         'sell_price' => 'float',
         'location_id' => 'string',
+        'bin_id' => 'string',
         'reserved_quantity' => 'integer',
         'reorder_qty' => 'integer',
     ];
@@ -45,5 +48,15 @@ class Inventory extends Model
     public function productSupplier()
     {
         return $this->belongsTo(ProductSupplier::class, 'product_supplier_id', 'id');
+    }
+
+    public function location()
+    {
+        return $this->belongsTo(StockLocation::class, 'location_id', 'id');
+    }
+
+    public function bin()
+    {
+        return $this->belongsTo(BinLocation::class, 'bin_id', 'id');
     }
 }

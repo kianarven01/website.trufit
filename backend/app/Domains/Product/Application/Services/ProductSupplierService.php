@@ -3,6 +3,7 @@
 namespace App\Domains\Product\Application\Services;
 
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Domain\Models\ProductPrice;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
@@ -11,7 +12,11 @@ use Illuminate\Support\Str;
 
 class ProductSupplierService
 {
-    private const DEFAULT_LOCATION_ID = 'd3b07384-d113-4ec6-a55d-752007414777';
+    private function getDefaultLocationId(): string
+    {
+        $location = StockLocation::where('is_active', true)->orderBy('name')->first();
+        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+    }
 
     public function addSupplier(Product $product, array $data): Product
     {
@@ -41,7 +46,7 @@ class ProductSupplierService
                 [
                     'productID' => $product->id,
                     'product_supplier_id' => $productSupplier->id,
-                    'location_id' => self::DEFAULT_LOCATION_ID,
+                    'location_id' => $this->getDefaultLocationId(),
                 ],
                 [
                     'quantity_on_hand' => 0,

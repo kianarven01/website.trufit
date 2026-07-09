@@ -5,12 +5,17 @@ namespace App\Domains\Supplier\Application\UseCases;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Product\Domain\Models\ProductPrice;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Inventory\Domain\Models\StockLocation;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 class LinkProductToSupplier
 {
-    private const DEFAULT_LOCATION_ID = 'd3b07384-d113-4ec6-a55d-752007414777';
+    private function getDefaultLocationId(): string
+    {
+        $location = StockLocation::where('is_active', true)->orderBy('name')->first();
+        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+    }
 
     public function execute($supplierId, $productId, $cost, $isVat = false, $vatPercent = null, $price = null, $markup = null)
     {
@@ -56,7 +61,7 @@ class LinkProductToSupplier
                 [
                     'productID' => $productId,
                     'product_supplier_id' => $link->id,
-                    'location_id' => self::DEFAULT_LOCATION_ID,
+                    'location_id' => $this->getDefaultLocationId(),
                 ],
                 [
                     'quantity_on_hand' => 0,

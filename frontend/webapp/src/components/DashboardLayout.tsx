@@ -144,11 +144,6 @@ const navItems: NavItem[] = [
         icon: TaskDone01Icon,
       },
       {
-        label: "Stock Ledger",
-        path: "/webapp/purchasing/stock-ledger",
-        icon: Exchange01Icon,
-      },
-      {
         label: "Suppliers",
         path: "/webapp/purchasing/suppliers",
         icon: Briefcase01Icon,
@@ -168,11 +163,6 @@ const navItems: NavItem[] = [
         label: "Inventory",
         path: "/webapp/products/inventory",
         icon: WarehouseIcon,
-      },
-      {
-        label: "Stock Movement",
-        path: "/webapp/products/stock-movement",
-        icon: Exchange01Icon,
       },
       {
         label: "Warehouse",
@@ -204,6 +194,11 @@ const navItems: NavItem[] = [
         label: "Audit Log",
         path: "/webapp/reports/audit-log",
         icon: Activity01Icon,
+      },
+      {
+        label: "Stock Movement",
+        path: "/webapp/purchasing/stock-ledger",
+        icon: Exchange01Icon,
       },
     ],
   },

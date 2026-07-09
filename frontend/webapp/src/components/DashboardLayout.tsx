@@ -289,7 +289,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Auto-expand active group on route change
   useEffect(() => {
     const activeItem = filteredNavItems.find((item) =>
-      item.children?.some((child) => location.pathname === child.path),
+      item.children?.some((child) => 
+        location.pathname === child.path || location.pathname.startsWith(child.path + "/")
+      ),
     );
     if (activeItem && !openGroups.includes(activeItem.label)) {
       setOpenGroups((prev) => [...prev, activeItem.label]);
@@ -302,11 +304,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => 
+    location.pathname === path || location.pathname.startsWith(path + "/");
   const isGroupActive = (item: NavItem) =>
-    item.children?.some((c) => location.pathname === c.path);
+    item.children?.some((c) => 
+      location.pathname === c.path || location.pathname.startsWith(c.path + "/")
+    );
 
   const handleNavigate = (path: string) => {
+    const parentItem = filteredNavItems.find(item =>
+      item.children?.some(child =>
+        path === child.path || path.startsWith(child.path + "/")
+      )
+    );
+    if (parentItem && !openGroups.includes(parentItem.label)) {
+      setOpenGroups(prev => [...prev, parentItem.label]);
+    }
     navigate(path);
     setMobileOpen(false);
   };
@@ -501,7 +514,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           navButton
         )}
 
-        {open && item.children && !collapsed && (
+        {(open || groupActive) && item.children && !collapsed && (
           <div className="ml-6 mt-1 space-y-1 border-l-2 border-sidebar-border/30 pl-4 animate-in fade-in slide-in-from-top-1 duration-200">
             {item.children.map((child) => {
               const childActive = isActive(child.path);

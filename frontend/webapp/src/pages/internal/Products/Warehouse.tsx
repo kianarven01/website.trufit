@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -238,8 +237,8 @@ const Warehouse: React.FC = () => {
   };
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col gap-4 p-4 h-full w-full">
+    <>
+    <div className="flex flex-col gap-4 p-4 h-full w-full">
         {toast && (
           <AppToast
             type={toast.type}
@@ -340,16 +339,13 @@ const Warehouse: React.FC = () => {
                             )}
                           />
                         </TableCell>
-                        <TableCell className="text-foreground/80 text-sm font-mono">
+                        <TableCell className="text-foreground/80 text-sm">
                           {loc.code}
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="flex items-center gap-2">
-                            <WarehouseIcon className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium text-foreground text-sm">
-                              {loc.name}
-                            </span>
-                          </div>
+                          <span className="font-medium text-foreground text-sm">
+                            {loc.name}
+                          </span>
                         </TableCell>
                         <TableCell className="text-foreground/80 text-sm max-w-[300px] truncate">
                           {loc.description || "-"}
@@ -457,7 +453,7 @@ const Warehouse: React.FC = () => {
                                         key={bin.id}
                                         className="hover:bg-accent/20 transition-all"
                                       >
-                                        <TableCell className="text-foreground/80 text-xs font-mono py-1.5">
+                                        <TableCell className="text-foreground/80 text-xs py-1.5">
                                           {bin.code}
                                         </TableCell>
                                         <TableCell className="text-foreground/80 text-xs py-1.5">
@@ -708,7 +704,7 @@ const Warehouse: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 };
 

@@ -169,23 +169,27 @@ const App: React.FC = () => {
                 <Route path="account" element={<AccountSettings />} />
               </Route>
 
+              {/* Products */}
+              <Route path="products">
+                <Route path="product-catalog" element={<ProductCatalog />}>
+                  <Route index element={<ProductList />} />
+                  <Route path="vehicles" element={<VehiclesPage />} />
+                  <Route path="products" element={<Navigate to="/webapp/products/product-catalog" replace />} />
+                  <Route path="products/:productId" element={<ProductDetail />} />
+                  <Route path="vehicles/:vehicleSlug" element={<VehicleVariantsPage />} />
+                  <Route path="vehicles/:vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />
+                  <Route path="vehicles/:vehicleSlug/:variantSlug/:categorySlug/products/:productId" element={<ProductDetail />} />
+                </Route>
+
+                <Route path="inventory">
+                  <Route index element={<InventoryList />} />
+                  <Route path=":productId" element={<InventoryDetail />} />
+                </Route>
+
+                <Route path="warehouse" element={<Warehouse />} />
+              </Route>
+
             </Route>
-
-            <Route path="/webapp/services/job-orders" element={<JobOrder />} />
-
-            <Route path="/webapp/products/product-catalog" element={<ProductCatalog />}>
-              <Route index element={<ProductList />} />
-              <Route path="vehicles" element={<VehiclesPage />} />
-              <Route path="products" element={<Navigate to="/webapp/products/product-catalog" replace />} />
-              <Route path="products/:productId" element={<ProductDetail />} />
-              <Route path="vehicles/:vehicleSlug" element={<VehicleVariantsPage />} />
-              <Route path="vehicles/:vehicleSlug/:variantSlug/:categorySlug/products" element={<ProductList />} />
-              <Route path="vehicles/:vehicleSlug/:variantSlug/:categorySlug/products/:productId" element={<ProductDetail />} />
-            </Route>
-
-            <Route path="/webapp/products/inventory" element={<InventoryList />} />
-            <Route path="/webapp/products/inventory/:productId" element={<InventoryDetail />} />
-            <Route path="/webapp/products/warehouse" element={<Warehouse />} />
 
           </Route>
 

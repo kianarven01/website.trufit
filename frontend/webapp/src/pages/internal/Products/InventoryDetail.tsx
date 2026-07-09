@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -367,25 +366,21 @@ const InventoryDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <DashboardLayout>
         <div className="p-6 flex flex-col items-center justify-center py-20">
           <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
           <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading inventory item...</p>
         </div>
-      </DashboardLayout>
     );
   }
 
   if (!item) {
     return (
-      <DashboardLayout>
         <div className="p-6 space-y-4">
           <p className="text-sm text-muted-foreground">Inventory item not found.</p>
           <Button variant="outline" onClick={() => navigate("/webapp/products/inventory")}>
             Back to Inventory
           </Button>
         </div>
-      </DashboardLayout>
     );
   }
 
@@ -395,7 +390,6 @@ const InventoryDetail: React.FC = () => {
     : item.unitName;
 
   return (
-    <DashboardLayout>
       <div className="p-6 space-y-5 h-full flex flex-col overflow-y-auto">
         {toast && (
           <AppToast
@@ -717,7 +711,6 @@ const InventoryDetail: React.FC = () => {
           </div>
         </div>
       </div>
-    </DashboardLayout>
   );
 };
 

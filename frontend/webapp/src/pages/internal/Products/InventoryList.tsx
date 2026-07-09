@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { DashboardLayout } from "@/components/DashboardLayout";
 import DataToolbar from "@/components/DataToolbar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -408,7 +407,7 @@ const Inventory: React.FC = () => {
   const paginated = paginate(filtered);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex flex-col gap-4 p-4 h-full w-full">
         {toast && (
           <AppToast
@@ -1158,7 +1157,7 @@ const Inventory: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </DashboardLayout>
+    </>
   );
 };
 

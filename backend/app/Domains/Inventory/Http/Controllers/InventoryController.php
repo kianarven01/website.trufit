@@ -153,6 +153,14 @@ class InventoryController extends Controller
             'reorder_qty' => ['nullable', 'integer', 'min:0'],
         ]);
 
+        $reserved = $validated['reserved_quantity'] ?? 0;
+        $onHand = $validated['quantity_on_hand'];
+        if ($reserved > $onHand) {
+            return response()->json([
+                'message' => "Reserved quantity ({$reserved}) cannot exceed quantity on hand ({$onHand}).",
+            ], 422);
+        }
+
         $product = Product::findOrFail($validated['product_id']);
 
         $productSupplierId = $validated['product_supplier_id'] ?? null;

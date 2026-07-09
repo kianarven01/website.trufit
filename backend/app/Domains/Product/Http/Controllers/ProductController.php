@@ -21,6 +21,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use RuntimeException;
 use Throwable;
 
@@ -206,6 +208,32 @@ class ProductController extends Controller
     {
         try {
             $product = Product::withTrashed()->findOrFail($id);
+
+            $isSystemSundries = $product->category && $product->category->is_spol && strtolower($product->category->name) === 'sundries';
+
+            if (!$isSystemSundries) {
+                $stockSummary = Inventory::query()
+                    ->where('productID', $id)
+                    ->selectRaw('COALESCE(SUM(quantity_on_hand), 0) as quantity_on_hand')
+                    ->selectRaw('COALESCE(SUM(reserved_quantity), 0) as reserved_quantity')
+                    ->first();
+
+                $quantityOnHand = (int) ($stockSummary->quantity_on_hand ?? 0);
+                $reservedQuantity = (int) ($stockSummary->reserved_quantity ?? 0);
+
+                if ($quantityOnHand > 0 || $reservedQuantity > 0) {
+                    return response()->json([
+                        'message' => 'Product cannot be deleted because it still has stock or reserved quantity.',
+                    ], 409);
+                }
+
+                $hasSuppliers = ProductSupplier::where('product_id', $id)->exists();
+                if ($hasSuppliers) {
+                    return response()->json([
+                        'message' => 'Product cannot be deleted because it still has linked suppliers. Remove all suppliers first.',
+                    ], 409);
+                }
+            }
 
             DB::transaction(function () use ($product) {
                 $productId = $product->id;

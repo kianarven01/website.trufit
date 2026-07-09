@@ -4,6 +4,7 @@ namespace App\Domains\Product\Application\Services;
 
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Product\Domain\Models\Product;
+use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -37,6 +38,14 @@ class ProductArchiveService
             if ($quantityOnHand > 0 || $reservedQuantity > 0) {
                 throw new RuntimeException(
                     'Product cannot be archived because it still has stock or reserved quantity.',
+                    409
+                );
+            }
+
+            $hasSuppliers = ProductSupplier::where('product_id', $productId)->exists();
+            if ($hasSuppliers) {
+                throw new RuntimeException(
+                    'Product cannot be archived because it still has linked suppliers. Remove all suppliers first.',
                     409
                 );
             }

@@ -1027,7 +1027,8 @@ const ProductDetail: React.FC = () => {
 
       const toastType: AppToastType =
         message.toLowerCase().includes("stock") ||
-        message.toLowerCase().includes("reserved")
+        message.toLowerCase().includes("reserved") ||
+        message.toLowerCase().includes("supplier")
           ? "warning"
           : message.toLowerCase().includes("already archived")
             ? "info"
@@ -1038,7 +1039,9 @@ const ProductDetail: React.FC = () => {
       showToast(
         toastType,
         toastType === "warning"
-          ? "Product still has stock"
+          ? message.toLowerCase().includes("supplier")
+            ? "Product still has suppliers"
+            : "Product still has stock"
           : toastType === "info"
             ? "Product already archived"
             : isSundriesProduct

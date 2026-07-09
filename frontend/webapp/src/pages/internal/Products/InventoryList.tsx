@@ -931,9 +931,11 @@ const Inventory: React.FC = () => {
                 min="0"
                 className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
                 value={adjustQty}
-                onChange={(e) =>
-                  setAdjustQty(Math.max(0, parseInt(e.target.value) || 0))
-                }
+                onChange={(e) => {
+                  const newQty = Math.max(0, parseInt(e.target.value) || 0);
+                  setAdjustQty(newQty);
+                  setAdjustReservedQty((prev) => Math.min(prev, newQty));
+                }}
               />
             </div>
 
@@ -948,11 +950,12 @@ const Inventory: React.FC = () => {
                 id="adjust-reserved"
                 type="number"
                 min="0"
+                max={adjustQty}
                 className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
                 value={adjustReservedQty}
                 onChange={(e) =>
                   setAdjustReservedQty(
-                    Math.max(0, parseInt(e.target.value) || 0)
+                    Math.max(0, Math.min(adjustQty, parseInt(e.target.value) || 0))
                   )
                 }
               />

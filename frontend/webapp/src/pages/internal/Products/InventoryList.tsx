@@ -73,6 +73,7 @@ interface InventoryItem {
   statusValue: string;
   isArchived: boolean;
   categoryIsSpol: boolean;
+  locationId: string | null;
   binId: string | null;
   binName: string | null;
 }
@@ -198,6 +199,7 @@ const Inventory: React.FC = () => {
             })(),
             isArchived: Boolean(row.is_archived),
             categoryIsSpol: Boolean(product.category?.is_spol || row.category_is_spol),
+            locationId: row.location_id || null,
             binId: row.bin_id || null,
             binName: row.bin_name || row.bin?.name || null,
           };
@@ -334,6 +336,7 @@ const Inventory: React.FC = () => {
     setIsSavingAdjust(true);
 
     try {
+      const adjustItem = items.find(i => i.productId === adjustProductId);
       await api.post("/inventory/adjust-stock", {
         product_id: adjustProductId,
         quantity_on_hand: adjustQty,
@@ -341,6 +344,7 @@ const Inventory: React.FC = () => {
         reorder_level: adjustReorderLevel,
         reorder_qty: adjustReorderQty,
         bin_id: adjustBinId,
+        location_id: adjustItem?.locationId || null,
       });
 
       await loadInventory();

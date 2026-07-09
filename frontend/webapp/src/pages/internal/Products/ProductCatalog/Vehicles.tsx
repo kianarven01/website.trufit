@@ -305,8 +305,7 @@ const VehiclesPage: React.FC = () => {
           Browse All Products
         </button>
         <button
-          onClick={() => {}}
-          className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-900 text-white shadow-sm transition"
+          className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-900 text-white shadow-sm transition cursor-default"
         >
           Browse by Vehicle
         </button>

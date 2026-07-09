@@ -262,7 +262,6 @@ class InventoryController extends Controller
         $result = DB::transaction(function () use ($validated, $product, $locationId) {
             $inventory = Inventory::query()
                 ->where('productID', $product->id)
-                ->where('location_id', $locationId)
                 ->lockForUpdate()
                 ->first();
 
@@ -369,10 +368,8 @@ class InventoryController extends Controller
             }
 
             if (! $inventory) {
-                $locationId = $this->getDefaultLocationId();
                 $inventory = Inventory::query()
                     ->where('productID', $movement->product_id)
-                    ->where('location_id', $locationId)
                     ->lockForUpdate()
                     ->first();
             }

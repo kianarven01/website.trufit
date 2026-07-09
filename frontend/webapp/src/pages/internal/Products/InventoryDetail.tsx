@@ -25,6 +25,7 @@ import {
   Loader2,
 } from "lucide-react";
 import api from "@/api/axios";
+import AppToast, { AppToastType } from "@/components/ui/AppToast";
 import { formatPeso, toNumberOrNull } from "@/lib/format";
 
 interface InventoryDetailItem {
@@ -262,6 +263,7 @@ const InventoryDetail: React.FC = () => {
   const [editWarehouseId, setEditWarehouseId] = useState<string>("");
   const [editBinId, setEditBinId] = useState<string>("__none__");
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [toast, setToast] = useState<{ type: AppToastType; title: string; message: string } | null>(null);
 
   const loadInventoryDetail = async () => {
     if (!inventoryId) return;
@@ -317,9 +319,10 @@ const InventoryDetail: React.FC = () => {
         setItem(normalizeInventoryDetail(updated));
       }
       setIsEditingLocation(false);
+      setToast({ type: "success", title: "Location Updated", message: "Inventory location has been updated." });
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to update location.";
-      console.error("Location update failed:", msg);
+      setToast({ type: "error", title: "Update Failed", message: msg });
     } finally {
       setIsSavingLocation(false);
     }
@@ -394,6 +397,15 @@ const InventoryDetail: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="p-6 space-y-5 h-full flex flex-col overflow-y-auto">
+        {toast && (
+          <AppToast
+            type={toast.type}
+            title={toast.title}
+            message={toast.message}
+            duration={4000}
+            onClose={() => setToast(null)}
+          />
+        )}
         <div className="flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
             <Button

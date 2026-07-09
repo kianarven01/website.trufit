@@ -74,6 +74,13 @@ class WarehouseController extends Controller
             ], 422);
         }
 
+        $hasBins = $location->bins()->count() > 0;
+        if ($hasBins) {
+            return response()->json([
+                'message' => 'Cannot delete warehouse with existing bin locations. Delete or move bins first.',
+            ], 422);
+        }
+
         $location->delete();
 
         return response()->json([

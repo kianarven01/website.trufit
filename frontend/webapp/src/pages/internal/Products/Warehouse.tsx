@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,6 +87,8 @@ const Warehouse: React.FC = () => {
   const [binFormName, setBinFormName] = useState("");
   const [isSavingBin, setIsSavingBin] = useState(false);
   const [confirmDeleteBinId, setConfirmDeleteBinId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingBinId, setDeletingBinId] = useState<string | null>(null);
 
   const loadLocations = async () => {
     setLoading(true);
@@ -158,6 +160,7 @@ const Warehouse: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
+    setDeletingId(id);
     try {
       await api.delete(`/warehouses/${id}`);
       if (expandedId === id) setExpandedId(null);
@@ -166,8 +169,10 @@ const Warehouse: React.FC = () => {
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to delete warehouse. Please try again.";
       setToast({ type: "error", title: "Delete Failed", message: msg });
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
     }
-    setConfirmDeleteId(null);
   };
 
   const handleOpenAddBin = (warehouseId: string) => {
@@ -214,6 +219,7 @@ const Warehouse: React.FC = () => {
   };
 
   const handleDeleteBin = async (id: string) => {
+    setDeletingBinId(id);
     try {
       await api.delete(`/bin-locations/${id}`);
       await loadLocations();
@@ -221,8 +227,10 @@ const Warehouse: React.FC = () => {
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Failed to delete bin. Please try again.";
       setToast({ type: "error", title: "Delete Failed", message: msg });
+    } finally {
+      setDeletingBinId(null);
+      setConfirmDeleteBinId(null);
     }
-    setConfirmDeleteBinId(null);
   };
 
   const toggleExpand = (id: string) => {
@@ -315,7 +323,7 @@ const Warehouse: React.FC = () => {
 
                 <TableBody>
                   {filtered.map((loc) => (
-                    <>
+                    <React.Fragment key={loc.id}>
                       <TableRow
                         key={loc.id}
                         onClick={() => toggleExpand(loc.id)}
@@ -512,7 +520,7 @@ const Warehouse: React.FC = () => {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
@@ -607,16 +615,17 @@ const Warehouse: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Warehouse</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this warehouse? This action cannot be undone.
+              Are you sure you want to delete this warehouse? All bin locations within it will also be deleted. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { if (confirmDeleteId) void handleDelete(confirmDeleteId); }}
+              disabled={!!deletingId}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deletingId ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -691,9 +700,10 @@ const Warehouse: React.FC = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { if (confirmDeleteBinId) void handleDeleteBin(confirmDeleteBinId); }}
+              disabled={!!deletingBinId}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deletingBinId ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -17,6 +17,7 @@ import {
   VehicleMakerOption,
 } from "@/components/popupModal/ProductCatalog/addVehicle";
 import { slugify } from "@/lib/slug";
+import { toast } from "sonner";
 
 import {
   Car,
@@ -359,67 +360,79 @@ const VehicleVariantsPage: React.FC = () => {
     model: string;
     image?: string;
   }) => {
-    const payload = {
-      manufacturer_id: vehicleData.makeId,
-      model: vehicleData.model,
-      image_url: vehicleData.image || null,
-    };
+    try {
+      const payload = {
+        manufacturer_id: vehicleData.makeId,
+        model: vehicleData.model,
+        image_url: vehicleData.image || null,
+      };
 
-    if (vehicleData.id) {
-      await api.put(`/vehicles/${vehicleData.id}`, payload);
-    } else {
-      await api.post("/vehicles", payload);
+      if (vehicleData.id) {
+        await api.put(`/vehicles/${vehicleData.id}`, payload);
+      } else {
+        await api.post("/vehicles", payload);
+      }
+
+      await loadPageData();
+      setVehicleModalOpen(false);
+      setEditingVehicle(null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to save vehicle.");
     }
-
-    await loadPageData();
-    setVehicleModalOpen(false);
-    setEditingVehicle(null);
   };
 
   const handleVariantSaved = async (variant: VehicleVariantFormData) => {
     if (!currentVehicle?.id) return;
 
-    const payload = {
-      car_model_id: Number(currentVehicle.id),
-      variant_name: variant.name,
-      year: variant.year || null,
-      engine_displacement: variant.engine || null,
-      transmission_type: variant.transmission || null,
-      drivetrain: variant.drivetrain || null,
-      fuel_type: variant.fuel || null,
-      body_type: variant.bodyType || null,
-      oil_capacity: variant.oilCapacity ?? null,
-      service_class: variant.serviceClass || null,
-    };
+    try {
+      const payload = {
+        car_model_id: Number(currentVehicle.id),
+        variant_name: variant.name,
+        year: variant.year || null,
+        engine_displacement: variant.engine || null,
+        transmission_type: variant.transmission || null,
+        drivetrain: variant.drivetrain || null,
+        fuel_type: variant.fuel || null,
+        body_type: variant.bodyType || null,
+        oil_capacity: variant.oilCapacity ?? null,
+        service_class: variant.serviceClass || null,
+      };
 
-    if (variant.id) {
-      await api.put(`/vehicles/variants/${variant.id}`, payload);
-    } else {
-      await api.post(`/vehicles/models/${currentVehicle.id}/variants`, payload);
+      if (variant.id) {
+        await api.put(`/vehicles/variants/${variant.id}`, payload);
+      } else {
+        await api.post(`/vehicles/models/${currentVehicle.id}/variants`, payload);
+      }
+
+      await loadVariants(currentVehicle.id);
+      setVariantModalOpen(false);
+      setEditingVariant(null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to save variant.");
     }
-
-    await loadVariants(currentVehicle.id);
-    setVariantModalOpen(false);
-    setEditingVariant(null);
   };
 
   const handleCategorySaved = async (category: {
     name: string;
     id?: string;
   }) => {
-    const payload = {
-      name: category.name,
-    };
+    try {
+      const payload = {
+        name: category.name,
+      };
 
-    if (category.id) {
-      await api.put(`/products/categories/${category.id}`, payload);
-    } else {
-      await api.post("/products/categories", payload);
+      if (category.id) {
+        await api.put(`/products/categories/${category.id}`, payload);
+      } else {
+        await api.post("/products/categories", payload);
+      }
+
+      await loadCategories();
+      setCategoryModalOpen(false);
+      setEditingCategory(null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to save category.");
     }
-
-    await loadCategories();
-    setCategoryModalOpen(false);
-    setEditingCategory(null);
   };
 
   const confirmDeleteVariant = async () => {

@@ -12,11 +12,13 @@ use Illuminate\Support\Str;
 
 class BinLocationController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, ?string $warehouseId = null): JsonResponse
     {
         $query = BinLocation::query()->orderBy('code');
 
-        if ($request->filled('warehouse_id')) {
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        } elseif ($request->filled('warehouse_id')) {
             $query->where('warehouse_id', $request->warehouse_id);
         }
 

@@ -405,6 +405,7 @@ const ProductDetail: React.FC = () => {
   const [isSavingDescription, setIsSavingDescription] = useState(false);
   const [confirmRemoveSupplierId, setConfirmRemoveSupplierId] = useState<string | null>(null);
   const [confirmRemoveVehicleId, setConfirmRemoveVehicleId] = useState<string | null>(null);
+  const [confirmRemoveEquivalent, setConfirmRemoveEquivalent] = useState<{ groupId: string; equivalentProductId: string } | null>(null);
   
   const [toast, setToast] = useState<{
     type: AppToastType;
@@ -474,6 +475,7 @@ const ProductDetail: React.FC = () => {
       );
     } catch (error) {
       console.error("Failed to load categories:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load categories." });
       setCategories([]);
     }
   };
@@ -487,11 +489,11 @@ const ProductDetail: React.FC = () => {
         (Array.isArray(rows) ? rows : []).map((row: any) => ({
           id: String(row.id),
           name: String(row.name || ""),
-          supplier_code: "",
         }))
       );
     } catch (error) {
       console.error("Failed to load manufacturers:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load manufacturers." });
       setManufacturers([]);
     }
   };
@@ -510,6 +512,7 @@ const ProductDetail: React.FC = () => {
       );
     } catch (error) {
       console.error("Failed to load suppliers:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load suppliers." });
       setSuppliers([]);
     }
   };
@@ -569,6 +572,7 @@ const ProductDetail: React.FC = () => {
       setEquivalentGroups(rows.map(normalizeEquivalentGroup));
     } catch (error) {
       console.error("Failed to load equivalent groups:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load equivalent groups." });
       setEquivalentGroups([]);
     }
   };
@@ -599,6 +603,7 @@ const ProductDetail: React.FC = () => {
       );
     } catch (error) {
       console.error("Failed to load equivalent candidates:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load equivalent candidates." });
       setEquivalentCandidates([]);
     } finally {
       setEquivalentLoading(false);
@@ -1255,7 +1260,7 @@ const ProductDetail: React.FC = () => {
                 <div className="flex items-center justify-between bg-foreground/5 rounded-xl py-2 px-4 gap-3">
                   <div className="flex flex-1 justify-center overflow-hidden">
                     {barcodeValue ? (
-                      <div className="bg-white rounded-md border px-3 py-2 max-w-full overflow-hidden flex justify-center">
+                      <div className="bg-background rounded-md border px-3 py-2 max-w-full overflow-hidden flex justify-center">
                         <Barcode
                           value={barcodeValue}
                           format="CODE128"
@@ -1304,7 +1309,7 @@ const ProductDetail: React.FC = () => {
                     <span className="text-muted-foreground">Supplier Cost</span>
                     <span>
                       {selectedSupplierCost !== null
-                        ? `₱${selectedSupplierCost.toFixed(2)}`
+                        ? formatPeso(selectedSupplierCost)
                         : "-"}
                     </span>
 
@@ -1444,7 +1449,7 @@ const ProductDetail: React.FC = () => {
                                   <span>
                                     Cost:{" "}
                                     {supplierCost !== null
-                                      ? `₱${supplierCost.toFixed(2)}`
+                                      ? formatPeso(supplierCost)
                                       : "-"}
                                   </span>
                                   <span>•</span>
@@ -1695,7 +1700,7 @@ const ProductDetail: React.FC = () => {
                                     type="button"
                                     title="Remove equivalent product"
                                     onClick={() =>
-                                      handleRemoveEquivalent(group.id, equivalentProduct.id)
+                                      setConfirmRemoveEquivalent({ groupId: group.id, equivalentProductId: equivalentProduct.id })
                                     }
                                   >
                                     <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
@@ -2017,6 +2022,28 @@ const ProductDetail: React.FC = () => {
             <AlertDialogAction
               onClick={() => {
                 if (confirmRemoveVehicleId) void handleRemoveVehicleCompatibility(confirmRemoveVehicleId);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Equivalent Product Confirmation */}
+      <AlertDialog open={!!confirmRemoveEquivalent} onOpenChange={(open) => !open && setConfirmRemoveEquivalent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Equivalent Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this equivalent product from the group?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRemoveEquivalent) void handleRemoveEquivalent(confirmRemoveEquivalent.groupId, confirmRemoveEquivalent.equivalentProductId);
               }}
             >
               Remove

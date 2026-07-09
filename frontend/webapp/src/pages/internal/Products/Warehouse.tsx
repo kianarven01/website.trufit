@@ -97,6 +97,7 @@ const Warehouse: React.FC = () => {
       setLocations(rows);
     } catch (error) {
       console.error("Failed to load warehouses:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load warehouses." });
     } finally {
       setLoading(false);
     }
@@ -276,7 +277,7 @@ const Warehouse: React.FC = () => {
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleOpenAdd}
-                className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+                className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
               >
                 <Plus className="h-4 w-4 mr-1.5" />
                 Add Warehouse
@@ -403,7 +404,7 @@ const Warehouse: React.FC = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => setConfirmDeleteId(loc.id)}
-                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100/50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 transition"
                               >
                                 Delete
                               </DropdownMenuItem>
@@ -494,7 +495,7 @@ const Warehouse: React.FC = () => {
                                               </DropdownMenuItem>
                                               <DropdownMenuItem
                                                 onClick={() => setConfirmDeleteBinId(bin.id)}
-                                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100/50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 transition"
                                               >
                                                 Delete
                                               </DropdownMenuItem>
@@ -553,7 +554,7 @@ const Warehouse: React.FC = () => {
               </Label>
               <Input
                 placeholder="e.g. MWH-01"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={formCode}
                 onChange={(e) => setFormCode(e.target.value)}
               />
@@ -565,7 +566,7 @@ const Warehouse: React.FC = () => {
               </Label>
               <Input
                 placeholder="e.g. Main Warehouse"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
               />
@@ -577,7 +578,7 @@ const Warehouse: React.FC = () => {
               </Label>
               <Input
                 placeholder="Optional description"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
               />
@@ -597,7 +598,7 @@ const Warehouse: React.FC = () => {
             <Button
               onClick={handleSave}
               disabled={isSaving || !formName.trim() || !formCode.trim()}
-              className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSaving ? "Saving..." : editingLocation ? "Save Changes" : "Create Warehouse"}
             </Button>
@@ -643,7 +644,7 @@ const Warehouse: React.FC = () => {
               </Label>
               <Input
                 placeholder="e.g. A1"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={binFormCode}
                 onChange={(e) => setBinFormCode(e.target.value)}
               />
@@ -655,7 +656,7 @@ const Warehouse: React.FC = () => {
               </Label>
               <Input
                 placeholder="Optional name"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={binFormName}
                 onChange={(e) => setBinFormName(e.target.value)}
               />
@@ -675,7 +676,7 @@ const Warehouse: React.FC = () => {
             <Button
               onClick={handleSaveBin}
               disabled={isSavingBin || !binFormCode.trim()}
-              className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSavingBin ? "Saving..." : editingBin ? "Save Changes" : "Create Bin"}
             </Button>

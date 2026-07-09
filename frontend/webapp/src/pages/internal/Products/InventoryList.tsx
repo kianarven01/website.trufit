@@ -137,7 +137,8 @@ const Inventory: React.FC = () => {
   const [sundriesDateTo, setSundriesDateTo] = useState<string>("");
   const [showSundriesFilter, setShowSundriesFilter] = useState(false);
 
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
+  const { page: inventoryPage, setPage: setInventoryPage, pageSize: inventoryPageSize, setPageSize: setInventoryPageSize, paginate: inventoryPaginate } = usePagination(25);
+  const { page: sundriesPage, setPage: setSundriesPage, pageSize: sundriesPageSize, setPageSize: setSundriesPageSize, paginate: sundriesPaginate } = usePagination(25);
 
   /* ================= LOAD ================= */
   const loadInventory = async () => {
@@ -208,6 +209,7 @@ const Inventory: React.FC = () => {
       setItems(normalized);
     } catch (error) {
       console.error("Failed to load inventory:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load inventory data." });
     } finally {
       setLoading(false);
     }
@@ -218,8 +220,9 @@ const Inventory: React.FC = () => {
   }, [activeFilters.archived]);
 
   useEffect(() => {
-    setPage(1);
-  }, [search, activeFilters, setPage]);
+    setInventoryPage(1);
+    setSundriesPage(1);
+  }, [search, activeFilters, setInventoryPage, setSundriesPage]);
 
   /* ================= SUNDRIES ================= */
   const loadSundriesMovements = async () => {
@@ -233,6 +236,7 @@ const Inventory: React.FC = () => {
       setSundriesMovements(rows);
     } catch (error) {
       console.error("Failed to load sundries movements:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load sundries usage." });
     } finally {
       setSundriesLoading(false);
     }
@@ -252,14 +256,13 @@ const Inventory: React.FC = () => {
       setSundriesProducts(products);
     } catch (error) {
       console.error("Failed to load sundries products:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load sundries products." });
     }
   };
 
   useEffect(() => {
     if (activeTab === "sundries") {
       void loadSundriesMovements();
-    } else {
-      void loadInventory();
     }
   }, [activeTab, sundriesDateFrom, sundriesDateTo]);
 
@@ -404,7 +407,9 @@ const Inventory: React.FC = () => {
     return matchesSearch && matchesStatus && matchesArchived;
   }), [items, search, activeFilters]);
 
-  const paginated = paginate(filtered);
+  const paginated = inventoryPaginate(filtered);
+
+  const paginatedSundries = sundriesPaginate(filteredSundries);
 
   return (
     <>
@@ -481,7 +486,7 @@ const Inventory: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Button
                   onClick={handleOpenSundriesModal}
-                  className="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+                  className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white font-medium shadow-sm transition text-sm px-4 py-2"
                 >
                   <Plus className="h-4 w-4 mr-1.5" />
                   Add Sundries Usage
@@ -497,14 +502,14 @@ const Inventory: React.FC = () => {
                   <Label className="text-muted-foreground font-medium">From</Label>
                   <Input
                     type="date"
-                    className="w-[160px] border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                    className="w-[160px] border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                     value={sundriesDateFrom}
                     onChange={(e) => setSundriesDateFrom(e.target.value)}
                   />
                   <Label className="text-muted-foreground font-medium">To</Label>
                   <Input
                     type="date"
-                    className="w-[160px] border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                    className="w-[160px] border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                     value={sundriesDateTo}
                     onChange={(e) => setSundriesDateTo(e.target.value)}
                   />
@@ -723,7 +728,7 @@ const Inventory: React.FC = () => {
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         onClick={() => setConfirmDeleteId(p.id)}
-                                        className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                                        className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100/50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 transition"
                                       >
                                         Delete Permanently
                                       </DropdownMenuItem>
@@ -747,14 +752,14 @@ const Inventory: React.FC = () => {
               </div>
 
               {/* ================= PAGINATION ================= */}
-              {filtered.length > pageSize && (
+              {filtered.length > inventoryPageSize && (
                 <div className="sticky bottom-0 bg-background z-10 py-2 border-t border-border/40">
                   <Pagination
                     totalItems={filtered.length}
-                    page={page}
-                    pageSize={pageSize}
-                    onPageChange={setPage}
-                    onPageSizeChange={setPageSize}
+                    page={inventoryPage}
+                    pageSize={inventoryPageSize}
+                    onPageChange={setInventoryPage}
+                    onPageSizeChange={setInventoryPageSize}
                   />
                 </div>
               )}
@@ -809,7 +814,7 @@ const Inventory: React.FC = () => {
                   </TableHeader>
 
                   <TableBody>
-                    {filteredSundries.map((m) => (
+                    {paginatedSundries.map((m) => (
                       <TableRow
                         key={m.id}
                         className="rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30 transition-all"
@@ -878,7 +883,7 @@ const Inventory: React.FC = () => {
                             >
                               <DropdownMenuItem
                                 onClick={() => setReverseMovement(m)}
-                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100 text-red-600 px-3 py-2 transition"
+                                className="cursor-pointer font-medium text-xs rounded-lg hover:bg-red-100/50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-2 transition"
                               >
                                 Reverse
                               </DropdownMenuItem>
@@ -890,6 +895,18 @@ const Inventory: React.FC = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              {filteredSundries.length > sundriesPageSize && (
+                <div className="sticky bottom-0 bg-background z-10 py-2 border-t border-border/40">
+                  <Pagination
+                    totalItems={filteredSundries.length}
+                    page={sundriesPage}
+                    pageSize={sundriesPageSize}
+                    onPageChange={setSundriesPage}
+                    onPageSizeChange={setSundriesPageSize}
+                  />
+                </div>
+              )}
             </ScrollArea>
           ) : (
             <Card className="bg-card border border-border/40 shadow-sm backdrop-blur-md">
@@ -928,7 +945,7 @@ const Inventory: React.FC = () => {
                 id="adjust-qty"
                 type="number"
                 min="0"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={adjustQty}
                 onChange={(e) => {
                   const newQty = Math.max(0, parseInt(e.target.value) || 0);
@@ -950,7 +967,7 @@ const Inventory: React.FC = () => {
                 type="number"
                 min="0"
                 max={adjustQty}
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={adjustReservedQty}
                 onChange={(e) =>
                   setAdjustReservedQty(
@@ -971,7 +988,7 @@ const Inventory: React.FC = () => {
                 id="adjust-reorder-level"
                 type="number"
                 min="0"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={adjustReorderLevel}
                 onChange={(e) =>
                   setAdjustReorderLevel(
@@ -992,7 +1009,7 @@ const Inventory: React.FC = () => {
                 id="adjust-reorder-qty"
                 type="number"
                 min="0"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={adjustReorderQty}
                 onChange={(e) =>
                   setAdjustReorderQty(
@@ -1016,7 +1033,7 @@ const Inventory: React.FC = () => {
             <Button
               onClick={handleSaveAdjust}
               disabled={isSavingAdjust || !adjustProductId}
-              className="bg-blue-900 hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSavingAdjust ? "Saving..." : "Save Adjustments"}
             </Button>
@@ -1044,11 +1061,17 @@ const Inventory: React.FC = () => {
                     <SelectValue placeholder="Select a product" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border border-border/40 shadow-xl rounded-xl max-h-[300px] overflow-auto">
-                    {sundriesProducts.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-sm">
-                        {p.name} (Stock: {p.stock})
-                      </SelectItem>
-                    ))}
+                    {sundriesProducts.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        No Supplies & Oils products available
+                      </div>
+                    ) : (
+                      sundriesProducts.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className="text-sm">
+                          {p.name} (Stock: {p.stock})
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -1065,7 +1088,8 @@ const Inventory: React.FC = () => {
                 id="sundries-qty"
                 type="number"
                 min="1"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                max={sundriesProducts.find((p) => p.id === sundriesProductId)?.stock || undefined}
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={sundriesQty}
                 onChange={(e) =>
                   setSundriesQty(Math.max(1, parseInt(e.target.value) || 1))
@@ -1083,7 +1107,7 @@ const Inventory: React.FC = () => {
               <Input
                 id="sundries-notes"
                 placeholder="Optional: what was it used for?"
-                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-blue-900"
+                className="col-span-3 border border-border/80 rounded-lg bg-background text-foreground focus-visible:ring-ring"
                 value={sundriesNotes}
                 onChange={(e) => setSundriesNotes(e.target.value)}
               />
@@ -1103,7 +1127,7 @@ const Inventory: React.FC = () => {
             <Button
               onClick={handleSaveSundries}
               disabled={isSavingSundries || !sundriesProductId || sundriesQty < 1}
-              className="bg-amber-500 hover:bg-amber-600 text-white font-medium shadow-sm transition text-sm px-4 py-2"
+              className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white font-medium shadow-sm transition text-sm px-4 py-2"
             >
               {isSavingSundries ? "Saving..." : "Deduct Stock"}
             </Button>

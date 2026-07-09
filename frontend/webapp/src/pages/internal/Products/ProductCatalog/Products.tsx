@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { slugify, fromSlug } from "@/lib/slug";
@@ -208,7 +208,7 @@ const FitmentBadge = ({
 }) => {
   if (product.fitmentType === "direct") {
     return (
-      <span className="w-fit rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700">
+      <span className="w-fit rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
         Direct fit
       </span>
     );
@@ -216,7 +216,7 @@ const FitmentBadge = ({
 
   if (product.fitmentType === "equivalent") {
     return (
-      <span className="w-fit rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+      <span className="w-fit rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-400">
         {product.equivalentToProductName
           ? `Equivalent to ${product.equivalentToProductName}`
           : "Equivalent fit"}
@@ -258,7 +258,6 @@ const ProductsList: React.FC = () => {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [manufacturers, setManufacturers] = useState<SupplierOption[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
-  const [variants, setVariants] = useState<VariantInfo[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{
@@ -350,8 +349,6 @@ const ProductsList: React.FC = () => {
         name: String(row.name || row.variant || row.variant_name || ""),
       }));
 
-      setVariants(normalizedVariants);
-
       const matchedVariant =
         routeState?.variant ||
         normalizedVariants.find((variant) => slugify(variant.name) === variantSlug);
@@ -359,6 +356,7 @@ const ProductsList: React.FC = () => {
       setResolvedVariantId(matchedVariant?.id ? String(matchedVariant.id) : null);
     } catch (error) {
       console.error("Failed to load vehicles:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load vehicles." });
       setResolvedVehicleId(null);
       setResolvedVariantId(null);
     }
@@ -387,6 +385,7 @@ const ProductsList: React.FC = () => {
       setResolvedCategoryId(matchedCategory?.id ? String(matchedCategory.id) : null);
     } catch (error) {
       console.error("Failed to load categories:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load categories." });
       setCategories([]);
       setResolvedCategoryId(null);
     }
@@ -405,6 +404,7 @@ const ProductsList: React.FC = () => {
       );
     } catch (error) {
       console.error("Failed to load manufacturers:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load manufacturers." });
       setManufacturers([]);
     }
   };
@@ -422,6 +422,7 @@ const ProductsList: React.FC = () => {
       );
     } catch (error) {
       console.error("Failed to load suppliers:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load suppliers." });
       setSuppliers([]);
     }
   };
@@ -443,6 +444,7 @@ const ProductsList: React.FC = () => {
       setProducts((Array.isArray(rows) ? rows : []).map(normalizeProduct));
     } catch (error) {
       console.error("Failed to load products:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load products." });
       setProducts([]);
     }
   };
@@ -625,7 +627,7 @@ const ProductsList: React.FC = () => {
             className={cn(
               "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
               isGeneralView
-                ? "bg-blue-900 text-white shadow-sm"
+                ? "bg-blue-600 dark:bg-blue-700 text-white shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -636,7 +638,7 @@ const ProductsList: React.FC = () => {
             className={cn(
               "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
               !isGeneralView
-                ? "bg-blue-900 text-white shadow-sm"
+                ? "bg-blue-600 dark:bg-blue-700 text-white shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >

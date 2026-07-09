@@ -10,14 +10,17 @@ import { Edit, Trash2, ChevronRight, Car } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbPage,
-  BreadcrumbLink,
-} from "@/components/ui/breadcrumb";
-import api from "@/api/axios";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { slugify } from "@/lib/slug";
+import api from "@/api/axios";
 
 export interface MakeOption {
   id: string;
@@ -96,6 +99,7 @@ const VehiclesPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingVehicleId, setDeletingVehicleId] = useState<string | null>(null);
 
   const loadManufacturers = async () => {
     const res = await api.get("/vehicles/manufacturers");
@@ -123,8 +127,9 @@ const VehiclesPage: React.FC = () => {
 
     try {
       await Promise.all([loadManufacturers(), loadVehicles()]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to load vehicles page:", error);
+      toast.error("Failed to load vehicles.");
       setVehicles([]);
       setMakers([]);
     } finally {
@@ -180,8 +185,9 @@ const VehiclesPage: React.FC = () => {
       });
 
       return created;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create manufacturer:", error);
+      toast.error(error?.response?.data?.message || "Failed to create manufacturer.");
       return null;
     }
   };
@@ -229,12 +235,6 @@ const VehiclesPage: React.FC = () => {
   };
 
   const handleDeleteVehicle = async (vehicle: Vehicle) => {
-    const confirmed = window.confirm(
-      `Delete ${vehicle.makeName} ${vehicle.model}?`
-    );
-
-    if (!confirmed) return;
-
     try {
       await api.delete(`/vehicles/${vehicle.id}`);
       await loadVehicles();
@@ -305,7 +305,7 @@ const VehiclesPage: React.FC = () => {
           Browse All Products
         </button>
         <button
-          className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-900 text-white shadow-sm transition cursor-default"
+          className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 dark:bg-blue-700 text-white shadow-sm transition cursor-default"
         >
           Browse by Vehicle
         </button>
@@ -389,7 +389,7 @@ const VehiclesPage: React.FC = () => {
                               size="icon_xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                void handleDeleteVehicle(vehicle);
+                                setDeletingVehicleId(vehicle.id);
                               }}
                               className="p-2 shadow-sm hover:text-white"
                               title="Delete Vehicle"
@@ -401,7 +401,7 @@ const VehiclesPage: React.FC = () => {
                       </div>
                     </CardContent>
 
-                    <CardFooter className="flex justify-between items-center px-4 py-4 bg-card group-hover:bg-blue-900 transition-colors">
+                    <CardFooter className="flex justify-between items-center px-4 py-4 bg-card group-hover:bg-blue-600 dark:group-hover:bg-blue-700 transition-colors">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-foreground group-hover:text-white">
                           {vehicle.model}
@@ -438,6 +438,30 @@ const VehiclesPage: React.FC = () => {
         onSaved={handleSaveVehicle}
         onCreateManufacturer={handleCreateManufacturer}
       />
+
+      <AlertDialog open={!!deletingVehicleId} onOpenChange={(open) => !open && setDeletingVehicleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Vehicle</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this vehicle? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const v = vehicles.find((v) => v.id === deletingVehicleId);
+                if (v) void handleDeleteVehicle(v);
+                setDeletingVehicleId(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

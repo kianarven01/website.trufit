@@ -185,7 +185,7 @@ const normalizeInventoryDetail = (row: any): InventoryDetailItem => {
     reorderLevel: toNumberOrNull(row.reorder_level),
     reorderQty: toNumberOrNull(row.reorder_qty),
     locationId: row.location_id || null,
-    locationName: row.location_name || row.location_id || null,
+    locationName: row.location_name || null,
     binId: row.bin_id || null,
     binName: row.bin_name || row.bin?.name || null,
     description: product.description || row.description || "-",
@@ -278,6 +278,7 @@ const InventoryDetail: React.FC = () => {
     } catch (error) {
       console.error("Failed to load inventory detail:", error);
       setItem(null);
+      setToast({ type: "error", title: "Error", message: "Failed to load inventory detail." });
     } finally {
       setLoading(false);
     }
@@ -290,6 +291,7 @@ const InventoryDetail: React.FC = () => {
       setWarehouses(rows);
     } catch (error) {
       console.error("Failed to load warehouses:", error);
+      setToast({ type: "error", title: "Error", message: "Failed to load warehouses." });
     }
   }, []);
 
@@ -682,30 +684,6 @@ const InventoryDetail: React.FC = () => {
                     No equivalent parts added yet.
                   </p>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Stock Planning */}
-            <Card className="p-4 flex-1 min-h-0">
-              <CardContent className="p-0 h-full flex flex-col space-y-4">
-                <h2 className="font-semibold">Stock Planning</h2>
-
-                <div className="grid grid-cols-2 gap-y-3 text-sm">
-                  <span className="text-muted-foreground">Current Stock</span>
-                  <span className="font-semibold">{item.quantityOnHand}</span>
-
-                  <span className="text-muted-foreground">Reserved</span>
-                  <span>{item.reservedQuantity}</span>
-
-                  <span className="text-muted-foreground">Available</span>
-                  <span>{item.availableQuantity}</span>
-
-                  <span className="text-muted-foreground">Reorder At</span>
-                  <span>{item.reorderLevel ?? "-"}</span>
-
-                  <span className="text-muted-foreground">Suggested Reorder</span>
-                  <span>{item.reorderQty ?? "-"}</span>
-                </div>
               </CardContent>
             </Card>
           </div>

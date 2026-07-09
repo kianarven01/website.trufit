@@ -1,13 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Combobox from "@/components/ui/combobox";
@@ -93,16 +85,6 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   "Tyres & Wheels": Disc,
 };
 
-const fromVehicleSlug = (slug?: string) => {
-  if (!slug) return { make: "", model: "" };
-
-  const parts = slug.split("-");
-  return {
-    make: parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : "",
-    model: parts.slice(1).join(" ").replace(/\b\w/g, (c) => c.toUpperCase()),
-  };
-};
-
 const toCategorySlug = (name: string) => slugify(name);
 const toVariantSlug = (name: string) => slugify(name);
 
@@ -157,8 +139,6 @@ const VehicleVariantsPage: React.FC = () => {
   );
   const [makers, setMakers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const slugParts = fromVehicleSlug(vehicleSlug);
 
   const selectedVariant = variantList.find((v) => v.id === selectedVariantId);
 
@@ -288,6 +268,7 @@ const VehicleVariantsPage: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed to load vehicle variants page:", error);
+      toast.error("Failed to load vehicle data.");
       setVariantList([]);
       setCategoryList([]);
     } finally {
@@ -348,8 +329,9 @@ const VehicleVariantsPage: React.FC = () => {
       });
 
       return created;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create manufacturer:", error);
+      toast.error(error?.response?.data?.message || "Failed to create manufacturer.");
       return null;
     }
   };
@@ -359,18 +341,37 @@ const VehicleVariantsPage: React.FC = () => {
     makeId: string;
     model: string;
     image?: string;
+    imageFile?: File | null;
   }) => {
     try {
-      const payload = {
-        manufacturer_id: vehicleData.makeId,
-        model: vehicleData.model,
-        image_url: vehicleData.image || null,
-      };
+      if (vehicleData.imageFile) {
+        const formData = new FormData();
+        formData.append("manufacturer_id", vehicleData.makeId);
+        formData.append("model", vehicleData.model);
+        formData.append("image", vehicleData.imageFile);
 
-      if (vehicleData.id) {
-        await api.put(`/vehicles/${vehicleData.id}`, payload);
+        if (vehicleData.id) {
+          formData.append("_method", "PUT");
+          await api.post(`/vehicles/${vehicleData.id}`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        } else {
+          await api.post("/vehicles", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
       } else {
-        await api.post("/vehicles", payload);
+        const payload = {
+          manufacturer_id: vehicleData.makeId,
+          model: vehicleData.model,
+          image_url: vehicleData.image || null,
+        };
+
+        if (vehicleData.id) {
+          await api.put(`/vehicles/${vehicleData.id}`, payload);
+        } else {
+          await api.post("/vehicles", payload);
+        }
       }
 
       await loadPageData();
@@ -441,14 +442,15 @@ const VehicleVariantsPage: React.FC = () => {
     try {
       await api.delete(`/vehicles/variants/${variantToDelete.id}`);
       await loadVariants(currentVehicle.id);
+      toast.success("Variant deleted successfully!");
 
       setSelectedVariantId((prev) => {
         if (prev !== variantToDelete.id) return prev;
         const remaining = variantList.filter((v) => v.id !== variantToDelete.id);
         return remaining.length > 0 ? remaining[0].id : null;
       });
-    } catch (error) {
-      console.error("Failed to delete variant:", error);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to delete variant.");
     } finally {
       setDeleteVariantOpen(false);
       setVariantToDelete(null);
@@ -461,8 +463,9 @@ const VehicleVariantsPage: React.FC = () => {
     try {
       await api.delete(`/products/categories/${categoryToDelete.id}`);
       await loadCategories();
-    } catch (error) {
-      console.error("Failed to delete category:", error);
+      toast.success("Category deleted successfully!");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to delete category.");
     } finally {
       setDeleteCategoryOpen(false);
       setCategoryToDelete(null);
@@ -549,7 +552,7 @@ const VehicleVariantsPage: React.FC = () => {
                           setEditingVehicle(currentVehicle);
                           setVehicleModalOpen(true);
                         }}
-                        className="p-1 rounded-lg bg-white/90 hover:bg-white text-gray-800"
+                        className="p-1 rounded-lg bg-background/90 hover:bg-background text-foreground"
                         title="Edit Vehicle"
                       >
                         <Edit className="h-4 w-4" />
@@ -557,13 +560,13 @@ const VehicleVariantsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="px-4 py-3 bg-white border-t">
+                  <div className="px-4 py-3 bg-card border-t">
                     <div className="flex justify-between items-start gap-3 mb-3">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-foreground">
                           {currentVehicle.makeName}
                         </p>
-                        <p className="text-sm text-gray-700">
+                        <p className="text-sm text-muted-foreground">
                           {currentVehicle.model}
                         </p>
                       </div>
@@ -590,7 +593,7 @@ const VehicleVariantsPage: React.FC = () => {
                     </div>
 
                     {selectedVariant && (
-                      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-gray-700">
+                      <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs text-muted-foreground">
                         <div>
                           <span className="font-medium">Year:</span>{" "}
                           {selectedVariant.year || "-"}
@@ -641,7 +644,7 @@ const VehicleVariantsPage: React.FC = () => {
                             setDeleteVariantOpen(true);
                           }}
                         >
-                          <Trash2 className="h-4 w-4 text-red-500" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     )}

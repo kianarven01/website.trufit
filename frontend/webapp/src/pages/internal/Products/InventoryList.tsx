@@ -574,37 +574,37 @@ const Inventory: React.FC = () => {
           ) : filtered.length > 0 ? (
             <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
               <div className="flex-1 overflow-auto">
-                <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                <Table className="w-full border-separate border-spacing-y-2">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-none">
-                      <TableHead className="w-4/12 text-muted-foreground font-semibold">
+                      <TableHead className="text-center text-muted-foreground font-semibold">
                         Product
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         SKU
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Part No.
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Category
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Price
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Stock
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Unit
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Warehouse
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="px-3 text-center text-muted-foreground font-semibold">
                         Status
                       </TableHead>
-                      <TableHead className="w-[8%] text-muted-foreground font-semibold" />
+                      <TableHead />
                     </TableRow>
                   </TableHeader>
 
@@ -630,7 +630,7 @@ const Inventory: React.FC = () => {
                             )}
                           >
                             {/* PRODUCT */}
-                            <TableCell className="py-2">
+                            <TableCell className="py-2 pl-3">
                               <div className="flex items-center gap-3">
                                 {p.image && !imgError[p.id] ? (
                                   <img
@@ -661,50 +661,50 @@ const Inventory: React.FC = () => {
                               </div>
                             </TableCell>
 
-                            <TableCell className="text-foreground/80 text-sm">
+                            <TableCell className="text-center px-3 text-foreground/80 text-sm">
                               {p.sku}
                             </TableCell>
 
-                            <TableCell className="text-foreground/80 text-sm">
+                            <TableCell className="text-center px-3 text-foreground/80 text-sm">
                               {p.partNumber}
                             </TableCell>
 
                             {/* CATEGORY */}
-                            <TableCell>
+                            <TableCell className="text-center px-3">
                               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.categoryIsSpol ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
                                 {p.categoryName}
                               </span>
                             </TableCell>
 
                             {/* PRICE */}
-                            <TableCell>
+                            <TableCell className="text-center px-3">
                               <span className="font-medium text-foreground text-sm">
                                 {formatPeso(p.sellingPrice)}
                               </span>
                             </TableCell>
 
                             {/* STOCK */}
-                            <TableCell>
+                            <TableCell className="text-center px-3">
                               <span className="font-semibold text-foreground text-sm">
                                 {p.stock}
                               </span>
                             </TableCell>
 
-                            <TableCell className="text-foreground/80 text-sm">
+                            <TableCell className="text-center px-3 text-foreground/80 text-sm">
                               {p.unit}
                             </TableCell>
 
                             {/* WAREHOUSE */}
-                            <TableCell className="text-foreground/80 text-sm">
+                            <TableCell className="text-center px-3 text-foreground/80 text-sm">
                               {p.locationName || "-"}
                               {p.binName ? ` / ${p.binName}` : ""}
                             </TableCell>
 
                             {/* STATUS */}
-                            <TableCell>
+                            <TableCell className="text-center px-3">
                               <span
                                 className={cn(
-                                  "text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit",
+                                  "text-[11px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1.5 w-fit",
                                   status.className
                                 )}
                               >
@@ -714,7 +714,7 @@ const Inventory: React.FC = () => {
                             </TableCell>
 
                             <TableCell
-                              className="text-right"
+                              className="text-center pr-3"
                               onClick={(event) => event.stopPropagation()}
                             >
                               <DropdownMenu>
@@ -804,25 +804,25 @@ const Inventory: React.FC = () => {
           ) : filteredSundries.length > 0 ? (
             <ScrollArea className="flex-1 h-0 border border-border/60 rounded-xl px-2 flex flex-col bg-background shadow-inner">
               <div className="flex-1 overflow-auto">
-                <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                <Table className="w-full border-separate border-spacing-y-2">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-none">
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="text-center text-muted-foreground font-semibold">
                         Date
                       </TableHead>
-                      <TableHead className="w-4/12 text-muted-foreground font-semibold">
+                      <TableHead className="text-center text-muted-foreground font-semibold">
                         Product
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="text-center text-muted-foreground font-semibold">
                         Type
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="text-center text-muted-foreground font-semibold">
                         Qty Used
                       </TableHead>
-                      <TableHead className="text-muted-foreground font-semibold">
+                      <TableHead className="text-center text-muted-foreground font-semibold">
                         Notes
                       </TableHead>
-                      <TableHead className="w-[8%] text-muted-foreground font-semibold" />
+                      <TableHead />
                     </TableRow>
                   </TableHeader>
 
@@ -832,7 +832,7 @@ const Inventory: React.FC = () => {
                         key={m.id}
                         className="rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30 transition-all"
                       >
-                        <TableCell className="text-foreground/80 text-sm">
+                        <TableCell className="text-center px-3 text-foreground/80 text-sm">
                           {m.created_at
                             ? format(new Date(m.created_at), "MMM d, yyyy h:mm a")
                             : "-"}
@@ -862,22 +862,22 @@ const Inventory: React.FC = () => {
                           </div>
                         </TableCell>
 
-                        <TableCell>
+                        <TableCell className="text-center px-3">
                           <StockMovementTypeBadge type="OUT_SUNDRIES" />
                         </TableCell>
 
-                        <TableCell>
+                        <TableCell className="text-center px-3">
                           <span className="font-semibold text-foreground text-sm">
                             {m.quantity}
                           </span>
                         </TableCell>
 
-                        <TableCell className="text-foreground/80 text-sm max-w-[200px] truncate">
+                        <TableCell className="text-center px-3 text-foreground/80 text-sm max-w-[200px] truncate">
                           {m.notes || "-"}
                         </TableCell>
 
                         <TableCell
-                          className="text-right"
+                          className="text-center pr-3"
                           onClick={(event) => event.stopPropagation()}
                         >
                           <DropdownMenu>

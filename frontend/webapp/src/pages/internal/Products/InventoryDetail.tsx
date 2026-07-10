@@ -338,10 +338,10 @@ const InventoryDetail: React.FC = () => {
 
   const visibleEquivalentGroups = useMemo(() => {
     return (item?.equivalentGroups || []).filter((group) => {
-      const equivalentProducts = group.products.filter((p) => p.id !== item?.productId);
+      const equivalentProducts = group.products.filter((p) => p.id !== item?.id);
       return equivalentProducts.length > 0;
     });
-  }, [item?.equivalentGroups, item?.productId]);
+  }, [item?.equivalentGroups, item?.id]);
 
   useEffect(() => {
     void loadInventoryDetail();

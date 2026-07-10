@@ -688,11 +688,11 @@ const ProductsList: React.FC = () => {
               <Table className="table-fixed w-full border-separate border-spacing-y-2">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-2/6">Product</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Part Number</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Selling Price</TableHead>
+                    <TableHead className="w-2/6 text-center">Product</TableHead>
+                    <TableHead className="text-center">SKU</TableHead>
+                    <TableHead className="text-center">Part Number</TableHead>
+                    <TableHead className="text-center">Unit</TableHead>
+                    <TableHead className="text-center">Selling Price</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -722,10 +722,10 @@ const ProductsList: React.FC = () => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{product.sku || "-"}</TableCell>
-                        <TableCell>{product.partNumber || "-"}</TableCell>
-                        <TableCell>{product.unitAbbreviation || product.unit || "-"}</TableCell>
-                        <TableCell>{formatPeso(product.price ? Number(product.price) : null)}</TableCell>
+                        <TableCell className="text-center">{product.sku || "-"}</TableCell>
+                        <TableCell className="text-center">{product.partNumber || "-"}</TableCell>
+                        <TableCell className="text-center">{product.unitAbbreviation || product.unit || "-"}</TableCell>
+                        <TableCell className="text-center">{formatPeso(product.price ? Number(product.price) : null)}</TableCell>
                       </TableRow>
                     ))
                   ) : (
@@ -745,11 +745,11 @@ const ProductsList: React.FC = () => {
               <Table className="table-fixed w-full border-separate border-spacing-y-2">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-3/6">Product</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Part Number</TableHead>
-                    <TableHead>Selling Price</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead className="w-3/6 text-center">Product</TableHead>
+                    <TableHead className="text-center">Category</TableHead>
+                    <TableHead className="text-center">Part Number</TableHead>
+                    <TableHead className="text-center">Selling Price</TableHead>
+                    <TableHead className="text-center">Description</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -780,14 +780,14 @@ const ProductsList: React.FC = () => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
                             {product.category || "-"}
                           </span>
                         </TableCell>
-                        <TableCell>{product.partNumber || "-"}</TableCell>
-                        <TableCell>{formatPeso(product.price ? Number(product.price) : null)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{product.description || "-"}</TableCell>
+                        <TableCell className="text-center">{product.partNumber || "-"}</TableCell>
+                        <TableCell className="text-center">{formatPeso(product.price ? Number(product.price) : null)}</TableCell>
+                        <TableCell className="text-center text-xs text-muted-foreground max-w-[200px] truncate">{product.description || "-"}</TableCell>
                       </TableRow>
                     ))
                   ) : (

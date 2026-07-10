@@ -310,23 +310,23 @@ const Warehouse: React.FC = () => {
               <Table className="table-fixed w-full border-separate border-spacing-y-2">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="w-[5%] text-muted-foreground font-semibold" />
-                    <TableHead className="text-muted-foreground font-semibold">
+                    <TableHead className="w-[5%] text-center text-muted-foreground font-semibold" />
+                    <TableHead className="text-center text-muted-foreground font-semibold">
                       Code
                     </TableHead>
-                    <TableHead className="w-3/12 text-muted-foreground font-semibold">
+                    <TableHead className="w-3/12 text-center text-muted-foreground font-semibold">
                       Name
                     </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
+                    <TableHead className="text-center text-muted-foreground font-semibold">
                       Description
                     </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
+                    <TableHead className="text-center text-muted-foreground font-semibold">
                       Bins
                     </TableHead>
-                    <TableHead className="text-muted-foreground font-semibold">
+                    <TableHead className="text-center text-muted-foreground font-semibold">
                       Status
                     </TableHead>
-                    <TableHead className="w-[5%] text-muted-foreground font-semibold" />
+                    <TableHead className="w-[5%] text-center text-muted-foreground font-semibold" />
                   </TableRow>
                 </TableHeader>
 
@@ -341,26 +341,26 @@ const Warehouse: React.FC = () => {
                           expandedId === loc.id && "shadow-md bg-accent/20"
                         )}
                       >
-                        <TableCell className="w-[5%]">
+                        <TableCell className="w-[5%] text-center">
                           <ChevronRight
                             className={cn(
-                              "h-4 w-4 text-muted-foreground transition-transform",
+                              "h-4 w-4 text-muted-foreground transition-transform inline-block",
                               expandedId === loc.id && "rotate-90"
                             )}
                           />
                         </TableCell>
-                        <TableCell className="text-foreground/80 text-sm">
+                        <TableCell className="text-center text-foreground/80 text-sm">
                           {loc.code}
                         </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="text-center py-2">
                           <span className="font-medium text-foreground text-sm">
                             {loc.name}
                           </span>
                         </TableCell>
-                        <TableCell className="text-foreground/80 text-sm max-w-[300px] truncate">
+                        <TableCell className="text-center text-foreground/80 text-sm max-w-[300px] truncate">
                           {loc.description || "-"}
                         </TableCell>
-                        <TableCell className="text-foreground/80 text-sm">
+                        <TableCell className="text-center text-foreground/80 text-sm">
                           {loc.bins && loc.bins.length > 0 ? (
                             <span className="text-xs font-medium text-muted-foreground">
                               {loc.bins.length} bin{loc.bins.length !== 1 ? "s" : ""}
@@ -369,7 +369,7 @@ const Warehouse: React.FC = () => {
                             <span className="text-xs text-muted-foreground/60">-</span>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <span
                             className={cn(
                               "text-[11px] font-semibold px-2 py-0.5 rounded-full",
@@ -382,7 +382,7 @@ const Warehouse: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell
-                          className="text-right"
+                          className="text-center"
                           onClick={(event) => event.stopPropagation()}
                         >
                           <DropdownMenu>

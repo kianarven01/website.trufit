@@ -4,12 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsTrigger, TabsList, TabsContent } from "@/components/ui/tabs";
 import { Card, CardTitle, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import DataToolbar from "@/components/DataToolbar";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import SupplierModal from "@/components/popupModal/Purchasing/addSupplier"; 
+import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ContactSupplierModal from "@/components/popupModal/Purchasing/contactSupplier";
@@ -270,49 +268,44 @@ const SupplierDetails: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-      
+    <div className="w-full h-full px-6 pt-1 pb-6 flex flex-col gap-6 overflow-y-auto">
+
     {/* TOOLBAR */}
-    <DataToolbar
-      variant="detail"
-      actions={
-        <div className="flex items-center justify-between w-full">
-          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
+    <div className="flex items-center justify-between gap-3 shrink-0">
+      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+        <ArrowLeft className="w-4 h-4 mr-1" /> Back
+      </Button>
 
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => setIsEditOpen(true)}
-            >
-              <Pencil className="w-4 h-4 mr-1" />
-              Edit Supplier
-            </Button>
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          onClick={() => setIsEditOpen(true)}
+        >
+          <Pencil className="w-4 h-4 mr-1" />
+          Edit Supplier
+        </Button>
 
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => setIsDeleteOpen(true)}
-            >
-              <XCircle className="w-4 h-4 mr-1" />
-              Remove Supplier
-            </Button>
-          </div>
-        </div>
-      }
-    />
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => setIsDeleteOpen(true)}
+        >
+          <XCircle className="w-4 h-4 mr-1" />
+          Remove Supplier
+        </Button>
+      </div>
+    </div>
 
-      <div className="grid grid-cols-6 gap-6 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 items-stretch min-h-0">
 
-        <div className="col-span-2 flex flex-col min-h-0">
-          <Card>
+        <div className="lg:col-span-1 flex flex-col min-h-0">
+            <Card className="flex-1 flex flex-col">
             <CardHeader>
               <CardTitle className="text-lg">{supplier.name}</CardTitle>
               <p className="text-xs text-muted-foreground">{supplier.supplierCode}</p>
             </CardHeader>
 
-            <CardContent className="space-y-5">
+            <CardContent className="flex-1 space-y-5 overflow-auto">
 
               {/* Contact Person */}
               <div className="space-y-2">
@@ -393,7 +386,7 @@ const SupplierDetails: React.FC = () => {
           </Card>
         </div>
         
-        <div className="col-span-4 flex flex-col min-h-0">
+        <div className="lg:col-span-2 flex flex-col min-h-0">
           <Card className="flex flex-col flex-1 min-h-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="text-lg">
@@ -412,13 +405,13 @@ const SupplierDetails: React.FC = () => {
                   <Table className="table-fixed w-full">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-[20%]">Product Name</TableHead>
-                        <TableHead className="w-[15%]">Part Number</TableHead>
-                        <TableHead className="w-[15%]">Supplier Cost</TableHead>
-                        <TableHead className="w-[15%]">Selling Price</TableHead>
-                        <TableHead className="w-[15%]">VAT Status</TableHead>
-                        <TableHead className="w-[10%]">Stock</TableHead>
-                        <TableHead className="w-[10%] text-right pr-4">Actions</TableHead>
+                        <TableHead className="w-[20%] text-center">Product Name</TableHead>
+                        <TableHead className="w-[15%] text-center">Part Number</TableHead>
+                        <TableHead className="w-[15%] text-center">Supplier Cost</TableHead>
+                        <TableHead className="w-[15%] text-center">Selling Price</TableHead>
+                        <TableHead className="w-[15%] text-center">VAT Status</TableHead>
+                        <TableHead className="w-[10%] text-center">Stock</TableHead>
+                        <TableHead className="w-[10%] text-center">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                   </Table>
@@ -432,20 +425,20 @@ const SupplierDetails: React.FC = () => {
                             <TableCell className="w-[20%] truncate">
                               {prod.name}{prod.manufacturer ? ` — ${prod.manufacturer}` : ""}
                             </TableCell>
-                            <TableCell className="w-[15%]">
+                            <TableCell className="w-[15%] text-center">
                               {prod.partNumber}
                             </TableCell>
-                            <TableCell className="w-[15%]">
+                            <TableCell className="w-[15%] text-center">
                               ₱{Number(prod.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </TableCell>
-                            <TableCell className="w-[15%]">
+                            <TableCell className="w-[15%] text-center">
                               {prod.sellingPrice !== null && prod.sellingPrice !== undefined ? (
                                 `₱${Number(prod.sellingPrice).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                               ) : (
                                 <span className="text-muted-foreground italic text-xs">No price set</span>
                               )}
                             </TableCell>
-                            <TableCell className="w-[15%]">
+                            <TableCell className="w-[15%] text-center">
                               {prod.isVat ? (
                                 <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20 font-normal">
                                   VAT ({prod.vatPercent}%)
@@ -456,11 +449,11 @@ const SupplierDetails: React.FC = () => {
                                 </Badge>
                               )}
                             </TableCell>
-                            <TableCell className="w-[10%]">
+                            <TableCell className="w-[10%] text-center">
                               {prod.stock}
                             </TableCell>
-                            <TableCell className="w-[10%] text-right pr-4">
-                              <div className="flex justify-end gap-1.5">
+                            <TableCell className="w-[10%] text-center">
+                              <div className="flex justify-center gap-1.5">
                                 <Button
                                   variant="ghost"
                                   size="icon"

@@ -15,12 +15,16 @@ const movementConfig: Record<string, { label: string; className: string }> = {
     label: "Sundries Usage",
     className: "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
   },
-  ADJ_SHRINKAGE: {
-    label: "Shrinkage Adjustment",
+  ADJUSTMENT_IN: {
+    label: "Stock Adjustment",
     className: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
   },
-  ADJ_RETURN: {
-    label: "Return Adjustment",
+  ADJUSTMENT_OUT: {
+    label: "Stock Adjustment",
+    className: "border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  },
+  RETURN: {
+    label: "Return",
     className: "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   },
 };

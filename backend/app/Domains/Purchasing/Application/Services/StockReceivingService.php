@@ -10,16 +10,20 @@ use RuntimeException;
 
 class StockReceivingService
 {
-    private function getDefaultLocationId(): string
+    private function getDefaultLocationId(): ?string
     {
         $location = StockLocation::where('is_active', true)->orderBy('name')->first();
-        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+        return $location?->id;
     }
 
     public function receiveGoods(GoodsReceipt $receipt): int
     {
         $createdMovementCount = 0;
         $defaultLocationId = $this->getDefaultLocationId();
+
+        if (!$defaultLocationId) {
+            throw new RuntimeException('No active warehouse found. Please create a warehouse first.', 422);
+        }
 
         $receipt->loadMissing(['items', 'purchaseOrder']);
 

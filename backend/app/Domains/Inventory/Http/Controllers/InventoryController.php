@@ -15,10 +15,10 @@ use Illuminate\Support\Str;
 
 class InventoryController extends Controller
 {
-    private function getDefaultLocationId(): string
+    private function getDefaultLocationId(): ?string
     {
         $location = StockLocation::where('is_active', true)->orderBy('name')->first();
-        return $location?->id ?? 'd3b07384-d113-4ec6-a55d-752007414777';
+        return $location?->id;
     }
 
     public function index(Request $request): JsonResponse
@@ -190,12 +190,30 @@ class InventoryController extends Controller
         $locationId = $validated['location_id'] ?? $this->getDefaultLocationId();
         $binId = $validated['bin_id'] ?? null;
 
+        if (!$locationId) {
+            return response()->json([
+                'message' => 'No active warehouse found. Please create a warehouse first.',
+            ], 422);
+        }
+
+        if ($binId) {
+            $binValid = \App\Domains\Inventory\Domain\Models\BinLocation::where('id', $binId)
+                ->where('warehouse_id', $locationId)
+                ->exists();
+            if (!$binValid) {
+                return response()->json([
+                    'message' => 'The selected bin does not belong to the specified warehouse.',
+                ], 422);
+            }
+        }
+
         $inventory = DB::transaction(function () use ($validated, $product, $productSupplierId, $locationId, $binId) {
             return Inventory::updateOrCreate(
                 [
                     'productID' => $product->id,
                     'product_supplier_id' => $productSupplierId,
                     'location_id' => $locationId,
+                    'bin_id' => $binId,
                 ],
                 [
                     'quantity_on_hand' => $validated['quantity_on_hand'],
@@ -230,6 +248,17 @@ class InventoryController extends Controller
             'location_id' => ['required', 'string', 'exists:StockLocations,id'],
             'bin_id' => ['nullable', 'string', 'exists:BinLocations,id'],
         ]);
+
+        if (!empty($validated['bin_id'])) {
+            $binValid = \App\Domains\Inventory\Domain\Models\BinLocation::where('id', $validated['bin_id'])
+                ->where('warehouse_id', $validated['location_id'])
+                ->exists();
+            if (!$binValid) {
+                return response()->json([
+                    'message' => 'The selected bin does not belong to the specified warehouse.',
+                ], 422);
+            }
+        }
 
         $inventory = Inventory::findOrFail($id);
 
@@ -299,6 +328,7 @@ class InventoryController extends Controller
                 'reference_id' => null,
                 'notes' => $validated['notes'] ?? null,
                 'created_by' => null,
+                //'created_by' => $request->user()?->id,
             ]);
 
             return ['inventory' => $inventory];
@@ -469,9 +499,11 @@ class InventoryController extends Controller
 
             'selling_price' => $product ? $this->getSellingPrice($product) : null,
 
-            'status' => ((int) $inventory->quantity_on_hand > 0)
-                ? 'In Stock'
-                : 'Out of Stock',
+            'status' => match (true) {
+                (int) $inventory->quantity_on_hand <= 0 => 'Out of Stock',
+                (int) $inventory->reorder_level > 0 && (int) $inventory->quantity_on_hand <= (int) $inventory->reorder_level => 'Low Stock',
+                default => 'In Stock',
+            },
         ];
     }
 

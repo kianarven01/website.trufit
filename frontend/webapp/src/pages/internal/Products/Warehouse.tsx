@@ -76,6 +76,7 @@ const Warehouse: React.FC = () => {
   const [formName, setFormName] = useState("");
   const [formCode, setFormCode] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const [formIsActive, setFormIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -84,6 +85,7 @@ const Warehouse: React.FC = () => {
   const [binWarehouseId, setBinWarehouseId] = useState<string>("");
   const [binFormCode, setBinFormCode] = useState("");
   const [binFormName, setBinFormName] = useState("");
+  const [binFormIsActive, setBinFormIsActive] = useState(true);
   const [isSavingBin, setIsSavingBin] = useState(false);
   const [confirmDeleteBinId, setConfirmDeleteBinId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -127,6 +129,7 @@ const Warehouse: React.FC = () => {
     setFormName(loc.name);
     setFormCode(loc.code);
     setFormDescription(loc.description || "");
+    setFormIsActive(loc.is_active);
     setIsModalOpen(true);
   };
 
@@ -139,6 +142,7 @@ const Warehouse: React.FC = () => {
           name: formName.trim(),
           code: formCode.trim(),
           description: formDescription.trim() || null,
+          is_active: formIsActive,
         });
         setToast({ type: "success", title: "Warehouse Updated", message: `"${formName}" has been updated.` });
       } else {
@@ -146,6 +150,7 @@ const Warehouse: React.FC = () => {
           name: formName.trim(),
           code: formCode.trim(),
           description: formDescription.trim() || null,
+          is_active: formIsActive,
         });
         setToast({ type: "success", title: "Warehouse Created", message: `"${formName}" has been created.` });
       }
@@ -180,6 +185,7 @@ const Warehouse: React.FC = () => {
     setBinWarehouseId(warehouseId);
     setBinFormCode("");
     setBinFormName("");
+    setBinFormIsActive(true);
     setIsBinModalOpen(true);
   };
 
@@ -188,6 +194,7 @@ const Warehouse: React.FC = () => {
     setBinWarehouseId(bin.warehouse_id);
     setBinFormCode(bin.code);
     setBinFormName(bin.name || "");
+    setBinFormIsActive(bin.is_active);
     setIsBinModalOpen(true);
   };
 
@@ -199,12 +206,14 @@ const Warehouse: React.FC = () => {
         await api.put(`/bin-locations/${editingBin.id}`, {
           code: binFormCode.trim(),
           name: binFormName.trim() || null,
+          is_active: binFormIsActive,
         });
         setToast({ type: "success", title: "Bin Updated", message: `Bin "${binFormCode}" has been updated.` });
       } else {
         await api.post(`/warehouses/${binWarehouseId}/bins`, {
           code: binFormCode.trim(),
           name: binFormName.trim() || null,
+          is_active: binFormIsActive,
         });
         setToast({ type: "success", title: "Bin Created", message: `Bin "${binFormCode}" has been created.` });
       }
@@ -583,6 +592,21 @@ const Warehouse: React.FC = () => {
                 onChange={(e) => setFormDescription(e.target.value)}
               />
             </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-muted-foreground font-medium">
+                Status
+              </Label>
+              <label className="col-span-3 flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formIsActive}
+                  onChange={(e) => setFormIsActive(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <span className="text-sm text-foreground">{formIsActive ? "Active" : "Inactive"}</span>
+              </label>
+            </div>
           </div>
 
           <DialogFooter className="gap-2 mt-2">
@@ -612,7 +636,7 @@ const Warehouse: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Warehouse</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this warehouse? All bin locations within it will also be deleted. This action cannot be undone.
+              Are you sure you want to delete this warehouse? Bin locations within it must be deleted or moved first. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -660,6 +684,21 @@ const Warehouse: React.FC = () => {
                 value={binFormName}
                 onChange={(e) => setBinFormName(e.target.value)}
               />
+            </div>
+
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right text-muted-foreground font-medium">
+                Status
+              </Label>
+              <label className="col-span-3 flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={binFormIsActive}
+                  onChange={(e) => setBinFormIsActive(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <span className="text-sm text-foreground">{binFormIsActive ? "Active" : "Inactive"}</span>
+              </label>
             </div>
           </div>
 

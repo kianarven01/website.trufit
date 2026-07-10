@@ -142,7 +142,7 @@ export default function SpolProductModal({
           supplier_cost: String(s.supplier_cost || s.supplierCost || ""),
           markup: String(s.markup || ""),
           price: String(s.price || s.Price || ""),
-          pricing_mode: (s.markup ? "markup" : "manual") as PricingMode,
+          pricing_mode: (s.markup != null && s.markup !== "" ? "markup" : "manual") as PricingMode,
           is_vat: Boolean(s.is_vat),
         }))
       );

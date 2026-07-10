@@ -200,12 +200,20 @@ export default function ProductReferencesModal({
     setSaving(true);
     try {
       if (activeTab === "parts" && editingId) {
+        if (!partEditForm.name.trim()) { toast.error("Part name is required."); setSaving(false); return; }
+        if (parts.some(p => p.id !== editingId && p.name.toLowerCase() === partEditForm.name.trim().toLowerCase())) { toast.error("A part with this name already exists."); setSaving(false); return; }
         await api.put(`/products/parts/${editingId}`, { name: partEditForm.name, description: partEditForm.description || undefined, category_id: partEditForm.category_id || undefined });
       } else if (activeTab === "categories" && editingId) {
+        if (!categoryEditForm.name.trim()) { toast.error("Category name is required."); setSaving(false); return; }
+        if (categories.some(c => c.id !== editingId && c.name.toLowerCase() === categoryEditForm.name.trim().toLowerCase())) { toast.error("A category with this name already exists."); setSaving(false); return; }
         await api.put(`/products/categories/${editingId}`, { name: categoryEditForm.name });
       } else if (activeTab === "manufacturers" && editingId) {
+        if (!manufacturerEditForm.name.trim()) { toast.error("Manufacturer name is required."); setSaving(false); return; }
+        if (manufacturers.some(m => m.id !== editingId && m.name.toLowerCase() === manufacturerEditForm.name.trim().toLowerCase())) { toast.error("A manufacturer with this name already exists."); setSaving(false); return; }
         await api.put(`/products/manufacturers/${editingId}`, { name: manufacturerEditForm.name, type: manufacturerEditForm.type || undefined });
       } else if (activeTab === "units" && editingId) {
+        if (!unitEditForm.name.trim()) { toast.error("Unit name is required."); setSaving(false); return; }
+        if (units.some(u => u.id !== editingId && u.name.toLowerCase() === unitEditForm.name.trim().toLowerCase())) { toast.error("A unit with this name already exists."); setSaving(false); return; }
         await api.put(`/products/units/${editingId}`, { name: unitEditForm.name, abbreviation: unitEditForm.abbreviation || undefined });
       }
       await loadAll();
@@ -224,15 +232,19 @@ export default function ProductReferencesModal({
     try {
       if (activeTab === "parts") {
         if (!partForm.name.trim()) { toast.error("Part name is required."); setSaving(false); return; }
+        if (parts.some(p => p.name.toLowerCase() === partForm.name.trim().toLowerCase())) { toast.error("A part with this name already exists."); setSaving(false); return; }
         await api.post("/products/parts", { name: partForm.name, description: partForm.description || undefined, category_id: partForm.category_id || undefined });
       } else if (activeTab === "categories") {
         if (!categoryForm.name.trim()) { toast.error("Category name is required."); setSaving(false); return; }
+        if (categories.some(c => c.name.toLowerCase() === categoryForm.name.trim().toLowerCase())) { toast.error("A category with this name already exists."); setSaving(false); return; }
         await api.post("/products/categories", { name: categoryForm.name, is_spol: mode === "spol" });
       } else if (activeTab === "manufacturers") {
         if (!manufacturerForm.name.trim()) { toast.error("Manufacturer name is required."); setSaving(false); return; }
+        if (manufacturers.some(m => m.name.toLowerCase() === manufacturerForm.name.trim().toLowerCase())) { toast.error("A manufacturer with this name already exists."); setSaving(false); return; }
         await api.post("/products/manufacturers", { name: manufacturerForm.name, type: manufacturerForm.type || undefined });
       } else {
         if (!unitForm.name.trim()) { toast.error("Unit name is required."); setSaving(false); return; }
+        if (units.some(u => u.name.toLowerCase() === unitForm.name.trim().toLowerCase())) { toast.error("A unit with this name already exists."); setSaving(false); return; }
         await api.post("/products/units", { name: unitForm.name, abbreviation: unitForm.abbreviation || undefined });
       }
       await loadAll();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -336,6 +336,13 @@ const InventoryDetail: React.FC = () => {
   const selectedWarehouse = warehouses.find((w) => w.id === editWarehouseId);
   const availableBins = selectedWarehouse?.bins || [];
 
+  const visibleEquivalentGroups = useMemo(() => {
+    return (item?.equivalentGroups || []).filter((group) => {
+      const equivalentProducts = group.products.filter((p) => p.id !== item?.productId);
+      return equivalentProducts.length > 0;
+    });
+  }, [item?.equivalentGroups, item?.productId]);
+
   useEffect(() => {
     void loadInventoryDetail();
   }, [inventoryId]);
@@ -647,9 +654,9 @@ const InventoryDetail: React.FC = () => {
                   <h2 className="font-semibold">Equivalent Parts</h2>
                 </div>
 
-                {item.equivalentGroups.length > 0 ? (
+                {visibleEquivalentGroups.length > 0 ? (
                   <div className="space-y-3 overflow-auto pr-1">
-                    {item.equivalentGroups.map((group) => (
+                    {visibleEquivalentGroups.map((group) => (
                       <div key={group.id} className="space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">
                           {group.name}

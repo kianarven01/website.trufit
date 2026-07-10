@@ -74,6 +74,7 @@ interface InventoryItem {
   categoryIsSpol: boolean;
   categoryName: string;
   locationId: string | null;
+  locationName: string | null;
   binId: string | null;
   binName: string | null;
 }
@@ -202,6 +203,7 @@ const Inventory: React.FC = () => {
             categoryIsSpol: Boolean(product.category?.is_spol || row.category_is_spol),
             categoryName: product.category_name || (Boolean(product.category?.is_spol || row.category_is_spol) ? "Supplies & Oils" : "Part"),
             locationId: row.location_id || null,
+            locationName: row.location_name || null,
             binId: row.bin_id || null,
             binName: row.bin_name || row.bin?.name || null,
           };
@@ -597,6 +599,9 @@ const Inventory: React.FC = () => {
                         Unit
                       </TableHead>
                       <TableHead className="text-muted-foreground font-semibold">
+                        Warehouse
+                      </TableHead>
+                      <TableHead className="text-muted-foreground font-semibold">
                         Status
                       </TableHead>
                       <TableHead className="w-[8%] text-muted-foreground font-semibold" />
@@ -687,6 +692,12 @@ const Inventory: React.FC = () => {
 
                             <TableCell className="text-foreground/80 text-sm">
                               {p.unit}
+                            </TableCell>
+
+                            {/* WAREHOUSE */}
+                            <TableCell className="text-foreground/80 text-sm">
+                              {p.locationName || "-"}
+                              {p.binName ? ` / ${p.binName}` : ""}
                             </TableCell>
 
                             {/* STATUS */}

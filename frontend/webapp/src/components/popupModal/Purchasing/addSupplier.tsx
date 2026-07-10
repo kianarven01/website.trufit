@@ -68,28 +68,6 @@ const SupplierModal: React.FC<Props> = ({
     }
   }, [open, supplier]);
 
-  //temporary supplier code handler - autogenerate
-  const generateSupplierCode = (name: string) => {
-    const initials = name
-      .trim()
-      .split(" ")
-      .filter(Boolean)
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 3);
-
-    const stored = localStorage.getItem("suppliers");
-    const suppliers: Supplier[] = stored ? JSON.parse(stored) : [];
-
-    const count =
-      suppliers.filter((s) => s.supplierCode?.startsWith(initials)).length + 1;
-
-    const number = String(count).padStart(4, "0");
-
-    return `${initials}-${number}`;
-  };
-
   /* SAVE */
   const handleSave = async () => {
     if (!name.trim()) {
@@ -125,7 +103,7 @@ const SupplierModal: React.FC<Props> = ({
       contactPerson: contactPerson.trim(),
       viber: viber.trim(),
       address: address.trim(),
-      supplierCode: supplier?.supplierCode || generateSupplierCode(name),
+      supplierCode: supplier?.supplierCode || "",
     };
 
     setIsSaving(true);

@@ -52,11 +52,6 @@ class ProductSupplier extends Model
         return $this->hasOne(ProductPrice::class, 'product_supplier_id', 'id');
     }
 
-    public function activePrice()
-    {
-        return $this->hasOne(ProductPrice::class, 'product_supplier_id', 'id');
-    }
-
     public function inventory()
     {
         return $this->hasOne(Inventory::class, 'product_supplier_id', 'id');

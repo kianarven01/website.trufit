@@ -3,6 +3,7 @@
 namespace App\Domains\Supplier\Application\UseCases;
 
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Product\Domain\Models\ProductPrice;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Inventory\Domain\Models\StockLocation;
@@ -39,6 +40,11 @@ class LinkProductToSupplier
                     'is_vat' => $isVat,
                     'vat_percent' => $isVat ? $vatPercent : null,
                 ]);
+
+                $product = Product::find($productId);
+                if ($product && !$product->preferred_supplier_id) {
+                    $product->update(['preferred_supplier_id' => $link->id]);
+                }
             }
 
             // Create or update ProductPrice

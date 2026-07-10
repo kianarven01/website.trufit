@@ -9,10 +9,14 @@ class DeleteSupplier
 {
     public function execute($id)
     {
-        $supplier = Supplier::find($id);
+        $supplier = Supplier::with('products')->find($id);
 
         if (!$supplier) {
             throw new ModelNotFoundException('Supplier not found');
+        }
+
+        if ($supplier->products->count() > 0) {
+            throw new \Exception('Cannot delete supplier with linked products. Unlink all products first.');
         }
 
         return $supplier->delete();

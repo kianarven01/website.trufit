@@ -57,6 +57,8 @@ const SupplierDetails: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [isUnlinkOpen, setIsUnlinkOpen] = useState(false);
+  const [unlinkProductId, setUnlinkProductId] = useState<string | null>(null);
   const [isCostOpen, setIsCostOpen] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState("");
@@ -131,7 +133,7 @@ const SupplierDetails: React.FC = () => {
   const handleSaveSupplier = async (updated: Supplier) => {
     try {
       await api.put(`/suppliers/${updated.id}`, updated);
-      setSupplier(updated);
+      void loadSupplier();
     } catch (error) {
       console.error("Failed to update supplier:", error);
       throw error;
@@ -143,16 +145,17 @@ const SupplierDetails: React.FC = () => {
       await api.delete(`/suppliers/${supplier!.id}`);
       toast.success("Supplier deleted.");
       navigate("/webapp/purchasing/suppliers");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to delete supplier:", error);
-      toast.error("Failed to delete supplier.");
+      toast.error(error?.response?.data?.message || "Failed to delete supplier.");
     }
   };
 
   const fetchCatalogProducts = async () => {
     try {
       const res = await api.get("/products");
-      setCatalogProducts(res.data || []);
+      const rows = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+      setCatalogProducts(rows);
     } catch (error) {
       console.error("Failed to load catalog products:", error);
     }
@@ -478,7 +481,7 @@ const SupplierDetails: React.FC = () => {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                  onClick={() => handleUnlinkProduct(prod.id)}
+                                  onClick={() => { setUnlinkProductId(prod.id); setIsUnlinkOpen(true); }}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
@@ -546,6 +549,26 @@ const SupplierDetails: React.FC = () => {
               onClick={handleDeleteSupplier}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isUnlinkOpen} onOpenChange={setIsUnlinkOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unlink this product? This will also remove inventory and pricing records for this supplier.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (unlinkProductId) void handleUnlinkProduct(unlinkProductId); setIsUnlinkOpen(false); setUnlinkProductId(null); }}
+            >
+              Unlink
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

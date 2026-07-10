@@ -73,6 +73,7 @@ const filtered = suppliers.filter((s) => {
 
   return (
     s.name?.toLowerCase().includes(q) ||
+    s.supplierCode?.toLowerCase().includes(q) ||
     s.email?.toLowerCase().includes(q) ||
     s.phone?.toLowerCase().includes(q) ||
     s.viber?.toLowerCase().includes(q) ||

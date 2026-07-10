@@ -160,6 +160,8 @@ class SupplierController extends Controller
             return response()->json(['message' => 'Supplier deleted successfully']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Supplier not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
         }
     }
 

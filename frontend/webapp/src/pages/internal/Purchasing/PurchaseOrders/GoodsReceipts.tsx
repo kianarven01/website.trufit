@@ -207,13 +207,13 @@ const GoodsReceipts = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[15%]">Receipt #</TableHead>
-                  <TableHead className="w-[15%]">PO Number</TableHead>
-                  <TableHead className="w-[25%]">Supplier</TableHead>
-                  <TableHead className="w-[15%]">Date</TableHead>
+                  <TableHead className="w-[15%] text-center">Receipt #</TableHead>
+                  <TableHead className="w-[15%] text-center">PO Number</TableHead>
+                  <TableHead className="w-[25%] text-center">Supplier</TableHead>
+                  <TableHead className="w-[15%] text-center">Date</TableHead>
                   <TableHead className="w-[12%] text-center">Status</TableHead>
-                  <TableHead className="w-[13%]">Notes</TableHead>
-                  <TableHead className="w-[10%] text-right">Action</TableHead>
+                  <TableHead className="w-[13%] text-center">Notes</TableHead>
+                  <TableHead className="w-[10%] text-right pr-6"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -226,25 +226,26 @@ const GoodsReceipts = () => {
                       "hover:bg-accent/30"
                     )}
                   >
-                    <TableCell className="py-2.5">
+                    <TableCell className="py-2.5 text-left pl-8">
                       <span className="font-semibold text-sm">{receipt.receiptNumber}</span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{receipt.poNumber}</TableCell>
-                    <TableCell>{receipt.supplierName}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(receipt.receivedAt)}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{receipt.poNumber}</TableCell>
+                    <TableCell className="text-center font-medium">{receipt.supplierName}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{formatDate(receipt.receivedAt)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">
                         <PurchaseStatusBadge status={receipt.status} />
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{receipt.notes || "-"}</TableCell>
-                    <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
-                            <MoreVertical size={16} />
-                          </button>
-                        </DropdownMenuTrigger>
+                    <TableCell className="text-center text-xs text-muted-foreground max-w-[150px] truncate">{receipt.notes || "-"}</TableCell>
+                    <TableCell className="text-right pr-4" onClick={(event) => event.stopPropagation()}>
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+                              <MoreVertical size={16} />
+                            </button>
+                          </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuItem onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)} className="cursor-pointer">
                             <Eye className="w-4 h-4 mr-2" />
@@ -265,7 +266,8 @@ const GoodsReceipts = () => {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </TableCell>
+                    </div>
+                  </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

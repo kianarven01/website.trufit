@@ -131,11 +131,11 @@ const filtered = suppliers.filter((s) => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Viber</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead className="text-center w-[25%]">Supplier</TableHead>
+                  <TableHead className="text-center w-[15%]">Viber</TableHead>
+                  <TableHead className="text-center w-[25%]">Email</TableHead>
+                  <TableHead className="text-center w-[15%]">Phone</TableHead>
+                  <TableHead className="text-center w-[20%]">Contact</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -152,18 +152,18 @@ const filtered = suppliers.filter((s) => {
                         "hover:bg-accent/30"
                       )}
                     >
-                      <TableCell className="py-0.5">
-                        <div>
-                          <p className="font-medium text-sm">{s.name}</p>
-                          <p className="text-[12px] text-muted-foreground">
+                      <TableCell className="py-2">
+                        <div className="flex flex-col items-start pl-4">
+                          <p className="font-semibold text-foreground text-sm">{s.name}</p>
+                          <p className="text-[11px] text-muted-foreground leading-none mt-0.5">
                             {s.supplierCode}
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell>{s.viber}</TableCell>
-                      <TableCell>{s.email}</TableCell>
-                      <TableCell>{s.phone}</TableCell>
-                      <TableCell>{s.contactPerson}</TableCell>
+                      <TableCell className="text-center">{s.viber || "-"}</TableCell>
+                      <TableCell className="text-center">{s.email || "-"}</TableCell>
+                      <TableCell className="text-center">{s.phone || "-"}</TableCell>
+                      <TableCell className="text-center">{s.contactPerson || "-"}</TableCell>
                     </TableRow>
                   ))
                 ) : (

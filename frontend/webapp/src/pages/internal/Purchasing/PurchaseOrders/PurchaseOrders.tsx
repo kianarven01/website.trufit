@@ -239,12 +239,12 @@ const PurchaseOrders = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[15%]">PO Number</TableHead>
-                  <TableHead className="w-[30%]">Supplier</TableHead>
-                  <TableHead className="w-[20%]">Date</TableHead>
-                  <TableHead className="w-[15%] text-right">Total</TableHead>
+                  <TableHead className="w-[15%] text-center">PO Number</TableHead>
+                  <TableHead className="w-[30%] text-center">Supplier</TableHead>
+                  <TableHead className="w-[20%] text-center">Date</TableHead>
+                  <TableHead className="w-[15%] text-center">Total</TableHead>
                   <TableHead className="w-[10%] text-center">Status</TableHead>
-                  <TableHead className="w-[10%] text-right">Action</TableHead>
+                  <TableHead className="w-[10%] text-right pr-6"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -257,18 +257,18 @@ const PurchaseOrders = () => {
                       "hover:bg-accent/30"
                     )}
                   >
-                    <TableCell className="py-2.5">
+                    <TableCell className="py-2.5 text-left pl-8">
                       <span className="font-semibold text-sm">{order.poNumber}</span>
                     </TableCell>
-                    <TableCell>{order.supplierName}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(order.orderDate)}</TableCell>
-                    <TableCell className="text-right font-semibold text-foreground">{formatCurrency(order.totalAmount)}</TableCell>
+                    <TableCell className="text-center font-medium">{order.supplierName}</TableCell>
+                    <TableCell className="text-center text-muted-foreground">{formatDate(order.orderDate)}</TableCell>
+                    <TableCell className="text-center font-semibold text-foreground">{formatCurrency(order.totalAmount)}</TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">
                         <PurchaseStatusBadge status={order.status} />
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">{renderActions(order)}</TableCell>
+                    <TableCell className="text-right pr-4">{renderActions(order)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Purchasing\Application\UseCases;
 
+use App\Domains\Purchasing\Application\Services\PurchaseOrderStatusService;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Inventory\Domain\Models\StockLocation;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
@@ -25,8 +26,8 @@ class ReturnGoodsReceiptItems
                 ->lockForUpdate()
                 ->findOrFail($goodsReceiptId);
 
-            if ($receipt->status !== 'APPROVED') {
-                throw new RuntimeException('Only approved goods receipts can have items returned.', 422);
+            if (!in_array($receipt->status, ['APPROVED', 'PARTIALLY_RETURNED'])) {
+                throw new RuntimeException('Only approved or partially returned goods receipts can have items returned.', 422);
             }
 
             $defaultLocationId = $this->getDefaultLocationId();
@@ -48,7 +49,7 @@ class ReturnGoodsReceiptItems
                 $item = GoodsReceiptItem::where('goods_receipt_id', $receipt->id)
                     ->findOrFail($goodsReceiptItemId);
 
-                $remaining = $item->quantity_received - $item->quantity_returned;
+                $remaining = $item->quantity_received + ($item->quantity_promo ?? 0) - $item->quantity_returned;
 
                 if ($quantityToReturn > $remaining) {
                     throw new RuntimeException("Cannot return {$quantityToReturn} items. Only {$remaining} remaining for item.", 422);
@@ -91,6 +92,27 @@ class ReturnGoodsReceiptItems
 
             if ($returnedCount === 0) {
                 throw new RuntimeException('No items were selected for return.', 422);
+            }
+
+            // Recalculate status of GoodsReceipt
+            $receipt->load('items');
+            $totalReceived = $receipt->items->sum('quantity_received');
+            $totalPromo = $receipt->items->sum('quantity_promo');
+            $totalUnits = $totalReceived + $totalPromo;
+            $totalReturned = $receipt->items->sum('quantity_returned');
+
+            if ($totalReturned >= $totalUnits) {
+                $newStatus = 'RETURNED';
+            } elseif ($totalReturned > 0) {
+                $newStatus = 'PARTIALLY_RETURNED';
+            } else {
+                $newStatus = 'APPROVED';
+            }
+
+            $receipt->update(['status' => $newStatus]);
+
+            if ($receipt->purchaseOrder) {
+                app(PurchaseOrderStatusService::class)->updateReceiptStatus($receipt->purchaseOrder);
             }
 
             return $receipt->fresh(['purchaseOrder.supplier', 'items.product', 'items.purchaseOrderItem']);

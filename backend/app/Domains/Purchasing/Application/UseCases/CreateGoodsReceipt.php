@@ -34,6 +34,8 @@ class CreateGoodsReceipt
                 'notes' => $data['notes'] ?? null,
             ]);
 
+            $allowOverReceiving = $data['allow_over_receiving'] ?? false;
+
             foreach ($data['items'] as $itemData) {
                 $poItem = PurchaseOrderItem::with('receiptItems')
                     ->where('purchase_order_id', $purchaseOrder->id)
@@ -41,14 +43,15 @@ class CreateGoodsReceipt
 
                 $alreadyReceived = $poItem->receiptItems()
                     ->whereHas('goodsReceipt', function ($query) {
-                        $query->where('status', 'APPROVED');
+                        $query->whereIn('status', ['APPROVED', 'PARTIALLY_RETURNED', 'RETURNED']);
                     })
-                    ->sum('quantity_received');
+                    ->selectRaw('SUM(quantity_received - quantity_returned) as total')
+                    ->value('total') ?? 0;
 
                 $remaining = (int) $poItem->quantity_ordered - (int) $alreadyReceived;
                 $quantityReceived = (int) $itemData['quantity_received'];
 
-                if ($quantityReceived > $remaining) {
+                if (!$allowOverReceiving && $quantityReceived > $remaining) {
                     throw new RuntimeException("Received quantity cannot exceed remaining quantity ({$remaining}).", 422);
                 }
 
@@ -59,6 +62,7 @@ class CreateGoodsReceipt
                     'product_supplier_id' => $poItem->product_supplier_id,
                     'quantity_received' => $quantityReceived,
                     'quantity_rejected' => $itemData['quantity_rejected'] ?? 0,
+                    'quantity_promo' => $itemData['quantity_promo'] ?? 0,
                     'notes' => $itemData['notes'] ?? null,
                 ]);
             }

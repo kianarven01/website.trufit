@@ -7,6 +7,8 @@ interface GoodsReceiptItemModel {
   id: string;
   quantityReceived?: number;
   quantity_received?: number;
+  quantityPromo?: number;
+  quantity_promo?: number;
   quantityReturned?: number;
   quantity_returned?: number;
   productName?: string;
@@ -56,8 +58,9 @@ const ReturnItemsModal = ({
 
     const lines = goodsReceipt.items.map((item) => {
       const quantityReceived = item.quantityReceived ?? item.quantity_received ?? 0;
+      const quantityPromo = item.quantityPromo ?? item.quantity_promo ?? 0;
       const quantityReturned = item.quantityReturned ?? item.quantity_returned ?? 0;
-      const maxQty = Number(quantityReceived) - Number(quantityReturned);
+      const maxQty = Number(quantityReceived) + Number(quantityPromo) - Number(quantityReturned);
 
       const productName = item.productName ?? item.product?.name ?? "Unnamed Product";
       const sku = item.sku ?? item.product?.sku ?? "-";

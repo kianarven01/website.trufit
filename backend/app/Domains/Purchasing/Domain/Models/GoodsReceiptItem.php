@@ -25,6 +25,7 @@ class GoodsReceiptItem extends Model
         'quantity_received',
         'quantity_rejected',
         'quantity_returned',
+        'quantity_promo',
         'notes',
     ];
 
@@ -37,6 +38,7 @@ class GoodsReceiptItem extends Model
         'quantity_received' => 'integer',
         'quantity_rejected' => 'integer',
         'quantity_returned' => 'integer',
+        'quantity_promo' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

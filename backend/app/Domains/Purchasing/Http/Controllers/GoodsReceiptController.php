@@ -78,9 +78,11 @@ class GoodsReceiptController extends Controller
                 'goods_receipt' => $receipt,
             ], 201);
         } catch (RuntimeException $e) {
+            $code = $e->getCode();
+            $statusCode = is_numeric($code) && $code >= 100 && $code < 600 ? (int)$code : 422;
             return response()->json([
                 'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
+            ], $statusCode);
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Failed to create goods receipt.',
@@ -154,9 +156,11 @@ class GoodsReceiptController extends Controller
                 'goods_receipt' => $receipt,
             ]);
         } catch (RuntimeException $e) {
+            $code = $e->getCode();
+            $statusCode = is_numeric($code) && $code >= 100 && $code < 600 ? (int)$code : 422;
             return response()->json([
                 'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
+            ], $statusCode);
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Failed to process return items.',

@@ -40,8 +40,15 @@ const getApprovedReceivedQuantity = (row: any) => {
       : [];
 
   return receiptItems
-    .filter((receiptItem: any) => normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status) === "APPROVED")
-    .reduce((sum: number, receiptItem: any) => sum + Number(receiptItem.quantity_received || 0), 0);
+    .filter((receiptItem: any) => {
+      const status = normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status);
+      return status === "APPROVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
+    })
+    .reduce((sum: number, receiptItem: any) => {
+      const received = Number(receiptItem.quantity_received || 0);
+      const returned = Number(receiptItem.quantity_returned || receiptItem.quantityReturned || 0);
+      return sum + (received - returned);
+    }, 0);
 };
 
 const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {

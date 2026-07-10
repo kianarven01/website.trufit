@@ -29,8 +29,10 @@ class StockReceivingService
 
         foreach ($receipt->items as $item) {
             $quantityReceived = (int) $item->quantity_received;
+            $quantityPromo = (int) ($item->quantity_promo ?? 0);
+            $totalReceived = $quantityReceived + $quantityPromo;
 
-            if ($quantityReceived <= 0) {
+            if ($totalReceived <= 0) {
                 continue;
             }
 
@@ -63,19 +65,21 @@ class StockReceivingService
             }
 
             $inventory->quantity_on_hand =
-                (int) $inventory->quantity_on_hand + $quantityReceived;
+                (int) $inventory->quantity_on_hand + $totalReceived;
 
             $inventory->save();
+
+            $promoNote = $quantityPromo > 0 ? " (+{$quantityPromo} free promo)" : "";
 
             StockMovement::create([
                 'inventory_id' => $inventory->id,
                 'product_id' => $item->product_id,
                 'product_supplier_id' => $item->product_supplier_id,
                 'movement_type' => 'IN_RECEIPT',
-                'quantity' => $quantityReceived,
+                'quantity' => $totalReceived,
                 'reference_type' => 'GOODS_RECEIPT',
                 'reference_id' => $receipt->id,
-                'notes' => 'Goods receipt from PO ' . ($receipt->purchaseOrder?->po_number ?? '-'),
+                'notes' => "Received {$quantityReceived} units{$promoNote} from PO " . ($receipt->purchaseOrder?->po_number ?? '-'),
             ]);
 
             $createdMovementCount++;

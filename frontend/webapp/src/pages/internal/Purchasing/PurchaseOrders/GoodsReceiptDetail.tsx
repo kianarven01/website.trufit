@@ -46,7 +46,7 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
         sku: String(product.sku ?? product.SKU ?? item.sku ?? "-"),
         ordered: Number(poItem.quantity_ordered ?? poItem.quantityOrdered ?? 0),
         quantityReceived: Number(item.quantity_received ?? item.quantityReceived ?? 0),
-        quantityRejected: Number(item.quantity_rejected ?? item.quantityRejected ?? 0),
+        quantityPromo: Number(item.quantity_promo ?? item.quantityPromo ?? 0),
         quantityReturned: Number(item.quantity_returned ?? item.quantityReturned ?? 0),
         notes: item.notes ?? null,
       };
@@ -172,7 +172,7 @@ const GoodsReceiptDetail = () => {
                 </button>
               </>
             )}
-            {normalizeStatus(receipt.status) === "APPROVED" && (
+            {["APPROVED", "PARTIALLY_RETURNED"].includes(normalizeStatus(receipt.status)) && (
               <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setReturnOpen(true)}>
                 Return Items
               </button>

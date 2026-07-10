@@ -6,7 +6,7 @@ export interface GoodsReceiptItemRow {
   sku?: string | null;
   ordered?: number;
   quantityReceived: number;
-  quantityRejected?: number;
+  quantityPromo?: number;
   quantityReturned?: number;
   notes?: string | null;
 }
@@ -24,7 +24,7 @@ const GoodsReceiptItemsTable = ({ items }: GoodsReceiptItemsTableProps) => {
             <TableHead className="w-[35%]">Product</TableHead>
             <TableHead className="w-[12%] text-right">Ordered</TableHead>
             <TableHead className="w-[12%] text-right">Received</TableHead>
-            <TableHead className="w-[12%] text-right">Rejected</TableHead>
+            <TableHead className="w-[12%] text-right">Free / Promo</TableHead>
             <TableHead className="w-[12%] text-right">Returned</TableHead>
             <TableHead className="w-[17%]">Notes</TableHead>
           </TableRow>
@@ -48,7 +48,7 @@ const GoodsReceiptItemsTable = ({ items }: GoodsReceiptItemsTableProps) => {
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground">{item.ordered ?? "-"}</TableCell>
                 <TableCell className="text-right font-semibold text-green-700 dark:text-green-400">{item.quantityReceived}</TableCell>
-                <TableCell className="text-right text-muted-foreground">{item.quantityRejected ?? 0}</TableCell>
+                <TableCell className="text-right font-semibold text-blue-600 dark:text-blue-400">{item.quantityPromo ?? 0}</TableCell>
                 <TableCell className="text-right font-semibold text-red-700 dark:text-red-400">{item.quantityReturned ?? 0}</TableCell>
                 <TableCell className="text-muted-foreground text-xs">{item.notes || "-"}</TableCell>
               </TableRow>

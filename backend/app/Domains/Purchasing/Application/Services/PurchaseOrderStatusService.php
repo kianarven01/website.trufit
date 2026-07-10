@@ -15,8 +15,9 @@ class PurchaseOrderStatusService
 
         foreach ($purchaseOrder->items as $item) {
             $approvedReceived = $item->receiptItems
-                ->filter(fn ($receiptItem) => $receiptItem->goodsReceipt?->status === 'APPROVED')
-                ->sum('quantity_received');
+                ->filter(fn ($receiptItem) => in_array($receiptItem->goodsReceipt?->status ?? '', ['APPROVED', 'PARTIALLY_RETURNED', 'RETURNED']))
+                ->map(fn ($receiptItem) => (int) $receiptItem->quantity_received - (int) $receiptItem->quantity_returned)
+                ->sum();
 
             if ($approvedReceived > 0) {
                 $anyReceived = true;
@@ -38,6 +39,10 @@ class PurchaseOrderStatusService
         if ($anyReceived) {
             $purchaseOrder->update([
                 'status' => 'PARTIALLY_RECEIVED',
+            ]);
+        } else {
+            $purchaseOrder->update([
+                'status' => 'APPROVED',
             ]);
         }
     }

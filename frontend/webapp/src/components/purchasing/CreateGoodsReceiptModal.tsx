@@ -23,6 +23,7 @@ export interface ReceiptPurchaseOrder {
 interface ReceiptLineState {
   purchaseOrderItemId: string;
   quantityReceived: string;
+  quantityPromo: string;
   quantityRejected: string;
   notes: string;
 }
@@ -48,6 +49,7 @@ const CreateGoodsReceiptModal = ({
 }: CreateGoodsReceiptModalProps) => {
   const [selectedPurchaseOrderId, setSelectedPurchaseOrderId] = useState("");
   const [notes, setNotes] = useState("");
+  const [allowOverReceiving, setAllowOverReceiving] = useState(false);
   const [items, setItems] = useState<ReceiptLineState[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -66,6 +68,7 @@ const CreateGoodsReceiptModal = ({
     const defaultPo = purchaseOrder || availablePurchaseOrders[0] || null;
     setSelectedPurchaseOrderId(defaultPo?.id || "");
     setNotes("");
+    setAllowOverReceiving(false);
   }, [open, purchaseOrder, availablePurchaseOrders.length]);
 
   useEffect(() => {
@@ -80,6 +83,7 @@ const CreateGoodsReceiptModal = ({
         return {
           purchaseOrderItemId: item.id,
           quantityReceived: remaining > 0 ? String(remaining) : "0",
+          quantityPromo: "0",
           quantityRejected: "0",
           notes: "",
         };
@@ -107,18 +111,19 @@ const CreateGoodsReceiptModal = ({
         const remaining = Math.max(0, (poItem?.quantityOrdered || 0) - (poItem?.quantityReceived || 0));
         const quantityReceived = Number(item.quantityReceived || 0);
 
-        if (quantityReceived > remaining) {
+        if (!allowOverReceiving && quantityReceived > remaining) {
           throw new Error(`Received quantity for ${poItem?.productName || "an item"} cannot exceed remaining quantity.`);
         }
 
         return {
           purchase_order_item_id: item.purchaseOrderItemId,
           quantity_received: quantityReceived,
+          quantity_promo: Number(item.quantityPromo || 0),
           quantity_rejected: Number(item.quantityRejected || 0),
           notes: item.notes || null,
         };
       })
-      .filter((item) => item.quantity_received > 0 || item.quantity_rejected > 0);
+      .filter((item) => item.quantity_received > 0 || item.quantity_promo > 0 || item.quantity_rejected > 0);
 
     if (payloadItems.length === 0) {
       onError?.("Please enter at least one received quantity.");
@@ -131,6 +136,7 @@ const CreateGoodsReceiptModal = ({
       const createResponse = await api.post("/purchasing/goods-receipts", {
         purchase_order_id: selectedPurchaseOrder.id,
         notes: notes || null,
+        allow_over_receiving: allowOverReceiving,
         items: payloadItems,
       });
 
@@ -184,6 +190,24 @@ const CreateGoodsReceiptModal = ({
             </select>
           </div>
 
+          <div className="flex items-center gap-2 rounded-lg border p-3 bg-muted/20">
+            <input
+              id="allow_over_receiving"
+              type="checkbox"
+              checked={allowOverReceiving}
+              onChange={(e) => setAllowOverReceiving(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div className="grid gap-1.5 leading-none">
+              <label htmlFor="allow_over_receiving" className="text-sm font-medium leading-none cursor-pointer">
+                Allow Over-receiving
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Check this to receive quantities greater than the remaining ordered quantity.
+              </p>
+            </div>
+          </div>
+
           <div className="overflow-hidden rounded-xl border border-border">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
@@ -193,6 +217,7 @@ const CreateGoodsReceiptModal = ({
                   <th className="px-4 py-3 text-right font-semibold">Received</th>
                   <th className="px-4 py-3 text-right font-semibold">Remaining</th>
                   <th className="px-4 py-3 text-right font-semibold">Receive Now</th>
+                  <th className="px-4 py-3 text-right font-semibold">Free / Promo</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,10 +242,19 @@ const CreateGoodsReceiptModal = ({
                           <input
                             type="number"
                             min="0"
-                            max={remaining}
+                            max={allowOverReceiving ? undefined : remaining}
                             className="h-9 w-24 rounded-md border border-input bg-background px-3 text-right text-sm outline-none focus:ring-2 focus:ring-ring"
                             value={line?.quantityReceived || "0"}
                             onChange={(event) => updateItem(poItem.id, { quantityReceived: event.target.value })}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <input
+                            type="number"
+                            min="0"
+                            className="h-9 w-24 rounded-md border border-input bg-background px-3 text-right text-sm outline-none focus:ring-2 focus:ring-ring"
+                            value={line?.quantityPromo || "0"}
+                            onChange={(event) => updateItem(poItem.id, { quantityPromo: event.target.value })}
                           />
                         </td>
                       </tr>

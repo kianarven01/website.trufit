@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import api from "@/api/axios";
+import { getCleanApiError } from "./purchasingUtils";
 
 export interface ReceiptPurchaseOrderItem {
   id: string;
@@ -35,25 +36,7 @@ interface CreateGoodsReceiptModalProps {
   onError?: (message: string) => void;
 }
 
-const getCleanApiError = (error: any) => {
-  const validationErrors = error?.response?.data?.errors;
-  if (validationErrors) return Object.values(validationErrors).flat().join(" ");
 
-  const rawMessage =
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    "Failed to save goods receipt.";
-
-  if (
-    String(rawMessage).includes("SQLSTATE") ||
-    String(rawMessage).includes("pgsql") ||
-    String(rawMessage).includes("current transaction is aborted")
-  ) {
-    return "Unable to save goods receipt. Please check the received quantities and try again.";
-  }
-
-  return rawMessage;
-};
 
 const CreateGoodsReceiptModal = ({
   open,

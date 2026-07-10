@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import NewPurchaseOrderModal from "@/components/purchasing/NewPurchaseOrderModal";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatCurrency, formatDate, getCleanApiError, getRows, normalizeStatus } from "@/components/purchasing/purchasingUtils";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import DataToolbar from "@/components/DataToolbar";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { ImageIcon, MoreVertical, Eye, Send, Check, Trash2, XCircle, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface PurchaseOrderRow {
   id: string;
@@ -51,11 +57,16 @@ const PurchaseOrders = () => {
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ order: PurchaseOrderRow; action: "submit" | "approve" | "cancel"; label: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<PurchaseOrderRow | null>(null);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
     message: string;
   } | null>(null);
+
+  const { page, setPage, pageSize, setPageSize } = usePagination(25);
+  const [totalItems, setTotalItems] = useState(0);
 
   const showToast = (type: PurchasingToastType, title: string, message: string) => {
     setToast({ type, title, message });
@@ -65,13 +76,22 @@ const PurchaseOrders = () => {
     setLoading(true);
 
     try {
-      const response = await api.get("/purchasing/purchase-orders");
+      const response = await api.get("/purchasing/purchase-orders", {
+        params: {
+          page,
+          per_page: pageSize,
+          search: search || undefined,
+          status: activeFilter !== "ALL" ? activeFilter : undefined,
+        },
+      });
       const rows = getRows(response.data, ["purchase_orders", "purchaseOrders"]);
       setOrders(rows.map(normalizePurchaseOrder).filter((order) => order.id));
+      setTotalItems(response.data?.pagination?.total ?? rows.length);
     } catch (error: any) {
       console.error(error);
       showToast("error", "Unable to load purchase orders", getCleanApiError(error, "Failed to load purchase orders."));
       setOrders([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -79,19 +99,7 @@ const PurchaseOrders = () => {
 
   useEffect(() => {
     void loadPurchaseOrders();
-  }, []);
-
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesStatus = activeFilter === "ALL" || normalizeStatus(order.status) === activeFilter;
-      const query = search.toLowerCase().trim();
-      const matchesSearch =
-        !query ||
-        `${order.poNumber} ${order.supplierName} ${order.status}`.toLowerCase().includes(query);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [orders, activeFilter, search]);
+  }, [page, pageSize, activeFilter, search]);
 
   const runPoAction = async (order: PurchaseOrderRow, action: "submit" | "approve" | "cancel") => {
     const labels = {
@@ -110,50 +118,74 @@ const PurchaseOrders = () => {
     }
   };
 
+  const deletePo = async (order: PurchaseOrderRow) => {
+    try {
+      await api.delete(`/purchasing/purchase-orders/${order.id}`);
+      showToast("success", "Purchase order deleted", `${order.poNumber} was deleted successfully.`);
+      await loadPurchaseOrders();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to delete purchase order", getCleanApiError(error, "Failed to delete purchase order."));
+    }
+  };
+
   const renderActions = (order: PurchaseOrderRow) => {
     const status = normalizeStatus(order.status);
 
     return (
-      <div className="flex flex-wrap items-center gap-2" onClick={(event) => event.stopPropagation()}>
-        {status === "DRAFT" && (
-          <>
-            <button className="rounded-md border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20" onClick={() => runPoAction(order, "submit")}>
-              Submit
+      <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+              <MoreVertical size={16} />
             </button>
-            <button className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => runPoAction(order, "cancel")}>
-              Cancel
-            </button>
-          </>
-        )}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)} className="cursor-pointer">
+              <Eye className="w-4 h-4 mr-2" />
+              View Details
+            </DropdownMenuItem>
 
-        {status === "SUBMITTED" && (
-          <>
-            <button className="rounded-md border border-green-200 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/20" onClick={() => runPoAction(order, "approve")}>
-              Approve
-            </button>
-            <button className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => runPoAction(order, "cancel")}>
-              Cancel
-            </button>
-          </>
-        )}
+            {status === "DRAFT" && (
+              <>
+                <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "submit", label: "submit" })} className="cursor-pointer">
+                  <Send className="w-4 h-4 mr-2" />
+                  Submit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
 
-        {status === "APPROVED" && (
-          <button className="rounded-md border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/20" onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)}>
-            Create Receipt
-          </button>
-        )}
+            {status === "SUBMITTED" && (
+              <>
+                <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "approve", label: "approve" })} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
+                  <Check className="w-4 h-4 mr-2" />
+                  Approve
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "cancel", label: "cancel" })} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancel
+                </DropdownMenuItem>
+              </>
+            )}
 
-        {status === "PARTIALLY_RECEIVED" && (
-          <button className="rounded-md border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/20" onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)}>
-            Create Receipt
-          </button>
-        )}
+            {(status === "APPROVED" || status === "PARTIALLY_RECEIVED") && (
+              <DropdownMenuItem onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
+                <FileText className="w-4 h-4 mr-2" />
+                Create Receipt
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   };
 
   return (
-    <div className="min-h-full bg-background px-5 py-5 text-foreground">
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       {toast && (
         <PurchasingToast
           type={toast.type}
@@ -164,96 +196,148 @@ const PurchaseOrders = () => {
         />
       )}
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{orders.length} total orders</p>
-        </div>
+      {/* Toolbar */}
+      <DataToolbar
+        searchPlaceholder="Search PO number or supplier..."
+        onSearch={(value) => { setSearch(value); setPage(1); }}
+        onAdd={() => setIsCreateOpen(true)}
+        addLabel="New PO"
+      />
 
-        <button
-          type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700"
-          onClick={() => setIsCreateOpen(true)}
-        >
-          <Plus size={17} /> New PO
-        </button>
-      </div>
-
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
-                activeFilter === tab.value
-                  ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted"
-              }`}
-              onClick={() => setActiveFilter(tab.value)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <input
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring lg:w-80"
-          placeholder="Search PO number or supplier..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </div>
-
-      {loading ? (
-        <TableSkeleton columns={6} rows={5} />
-      ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-background">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold">PO Number</th>
-              <th className="px-4 py-3 text-left font-semibold">Supplier</th>
-              <th className="px-4 py-3 text-left font-semibold">Date</th>
-              <th className="px-4 py-3 text-right font-semibold">Total</th>
-              <th className="px-4 py-3 text-left font-semibold">Status</th>
-              <th className="px-4 py-3 text-left font-semibold">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
-                  Loading purchase orders...
-                </td>
-              </tr>
-            ) : filteredOrders.length === 0 ? (
-              <tr>
-                <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
-                  No purchase orders found.
-                </td>
-              </tr>
-            ) : (
-              filteredOrders.map((order) => (
-                <tr
-                  key={order.id}
-                  className="cursor-pointer border-t border-border/60 hover:bg-muted/40"
-                  onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)}
-                >
-                  <td className="px-4 py-3 font-medium">{order.poNumber}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{order.supplierName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(order.orderDate)}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{formatCurrency(order.totalAmount)}</td>
-                  <td className="px-4 py-3"><PurchaseStatusBadge status={order.status} /></td>
-                  <td className="px-4 py-3">{renderActions(order)}</td>
-                </tr>
-              ))
+      {/* Filters Pill Bar */}
+      <div className="flex flex-wrap items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
+        {filterTabs.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            className={cn(
+              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
+              activeFilter === tab.value
+                ? "bg-blue-600 dark:bg-blue-700 text-white shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
-          </tbody>
-        </table>
+            onClick={() => { setActiveFilter(tab.value); setPage(1); }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* Table Container */}
+      {loading ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading purchase orders...
+            </p>
+          </div>
+        </div>
+      ) : orders.length > 0 ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
+          <ScrollArea className="flex-1 px-3">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[15%]">PO Number</TableHead>
+                  <TableHead className="w-[30%]">Supplier</TableHead>
+                  <TableHead className="w-[20%]">Date</TableHead>
+                  <TableHead className="w-[15%] text-right">Total</TableHead>
+                  <TableHead className="w-[10%] text-center">Status</TableHead>
+                  <TableHead className="w-[10%] text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orders.map((order) => (
+                  <TableRow
+                    key={order.id}
+                    onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)}
+                    className={cn(
+                      "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                      "hover:bg-accent/30"
+                    )}
+                  >
+                    <TableCell className="py-2.5">
+                      <span className="font-semibold text-sm">{order.poNumber}</span>
+                    </TableCell>
+                    <TableCell>{order.supplierName}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(order.orderDate)}</TableCell>
+                    <TableCell className="text-right font-semibold text-foreground">{formatCurrency(order.totalAmount)}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <PurchaseStatusBadge status={order.status} />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">{renderActions(order)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+
+          <div className="border-t mx-3">
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No purchase orders found</p>
+            <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
+          </div>
+        </div>
       )}
 
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm {confirmAction?.label}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {confirmAction?.action} {confirmAction?.order.poNumber}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction?.action === "cancel" ? "bg-destructive text-white hover:bg-destructive/90" : "bg-blue-600 text-white hover:bg-blue-700"}
+              onClick={() => { if (confirmAction) void runPoAction(confirmAction.order, confirmAction.action); setConfirmAction(null); }}
+            >
+              {confirmAction?.label === "submit" ? "Submit" : confirmAction?.action === "approve" ? "Approve" : confirmAction?.action === "cancel" ? "Cancel" : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {confirmDelete?.poNumber}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmDelete) void deletePo(confirmDelete); setConfirmDelete(null); }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* New PO Modal */}
       <NewPurchaseOrderModal
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}

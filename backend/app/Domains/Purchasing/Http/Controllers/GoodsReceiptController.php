@@ -5,25 +5,51 @@ namespace App\Domains\Purchasing\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
-use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
-use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
-use App\Domains\Purchasing\Domain\Models\PurchaseOrderItem;
-use App\Domains\Inventory\Domain\Models\StockLocation;
-
+use App\Domains\Purchasing\Http\Requests\StoreGoodsReceiptRequest;
+use App\Domains\Purchasing\Http\Requests\ApproveGoodsReceiptRequest;
+use App\Domains\Purchasing\Application\UseCases\CreateGoodsReceipt;
+use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceipt;
+use App\Domains\Purchasing\Application\UseCases\ReturnGoodsReceiptItems;
+use RuntimeException;
+use Throwable;
 
 class GoodsReceiptController extends Controller
 {
-
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $receipts = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product'])
-            ->orderByDesc('created_at')
-            ->get();
+        $search = $request->query('search');
+        $status = $request->query('status');
+        $perPage = (int) $request->query('per_page', 10);
+
+        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('receipt_number', 'ILIKE', "%{$search}%")
+                  ->orWhereHas('purchaseOrder', function ($pq) use ($search) {
+                      $pq->where('po_number', 'ILIKE', "%{$search}%")
+                        ->orWhereHas('supplier', function ($sq) use ($search) {
+                            $sq->where('CompanyName', 'ILIKE', "%{$search}%");
+                        });
+                  });
+            });
+        }
+
+        if ($status && $status !== 'ALL') {
+            $query->where('status', strtoupper($status));
+        }
+
+        $paginated = $query->orderByDesc('created_at')->paginate($perPage);
 
         return response()->json([
-            'goods_receipts' => $receipts,
+            'goods_receipts' => $paginated->items(),
+            'pagination' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]
         ]);
     }
 
@@ -40,78 +66,27 @@ class GoodsReceiptController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreGoodsReceiptRequest $request, CreateGoodsReceipt $createGoodsReceipt): JsonResponse
     {
-        $validated = $request->validate([
-            'purchase_order_id' => ['required', 'uuid'],
-            'notes' => ['nullable', 'string'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.purchase_order_item_id' => ['required', 'uuid'],
-            'items.*.quantity_received' => ['required', 'integer', 'min:0'],
-            'items.*.quantity_rejected' => ['nullable', 'integer', 'min:0'],
-            'items.*.notes' => ['nullable', 'string'],
-        ]);
+        try {
+            $receipt = $createGoodsReceipt->execute($request->validated());
 
-        $receipt = DB::transaction(function () use ($validated) {
-            $purchaseOrder = PurchaseOrder::with('items.receiptItems')
-                ->findOrFail($validated['purchase_order_id']);
+            $receipt->load(['purchaseOrder.supplier', 'items.product', 'items.purchaseOrderItem']);
 
-            if (!in_array($purchaseOrder->status, ['APPROVED', 'PARTIALLY_RECEIVED'], true)) {
-                abort(response()->json([
-                    'message' => 'Goods receipt can only be created from an approved or partially received PO.',
-                ], 422));
-            }
-
-            $receipt = GoodsReceipt::create([
-                'receipt_number' => $this->generateReceiptNumber(),
-                'purchase_order_id' => $purchaseOrder->id,
-                'status' => 'DRAFT',
-                'received_at' => now(),
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            foreach ($validated['items'] as $itemData) {
-                $poItem = PurchaseOrderItem::with('receiptItems')
-                    ->where('purchase_order_id', $purchaseOrder->id)
-                    ->findOrFail($itemData['purchase_order_item_id']);
-
-                $alreadyReceived = $poItem->receiptItems()
-                    ->whereHas('goodsReceipt', function ($query) {
-                        $query->where('status', 'APPROVED');
-                    })
-                    ->sum('quantity_received');
-
-                $remaining = (int) $poItem->quantity_ordered - (int) $alreadyReceived;
-                $quantityReceived = (int) $itemData['quantity_received'];
-
-                if ($quantityReceived > $remaining) {
-                    abort(response()->json([
-                        'message' => 'Received quantity cannot exceed remaining quantity.',
-                        'product_id' => $poItem->product_id,
-                        'remaining' => $remaining,
-                    ], 422));
-                }
-
-                GoodsReceiptItem::create([
-                    'goods_receipt_id' => $receipt->id,
-                    'purchase_order_item_id' => $poItem->id,
-                    'product_id' => $poItem->product_id,
-                    'product_supplier_id' => $poItem->product_supplier_id,
-                    'quantity_received' => $quantityReceived,
-                    'quantity_rejected' => $itemData['quantity_rejected'] ?? 0,
-                    'notes' => $itemData['notes'] ?? null,
-                ]);
-            }
-
-            return $receipt;
-        });
-
-        $receipt->load(['purchaseOrder.supplier', 'items.product', 'items.purchaseOrderItem']);
-
-        return response()->json([
-            'message' => 'Goods receipt draft created successfully.',
-            'goods_receipt' => $receipt,
-        ], 201);
+            return response()->json([
+                'message' => 'Goods receipt draft created successfully.',
+                'goods_receipt' => $receipt,
+            ], 201);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to create goods receipt.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function approve(string $id, ApproveGoodsReceipt $approveGoodsReceipt): JsonResponse
@@ -141,14 +116,72 @@ class GoodsReceiptController extends Controller
         }
     }
 
-   
-
-    private function generateReceiptNumber(): string
+    public function cancel(string $id): JsonResponse
     {
-        do {
-            $receiptNumber = 'GR-' . now()->format('ymd') . '-' . random_int(1000, 9999);
-        } while (GoodsReceipt::where('receipt_number', $receiptNumber)->exists());
+        $receipt = GoodsReceipt::findOrFail($id);
 
-        return $receiptNumber;
+        if ($receipt->status !== 'DRAFT') {
+            return response()->json([
+                'message' => 'Only draft goods receipts can be cancelled.',
+            ], 422);
+        }
+
+        $receipt->update([
+            'status' => 'CANCELLED',
+            'cancelled_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Goods receipt cancelled successfully.',
+            'goods_receipt' => $receipt,
+        ]);
+    }
+
+    public function returnItems(Request $request, string $id, ReturnGoodsReceiptItems $returnGoodsReceiptItems): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => ['required', 'array'],
+            'items.*.goods_receipt_item_id' => ['required', 'string'],
+            'items.*.quantity_returned' => ['required', 'integer', 'min:1'],
+            'items.*.notes' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $receipt = $returnGoodsReceiptItems->execute($id, $validated['items']);
+
+            return response()->json([
+                'message' => 'Goods receipt items returned successfully. Stock ledger was updated.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to process return items.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $receipt = GoodsReceipt::findOrFail($id);
+
+        if ($receipt->status !== 'DRAFT') {
+            return response()->json([
+                'message' => 'Only draft goods receipts can be deleted.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($receipt) {
+            $receipt->items()->delete();
+            $receipt->delete();
+        });
+
+        return response()->json([
+            'message' => 'Goods receipt deleted successfully.',
+        ]);
     }
 }

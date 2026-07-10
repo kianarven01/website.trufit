@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import CreateGoodsReceiptModal, { ReceiptPurchaseOrder } from "@/components/purchasing/CreateGoodsReceiptModal";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatDate, getCleanApiError, getRows, normalizeStatus } from "@/components/purchasing/purchasingUtils";
-import TableSkeleton from "@/components/ui/TableSkeleton";
+import { Pagination, usePagination } from "@/components/ui/pagination";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import DataToolbar from "@/components/DataToolbar";
+import { ScrollArea } from "@/components/ui/scrollArea";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { ImageIcon, MoreVertical, Eye, Check, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface GoodsReceiptRow {
   id: string;
@@ -78,11 +84,16 @@ const GoodsReceipts = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [confirmApprove, setConfirmApprove] = useState<GoodsReceiptRow | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<GoodsReceiptRow | null>(null);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
     message: string;
   } | null>(null);
+
+  const { page, setPage, pageSize, setPageSize } = usePagination(25);
+  const [totalItems, setTotalItems] = useState(0);
 
   const showToast = (type: PurchasingToastType, title: string, message: string) => {
     setToast({ type, title, message });
@@ -92,13 +103,21 @@ const GoodsReceipts = () => {
     setLoading(true);
 
     try {
-      const response = await api.get("/purchasing/goods-receipts");
+      const response = await api.get("/purchasing/goods-receipts", {
+        params: {
+          page,
+          per_page: pageSize,
+          search: search || undefined,
+        },
+      });
       const rows = getRows(response.data, ["goods_receipts", "goodsReceipts"]);
       setReceipts(rows.map(normalizeGoodsReceipt).filter((receipt) => receipt.id));
+      setTotalItems(response.data?.pagination?.total ?? rows.length);
     } catch (error: any) {
       console.error(error);
       showToast("error", "Unable to load goods receipts", getCleanApiError(error, "Failed to load goods receipts."));
       setReceipts([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -122,18 +141,9 @@ const GoodsReceipts = () => {
   useEffect(() => {
     void loadGoodsReceipts();
     void loadReceivablePurchaseOrders();
-  }, []);
+  }, [page, pageSize, search]);
 
-  const filteredReceipts = useMemo(() => {
-    const query = search.toLowerCase().trim();
-    if (!query) return receipts;
-
-    return receipts.filter((receipt) =>
-      `${receipt.receiptNumber} ${receipt.poNumber} ${receipt.supplierName} ${receipt.status}`
-        .toLowerCase()
-        .includes(query)
-    );
-  }, [receipts, search]);
+  const filteredReceipts = receipts;
 
   const approveReceipt = async (receipt: GoodsReceiptRow) => {
     try {
@@ -147,89 +157,174 @@ const GoodsReceipts = () => {
     }
   };
 
+  const deleteReceipt = async (receipt: GoodsReceiptRow) => {
+    try {
+      await api.delete(`/purchasing/goods-receipts/${receipt.id}`);
+      showToast("success", "Goods receipt deleted", `${receipt.receiptNumber} was deleted successfully.`);
+      await loadGoodsReceipts();
+      await loadReceivablePurchaseOrders();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to delete goods receipt", getCleanApiError(error, "Failed to delete goods receipt."));
+    }
+  };
+
   return (
-    <div className="min-h-full bg-background px-5 py-5 text-foreground">
+    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       {toast && (
         <PurchasingToast type={toast.type} title={toast.title} message={toast.message} duration={4000} onClose={() => setToast(null)} />
       )}
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Goods Receipts</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Warehouse delivery inspection & stock receiving</p>
-        </div>
+      {/* Toolbar */}
+      <DataToolbar
+        searchPlaceholder="Search receipt, PO, or supplier..."
+        onSearch={(value) => { setSearch(value); setPage(1); }}
+        onAdd={() => setModalOpen(true)}
+        addLabel="Receive Delivery"
+        addButtonClassName="bg-amber-500 hover:bg-amber-600 text-white"
+      />
 
-        <button
-          type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-amber-500 px-4 text-sm font-semibold text-white hover:bg-amber-600"
-          onClick={() => setModalOpen(true)}
-        >
-          <Plus size={17} /> Receive Delivery
-        </button>
-      </div>
-
-      <div className="mb-5">
-        <input
-          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring sm:w-80"
-          placeholder="Search receipt, PO, or supplier..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      </div>
-
+      {/* Table Container */}
       {loading ? (
-        <TableSkeleton columns={7} rows={5} />
-      ) : (
-      <div className="overflow-hidden rounded-xl border border-border bg-background">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold">Receipt #</th>
-              <th className="px-4 py-3 text-left font-semibold">PO Number</th>
-              <th className="px-4 py-3 text-left font-semibold">Supplier</th>
-              <th className="px-4 py-3 text-left font-semibold">Date</th>
-              <th className="px-4 py-3 text-left font-semibold">Status</th>
-              <th className="px-4 py-3 text-left font-semibold">Notes</th>
-              <th className="px-4 py-3 text-left font-semibold">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="px-4 py-8 text-center text-muted-foreground" colSpan={7}>Loading goods receipts...</td>
-              </tr>
-            ) : filteredReceipts.length === 0 ? (
-              <tr>
-                <td className="px-4 py-8 text-center text-muted-foreground" colSpan={7}>No goods receipts found.</td>
-              </tr>
-            ) : (
-              filteredReceipts.map((receipt) => (
-                <tr
-                  key={receipt.id}
-                  className="cursor-pointer border-t border-border/60 hover:bg-muted/40"
-                  onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)}
-                >
-                  <td className="px-4 py-3 font-medium">{receipt.receiptNumber}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{receipt.poNumber}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{receipt.supplierName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(receipt.receivedAt)}</td>
-                  <td className="px-4 py-3"><PurchaseStatusBadge status={receipt.status} /></td>
-                  <td className="px-4 py-3 text-muted-foreground">{receipt.notes || "-"}</td>
-                  <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                    {normalizeStatus(receipt.status) === "DRAFT" && (
-                      <button className="rounded-md border border-green-200 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/20" onClick={() => approveReceipt(receipt)}>
-                        Approve
-                      </button>
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">
+              Loading goods receipts...
+            </p>
+          </div>
+        </div>
+      ) : receipts.length > 0 ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
+          <ScrollArea className="flex-1 px-3">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[15%]">Receipt #</TableHead>
+                  <TableHead className="w-[15%]">PO Number</TableHead>
+                  <TableHead className="w-[25%]">Supplier</TableHead>
+                  <TableHead className="w-[15%]">Date</TableHead>
+                  <TableHead className="w-[12%] text-center">Status</TableHead>
+                  <TableHead className="w-[13%]">Notes</TableHead>
+                  <TableHead className="w-[10%] text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredReceipts.map((receipt) => (
+                  <TableRow
+                    key={receipt.id}
+                    onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)}
+                    className={cn(
+                      "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                      "hover:bg-accent/30"
                     )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  >
+                    <TableCell className="py-2.5">
+                      <span className="font-semibold text-sm">{receipt.receiptNumber}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{receipt.poNumber}</TableCell>
+                    <TableCell>{receipt.supplierName}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(receipt.receivedAt)}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <PurchaseStatusBadge status={receipt.status} />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{receipt.notes || "-"}</TableCell>
+                    <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+                            <MoreVertical size={16} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuItem onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)} className="cursor-pointer">
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+
+                          {normalizeStatus(receipt.status) === "DRAFT" && (
+                            <>
+                              <DropdownMenuItem onClick={() => setConfirmApprove(receipt)} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
+                                <Check className="w-4 h-4 mr-2" />
+                                Approve
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setConfirmDelete(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+
+          <div className="border-t mx-3">
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="py-16 flex flex-col items-center text-center">
+            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No goods receipts found</p>
+            <p className="text-xs text-muted-foreground">Try adjusting your search</p>
+          </div>
+        </div>
       )}
 
+      {/* Confirmation Dialog */}
+      <AlertDialog open={!!confirmApprove} onOpenChange={(open) => { if (!open) setConfirmApprove(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Goods Receipt</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will update inventory and record stock movements. Are you sure you want to approve {confirmApprove?.receiptNumber}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" onClick={() => { if (confirmApprove) void approveReceipt(confirmApprove); setConfirmApprove(null); }}>
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Goods Receipt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {confirmDelete?.receiptNumber}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmDelete) void deleteReceipt(confirmDelete); setConfirmDelete(null); }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Modal */}
       <CreateGoodsReceiptModal
         open={modalOpen}
         onOpenChange={setModalOpen}

@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Printer, ReceiptText } from "lucide-react";
+import { ArrowLeft, Pencil, Printer, ReceiptText, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
 import CreateGoodsReceiptModal, { ReceiptPurchaseOrder } from "@/components/purchasing/CreateGoodsReceiptModal";
+import NewPurchaseOrderModal from "@/components/purchasing/NewPurchaseOrderModal";
 import PurchaseOrderItemsTable, { PurchaseOrderItemRow } from "@/components/purchasing/PurchaseOrderItemsTable";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatCurrency, formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 interface PurchaseOrderDetailModel {
   id: string;
@@ -109,6 +112,9 @@ const PurchaseOrderDetail = () => {
   const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrderDetailModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ action: "submit" | "approve" | "cancel"; label: string } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
@@ -127,7 +133,10 @@ const PurchaseOrderDetail = () => {
     try {
       const response = await api.get(`/purchasing/purchase-orders/${id}`);
       const row = response.data?.purchase_order || response.data?.purchaseOrder || response.data?.data || response.data;
-      setPurchaseOrder(normalizePurchaseOrder(row));
+      const po = normalizePurchaseOrder(row);
+      setPurchaseOrder(po);
+      sessionStorage.setItem(`breadcrumb-/webapp/purchasing/purchase-orders/${id}`, po.poNumber);
+      window.dispatchEvent(new Event('breadcrumb-update'));
     } catch (error: any) {
       console.error(error);
       showToast("error", "Unable to load purchase order", getCleanApiError(error, "Failed to load purchase order."));
@@ -139,6 +148,11 @@ const PurchaseOrderDetail = () => {
 
   useEffect(() => {
     void loadPurchaseOrder();
+
+    return () => {
+      sessionStorage.removeItem(`breadcrumb-/webapp/purchasing/purchase-orders/${id}`);
+      window.dispatchEvent(new Event('breadcrumb-update'));
+    };
   }, [id]);
 
   const receiptPurchaseOrder = useMemo<ReceiptPurchaseOrder | null>(() => {
@@ -174,14 +188,29 @@ const PurchaseOrderDetail = () => {
 
   const handlePrint = () => window.print();
 
+  const handleDelete = async () => {
+    if (!purchaseOrder) return;
+
+    try {
+      await api.delete(`/purchasing/purchase-orders/${purchaseOrder.id}`);
+      showToast("success", "Purchase order deleted", `${purchaseOrder.poNumber} was deleted successfully.`);
+      navigate("/webapp/purchasing/purchase-orders");
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to delete purchase order", getCleanApiError(error, "Failed to delete purchase order."));
+    }
+  };
+
   const status = normalizeStatus(purchaseOrder?.status);
   const canSubmit = status === "DRAFT";
   const canApprove = status === "SUBMITTED";
   const canCancel = ["DRAFT", "SUBMITTED", "APPROVED"].includes(status);
   const canCreateReceipt = ["APPROVED", "PARTIALLY_RECEIVED"].includes(status);
+  const canEdit = status === "DRAFT";
+  const canDelete = status === "DRAFT";
 
   return (
-    <div className="min-h-full bg-background px-5 py-5 text-foreground">
+    <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-6 overflow-y-auto bg-background text-foreground">
       {toast && (
         <PurchasingToast
           type={toast.type}
@@ -203,18 +232,28 @@ const PurchaseOrderDetail = () => {
 
         {purchaseOrder && (
           <div className="flex flex-wrap items-center gap-2">
+            {canEdit && (
+              <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
+                <Pencil size={16} /> Edit PO
+              </button>
+            )}
+            {canDelete && (
+              <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
+                <Trash2 size={16} /> Delete PO
+              </button>
+            )}
             {canSubmit && (
-              <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => runPoAction("submit")}>
+              <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmAction({ action: "submit", label: "submit" })}>
                 Submit PO
               </button>
             )}
             {canApprove && (
-              <button className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => runPoAction("approve")}>
+              <button className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => setConfirmAction({ action: "approve", label: "approve" })}>
                 Approve PO
               </button>
             )}
             {canCancel && (
-              <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => runPoAction("cancel")}>
+              <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmAction({ action: "cancel", label: "cancel" })}>
                 Cancel PO
               </button>
             )}
@@ -235,78 +274,148 @@ const PurchaseOrderDetail = () => {
       ) : !purchaseOrder ? (
         <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Purchase order not found.</div>
       ) : (
-        <div className="space-y-5">
-          <div className="rounded-xl border border-border bg-background p-5">
+        <div className="space-y-6">
+          {/* Main Info Card */}
+          <div className="rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-shadow p-6 border-l-4 border-l-blue-600">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">{purchaseOrder.poNumber}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">Supplier: {purchaseOrder.supplierName}</p>
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">{purchaseOrder.poNumber}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Supplier: <span className="font-semibold text-foreground">{purchaseOrder.supplierName}</span></p>
               </div>
               <PurchaseStatusBadge status={purchaseOrder.status} />
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Order Date</p>
-                <p className="mt-1 font-medium">{formatDate(purchaseOrder.orderDate)}</p>
+            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Order Date</p>
+                <p className="font-bold text-foreground">{formatDate(purchaseOrder.orderDate)}</p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Expected Delivery</p>
-                <p className="mt-1 font-medium">{formatDate(purchaseOrder.expectedDelivery)}</p>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Expected Delivery</p>
+                <p className="font-bold text-foreground">{formatDate(purchaseOrder.expectedDelivery)}</p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Total Amount</p>
-                <p className="mt-1 font-medium">{formatCurrency(purchaseOrder.totalAmount)}</p>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Amount</p>
+                <p className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(purchaseOrder.totalAmount)}</p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Remarks</p>
-                <p className="mt-1 font-medium">{purchaseOrder.remarks || "-"}</p>
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Remarks</p>
+                <p className="text-sm text-foreground/80 italic">{purchaseOrder.remarks || "-"}</p>
               </div>
             </div>
           </div>
 
-          <div>
-            <h2 className="mb-3 text-lg font-semibold">Line Items</h2>
+          {/* Line Items Section */}
+          <div className="rounded-xl border border-border/80 bg-card shadow-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold text-foreground">Line Items</h2>
             <PurchaseOrderItemsTable items={purchaseOrder.items} />
           </div>
 
-          <div>
-            <h2 className="mb-3 text-lg font-semibold">Goods Receipts</h2>
-            <div className="overflow-hidden rounded-xl border border-border bg-background">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold">Receipt #</th>
-                    <th className="px-4 py-3 text-left font-semibold">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
+          {/* Goods Receipts Section */}
+          <div className="rounded-xl border border-border/80 bg-card shadow-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold text-foreground">Goods Receipts</h2>
+            <div className="overflow-hidden rounded-xl border border-border/60 bg-background px-3">
+              <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[30%]">Receipt #</TableHead>
+                    <TableHead className="w-[45%]">Date</TableHead>
+                    <TableHead className="w-[25%] text-center">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {purchaseOrder.goodsReceipts.length === 0 ? (
-                    <tr>
-                      <td className="px-4 py-6 text-center text-muted-foreground" colSpan={3}>
+                    <TableRow>
+                      <TableCell className="px-4 py-6 text-center text-muted-foreground" colSpan={3}>
                         No goods receipts yet.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     purchaseOrder.goodsReceipts.map((receipt) => (
-                      <tr
+                      <TableRow
                         key={receipt.id}
-                        className="cursor-pointer border-t border-border/60 hover:bg-muted/40"
+                        className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
                         onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)}
                       >
-                        <td className="px-4 py-3 font-medium">{receipt.receiptNumber}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{formatDate(receipt.receivedAt)}</td>
-                        <td className="px-4 py-3"><PurchaseStatusBadge status={receipt.status} /></td>
-                      </tr>
+                        <TableCell className="py-2.5">
+                          <span className="font-semibold text-sm">{receipt.receiptNumber}</span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(receipt.receivedAt)}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center">
+                            <PurchaseStatusBadge status={receipt.status} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
       )}
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm {confirmAction?.label}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {confirmAction?.action} {purchaseOrder?.poNumber}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction?.action === "cancel" ? "bg-destructive text-white hover:bg-destructive/90" : "bg-blue-600 text-white hover:bg-blue-700"}
+              onClick={() => { if (confirmAction) void runPoAction(confirmAction.action); setConfirmAction(null); }}
+            >
+              {confirmAction?.action === "submit" ? "Submit" : confirmAction?.action === "approve" ? "Approve" : "Cancel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {purchaseOrder?.poNumber}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <NewPurchaseOrderModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        editPurchaseOrder={purchaseOrder ? {
+          id: purchaseOrder.id,
+          supplierId: purchaseOrder.supplierId ?? "",
+          orderDate: purchaseOrder.orderDate ?? "",
+          requestShipDate: purchaseOrder.expectedDelivery ?? "",
+          remarks: purchaseOrder.remarks ?? "",
+          items: purchaseOrder.items.map((item) => ({
+            id: item.id,
+            productId: item.id,
+            productSupplierId: "",
+            quantity: String(item.quantityOrdered),
+            unitCost: String(item.unitCost),
+          })),
+        } : undefined}
+        onSaved={async () => {
+          showToast("success", "Purchase order updated", "The purchase order was updated successfully.");
+          await loadPurchaseOrder();
+        }}
+        onError={(message) => showToast("error", "Unable to update purchase order", message)}
+      />
 
       <CreateGoodsReceiptModal
         open={receiptModalOpen}

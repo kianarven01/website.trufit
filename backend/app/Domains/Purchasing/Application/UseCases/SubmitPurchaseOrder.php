@@ -2,10 +2,24 @@
 
 namespace App\Domains\Purchasing\Application\UseCases;
 
+use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
+use RuntimeException;
+
 class SubmitPurchaseOrder
 {
-    public function __invoke(...$args)
+    public function execute(string $id): PurchaseOrder
     {
-        // TODO: Move controller business logic here when refactoring Purchasing module.
+        $purchaseOrder = PurchaseOrder::findOrFail($id);
+
+        if ($purchaseOrder->status !== 'DRAFT') {
+            throw new RuntimeException('Only draft purchase orders can be submitted.', 422);
+        }
+
+        $purchaseOrder->update([
+            'status' => 'SUBMITTED',
+            'submitted_at' => now(),
+        ]);
+
+        return $purchaseOrder;
     }
 }

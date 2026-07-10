@@ -24,6 +24,7 @@ class GoodsReceiptItem extends Model
         'product_supplier_id',
         'quantity_received',
         'quantity_rejected',
+        'quantity_returned',
         'notes',
     ];
 
@@ -35,6 +36,7 @@ class GoodsReceiptItem extends Model
         'product_supplier_id' => 'string',
         'quantity_received' => 'integer',
         'quantity_rejected' => 'integer',
+        'quantity_returned' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import api from "@/api/axios";
+import { formatCurrency, getRows, getCleanApiError } from "./purchasingUtils";
 
 interface SupplierOption {
   id: string;
@@ -34,45 +35,23 @@ interface NewPurchaseOrderModalProps {
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void | Promise<void>;
   onError?: (message: string) => void;
+  editPurchaseOrder?: {
+    id: string;
+    supplierId: string;
+    orderDate: string;
+    requestShipDate: string;
+    remarks: string;
+    items: Array<{
+      id: string;
+      productId: string;
+      productSupplierId: string;
+      quantity: string;
+      unitCost: string;
+    }>;
+  };
 }
 
-const getRows = (data: any): any[] => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.suppliers)) return data.suppliers;
-  if (Array.isArray(data?.products)) return data.products;
-  if (Array.isArray(data?.rows)) return data.rows;
-  return [];
-};
 
-const getCleanApiError = (error: any) => {
-  const validationErrors = error?.response?.data?.errors;
-  if (validationErrors) {
-    return Object.values(validationErrors).flat().join(" ");
-  }
-
-  const rawMessage =
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    "Failed to create purchase order.";
-
-  if (
-    String(rawMessage).includes("SQLSTATE") ||
-    String(rawMessage).includes("pgsql") ||
-    String(rawMessage).includes("current transaction is aborted")
-  ) {
-    return "Unable to save purchase order. Please check the selected supplier and line items.";
-  }
-
-  return rawMessage;
-};
-
-const formatCurrency = (value: number | string | null | undefined) =>
-  new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
 const normalizeSupplier = (row: any): SupplierOption => ({
   id: String(row.id ?? row.supplier_id ?? ""),
@@ -119,6 +98,7 @@ const NewPurchaseOrderModal = ({
   onOpenChange,
   onSaved,
   onError,
+  editPurchaseOrder,
 }: NewPurchaseOrderModalProps) => {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
@@ -175,12 +155,30 @@ const NewPurchaseOrderModal = ({
   useEffect(() => {
     if (!open) return;
 
-    setSupplierId("");
-    setOrderDate(new Date().toISOString().slice(0, 10));
-    setRequestShipDate("");
-    setRemarks("");
-    setItems([createEmptyLine()]);
-  }, [open]);
+    if (editPurchaseOrder) {
+      setSupplierId(editPurchaseOrder.supplierId);
+      setOrderDate(editPurchaseOrder.orderDate ? editPurchaseOrder.orderDate.slice(0, 10) : new Date().toISOString().slice(0, 10));
+      setRequestShipDate(editPurchaseOrder.requestShipDate ? editPurchaseOrder.requestShipDate.slice(0, 10) : "");
+      setRemarks(editPurchaseOrder.remarks || "");
+      setItems(
+        editPurchaseOrder.items.length > 0
+          ? editPurchaseOrder.items.map((item) => ({
+              id: item.id || crypto.randomUUID(),
+              productId: item.productId,
+              productSupplierId: item.productSupplierId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+            }))
+          : [createEmptyLine()]
+      );
+    } else {
+      setSupplierId("");
+      setOrderDate(new Date().toISOString().slice(0, 10));
+      setRequestShipDate("");
+      setRemarks("");
+      setItems([createEmptyLine()]);
+    }
+  }, [open, editPurchaseOrder]);
 
   const updateItem = (itemId: string, changes: Partial<LineItemState>) => {
     setItems((current) =>
@@ -228,7 +226,7 @@ const NewPurchaseOrderModal = ({
     setSaving(true);
 
     try {
-      await api.post("/purchasing/purchase-orders", {
+      const payload = {
         supplier_id: supplierId,
         order_date: orderDate,
         request_ship_date: requestShipDate || null,
@@ -239,7 +237,13 @@ const NewPurchaseOrderModal = ({
           quantity_ordered: Number(item.quantity),
           unit_cost: Number(item.unitCost || 0),
         })),
-      });
+      };
+
+      if (editPurchaseOrder) {
+        await api.put(`/purchasing/purchase-orders/${editPurchaseOrder.id}`, payload);
+      } else {
+        await api.post("/purchasing/purchase-orders", payload);
+      }
 
       await onSaved?.();
       onOpenChange(false);
@@ -258,8 +262,10 @@ const NewPurchaseOrderModal = ({
       <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-background shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold">New Purchase Order</h2>
-            <p className="text-sm text-muted-foreground">Create a draft purchase order for supplier replenishment.</p>
+            <h2 className="text-lg font-semibold">{editPurchaseOrder ? "Edit Purchase Order" : "New Purchase Order"}</h2>
+            <p className="text-sm text-muted-foreground">
+              {editPurchaseOrder ? "Modify this draft purchase order." : "Create a draft purchase order for supplier replenishment."}
+            </p>
           </div>
           <button type="button" className="rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => onOpenChange(false)}>
             <X size={18} />
@@ -400,7 +406,7 @@ const NewPurchaseOrderModal = ({
             onClick={handleSubmit}
             disabled={saving}
           >
-            {saving ? "Creating..." : "Create PO"}
+            {saving ? (editPurchaseOrder ? "Saving..." : "Creating...") : (editPurchaseOrder ? "Save Changes" : "Create PO")}
           </button>
         </div>
       </div>

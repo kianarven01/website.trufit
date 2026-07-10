@@ -2,10 +2,24 @@
 
 namespace App\Domains\Purchasing\Application\UseCases;
 
+use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
+use RuntimeException;
+
 class ApprovePurchaseOrder
 {
-    public function __invoke(...$args)
+    public function execute(string $id): PurchaseOrder
     {
-        // TODO: Move controller business logic here when refactoring Purchasing module.
+        $purchaseOrder = PurchaseOrder::findOrFail($id);
+
+        if ($purchaseOrder->status !== 'SUBMITTED') {
+            throw new RuntimeException('Only submitted purchase orders can be approved.', 422);
+        }
+
+        $purchaseOrder->update([
+            'status' => 'APPROVED',
+            'approved_at' => now(),
+        ]);
+
+        return $purchaseOrder;
     }
 }

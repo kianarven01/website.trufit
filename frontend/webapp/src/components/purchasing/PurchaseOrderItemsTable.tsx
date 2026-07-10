@@ -1,3 +1,5 @@
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+
 export interface PurchaseOrderItemRow {
   id: string;
   productName: string;
@@ -21,40 +23,43 @@ const formatCurrency = (value: number | string | null | undefined) =>
 
 const PurchaseOrderItemsTable = ({ items }: PurchaseOrderItemsTableProps) => {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background">
-      <table className="w-full text-sm">
-        <thead className="bg-muted/40 text-xs uppercase tracking-[0.12em] text-muted-foreground">
-          <tr>
-            <th className="px-4 py-3 text-left font-semibold">Product</th>
-            <th className="px-4 py-3 text-right font-semibold">Ordered</th>
-            <th className="px-4 py-3 text-right font-semibold">Received</th>
-            <th className="px-4 py-3 text-right font-semibold">Unit Cost</th>
-            <th className="px-4 py-3 text-right font-semibold">Line Total</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-background px-3">
+      <Table className="table-fixed w-full border-separate border-spacing-y-2">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[40%]">Product</TableHead>
+            <TableHead className="w-[15%] text-right">Ordered</TableHead>
+            <TableHead className="w-[15%] text-right">Received</TableHead>
+            <TableHead className="w-[15%] text-right">Unit Cost</TableHead>
+            <TableHead className="w-[15%] text-right">Line Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {items.length === 0 ? (
-            <tr>
-              <td className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
+            <TableRow>
+              <TableCell className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
                 No line items found.
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ) : (
             items.map((item) => (
-              <tr key={item.id} className="border-t border-border/60">
-                <td className="px-4 py-3">
-                  <p className="font-medium text-foreground">{item.productName}</p>
-                  {item.sku && <p className="text-xs text-muted-foreground">{item.sku}</p>}
-                </td>
-                <td className="px-4 py-3 text-right text-muted-foreground">{item.quantityOrdered}</td>
-                <td className="px-4 py-3 text-right text-muted-foreground">{item.quantityReceived ?? 0}</td>
-                <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(item.unitCost)}</td>
-                <td className="px-4 py-3 text-right font-semibold">{formatCurrency(item.lineTotal)}</td>
-              </tr>
+              <TableRow
+                key={item.id}
+                className="transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
+              >
+                <TableCell className="py-2.5">
+                  <p className="font-semibold text-foreground text-sm">{item.productName}</p>
+                  {item.sku && <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{item.sku}</p>}
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">{item.quantityOrdered}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{item.quantityReceived ?? 0}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatCurrency(item.unitCost)}</TableCell>
+                <TableCell className="text-right font-bold text-foreground">{formatCurrency(item.lineTotal)}</TableCell>
+              </TableRow>
             ))
           )}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 };

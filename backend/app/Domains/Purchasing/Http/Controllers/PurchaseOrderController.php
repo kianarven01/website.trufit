@@ -8,17 +8,45 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrderItem;
+use App\Domains\Purchasing\Http\Requests\StorePurchaseOrderRequest;
+use App\Domains\Purchasing\Http\Requests\UpdatePurchaseOrderRequest;
+use App\Domains\Purchasing\Application\UseCases\CreatePurchaseOrder;
+use App\Domains\Purchasing\Application\UseCases\SubmitPurchaseOrder;
+use App\Domains\Purchasing\Application\UseCases\ApprovePurchaseOrder;
 
 class PurchaseOrderController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $purchaseOrders = PurchaseOrder::with(['supplier', 'items.product', 'items.productSupplier'])
-            ->orderByDesc('created_at')
-            ->get();
+        $search = $request->query('search');
+        $status = $request->query('status');
+        $perPage = (int) $request->query('per_page', 10);
+
+        $query = PurchaseOrder::with(['supplier', 'items.product', 'items.productSupplier', 'items.receiptItems.goodsReceipt']);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'ILIKE', "%{$search}%")
+                  ->orWhereHas('supplier', function ($sq) use ($search) {
+                      $sq->where('CompanyName', 'ILIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($status && $status !== 'ALL') {
+            $query->where('status', strtoupper($status));
+        }
+
+        $paginated = $query->orderByDesc('created_at')->paginate($perPage);
 
         return response()->json([
-            'purchase_orders' => $purchaseOrders,
+            'purchase_orders' => $paginated->items(),
+            'pagination' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]
         ]);
     }
 
@@ -28,6 +56,7 @@ class PurchaseOrderController extends Controller
             'supplier',
             'items.product',
             'items.productSupplier',
+            'items.receiptItems.goodsReceipt',
             'goodsReceipts.items',
         ])->findOrFail($id);
 
@@ -36,109 +65,65 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StorePurchaseOrderRequest $request, CreatePurchaseOrder $createPurchaseOrder): JsonResponse
     {
-        $validated = $request->validate([
-            'supplier_id' => ['required', 'uuid'],
-            'order_date' => ['nullable', 'date'],
-            'request_ship_date' => ['nullable', 'date'],
-            'eta' => ['nullable', 'date'],
-            'remarks' => ['nullable', 'string'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'uuid'],
-            'items.*.product_supplier_id' => ['nullable', 'uuid'],
-            'items.*.quantity_ordered' => ['required', 'integer', 'min:1'],
-            'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
-            'items.*.notes' => ['nullable', 'string'],
-        ]);
+        try {
+            $purchaseOrder = $createPurchaseOrder->execute($request->validated());
 
-        $purchaseOrder = DB::transaction(function () use ($validated) {
-            $purchaseOrder = PurchaseOrder::create([
-                'po_number' => $this->generatePoNumber(),
-                'supplier_id' => $validated['supplier_id'],
-                'order_date' => $validated['order_date'] ?? now(),
-                'request_ship_date' => $validated['request_ship_date'] ?? null,
-                'eta' => $validated['eta'] ?? null,
-                'status' => 'DRAFT',
-                'remarks' => $validated['remarks'] ?? null,
-                'subtotal' => 0,
-                'total_amount' => 0,
-            ]);
+            $purchaseOrder->load(['supplier', 'items.product', 'items.productSupplier']);
 
-            $subtotal = 0;
-
-            foreach ($validated['items'] as $item) {
-                $lineTotal = (float) $item['quantity_ordered'] * (float) $item['unit_cost'];
-
-                PurchaseOrderItem::create([
-                    'purchase_order_id' => $purchaseOrder->id,
-                    'product_id' => $item['product_id'],
-                    'product_supplier_id' => $item['product_supplier_id'] ?? null,
-                    'quantity_ordered' => $item['quantity_ordered'],
-                    'unit_cost' => $item['unit_cost'],
-                    'line_total' => $lineTotal,
-                    'notes' => $item['notes'] ?? null,
-                ]);
-
-                $subtotal += $lineTotal;
-            }
-
-            $purchaseOrder->update([
-                'subtotal' => $subtotal,
-                'total_amount' => $subtotal,
-            ]);
-
-            return $purchaseOrder;
-        });
-
-        $purchaseOrder->load(['supplier', 'items.product', 'items.productSupplier']);
-
-        return response()->json([
-            'message' => 'Purchase order draft created successfully.',
-            'purchase_order' => $purchaseOrder,
-        ], 201);
+            return response()->json([
+                'message' => 'Purchase order draft created successfully.',
+                'purchase_order' => $purchaseOrder,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to create purchase order.',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
     }
 
-    public function submit(string $id): JsonResponse
+    public function submit(string $id, SubmitPurchaseOrder $submitPurchaseOrder): JsonResponse
     {
-        $purchaseOrder = PurchaseOrder::findOrFail($id);
+        try {
+            $purchaseOrder = $submitPurchaseOrder->execute($id);
 
-        if ($purchaseOrder->status !== 'DRAFT') {
             return response()->json([
-                'message' => 'Only draft purchase orders can be submitted.',
-            ], 422);
+                'message' => 'Purchase order submitted for approval.',
+                'purchase_order' => $purchaseOrder,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to submit purchase order.',
+                'error' => $e->getMessage(),
+            ], 400);
         }
-
-        $purchaseOrder->update([
-            'status' => 'SUBMITTED',
-            'submitted_at' => now(),
-        ]);
-
-        return response()->json([
-            'message' => 'Purchase order submitted for approval.',
-            'purchase_order' => $purchaseOrder,
-        ]);
     }
 
-    public function approve(string $id): JsonResponse
+    public function approve(string $id, ApprovePurchaseOrder $approvePurchaseOrder): JsonResponse
     {
-        $purchaseOrder = PurchaseOrder::findOrFail($id);
+        try {
+            $purchaseOrder = $approvePurchaseOrder->execute($id);
 
-        if ($purchaseOrder->status !== 'SUBMITTED') {
             return response()->json([
-                'message' => 'Only submitted purchase orders can be approved.',
-            ], 422);
+                'message' => 'Purchase order approved successfully.',
+                'purchase_order' => $purchaseOrder,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to approve purchase order.',
+                'error' => $e->getMessage(),
+            ], 400);
         }
-
-        $purchaseOrder->update([
-            'status' => 'APPROVED',
-            'approved_at' => now(),
-        ]);
-
-        return response()->json([
-            'message' => 'Purchase order approved successfully.',
-            'purchase_order' => $purchaseOrder,
-        ]);
     }
 
     public function cancel(string $id): JsonResponse
@@ -162,12 +147,79 @@ class PurchaseOrderController extends Controller
         ]);
     }
 
-    private function generatePoNumber(): string
+    public function update(UpdatePurchaseOrderRequest $request, string $id): JsonResponse
     {
-        do {
-            $poNumber = 'PO-' . now()->format('ymd') . '-' . random_int(1000, 9999);
-        } while (PurchaseOrder::where('po_number', $poNumber)->exists());
+        $validated = $request->validated();
+        $purchaseOrder = PurchaseOrder::findOrFail($id);
 
-        return $poNumber;
+        if ($purchaseOrder->status !== 'DRAFT') {
+            return response()->json([
+                'message' => 'Only draft purchase orders can be edited.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($purchaseOrder, $validated) {
+            $purchaseOrder->update([
+                'supplier_id' => $validated['supplier_id'] ?? $purchaseOrder->supplier_id,
+                'order_date' => $validated['order_date'] ?? $purchaseOrder->order_date,
+                'request_ship_date' => $validated['request_ship_date'] ?? $purchaseOrder->request_ship_date,
+                'eta' => $validated['eta'] ?? $purchaseOrder->eta,
+                'remarks' => $validated['remarks'] ?? $purchaseOrder->remarks,
+            ]);
+
+            if (isset($validated['items'])) {
+                $purchaseOrder->items()->delete();
+
+                $subtotal = 0;
+
+                foreach ($validated['items'] as $item) {
+                    $lineTotal = (float) $item['quantity_ordered'] * (float) $item['unit_cost'];
+
+                    PurchaseOrderItem::create([
+                        'purchase_order_id' => $purchaseOrder->id,
+                        'product_id' => $item['product_id'],
+                        'product_supplier_id' => $item['product_supplier_id'] ?? null,
+                        'quantity_ordered' => $item['quantity_ordered'],
+                        'unit_cost' => $item['unit_cost'],
+                        'line_total' => $lineTotal,
+                        'notes' => $item['notes'] ?? null,
+                    ]);
+
+                    $subtotal += $lineTotal;
+                }
+
+                $purchaseOrder->update([
+                    'subtotal' => $subtotal,
+                    'total_amount' => $subtotal,
+                ]);
+            }
+        });
+
+        $purchaseOrder->load(['supplier', 'items.product', 'items.productSupplier']);
+
+        return response()->json([
+            'message' => 'Purchase order updated successfully.',
+            'purchase_order' => $purchaseOrder,
+        ]);
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $purchaseOrder = PurchaseOrder::findOrFail($id);
+
+        if ($purchaseOrder->status !== 'DRAFT') {
+            return response()->json([
+                'message' => 'Only draft purchase orders can be deleted.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($purchaseOrder) {
+            $purchaseOrder->items()->delete();
+            $purchaseOrder->delete();
+        });
+
+        return response()->json([
+            'message' => 'Purchase order deleted successfully.',
+        ]);
     }
 }

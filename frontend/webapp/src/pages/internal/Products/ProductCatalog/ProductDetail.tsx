@@ -906,6 +906,16 @@ const ProductDetail: React.FC = () => {
         : `/webapp/products/product-catalog/products`,
     [vehicleSlug, variantSlug, categorySlug]
   );
+
+  const visibleEquivalentGroups = useMemo(() => {
+    return equivalentGroups.filter((group) => {
+      const equivalentProducts = group.equivalentProducts.length
+        ? group.equivalentProducts
+        : group.products.filter((ep) => ep.id !== product?.id);
+      return equivalentProducts.length > 0;
+    });
+  }, [equivalentGroups, product?.id]);
+
   const handleBack = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -1646,7 +1656,7 @@ const ProductDetail: React.FC = () => {
                     size="sm"
                     variant="outline"
                     onClick={handleSyncVehicleCompatibility}
-                    disabled={vehicleSyncing || equivalentGroups.length === 0}
+                    disabled={vehicleSyncing || visibleEquivalentGroups.length === 0}
                   >
                     {vehicleSyncing ? "Syncing..." : "Sync Vehicles"}
                   </Button>
@@ -1657,8 +1667,8 @@ const ProductDetail: React.FC = () => {
               </div>
 
               <div className="space-y-3 text-sm flex-1 min-h-0 overflow-auto">
-                {equivalentGroups.length > 0 ? (
-                  equivalentGroups.map((group) => {
+                {visibleEquivalentGroups.length > 0 ? (
+                  visibleEquivalentGroups.map((group) => {
                     const equivalentProducts = group.equivalentProducts.length
                       ? group.equivalentProducts
                       : group.products.filter(

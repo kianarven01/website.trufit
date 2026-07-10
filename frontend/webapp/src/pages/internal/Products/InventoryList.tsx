@@ -72,6 +72,7 @@ interface InventoryItem {
   statusValue: string;
   isArchived: boolean;
   categoryIsSpol: boolean;
+  categoryName: string;
   locationId: string | null;
   binId: string | null;
   binName: string | null;
@@ -199,6 +200,7 @@ const Inventory: React.FC = () => {
             })(),
             isArchived: Boolean(row.is_archived),
             categoryIsSpol: Boolean(product.category?.is_spol || row.category_is_spol),
+            categoryName: product.category_name || (Boolean(product.category?.is_spol || row.category_is_spol) ? "Supplies & Oils" : "Part"),
             locationId: row.location_id || null,
             binId: row.bin_id || null,
             binName: row.bin_name || row.bin?.name || null,
@@ -583,7 +585,7 @@ const Inventory: React.FC = () => {
                         Part No.
                       </TableHead>
                       <TableHead className="text-muted-foreground font-semibold">
-                        Type
+                        Category
                       </TableHead>
                       <TableHead className="text-muted-foreground font-semibold">
                         Price
@@ -662,10 +664,10 @@ const Inventory: React.FC = () => {
                               {p.partNumber}
                             </TableCell>
 
-                            {/* TYPE */}
+                            {/* CATEGORY */}
                             <TableCell>
                               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.categoryIsSpol ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"}`}>
-                                {p.categoryIsSpol ? "Supplies & Oils" : "Part"}
+                                {p.categoryName}
                               </span>
                             </TableCell>
 

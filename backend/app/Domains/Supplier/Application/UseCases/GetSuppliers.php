@@ -15,7 +15,8 @@ class GetSuppliers
             'CompanyContact', 
             'Email', 
             'ContactNumber', 
-            'Viber'
+            'Viber',
+            'address'
         ])
             ->orderBy('CompanyName')
             ->get();

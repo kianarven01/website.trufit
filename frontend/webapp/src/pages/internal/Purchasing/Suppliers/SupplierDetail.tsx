@@ -35,10 +35,13 @@ interface Product {
   id: string;
   name: string;
   partNumber: string;
+  manufacturer?: string;
   price: number;
   stock: number;
   isVat?: boolean;
   vatPercent?: number | null;
+  sellingPrice?: number | null;
+  markup?: number | null;
 }
 
 
@@ -220,9 +223,9 @@ const SupplierDetails: React.FC = () => {
       await api.delete(`/suppliers/${supplierId}/products/${productId}`);
       toast.success("Product unlinked successfully.");
       void loadSupplier();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to unlink product:", error);
-      toast.error("Failed to unlink product.");
+      toast.error(error?.response?.data?.message || "Failed to unlink product.");
     }
   };
 
@@ -424,7 +427,7 @@ const SupplierDetails: React.FC = () => {
                         {paginate(products).map((prod, index) => (
                           <TableRow key={prod.id}>
                             <TableCell className="w-[20%] truncate">
-                              {prod.name}
+                              {prod.name}{prod.manufacturer ? ` — ${prod.manufacturer}` : ""}
                             </TableCell>
                             <TableCell className="w-[15%]">
                               {prod.partNumber}
@@ -565,9 +568,10 @@ const SupplierDetails: React.FC = () => {
                 <option value="">Select Product...</option>
                 {catalogProducts
                   .filter((p) => !products.some((linked) => linked.id === p.id))
+                  .filter((p) => !(p.category_is_spol && p.name?.toLowerCase() === "sundries"))
                   .map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} {p.partNumber ? `(${p.partNumber})` : ""}
+                      {p.name}{p.manufacturer ? ` — ${p.manufacturer}` : ""}{p.part_number ? ` (${p.part_number})` : ""}
                     </option>
                   ))}
               </select>

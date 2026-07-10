@@ -91,6 +91,14 @@ class ProductSupplierService
             }
 
             // Clean up inventory rows linked to this supplier
+            $inventoryIds = DB::table('Main.Inventory')
+                ->where('product_supplier_id', $productSupplierId)
+                ->pluck('id');
+
+            DB::table('Main.StockMovements')
+                ->whereIn('inventory_id', $inventoryIds)
+                ->delete();
+
             DB::table('Main.Inventory')
                 ->where('product_supplier_id', $productSupplierId)
                 ->delete();

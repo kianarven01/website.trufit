@@ -9,7 +9,7 @@ class GetSupplierById
 {
     public function execute($id)
     {
-        $supplier = Supplier::with('products')->find($id);
+        $supplier = Supplier::with('products.manufacturer')->find($id);
 
         if (!$supplier) {
             throw new ModelNotFoundException('Supplier not found');

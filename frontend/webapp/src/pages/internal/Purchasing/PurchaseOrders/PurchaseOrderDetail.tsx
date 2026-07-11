@@ -157,6 +157,7 @@ const PurchaseOrderDetail = () => {
   const [confirmAction, setConfirmAction] = useState<{ action: "submit" | "approve" | "cancel"; label: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
@@ -248,7 +249,7 @@ const PurchaseOrderDetail = () => {
 
     try {
       await api.post(`/purchasing/purchase-orders/${purchaseOrder.id}/close`);
-      showToast("success", "Purchase order closed", `${purchaseOrder.poNumber} was closed and marked as completed.`);
+      showToast("success", "Purchase order closed", `${purchaseOrder.poNumber} was closed successfully.`);
       await loadPurchaseOrder();
     } catch (error: any) {
       console.error(error);
@@ -256,12 +257,30 @@ const PurchaseOrderDetail = () => {
     }
   };
 
+  const reopenPurchaseOrder = async () => {
+    if (!purchaseOrder) return;
+
+    try {
+      await api.post(`/purchasing/purchase-orders/${purchaseOrder.id}/reopen`);
+      showToast("success", "Purchase order reopened", `${purchaseOrder.poNumber} was reopened successfully.`);
+      await loadPurchaseOrder();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to reopen purchase order", getCleanApiError(error, "Failed to reopen purchase order."));
+    }
+  };
+
   const status = normalizeStatus(purchaseOrder?.status);
+
+  const receivedValue = useMemo(() => {
+    if (!purchaseOrder) return 0;
+    return purchaseOrder.items.reduce((sum, item) => sum + (item.quantityReceived * item.unitCost), 0);
+  }, [purchaseOrder]);
   const canSubmit = status === "DRAFT";
   const canApprove = status === "SUBMITTED";
   const canCancel = ["DRAFT", "SUBMITTED", "APPROVED"].includes(status);
   const hasDraftReceipt = purchaseOrder?.goodsReceipts?.some((r) => normalizeStatus(r.status) === "DRAFT") ?? false;
-  const canCreateReceipt = ["APPROVED", "PARTIALLY_RECEIVED"].includes(status) && !hasDraftReceipt;
+  const canCreateReceipt = ["APPROVED", "PARTIALLY_RECEIVED", "RETURNED"].includes(status) && !hasDraftReceipt;
   const canEdit = status === "DRAFT";
   const canDelete = status === "DRAFT";
 
@@ -318,6 +337,11 @@ const PurchaseOrderDetail = () => {
                 Close PO
               </button>
             )}
+            {status === "CLOSED" && (
+              <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmReopen(true)}>
+                Reopen PO
+              </button>
+            )}
             <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={handlePrint}>
               <Printer size={16} /> Print PO
             </button>
@@ -355,10 +379,16 @@ const PurchaseOrderDetail = () => {
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Expected Delivery</p>
                   <p className="text-sm font-medium text-foreground">{formatDate(purchaseOrder.expectedDelivery)}</p>
                 </div>
-                <div className="space-y-1">
+                 <div className="space-y-1">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Total Amount</p>
                   <p className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(purchaseOrder.totalAmount)}</p>
                 </div>
+                {receivedValue > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Received Value (Owed)</p>
+                    <p className="font-extrabold text-emerald-600 dark:text-emerald-400 text-lg">{formatCurrency(receivedValue)}</p>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Remarks</p>
                   <p className="text-sm text-foreground/80 italic">{purchaseOrder.remarks || "-"}</p>
@@ -513,6 +543,23 @@ const PurchaseOrderDetail = () => {
             <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction className="bg-amber-600 text-white hover:bg-amber-700" onClick={closePurchaseOrder}>
               Close PO
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmReopen} onOpenChange={setConfirmReopen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reopen {purchaseOrder?.poNumber}? This will make the PO active again and allow you to record new Goods Receipts.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" onClick={reopenPurchaseOrder}>
+              Reopen PO
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

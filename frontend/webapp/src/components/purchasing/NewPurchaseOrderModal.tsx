@@ -227,6 +227,12 @@ const NewPurchaseOrderModal = ({
       return;
     }
 
+    const productIds = validItems.map((item) => item.productId);
+    if (new Set(productIds).size !== productIds.length) {
+      onError?.("Duplicate items are not allowed. Please combine them into a single line item.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -340,15 +346,21 @@ const NewPurchaseOrderModal = ({
                       onChange={(event) => updateItem(item.id, { productId: event.target.value })}
                     >
                       <option value="">Select part...</option>
-                      {supplierProducts.map((product) => {
-                        const manufacturerStr = product.manufacturer ? ` — ${product.manufacturer}` : "";
-                        const partNumberStr = product.partNumber ? ` (${product.partNumber})` : "";
-                        return (
-                          <option key={product.id} value={product.id}>
-                            {product.name}{manufacturerStr}{partNumberStr}
-                          </option>
-                        );
-                      })}
+                      {supplierProducts
+                        .filter((product) => {
+                          if (product.id === item.productId) return true;
+                          const selectedProductIds = items.map((i) => i.productId);
+                          return !selectedProductIds.includes(product.id);
+                        })
+                        .map((product) => {
+                          const manufacturerStr = product.manufacturer ? ` — ${product.manufacturer}` : "";
+                          const partNumberStr = product.partNumber ? ` (${product.partNumber})` : "";
+                          return (
+                            <option key={product.id} value={product.id}>
+                              {product.name}{manufacturerStr}{partNumberStr}
+                            </option>
+                          );
+                        })}
                     </select>
 
                     <input

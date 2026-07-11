@@ -8,6 +8,10 @@ class PurchaseOrderStatusService
 {
     public function updateReceiptStatus(PurchaseOrder $purchaseOrder): void
     {
+        if ($purchaseOrder->status === 'CANCELLED') {
+            return;
+        }
+
         $purchaseOrder->load('items.receiptItems.goodsReceipt');
 
         $allFullyReceived = true;
@@ -39,6 +43,10 @@ class PurchaseOrderStatusService
             $purchaseOrder->update([
                 'status' => 'RETURNED',
             ]);
+            return;
+        }
+
+        if ($purchaseOrder->status === 'CLOSED') {
             return;
         }
 

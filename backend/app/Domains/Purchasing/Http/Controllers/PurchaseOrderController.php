@@ -14,6 +14,7 @@ use App\Domains\Purchasing\Application\UseCases\CreatePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\SubmitPurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ApprovePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ClosePurchaseOrder;
+use App\Domains\Purchasing\Application\UseCases\ReopenPurchaseOrder;
 
 class PurchaseOrderController extends Controller
 {
@@ -185,7 +186,38 @@ class PurchaseOrderController extends Controller
             ], 400);
         }
     }
+    public function reopen(string $id, Request $request, ReopenPurchaseOrder $reopenPurchaseOrder): JsonResponse
+    {
+        try {
+            $purchaseOrder = $reopenPurchaseOrder->execute($id, $request->user()?->id);
 
+            $purchaseOrder->load([
+                'supplier',
+                'items.product.manufacturer',
+                'items.productSupplier',
+                'items.receiptItems.goodsReceipt',
+                'goodsReceipts.items',
+                'createdByUser.employee',
+                'submittedByUser.employee',
+                'approvedByUser.employee',
+                'cancelledByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Purchase order reopened successfully.',
+                'purchase_order' => $purchaseOrder,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to reopen purchase order.',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
+    }
     public function update(UpdatePurchaseOrderRequest $request, string $id): JsonResponse
     {
         $validated = $request->validated();

@@ -5,6 +5,7 @@ export type PurchaseStatus =
   | "PARTIALLY_RECEIVED"
   | "RECEIVED"
   | "COMPLETED"
+  | "CLOSED"
   | "CANCELLED"
   | "PARTIALLY_RETURNED"
   | "RETURNED"
@@ -38,6 +39,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   COMPLETED: {
     label: "Completed",
     className: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
+  },
+  CLOSED: {
+    label: "Closed",
+    className: "border-slate-400 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-800/50 dark:text-slate-400",
   },
   CANCELLED: {
     label: "Cancelled",

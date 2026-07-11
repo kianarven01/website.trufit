@@ -13,6 +13,7 @@ Route::prefix('purchasing')->group(function () {
     Route::post('/purchase-orders/{id}/approve', [PurchaseOrderController::class, 'approve']);
     Route::post('/purchase-orders/{id}/cancel', [PurchaseOrderController::class, 'cancel']);
     Route::post('/purchase-orders/{id}/close', [PurchaseOrderController::class, 'close']);
+    Route::post('/purchase-orders/{id}/reopen', [PurchaseOrderController::class, 'reopen']);
     Route::put('/purchase-orders/{id}', [PurchaseOrderController::class, 'update']);
     Route::delete('/purchase-orders/{id}', [PurchaseOrderController::class, 'destroy']);
     Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);

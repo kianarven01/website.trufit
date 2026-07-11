@@ -27,4 +27,22 @@ class StorePurchaseOrderRequest extends FormRequest
             'items.*.notes' => ['nullable', 'string'],
         ];
     }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $items = $this->input('items');
+            if (is_array($items)) {
+                $productIds = [];
+                foreach ($items as $item) {
+                    if (isset($item['product_id'])) {
+                        $productIds[] = $item['product_id'];
+                    }
+                }
+                if (count($productIds) !== count(array_unique($productIds))) {
+                    $validator->errors()->add('items', 'Duplicate items are not allowed. Please combine duplicate items into a single line item.');
+                }
+            }
+        });
+    }
 }

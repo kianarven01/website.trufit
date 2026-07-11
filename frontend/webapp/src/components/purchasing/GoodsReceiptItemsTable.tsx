@@ -10,6 +10,8 @@ export interface GoodsReceiptItemRow {
   quantityReceived: number;
   quantityPromo?: number;
   quantityReturned?: number;
+  quantityRejected?: number;
+  purchaseOrderItemId?: string;
   notes?: string | null;
 }
 

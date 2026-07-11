@@ -8,7 +8,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Http\Requests\StoreGoodsReceiptRequest;
+use App\Domains\Purchasing\Http\Requests\UpdateGoodsReceiptRequest;
 use App\Domains\Purchasing\Application\UseCases\CreateGoodsReceipt;
+use App\Domains\Purchasing\Application\UseCases\UpdateGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ReceiveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ReturnGoodsReceiptItems;
@@ -58,6 +60,8 @@ class GoodsReceiptController extends Controller
     {
         $receipt = GoodsReceipt::with([
             'purchaseOrder.supplier',
+            'purchaseOrder.items.product.manufacturer',
+            'purchaseOrder.items.receiptItems.goodsReceipt',
             'items.product.manufacturer',
             'items.purchaseOrderItem',
             'createdByUser.employee',
@@ -202,6 +206,41 @@ class GoodsReceiptController extends Controller
                 'message' => 'Failed to process return items.',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function update(UpdateGoodsReceiptRequest $request, string $id, UpdateGoodsReceipt $updateGoodsReceipt): JsonResponse
+    {
+        try {
+            $receipt = $updateGoodsReceipt->execute($id, $request->validated(), $request->user()?->id);
+
+            $receipt->load([
+                'purchaseOrder.supplier',
+                'purchaseOrder.items.product.manufacturer',
+                'purchaseOrder.items.receiptItems.goodsReceipt',
+                'items.product.manufacturer',
+                'items.productSupplier',
+                'items.purchaseOrderItem',
+                'createdByUser.employee',
+                'receivedByUser.employee',
+                'approvedByUser.employee',
+                'returnedByUser.employee',
+                'cancelledByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Goods receipt updated successfully.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update goods receipt.',
+                'error' => $e->getMessage(),
+            ], 400);
         }
     }
 

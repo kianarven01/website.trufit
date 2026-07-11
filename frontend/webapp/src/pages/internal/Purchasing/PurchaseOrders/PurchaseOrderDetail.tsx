@@ -278,9 +278,9 @@ const PurchaseOrderDetail = () => {
   }, [purchaseOrder]);
   const canSubmit = status === "DRAFT";
   const canApprove = status === "SUBMITTED";
-  const canCancel = ["DRAFT", "SUBMITTED", "APPROVED"].includes(status);
+  const canCancel = ["DRAFT", "SUBMITTED", "WAITING_TO_RECEIVE"].includes(status);
   const hasDraftReceipt = purchaseOrder?.goodsReceipts?.some((r) => normalizeStatus(r.status) === "DRAFT") ?? false;
-  const canCreateReceipt = ["APPROVED", "PARTIALLY_RECEIVED", "RETURNED"].includes(status) && !hasDraftReceipt;
+  const canCreateReceipt = ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "RETURNED"].includes(status) && !hasDraftReceipt;
   const canEdit = status === "DRAFT";
   const canDelete = status === "DRAFT";
 

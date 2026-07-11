@@ -18,7 +18,7 @@ class ReopenPurchaseOrder
 
         // Set to a temporary state to bypass the CLOSED/CANCELLED guard in the service
         $purchaseOrder->update([
-            'status' => 'APPROVED',
+            'status' => 'WAITING_TO_RECEIVE',
         ]);
 
         app(PurchaseOrderStatusService::class)->updateReceiptStatus($purchaseOrder);

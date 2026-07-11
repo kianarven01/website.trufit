@@ -52,7 +52,7 @@ class PurchaseOrderStatusService
 
         if ($overallNet == 0) {
             $purchaseOrder->update([
-                'status' => 'APPROVED',
+                'status' => 'WAITING_TO_RECEIVE',
             ]);
             return;
         }

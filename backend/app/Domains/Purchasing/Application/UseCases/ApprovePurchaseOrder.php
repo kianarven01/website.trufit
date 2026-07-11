@@ -16,7 +16,7 @@ class ApprovePurchaseOrder
         }
 
         $purchaseOrder->update([
-            'status' => 'APPROVED',
+            'status' => 'WAITING_TO_RECEIVE',
             'approved_at' => now(),
             'approved_by' => $userId,
         ]);

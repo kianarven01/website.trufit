@@ -28,11 +28,26 @@ interface ReceiptLineState {
   notes: string;
 }
 
+export interface EditGoodsReceiptProps {
+  id: string;
+  purchaseOrderId: string;
+  notes: string;
+  allowOverReceiving: boolean;
+  items: Array<{
+    purchaseOrderItemId: string;
+    quantityReceived: string;
+    quantityPromo: string;
+    quantityRejected: string;
+    notes: string;
+  }>;
+}
+
 interface CreateGoodsReceiptModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder?: ReceiptPurchaseOrder | null;
   purchaseOrders?: ReceiptPurchaseOrder[];
+  editGoodsReceipt?: EditGoodsReceiptProps | null;
   onSaved?: () => void | Promise<void>;
   onError?: (message: string) => void;
 }
@@ -44,6 +59,7 @@ const CreateGoodsReceiptModal = ({
   onOpenChange,
   purchaseOrder,
   purchaseOrders = [],
+  editGoodsReceipt = null,
   onSaved,
   onError,
 }: CreateGoodsReceiptModalProps) => {
@@ -55,8 +71,11 @@ const CreateGoodsReceiptModal = ({
 
   const availablePurchaseOrders = useMemo(() => {
     const rows = purchaseOrder ? [purchaseOrder] : purchaseOrders;
-    return rows.filter((po) => ["APPROVED", "PARTIALLY_RECEIVED"].includes(String(po.status).toUpperCase()));
-  }, [purchaseOrder, purchaseOrders]);
+    if (editGoodsReceipt) {
+      return rows;
+    }
+    return rows.filter((po) => ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "RETURNED"].includes(String(po.status).toUpperCase()));
+  }, [purchaseOrder, purchaseOrders, editGoodsReceipt]);
 
   const selectedPurchaseOrder = useMemo(() => {
     return availablePurchaseOrders.find((po) => po.id === selectedPurchaseOrderId) || null;
@@ -65,11 +84,17 @@ const CreateGoodsReceiptModal = ({
   useEffect(() => {
     if (!open) return;
 
-    const defaultPo = purchaseOrder || availablePurchaseOrders[0] || null;
-    setSelectedPurchaseOrderId(defaultPo?.id || "");
-    setNotes("");
-    setAllowOverReceiving(false);
-  }, [open, purchaseOrder, availablePurchaseOrders.length]);
+    if (editGoodsReceipt) {
+      setSelectedPurchaseOrderId(editGoodsReceipt.purchaseOrderId);
+      setNotes(editGoodsReceipt.notes || "");
+      setAllowOverReceiving(editGoodsReceipt.allowOverReceiving || false);
+    } else {
+      const defaultPo = purchaseOrder || availablePurchaseOrders[0] || null;
+      setSelectedPurchaseOrderId(defaultPo?.id || "");
+      setNotes("");
+      setAllowOverReceiving(false);
+    }
+  }, [open, purchaseOrder, availablePurchaseOrders.length, editGoodsReceipt]);
 
   useEffect(() => {
     if (!selectedPurchaseOrder) {
@@ -77,19 +102,34 @@ const CreateGoodsReceiptModal = ({
       return;
     }
 
-    setItems(
-      selectedPurchaseOrder.items.map((item) => {
-        const remaining = Math.max(0, item.quantityOrdered - item.quantityReceived);
-        return {
-          purchaseOrderItemId: item.id,
-          quantityReceived: remaining > 0 ? String(remaining) : "0",
-          quantityPromo: "0",
-          quantityRejected: "0",
-          notes: "",
-        };
-      })
-    );
-  }, [selectedPurchaseOrder?.id, open]);
+    if (editGoodsReceipt && editGoodsReceipt.purchaseOrderId === selectedPurchaseOrder.id) {
+      setItems(
+        selectedPurchaseOrder.items.map((item) => {
+          const existingItem = editGoodsReceipt.items.find((i) => i.purchaseOrderItemId === item.id);
+          return {
+            purchaseOrderItemId: item.id,
+            quantityReceived: existingItem ? String(existingItem.quantityReceived) : "0",
+            quantityPromo: existingItem ? String(existingItem.quantityPromo) : "0",
+            quantityRejected: existingItem ? String(existingItem.quantityRejected) : "0",
+            notes: existingItem ? (existingItem.notes || "") : "",
+          };
+        })
+      );
+    } else {
+      setItems(
+        selectedPurchaseOrder.items.map((item) => {
+          const remaining = Math.max(0, item.quantityOrdered - item.quantityReceived);
+          return {
+            purchaseOrderItemId: item.id,
+            quantityReceived: remaining > 0 ? String(remaining) : "0",
+            quantityPromo: "0",
+            quantityRejected: "0",
+            notes: "",
+          };
+        })
+      );
+    }
+  }, [selectedPurchaseOrder?.id, open, editGoodsReceipt]);
 
   const updateItem = (purchaseOrderItemId: string, changes: Partial<ReceiptLineState>) => {
     setItems((current) =>
@@ -133,18 +173,19 @@ const CreateGoodsReceiptModal = ({
     setSaving(true);
 
     try {
-      const createResponse = await api.post("/purchasing/goods-receipts", {
-        purchase_order_id: selectedPurchaseOrder.id,
-        notes: notes || null,
-        allow_over_receiving: allowOverReceiving,
-        items: payloadItems,
-      });
-
-      const createdReceipt = createResponse.data?.goods_receipt || createResponse.data?.data;
-      const createdReceiptId = createdReceipt?.id;
-
-      if (approveAfterCreate && createdReceiptId) {
-        await api.post(`/purchasing/goods-receipts/${createdReceiptId}/approve`);
+      if (editGoodsReceipt) {
+        await api.put(`/purchasing/goods-receipts/${editGoodsReceipt.id}`, {
+          notes: notes || null,
+          allow_over_receiving: allowOverReceiving,
+          items: payloadItems,
+        });
+      } else {
+        await api.post("/purchasing/goods-receipts", {
+          purchase_order_id: selectedPurchaseOrder.id,
+          notes: notes || null,
+          allow_over_receiving: allowOverReceiving,
+          items: payloadItems,
+        });
       }
 
       await onSaved?.();
@@ -165,7 +206,7 @@ const CreateGoodsReceiptModal = ({
       <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-background shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold">New Goods Receipt</h2>
+            <h2 className="text-lg font-semibold">{editGoodsReceipt ? "Edit Goods Receipt" : "New Goods Receipt"}</h2>
             <p className="text-sm text-muted-foreground">Record supplier delivery and received quantities.</p>
           </div>
           <button type="button" className="rounded-md p-1 text-muted-foreground hover:bg-muted" onClick={() => onOpenChange(false)}>
@@ -177,9 +218,9 @@ const CreateGoodsReceiptModal = ({
           <div>
             <label className="mb-1 block text-sm font-medium">Purchase Order *</label>
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
               value={selectedPurchaseOrderId}
-              disabled={Boolean(purchaseOrder)}
+              disabled={Boolean(purchaseOrder) || Boolean(editGoodsReceipt)}
               onChange={(event) => setSelectedPurchaseOrderId(event.target.value)}
             >
               <option value="">Select purchase order...</option>
@@ -283,19 +324,11 @@ const CreateGoodsReceiptModal = ({
           </button>
           <button
             type="button"
-            className="rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
             onClick={() => handleSave(false)}
             disabled={saving}
           >
             {saving ? "Saving..." : "Save Draft"}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => handleSave(true)}
-            disabled={saving}
-          >
-            {saving ? "Approving..." : "Save & Approve"}
           </button>
         </div>
       </div>

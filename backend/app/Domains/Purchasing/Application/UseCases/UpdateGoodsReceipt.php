@@ -6,43 +6,28 @@ use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrderItem;
-use App\Domains\Purchasing\Application\Services\ReceiptNumberService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-class CreateGoodsReceipt
+class UpdateGoodsReceipt
 {
-    public function __construct(
-        private readonly ReceiptNumberService $numberService
-    ) {}
-
-    public function execute(array $data, ?string $userId = null): GoodsReceipt
+    public function execute(string $id, array $data, ?string $userId = null): GoodsReceipt
     {
-        return DB::transaction(function () use ($data, $userId) {
-            $purchaseOrder = PurchaseOrder::with('items.receiptItems')
-                ->findOrFail($data['purchase_order_id']);
+        return DB::transaction(function () use ($id, $data, $userId) {
+            $goodsReceipt = GoodsReceipt::findOrFail($id);
 
-            if (!in_array($purchaseOrder->status, ['WAITING_TO_RECEIVE', 'PARTIALLY_RECEIVED', 'RETURNED'], true)) {
-                throw new RuntimeException('Goods receipt can only be created from an active purchase order (Waiting to Receive, Partially Received, or Returned).', 422);
+            if ($goodsReceipt->status !== 'DRAFT') {
+                throw new RuntimeException('Only draft goods receipts can be edited.', 422);
             }
 
-            $hasDraft = GoodsReceipt::where('purchase_order_id', $purchaseOrder->id)
-                ->where('status', 'DRAFT')
-                ->exists();
+            $purchaseOrder = PurchaseOrder::findOrFail($goodsReceipt->purchase_order_id);
 
-            if ($hasDraft) {
-                throw new RuntimeException('A draft goods receipt already exists for this purchase order. Please approve or cancel it first.', 422);
-            }
-
-            $receipt = GoodsReceipt::create([
-                'receipt_number' => $this->numberService->generate(),
-                'purchase_order_id' => $purchaseOrder->id,
-                'status' => 'DRAFT',
-                'received_at' => now(),
+            $goodsReceipt->update([
                 'notes' => $data['notes'] ?? null,
-                'created_by' => $userId,
-                'received_by' => null,
             ]);
+
+            // Delete old items to rebuild them
+            $goodsReceipt->items()->delete();
 
             $allowOverReceiving = $data['allow_over_receiving'] ?? false;
 
@@ -66,7 +51,7 @@ class CreateGoodsReceipt
                 }
 
                 GoodsReceiptItem::create([
-                    'goods_receipt_id' => $receipt->id,
+                    'goods_receipt_id' => $goodsReceipt->id,
                     'purchase_order_item_id' => $poItem->id,
                     'product_id' => $poItem->product_id,
                     'product_supplier_id' => $poItem->product_supplier_id,
@@ -77,7 +62,7 @@ class CreateGoodsReceipt
                 ]);
             }
 
-            return $receipt;
+            return $goodsReceipt->fresh('items');
         });
     }
 }

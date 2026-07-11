@@ -1,7 +1,7 @@
 export type PurchaseStatus =
   | "DRAFT"
   | "SUBMITTED"
-  | "APPROVED"
+  | "WAITING_TO_RECEIVE"
   | "PARTIALLY_RECEIVED"
   | "RECEIVED"
   | "COMPLETED"
@@ -24,8 +24,8 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     label: "Submitted",
     className: "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   },
-  APPROVED: {
-    label: "Approved",
+  WAITING_TO_RECEIVE: {
+    label: "Waiting to Receive",
     className: "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
   },
   PARTIALLY_RECEIVED: {

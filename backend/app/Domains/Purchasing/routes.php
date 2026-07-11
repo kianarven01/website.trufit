@@ -20,7 +20,7 @@ Route::prefix('purchasing')->group(function () {
 
     Route::get('/goods-receipts', [GoodsReceiptController::class, 'index']);
     Route::post('/goods-receipts', [GoodsReceiptController::class, 'store']);
-
+    Route::put('/goods-receipts/{id}', [GoodsReceiptController::class, 'update']);
     Route::post('/goods-receipts/{id}/receive', [GoodsReceiptController::class, 'receive']);
     Route::post('/goods-receipts/{id}/approve', [GoodsReceiptController::class, 'approve']);
     Route::post('/goods-receipts/{id}/cancel', [GoodsReceiptController::class, 'cancel']);

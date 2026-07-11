@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, Printer, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Pencil, Printer, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
 import GoodsReceiptItemsTable, { GoodsReceiptItemRow } from "@/components/purchasing/GoodsReceiptItemsTable";
@@ -10,6 +10,7 @@ import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ReturnItemsModal from "@/components/purchasing/ReturnItemsModal";
+import CreateGoodsReceiptModal from "@/components/purchasing/CreateGoodsReceiptModal";
 
 interface GoodsReceiptDetailModel {
   id: string;
@@ -27,10 +28,41 @@ interface GoodsReceiptDetailModel {
   returnedByName: string | null;
   cancelledByName: string | null;
   items: GoodsReceiptItemRow[];
+  purchaseOrder?: any | null;
 }
 
 const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
   const itemsRaw = Array.isArray(row.items) ? row.items : [];
+  const poRaw = row.purchase_order || row.purchaseOrder || null;
+
+  const purchaseOrderMapped = poRaw ? {
+    id: String(poRaw.id ?? ""),
+    poNumber: String(poRaw.po_number ?? poRaw.poNumber ?? ""),
+    supplierName: String(poRaw.supplier?.name ?? poRaw.supplier?.CompanyName ?? ""),
+    status: normalizeStatus(poRaw.status),
+    items: (poRaw.items || []).map((item: any) => {
+      const product = item.product || {};
+      const manufacturer = product.manufacturer?.name || product.manufacturer || product.manufacturer_name || "";
+      const manufacturerStr = manufacturer ? ` — ${manufacturer}` : "";
+      const productName = `${String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product")}${manufacturerStr}`;
+      
+      const quantityReceived = (item.receipt_items || item.receiptItems || [])
+        .filter((ri: any) => {
+          const grStatus = ri.goods_receipt?.status || ri.goodsReceipt?.status || "";
+          return ["RECEIVED", "PARTIALLY_RETURNED", "RETURNED"].includes(grStatus.toUpperCase());
+        })
+        .reduce((sum: number, ri: any) => sum + Number(ri.quantity_received ?? 0) - Number(ri.quantity_returned ?? 0), 0);
+
+      return {
+        id: String(item.id ?? ""),
+        productId: String(item.product_id ?? item.productId ?? ""),
+        productName,
+        productSupplierId: String(item.product_supplier_id ?? item.productSupplierId ?? ""),
+        quantityOrdered: Number(item.quantity_ordered ?? item.quantityOrdered ?? 0),
+        quantityReceived,
+      };
+    })
+  } : null;
 
   return {
     id: String(row.id ?? ""),
@@ -47,6 +79,7 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
     approvedByName: row.approved_by_name ?? row.approvedByName ?? null,
     returnedByName: row.returned_by_name ?? row.returnedByName ?? null,
     cancelledByName: row.cancelled_by_name ?? row.cancelledByName ?? null,
+    purchaseOrder: purchaseOrderMapped,
     items: itemsRaw.map((item: any) => {
       const product = item.product || {};
       const poItem = item.purchase_order_item || item.purchaseOrderItem || {};
@@ -60,9 +93,11 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
         productName,
         sku: String(product.sku ?? product.SKU ?? item.sku ?? "-"),
         partNumber: product.part_number ?? item.part_number ?? null,
+        purchaseOrderItemId: String(poItem.id ?? item.purchase_order_item_id ?? item.purchaseOrderItemId ?? ""),
         ordered: Number(poItem.quantity_ordered ?? poItem.quantityOrdered ?? 0),
         quantityReceived: Number(item.quantity_received ?? item.quantityReceived ?? 0),
         quantityPromo: Number(item.quantity_promo ?? item.quantityPromo ?? 0),
+        quantityRejected: Number(item.quantity_rejected ?? item.quantityRejected ?? 0),
         quantityReturned: Number(item.quantity_returned ?? item.quantityReturned ?? 0),
         notes: item.notes ?? null,
       };
@@ -80,6 +115,7 @@ const GoodsReceiptDetail = () => {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
@@ -172,6 +208,23 @@ const GoodsReceiptDetail = () => {
     }
   };
 
+  const editGoodsReceiptData = useMemo(() => {
+    if (!receipt) return null;
+    return {
+      id: receipt.id,
+      purchaseOrderId: receipt.purchaseOrderId,
+      notes: receipt.notes || "",
+      allowOverReceiving: false,
+      items: receipt.items.map((item) => ({
+        purchaseOrderItemId: item.purchaseOrderItemId || "",
+        quantityReceived: String(item.quantityReceived),
+        quantityPromo: String(item.quantityPromo || 0),
+        quantityRejected: String(item.quantityRejected || 0),
+        notes: item.notes || "",
+      })),
+    };
+  }, [receipt]);
+
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       {toast && (
@@ -193,6 +246,9 @@ const GoodsReceiptDetail = () => {
               <>
                 <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmReceive(true)}>
                   Receive Goods
+                </button>
+                <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
+                  <Pencil size={16} /> Edit Receipt
                 </button>
                 <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
                   <Trash2 size={16} /> Delete Receipt
@@ -388,6 +444,20 @@ const GoodsReceiptDetail = () => {
         }}
         onError={(message) => showToast("error", "Unable to return items", message)}
       />
+
+      {receipt?.purchaseOrder && (
+        <CreateGoodsReceiptModal
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          purchaseOrder={receipt.purchaseOrder}
+          editGoodsReceipt={editGoodsReceiptData}
+          onSaved={async () => {
+            showToast("success", "Goods receipt updated", "The goods receipt was updated successfully.");
+            await loadGoodsReceipt();
+          }}
+          onError={(message) => showToast("error", "Unable to update receipt", message)}
+        />
+      )}
     </div>
   );
 };

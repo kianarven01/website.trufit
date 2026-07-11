@@ -24,6 +24,8 @@ interface GoodsReceiptModel {
   id: string;
   receiptNumber: string;
   items: GoodsReceiptItemModel[];
+  purchaseOrder?: any;
+  purchase_order?: any;
 }
 
 interface ReturnItemsModalProps {
@@ -39,6 +41,7 @@ interface ReturnLineState {
   productName: string;
   sku: string;
   maxQty: number;
+  totalBilled: number;
   qtyToReturn: string;
   notes: string;
 }
@@ -56,11 +59,51 @@ const ReturnItemsModal = ({
   useEffect(() => {
     if (!open || !goodsReceipt) return;
 
+    const po = goodsReceipt.purchaseOrder ?? goodsReceipt.purchase_order;
+    const supplierBills = po?.supplierBills ?? po?.supplier_bills ?? [];
+
     const lines = goodsReceipt.items.map((item) => {
       const quantityReceived = item.quantityReceived ?? item.quantity_received ?? 0;
       const quantityPromo = item.quantityPromo ?? item.quantity_promo ?? 0;
       const quantityReturned = item.quantityReturned ?? item.quantity_returned ?? 0;
-      const maxQty = Number(quantityReceived) + Number(quantityPromo) - Number(quantityReturned);
+      
+      const poItemId = (item as any).purchase_order_item_id ?? (item as any).purchaseOrderItemId;
+      
+      const totalBilled = supplierBills
+        .filter((bill: any) => bill.status !== "VOID")
+        .flatMap((bill: any) => bill.items || bill.receiptItems || [])
+        .filter((bi: any) => {
+          const targetId = bi.purchase_order_item_id ?? bi.purchaseOrderItemId;
+          return String(targetId) === String(poItemId);
+        })
+        .reduce((sum: number, bi: any) => sum + Number(bi.quantity_billed ?? bi.quantityBilled ?? 0), 0);
+
+      // Max returnable from this receipt item cannot exceed unbilled stock
+      const remainingOnReceipt = Number(quantityReceived) + Number(quantityPromo) - Number(quantityReturned);
+      
+      // Calculate total received and total returned across all receipts for this PO item to get net received
+      const allReceiptItems = po?.items
+        ?.filter((pi: any) => String(pi.id) === String(poItemId))
+        ?.flatMap((pi: any) => pi.receiptItems ?? pi.receipt_items ?? []) || [];
+        
+      const totalReceivedForPO = allReceiptItems
+        .filter((ri: any) => {
+          const gr = ri.goodsReceipt ?? ri.goods_receipt;
+          return ["RECEIVED", "PARTIALLY_RETURNED", "RETURNED"].includes(String(gr?.status ?? "").toUpperCase());
+        })
+        .reduce((sum: number, ri: any) => sum + Number(ri.quantity_received ?? ri.quantityReceived ?? 0) + Number(ri.quantity_promo ?? ri.quantityPromo ?? 0), 0);
+        
+      const totalReturnedForPO = allReceiptItems
+        .filter((ri: any) => {
+          const gr = ri.goodsReceipt ?? ri.goods_receipt;
+          return ["RECEIVED", "PARTIALLY_RETURNED", "RETURNED"].includes(String(gr?.status ?? "").toUpperCase());
+        })
+        .reduce((sum: number, ri: any) => sum + Number(ri.quantity_returned ?? ri.quantityReturned ?? 0), 0);
+
+      const netReceivedForPO = totalReceivedForPO - totalReturnedForPO;
+      const unbilledForPO = Math.max(0, netReceivedForPO - totalBilled);
+      
+      const maxQty = Math.min(remainingOnReceipt, unbilledForPO);
 
       const productName = item.productName ?? item.product?.name ?? "Unnamed Product";
       const sku = item.sku ?? item.product?.sku ?? "-";
@@ -70,6 +113,7 @@ const ReturnItemsModal = ({
         productName: productName,
         sku: sku,
         maxQty: maxQty > 0 ? maxQty : 0,
+        totalBilled,
         qtyToReturn: "0",
         notes: "",
       };
@@ -172,6 +216,11 @@ const ReturnItemsModal = ({
                     <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Max returnable quantity: <span className="font-semibold text-foreground">{item.maxQty}</span>
+                      {item.totalBilled > 0 && (
+                        <span className="block text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
+                          • {item.totalBilled} item(s) already billed. You cannot return billed items.
+                        </span>
+                      )}
                     </p>
                   </div>
 

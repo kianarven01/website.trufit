@@ -4,11 +4,14 @@ namespace App\Domains\Purchasing\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use App\Domains\Auth\Domain\Models\User;
 
 class GoodsReceipt extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'GoodsReceipts';
     protected $primaryKey = 'id';
 

@@ -17,6 +17,8 @@ Route::prefix('purchasing')->group(function () {
     Route::post('/purchase-orders/{id}/reopen', [PurchaseOrderController::class, 'reopen']);
     Route::put('/purchase-orders/{id}', [PurchaseOrderController::class, 'update']);
     Route::delete('/purchase-orders/{id}', [PurchaseOrderController::class, 'destroy']);
+    Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore']);
+    Route::delete('/purchase-orders/{id}/force', [PurchaseOrderController::class, 'forceDelete']);
     Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
 
     Route::get('/goods-receipts', [GoodsReceiptController::class, 'index']);
@@ -27,6 +29,8 @@ Route::prefix('purchasing')->group(function () {
     Route::post('/goods-receipts/{id}/cancel', [GoodsReceiptController::class, 'cancel']);
     Route::post('/goods-receipts/{id}/return', [GoodsReceiptController::class, 'returnItems']);
     Route::delete('/goods-receipts/{id}', [GoodsReceiptController::class, 'destroy']);
+    Route::patch('/goods-receipts/{id}/restore', [GoodsReceiptController::class, 'restore']);
+    Route::delete('/goods-receipts/{id}/force', [GoodsReceiptController::class, 'forceDelete']);
     Route::get('/goods-receipts/{id}', [GoodsReceiptController::class, 'show']);
 
     Route::get('/supplier-bills', [SupplierBillController::class, 'index']);
@@ -35,6 +39,9 @@ Route::prefix('purchasing')->group(function () {
     Route::post('/supplier-bills/{id}/approve', [SupplierBillController::class, 'approve']);
     Route::post('/supplier-bills/{id}/pay', [SupplierBillController::class, 'pay']);
     Route::post('/supplier-bills/{id}/void', [SupplierBillController::class, 'void']);
+    Route::delete('/supplier-bills/{id}', [SupplierBillController::class, 'destroy']);
+    Route::patch('/supplier-bills/{id}/restore', [SupplierBillController::class, 'restore']);
+    Route::delete('/supplier-bills/{id}/force', [SupplierBillController::class, 'forceDelete']);
 
     Route::get('/stock-movements', [StockMovementController::class, 'index']);
 });

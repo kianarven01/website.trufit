@@ -9,9 +9,29 @@ import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { Eye, Plus, CreditCard, ShieldCheck, MoreVertical } from "lucide-react";
+import { Eye, Plus, CreditCard, ShieldCheck, MoreVertical, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+
+const getApprovedReceivedQuantity = (row: any) => {
+  const receiptItems = Array.isArray(row.receipt_items)
+    ? row.receipt_items
+    : Array.isArray(row.receiptItems)
+      ? row.receiptItems
+      : [];
+
+  return receiptItems
+    .filter((receiptItem: any) => {
+      const status = normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status);
+      return status === "RECEIVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
+    })
+    .reduce((sum: number, receiptItem: any) => {
+      const received = Number(receiptItem.quantity_received || 0);
+      const returned = Number(receiptItem.quantity_returned || receiptItem.quantityReturned || 0);
+      return sum + (received - returned);
+    }, 0);
+};
 
 interface SupplierBillRow {
   id: string;
@@ -24,6 +44,7 @@ interface SupplierBillRow {
   totalAmount: number;
   status: string;
   notes?: string | null;
+  deletedAt?: string | null;
 }
 
 export default function SupplierBillsList() {
@@ -33,7 +54,10 @@ export default function SupplierBillsList() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [showArchived, setShowArchived] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<SupplierBillRow | null>(null);
+  const [confirmForceDelete, setConfirmForceDelete] = useState<SupplierBillRow | null>(null);
 
   // Pagination hook
   const { page, setPage, pageSize, setPageSize } = usePagination(25);
@@ -49,6 +73,7 @@ export default function SupplierBillsList() {
           status: statusFilter,
           page: page,
           per_page: pageSize,
+          archived: showArchived ? "true" : undefined,
         },
       });
 
@@ -64,6 +89,7 @@ export default function SupplierBillsList() {
         totalAmount: parseFloat(row.total_amount) || 0,
         status: String(row.status).toUpperCase(),
         notes: row.notes,
+        deletedAt: row.deleted_at ?? null,
       }));
 
       setBills(formatted);
@@ -103,27 +129,14 @@ export default function SupplierBillsList() {
             id: String(po.id),
             poNumber: String(po.po_number),
             supplierName: String(po.supplier?.CompanyName ?? po.supplier?.name ?? "-"),
-            supplierPaymentTerms: String(po.supplier?.payment_terms || "COD"),
+            paymentTerms: String(po.supplier?.payment_terms ?? "NONE"),
             items: itemsRaw.map((item: any) => {
               const product = item.product || {};
-              const manufacturer = product.manufacturer?.name || product.manufacturer || product.manufacturer_name || "";
-              const manufacturerStr = manufacturer ? ` — ${manufacturer}` : "";
-              const productName = `${String(product.name ?? item.product_name ?? "Unnamed Product")}${manufacturerStr}`;
-              const sku = product.SKU ?? product.sku ?? item.sku ?? null;
-              const partNumber = product.part_number ?? item.part_number ?? null;
+              const productName = product.name ?? item.product_name ?? "Unnamed Product";
+              const sku = product.SKU ?? product.sku ?? item.sku ?? "-";
+              const partNumber = product.part_number ?? item.part_number ?? "-";
               
-              // Sum received quantities (net of returns)
-              const receiptItems = Array.isArray(item.receipt_items) ? item.receipt_items : [];
-              const approvedReceived = receiptItems
-                .filter((ri: any) => {
-                  const grStatus = normalizeStatus(ri.goods_receipt?.status ?? ri.goodsReceipt?.status);
-                  return ["RECEIVED", "PARTIALLY_RETURNED", "RETURNED"].includes(grStatus);
-                })
-                .reduce((sum: number, ri: any) => {
-                  const received = Number(ri.quantity_received || 0);
-                  const returned = Number(ri.quantity_returned || 0);
-                  return sum + (received - returned);
-                }, 0);
+              const approvedReceived = getApprovedReceivedQuantity(item);
 
               // Sum already billed quantities
               const totalBilled = billItems
@@ -159,7 +172,7 @@ export default function SupplierBillsList() {
 
   useEffect(() => {
     void loadBills();
-  }, [search, statusFilter, page, pageSize]);
+  }, [search, statusFilter, page, pageSize, showArchived]);
 
   useEffect(() => {
     if (modalOpen) {
@@ -167,7 +180,42 @@ export default function SupplierBillsList() {
     }
   }, [modalOpen]);
 
+  const archiveBill = async (bill: SupplierBillRow) => {
+    try {
+      await api.delete(`/purchasing/supplier-bills/${bill.id}`);
+      toast.success(`Supplier bill ${bill.billNumber} was archived successfully.`);
+      await loadBills();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(getCleanApiError(error, "Failed to archive supplier bill."));
+    }
+  };
+
+  const handleRestore = async (bill: SupplierBillRow) => {
+    try {
+      await api.patch(`/purchasing/supplier-bills/${bill.id}/restore`);
+      toast.success(`Supplier bill ${bill.billNumber} has been restored.`);
+      await loadBills();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(getCleanApiError(error, "Failed to restore supplier bill."));
+    }
+  };
+
+  const handleForceDelete = async (bill: SupplierBillRow) => {
+    try {
+      await api.delete(`/purchasing/supplier-bills/${bill.id}/force`);
+      toast.success(`Supplier bill ${bill.billNumber} was permanently deleted.`);
+      await loadBills();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(getCleanApiError(error, "Failed to permanently delete supplier bill."));
+    }
+  };
+
   const renderActions = (bill: SupplierBillRow) => {
+    const status = bill.status.toUpperCase();
+
     return (
       <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
         <DropdownMenu>
@@ -184,6 +232,27 @@ export default function SupplierBillsList() {
               <Eye className="w-4 h-4 mr-2" />
               View Details
             </DropdownMenuItem>
+            {bill.deletedAt ? (
+              <>
+                <DropdownMenuItem onClick={() => handleRestore(bill)} className="cursor-pointer">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Restore
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConfirmForceDelete(bill)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Permanently
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
+                {(status === "DRAFT" || status === "VOID") && (
+                  <DropdownMenuItem onClick={() => setConfirmDelete(bill)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Archive Bill
+                  </DropdownMenuItem>
+                )}
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -211,9 +280,26 @@ export default function SupplierBillsList() {
               { value: "VOID", label: "Void" },
             ],
           },
+          {
+            key: "archived",
+            label: "Archived",
+            options: [
+              { value: "true", label: "Show Archived" },
+              { value: "false", label: "Hide Archived" },
+            ],
+          },
         ]}
-        activeFilters={{ status: statusFilter }}
-        onFilterChange={(_, value) => setStatusFilter(value)}
+        activeFilters={{
+          status: statusFilter,
+          archived: showArchived ? "true" : "false",
+        }}
+        onFilterChange={(key, value) => {
+          if (key === "status") {
+            setStatusFilter(value);
+          } else if (key === "archived") {
+            setShowArchived(value === "true");
+          }
+        }}
       />
 
       {/* Table Container */}
@@ -304,6 +390,48 @@ export default function SupplierBillsList() {
         purchaseOrders={purchaseOrders}
         onSaved={() => { void loadBills(); }}
       />
+
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Supplier Bill</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive Supplier Bill {confirmDelete?.billNumber}? It will be hidden from the active list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmDelete) void archiveBill(confirmDelete); setConfirmDelete(null); }}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force Delete Confirmation Dialog */}
+      <AlertDialog open={!!confirmForceDelete} onOpenChange={(open) => { if (!open) setConfirmForceDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Supplier Bill</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete Supplier Bill {confirmForceDelete?.billNumber}? This action is permanent and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmForceDelete) void handleForceDelete(confirmForceDelete); setConfirmForceDelete(null); }}
+            >
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

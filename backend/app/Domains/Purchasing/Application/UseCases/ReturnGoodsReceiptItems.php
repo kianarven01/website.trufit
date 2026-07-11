@@ -51,8 +51,35 @@ class ReturnGoodsReceiptItems
 
                 $remaining = $item->quantity_received + ($item->quantity_promo ?? 0) - $item->quantity_returned;
 
-                if ($quantityToReturn > $remaining) {
-                    throw new RuntimeException("Cannot return {$quantityToReturn} items. Only {$remaining} remaining for item.", 422);
+                // Enforce unbilled return constraint: Cannot return items that have already been billed
+                $totalBilled = DB::table('SupplierBillItems')
+                    ->join('SupplierBills', 'SupplierBillItems.supplier_bill_id', '=', 'SupplierBills.id')
+                    ->where('SupplierBillItems.purchase_order_item_id', $item->purchase_order_item_id)
+                    ->where('SupplierBills.status', '!=', 'VOID')
+                    ->sum('SupplierBillItems.quantity_billed');
+
+                $totalReceived = DB::table('GoodsReceiptItems')
+                    ->join('GoodsReceipts', 'GoodsReceiptItems.goods_receipt_id', '=', 'GoodsReceipts.id')
+                    ->where('GoodsReceiptItems.purchase_order_item_id', $item->purchase_order_item_id)
+                    ->whereIn('GoodsReceipts.status', ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED'])
+                    ->sum(DB::raw('GoodsReceiptItems.quantity_received + COALESCE(GoodsReceiptItems.quantity_promo, 0)'));
+
+                $totalReturned = DB::table('GoodsReceiptItems')
+                    ->join('GoodsReceipts', 'GoodsReceiptItems.goods_receipt_id', '=', 'GoodsReceipts.id')
+                    ->where('GoodsReceiptItems.purchase_order_item_id', $item->purchase_order_item_id)
+                    ->whereIn('GoodsReceipts.status', ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED'])
+                    ->sum('GoodsReceiptItems.quantity_returned');
+
+                $netReceived = $totalReceived - $totalReturned;
+                $unbilledReceived = max(0, $netReceived - $totalBilled);
+                $allowedReturn = min($remaining, $unbilledReceived);
+
+                if ($quantityToReturn > $allowedReturn) {
+                    throw new RuntimeException(
+                        "Cannot return {$quantityToReturn} item(s) because {$totalBilled} item(s) have already been billed out of {$totalReceived} received. " .
+                        "Only {$unbilledReceived} unbilled item(s) are available for return.",
+                        422
+                    );
                 }
 
                 $inventory = Inventory::query()

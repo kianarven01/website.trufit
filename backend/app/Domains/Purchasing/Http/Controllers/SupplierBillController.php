@@ -10,6 +10,7 @@ use App\Domains\Purchasing\Http\Requests\StoreSupplierBillRequest;
 use App\Domains\Purchasing\Application\UseCases\CreateSupplierBill;
 use App\Domains\Purchasing\Application\UseCases\ApproveSupplierBill;
 use App\Domains\Purchasing\Application\UseCases\PaySupplierBill;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
 
@@ -19,6 +20,7 @@ class SupplierBillController extends Controller
     {
         $search = $request->query('search');
         $status = $request->query('status');
+        $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
         $perPage = (int) $request->query('per_page', 10);
 
         $query = SupplierBill::with([
@@ -27,6 +29,10 @@ class SupplierBillController extends Controller
             'approvedByUser.employee',
             'paidByUser.employee'
         ]);
+
+        if ($archived) {
+            $query->onlyTrashed();
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -194,5 +200,52 @@ class SupplierBillController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $bill = SupplierBill::findOrFail($id);
+
+        if (!in_array($bill->status, ['DRAFT', 'VOID'], true)) {
+            return response()->json([
+                'message' => 'Only draft or void supplier bills can be archived.',
+            ], 422);
+        }
+
+        $bill->delete();
+
+        return response()->json([
+            'message' => 'Supplier bill archived successfully.',
+        ]);
+    }
+
+    public function restore(string $id): JsonResponse
+    {
+        $bill = SupplierBill::onlyTrashed()->findOrFail($id);
+        $bill->restore();
+
+        return response()->json([
+            'message' => 'Supplier bill restored successfully.',
+        ]);
+    }
+
+    public function forceDelete(string $id): JsonResponse
+    {
+        $bill = SupplierBill::withTrashed()->findOrFail($id);
+
+        if (!$bill->trashed()) {
+            return response()->json([
+                'message' => 'Only archived supplier bills can be permanently deleted.',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($bill) {
+            $bill->items()->delete();
+            $bill->forceDelete();
+        });
+
+        return response()->json([
+            'message' => 'Supplier bill permanently deleted.',
+        ]);
     }
 }

@@ -11,7 +11,7 @@ import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ImageIcon, MoreVertical, Eye, Send, Check, Trash2, XCircle, FileText } from "lucide-react";
+import { ImageIcon, MoreVertical, Eye, Send, Check, Trash2, XCircle, FileText, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface PurchaseOrderRow {
@@ -22,6 +22,7 @@ interface PurchaseOrderRow {
   expectedDelivery: string | null;
   totalAmount: number;
   status: string;
+  deletedAt?: string | null;
 }
 
 
@@ -39,6 +40,7 @@ const normalizePurchaseOrder = (row: any): PurchaseOrderRow => ({
   expectedDelivery: row.request_ship_date ?? row.expected_delivery_date ?? row.eta ?? null,
   totalAmount: Number(row.total_amount ?? row.totalAmount ?? row.total ?? 0),
   status: normalizeStatus(row.status),
+  deletedAt: row.deleted_at ?? null,
 });
 
 const PurchaseOrders = () => {
@@ -46,10 +48,12 @@ const PurchaseOrders = () => {
   const [orders, setOrders] = useState<PurchaseOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [showArchived, setShowArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ order: PurchaseOrderRow; action: "submit" | "approve" | "cancel"; label: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PurchaseOrderRow | null>(null);
+  const [confirmForceDelete, setConfirmForceDelete] = useState<PurchaseOrderRow | null>(null);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
@@ -72,15 +76,27 @@ const PurchaseOrders = () => {
         { label: "Cancelled", value: "CANCELLED" },
       ],
     },
+    {
+      key: "archived",
+      label: "Archived",
+      options: [
+        { label: "Show Archived", value: "true" },
+        { label: "Hide Archived", value: "false" },
+      ],
+    },
   ];
 
   const activeFilters = {
     status: activeFilter === "ALL" ? "all" : activeFilter,
+    archived: showArchived ? "true" : "false",
   };
 
   const handleFilterChange = (key: string, value: string) => {
     if (key === "status") {
       setActiveFilter(value === "all" ? "ALL" : value);
+      setPage(1);
+    } else if (key === "archived") {
+      setShowArchived(value === "true");
       setPage(1);
     }
   };
@@ -99,6 +115,7 @@ const PurchaseOrders = () => {
           per_page: pageSize,
           search: search || undefined,
           status: activeFilter !== "ALL" ? activeFilter : undefined,
+          archived: showArchived ? "true" : undefined,
         },
       });
       const rows = getRows(response.data, ["purchase_orders", "purchaseOrders"]);
@@ -116,7 +133,7 @@ const PurchaseOrders = () => {
 
   useEffect(() => {
     void loadPurchaseOrders();
-  }, [page, pageSize, activeFilter, search]);
+  }, [page, pageSize, activeFilter, showArchived, search]);
 
   const runPoAction = async (order: PurchaseOrderRow, action: "submit" | "approve" | "cancel") => {
     const labels = {
@@ -135,14 +152,36 @@ const PurchaseOrders = () => {
     }
   };
 
-  const deletePo = async (order: PurchaseOrderRow) => {
+  const archivePo = async (order: PurchaseOrderRow) => {
     try {
       await api.delete(`/purchasing/purchase-orders/${order.id}`);
-      showToast("success", "Purchase order deleted", `${order.poNumber} was deleted successfully.`);
+      showToast("success", "Purchase order archived", `${order.poNumber} was archived successfully.`);
       await loadPurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to delete purchase order", getCleanApiError(error, "Failed to delete purchase order."));
+      showToast("error", "Unable to archive purchase order", getCleanApiError(error, "Failed to archive purchase order."));
+    }
+  };
+
+  const handleRestore = async (order: PurchaseOrderRow) => {
+    try {
+      await api.patch(`/purchasing/purchase-orders/${order.id}/restore`);
+      showToast("success", "Purchase order restored", `${order.poNumber} has been restored.`);
+      await loadPurchaseOrders();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to restore purchase order", getCleanApiError(error, "Failed to restore purchase order."));
+    }
+  };
+
+  const handleForceDelete = async (order: PurchaseOrderRow) => {
+    try {
+      await api.delete(`/purchasing/purchase-orders/${order.id}/force`);
+      showToast("success", "Purchase order deleted", `${order.poNumber} was permanently deleted.`);
+      await loadPurchaseOrders();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to permanently delete purchase order", getCleanApiError(error, "Failed to permanently delete purchase order."));
     }
   };
 
@@ -163,37 +202,59 @@ const PurchaseOrders = () => {
               View Details
             </DropdownMenuItem>
 
-            {status === "DRAFT" && (
+            {order.deletedAt ? (
               <>
-                <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "submit", label: "submit" })} className="cursor-pointer">
-                  <Send className="w-4 h-4 mr-2" />
-                  Submit
+                <DropdownMenuItem onClick={() => handleRestore(order)} className="cursor-pointer">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Restore
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setConfirmDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                <DropdownMenuItem onClick={() => setConfirmForceDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                   <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
+                  Delete Permanently
                 </DropdownMenuItem>
               </>
-            )}
-
-            {status === "SUBMITTED" && (
+            ) : (
               <>
-                <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "approve", label: "approve" })} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
-                  <Check className="w-4 h-4 mr-2" />
-                  Approve
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "cancel", label: "cancel" })} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Cancel
-                </DropdownMenuItem>
-              </>
-            )}
+                {status === "DRAFT" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "submit", label: "submit" })} className="cursor-pointer">
+                      <Send className="w-4 h-4 mr-2" />
+                      Submit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Archive PO
+                    </DropdownMenuItem>
+                  </>
+                )}
 
-            {(status === "APPROVED" || status === "PARTIALLY_RECEIVED") && (
-              <DropdownMenuItem onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
-                <FileText className="w-4 h-4 mr-2" />
-                Create Receipt
-              </DropdownMenuItem>
+                {status === "SUBMITTED" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "approve", label: "approve" })} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
+                      <Check className="w-4 h-4 mr-2" />
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "cancel", label: "cancel" })} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancel
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {status === "CANCELLED" && (
+                  <DropdownMenuItem onClick={() => setConfirmDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Archive PO
+                  </DropdownMenuItem>
+                )}
+
+                {(status === "APPROVED" || status === "PARTIALLY_RECEIVED") && (
+                  <DropdownMenuItem onClick={() => navigate(`/webapp/purchasing/purchase-orders/${order.id}`)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Create Receipt
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -321,18 +382,39 @@ const PurchaseOrders = () => {
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogTitle>Archive Purchase Order</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {confirmDelete?.poNumber}? This action cannot be undone.
+              Are you sure you want to archive {confirmDelete?.poNumber}? It will be hidden from the active list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => { if (confirmDelete) void deletePo(confirmDelete); setConfirmDelete(null); }}
+              onClick={() => { if (confirmDelete) void archivePo(confirmDelete); setConfirmDelete(null); }}
             >
-              Delete
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force Delete Dialog */}
+      <AlertDialog open={!!confirmForceDelete} onOpenChange={(open) => { if (!open) setConfirmForceDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete {confirmForceDelete?.poNumber}? This action is permanent and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmForceDelete) void handleForceDelete(confirmForceDelete); setConfirmForceDelete(null); }}
+            >
+              Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

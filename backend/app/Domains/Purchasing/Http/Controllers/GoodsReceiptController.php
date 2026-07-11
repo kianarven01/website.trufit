@@ -23,9 +23,14 @@ class GoodsReceiptController extends Controller
     {
         $search = $request->query('search');
         $status = $request->query('status');
+        $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
         $perPage = (int) $request->query('per_page', 10);
 
         $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product.manufacturer', 'createdByUser.employee', 'receivedByUser.employee', 'approvedByUser.employee', 'returnedByUser.employee', 'cancelledByUser.employee']);
+
+        if ($archived) {
+            $query->onlyTrashed();
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -62,6 +67,7 @@ class GoodsReceiptController extends Controller
             'purchaseOrder.supplier',
             'purchaseOrder.items.product.manufacturer',
             'purchaseOrder.items.receiptItems.goodsReceipt',
+            'purchaseOrder.supplierBills.items',
             'items.product.manufacturer',
             'items.purchaseOrderItem',
             'createdByUser.employee',
@@ -218,6 +224,7 @@ class GoodsReceiptController extends Controller
                 'purchaseOrder.supplier',
                 'purchaseOrder.items.product.manufacturer',
                 'purchaseOrder.items.receiptItems.goodsReceipt',
+                'purchaseOrder.supplierBills.items',
                 'items.product.manufacturer',
                 'items.productSupplier',
                 'items.purchaseOrderItem',
@@ -248,19 +255,46 @@ class GoodsReceiptController extends Controller
     {
         $receipt = GoodsReceipt::findOrFail($id);
 
-        if ($receipt->status !== 'DRAFT') {
+        if (!in_array($receipt->status, ['DRAFT', 'CANCELLED'], true)) {
             return response()->json([
-                'message' => 'Only draft goods receipts can be deleted.',
+                'message' => 'Only draft or cancelled goods receipts can be archived.',
+            ], 422);
+        }
+
+        $receipt->delete();
+
+        return response()->json([
+            'message' => 'Goods receipt archived successfully.',
+        ]);
+    }
+
+    public function restore(string $id): JsonResponse
+    {
+        $receipt = GoodsReceipt::onlyTrashed()->findOrFail($id);
+        $receipt->restore();
+
+        return response()->json([
+            'message' => 'Goods receipt restored successfully.',
+        ]);
+    }
+
+    public function forceDelete(string $id): JsonResponse
+    {
+        $receipt = GoodsReceipt::withTrashed()->findOrFail($id);
+
+        if (!$receipt->trashed()) {
+            return response()->json([
+                'message' => 'Only archived goods receipts can be permanently deleted.',
             ], 422);
         }
 
         DB::transaction(function () use ($receipt) {
             $receipt->items()->delete();
-            $receipt->delete();
+            $receipt->forceDelete();
         });
 
         return response()->json([
-            'message' => 'Goods receipt deleted successfully.',
+            'message' => 'Goods receipt permanently deleted.',
         ]);
     }
 }

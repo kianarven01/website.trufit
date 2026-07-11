@@ -11,7 +11,7 @@ import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ImageIcon, MoreVertical, Eye, Check, Trash2, XCircle } from "lucide-react";
+import { ImageIcon, MoreVertical, Eye, Check, Trash2, XCircle, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface GoodsReceiptRow {
@@ -22,6 +22,7 @@ interface GoodsReceiptRow {
   receivedAt: string | null;
   status: string;
   notes?: string | null;
+  deletedAt?: string | null;
 }
 
 const getApprovedReceivedQuantity = (row: any) => {
@@ -57,6 +58,7 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptRow => ({
   receivedAt: row.received_at ?? row.receivedAt ?? row.created_at ?? null,
   status: normalizeStatus(row.status),
   notes: row.notes ?? null,
+  deletedAt: row.deleted_at ?? null,
 });
 
 const normalizePurchaseOrderForReceipt = (row: any): ReceiptPurchaseOrder => {
@@ -94,6 +96,8 @@ const GoodsReceipts = () => {
   const [confirmApprove, setConfirmApprove] = useState<GoodsReceiptRow | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<GoodsReceiptRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<GoodsReceiptRow | null>(null);
+  const [confirmForceDelete, setConfirmForceDelete] = useState<GoodsReceiptRow | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
@@ -116,15 +120,27 @@ const GoodsReceipts = () => {
         { label: "Cancelled", value: "CANCELLED" },
       ],
     },
+    {
+      key: "archived",
+      label: "Archived",
+      options: [
+        { label: "Show Archived", value: "true" },
+        { label: "Hide Archived", value: "false" },
+      ],
+    },
   ];
 
   const activeFilters = {
     status: activeFilter === "ALL" ? "all" : activeFilter,
+    archived: showArchived ? "true" : "false",
   };
 
   const handleFilterChange = (key: string, value: string) => {
     if (key === "status") {
       setActiveFilter(value === "all" ? "ALL" : value);
+      setPage(1);
+    } else if (key === "archived") {
+      setShowArchived(value === "true");
       setPage(1);
     }
   };
@@ -143,6 +159,7 @@ const GoodsReceipts = () => {
           per_page: pageSize,
           search: search || undefined,
           status: activeFilter !== "ALL" ? activeFilter : undefined,
+          archived: showArchived ? "true" : undefined,
         },
       });
       const rows = getRows(response.data, ["goods_receipts", "goodsReceipts"]);
@@ -165,7 +182,7 @@ const GoodsReceipts = () => {
       setPurchaseOrders(
         rows
           .map(normalizePurchaseOrderForReceipt)
-          .filter((po) => ["APPROVED", "PARTIALLY_RECEIVED"].includes(normalizeStatus(po.status)))
+          .filter((po) => ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "RETURNED"].includes(normalizeStatus(po.status)))
       );
     } catch (error) {
       console.error(error);
@@ -176,7 +193,7 @@ const GoodsReceipts = () => {
   useEffect(() => {
     void loadGoodsReceipts();
     void loadReceivablePurchaseOrders();
-  }, [page, pageSize, search, activeFilter]);
+  }, [page, pageSize, search, activeFilter, showArchived]);
 
   const filteredReceipts = receipts;
 
@@ -203,15 +220,38 @@ const GoodsReceipts = () => {
     }
   };
 
-  const deleteReceipt = async (receipt: GoodsReceiptRow) => {
+  const archiveReceipt = async (receipt: GoodsReceiptRow) => {
     try {
       await api.delete(`/purchasing/goods-receipts/${receipt.id}`);
-      showToast("success", "Goods receipt deleted", `${receipt.receiptNumber} was deleted successfully.`);
+      showToast("success", "Goods receipt archived", `${receipt.receiptNumber} was archived successfully.`);
       await loadGoodsReceipts();
       await loadReceivablePurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to delete goods receipt", getCleanApiError(error, "Failed to delete goods receipt."));
+      showToast("error", "Unable to archive goods receipt", getCleanApiError(error, "Failed to archive goods receipt."));
+    }
+  };
+
+  const handleRestore = async (receipt: GoodsReceiptRow) => {
+    try {
+      await api.patch(`/purchasing/goods-receipts/${receipt.id}/restore`);
+      showToast("success", "Goods receipt restored", `${receipt.receiptNumber} has been restored.`);
+      await loadGoodsReceipts();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to restore goods receipt", getCleanApiError(error, "Failed to restore goods receipt."));
+    }
+  };
+
+  const handleForceDelete = async (receipt: GoodsReceiptRow) => {
+    try {
+      await api.delete(`/purchasing/goods-receipts/${receipt.id}/force`);
+      showToast("success", "Goods receipt deleted", `${receipt.receiptNumber} was permanently deleted.`);
+      await loadGoodsReceipts();
+      await loadReceivablePurchaseOrders();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to permanently delete goods receipt", getCleanApiError(error, "Failed to permanently delete goods receipt."));
     }
   };
 
@@ -294,20 +334,42 @@ const GoodsReceipts = () => {
                             View Details
                           </DropdownMenuItem>
 
-                          {normalizeStatus(receipt.status) === "DRAFT" && (
+                          {receipt.deletedAt ? (
                             <>
-                              <DropdownMenuItem onClick={() => setConfirmApprove(receipt)} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
-                                <Check className="w-4 h-4 mr-2" />
-                                Approve
+                              <DropdownMenuItem onClick={() => handleRestore(receipt)} className="cursor-pointer">
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Restore
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setConfirmCancel(receipt)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Cancel
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setConfirmDelete(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                              <DropdownMenuItem onClick={() => setConfirmForceDelete(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
+                                Delete Permanently
                               </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <>
+                              {normalizeStatus(receipt.status) === "DRAFT" && (
+                                <>
+                                  <DropdownMenuItem onClick={() => setConfirmApprove(receipt)} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
+                                    <Check className="w-4 h-4 mr-2" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setConfirmCancel(receipt)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    Cancel
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setConfirmDelete(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Archive GR
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
+                              {normalizeStatus(receipt.status) === "CANCELLED" && (
+                                <DropdownMenuItem onClick={() => setConfirmDelete(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Archive GR
+                                </DropdownMenuItem>
+                              )}
                             </>
                           )}
                         </DropdownMenuContent>
@@ -362,18 +424,39 @@ const GoodsReceipts = () => {
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Goods Receipt</AlertDialogTitle>
+            <AlertDialogTitle>Archive Goods Receipt</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {confirmDelete?.receiptNumber}? This action cannot be undone.
+              Are you sure you want to archive {confirmDelete?.receiptNumber}? It will be hidden from the active list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
-              onClick={() => { if (confirmDelete) void deleteReceipt(confirmDelete); setConfirmDelete(null); }}
+              onClick={() => { if (confirmDelete) void archiveReceipt(confirmDelete); setConfirmDelete(null); }}
             >
-              Delete
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force Delete Dialog */}
+      <AlertDialog open={!!confirmForceDelete} onOpenChange={(open) => { if (!open) setConfirmForceDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Goods Receipt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete {confirmForceDelete?.receiptNumber}? This action is permanent and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmForceDelete) void handleForceDelete(confirmForceDelete); setConfirmForceDelete(null); }}
+            >
+              Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

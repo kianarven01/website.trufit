@@ -22,6 +22,7 @@ class PurchaseOrderController extends Controller
     {
         $search = $request->query('search');
         $status = $request->query('status');
+        $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
         $perPage = (int) $request->query('per_page', 10);
 
         $query = PurchaseOrder::with([
@@ -35,6 +36,10 @@ class PurchaseOrderController extends Controller
             'approvedByUser.employee',
             'cancelledByUser.employee'
         ]);
+
+        if ($archived) {
+            $query->onlyTrashed();
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -289,19 +294,56 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 
-        if ($purchaseOrder->status !== 'DRAFT') {
+        if (!in_array($purchaseOrder->status, ['DRAFT', 'CANCELLED'], true)) {
             return response()->json([
-                'message' => 'Only draft purchase orders can be deleted.',
+                'message' => 'Only draft or cancelled purchase orders can be archived.',
+            ], 422);
+        }
+
+        // Check if there are any active (non-cancelled) goods receipts or (non-void) bills
+        $hasActiveReceipts = $purchaseOrder->goodsReceipts()->where('status', '!=', 'CANCELLED')->exists();
+        $hasActiveBills = $purchaseOrder->supplierBills()->where('status', '!=', 'VOID')->exists();
+
+        if ($hasActiveReceipts || $hasActiveBills) {
+            return response()->json([
+                'message' => 'This purchase order cannot be archived because it has active goods receipts or supplier bills linked to it.',
+            ], 422);
+        }
+
+        $purchaseOrder->delete();
+
+        return response()->json([
+            'message' => 'Purchase order archived successfully.',
+        ]);
+    }
+
+    public function restore(string $id): JsonResponse
+    {
+        $purchaseOrder = PurchaseOrder::onlyTrashed()->findOrFail($id);
+        $purchaseOrder->restore();
+
+        return response()->json([
+            'message' => 'Purchase order restored successfully.',
+        ]);
+    }
+
+    public function forceDelete(string $id): JsonResponse
+    {
+        $purchaseOrder = PurchaseOrder::withTrashed()->findOrFail($id);
+
+        if (!$purchaseOrder->trashed()) {
+            return response()->json([
+                'message' => 'Only archived purchase orders can be permanently deleted.',
             ], 422);
         }
 
         DB::transaction(function () use ($purchaseOrder) {
             $purchaseOrder->items()->delete();
-            $purchaseOrder->delete();
+            $purchaseOrder->forceDelete();
         });
 
         return response()->json([
-            'message' => 'Purchase order deleted successfully.',
+            'message' => 'Purchase order permanently deleted.',
         ]);
     }
 }

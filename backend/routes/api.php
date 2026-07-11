@@ -18,8 +18,6 @@ require app_path('Domains/Inventory/routes.php');
 // Supplier routes
 require app_path('Domains/Supplier/routes.php');
 
-// Purchasing routes
-require app_path('Domains/Purchasing/routes.php');
 /*
 |--------------------------------------------------------------------------
 | Supplier Reference Routes
@@ -61,6 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require app_path('Domains/Audit/routes.php');
     require app_path('Domains/Customer/routes.php');
     require app_path('Domains/Estimate/routes.php');
+    require app_path('Domains/Purchasing/routes.php');
     // Future Domains will go here:
     // require app_path('Domains/Inventory/routes.php');
     // require app_path('Domains/Sales/routes.php');

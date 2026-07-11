@@ -8,6 +8,7 @@ import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/Pu
 import { formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ReturnItemsModal from "@/components/purchasing/ReturnItemsModal";
 
 interface GoodsReceiptDetailModel {
@@ -20,6 +21,9 @@ interface GoodsReceiptDetailModel {
   approvedAt: string | null;
   status: string;
   notes?: string | null;
+  receivedByName: string | null;
+  approvedByName: string | null;
+  cancelledByName: string | null;
   items: GoodsReceiptItemRow[];
 }
 
@@ -36,14 +40,22 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
     approvedAt: row.approved_at ?? row.approvedAt ?? null,
     status: normalizeStatus(row.status),
     notes: row.notes ?? null,
+    receivedByName: row.received_by_name ?? row.receivedByName ?? null,
+    approvedByName: row.approved_by_name ?? row.approvedByName ?? null,
+    cancelledByName: row.cancelled_by_name ?? row.cancelledByName ?? null,
     items: itemsRaw.map((item: any) => {
       const product = item.product || {};
       const poItem = item.purchase_order_item || item.purchaseOrderItem || {};
 
+      const manufacturer = product.manufacturer?.name || product.manufacturer || product.manufacturer_name || "";
+      const manufacturerStr = manufacturer ? ` — ${manufacturer}` : "";
+      const productName = `${String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product")}${manufacturerStr}`;
+
       return {
         id: String(item.id ?? ""),
-        productName: String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product"),
+        productName,
         sku: String(product.sku ?? product.SKU ?? item.sku ?? "-"),
+        partNumber: product.part_number ?? item.part_number ?? null,
         ordered: Number(poItem.quantity_ordered ?? poItem.quantityOrdered ?? 0),
         quantityReceived: Number(item.quantity_received ?? item.quantityReceived ?? 0),
         quantityPromo: Number(item.quantity_promo ?? item.quantityPromo ?? 0),
@@ -143,7 +155,7 @@ const GoodsReceiptDetail = () => {
   };
 
   return (
-    <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-6 overflow-y-auto bg-background text-foreground">
+    <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       {toast && (
         <PurchasingToast type={toast.type} title={toast.title} message={toast.message} duration={4000} onClose={() => setToast(null)} />
       )}
@@ -189,49 +201,77 @@ const GoodsReceiptDetail = () => {
       ) : !receipt ? (
         <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Goods receipt not found.</div>
       ) : (
-        <div className="space-y-6">
-          {/* Main Info Card */}
-          <div className="rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-shadow p-6 border-l-4 border-l-amber-500">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{receipt.receiptNumber}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  PO: <button type="button" className="font-semibold text-blue-600 hover:underline" onClick={() => receipt.purchaseOrderId && navigate(`/webapp/purchasing/purchase-orders/${receipt.purchaseOrderId}`)}>{receipt.poNumber}</button> • Supplier: <span className="font-semibold text-foreground">{receipt.supplierName}</span>
-                </p>
-              </div>
-              <PurchaseStatusBadge status={receipt.status} />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 items-stretch min-h-0">
+          {/* Left Column: GR Info Card */}
+          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
+            <Card className="flex-1 flex flex-col min-h-0">
+              <CardHeader className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-bold tracking-tight text-foreground">{receipt.receiptNumber}</CardTitle>
+                  <PurchaseStatusBadge status={receipt.status} />
+                </div>
+                <p className="text-xs text-muted-foreground">Supplier: <span className="font-semibold text-foreground">{receipt.supplierName}</span></p>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-5 overflow-auto">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Purchase Order</p>
+                  <button
+                    type="button"
+                    className="font-bold text-blue-600 hover:underline block text-left"
+                    onClick={() => receipt.purchaseOrderId && navigate(`/webapp/purchasing/purchase-orders/${receipt.purchaseOrderId}`)}
+                  >
+                    {receipt.poNumber}
+                  </button>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Received Date</p>
+                  <p className="text-sm font-medium text-foreground">{formatDate(receipt.receivedAt)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Approved At</p>
+                  <p className="text-sm font-medium text-foreground">{formatDate(receipt.approvedAt)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Notes</p>
+                  <p className="text-sm text-foreground/80 italic">{receipt.notes || "-"}</p>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Received Date</p>
-                <p className="font-bold text-foreground">{formatDate(receipt.receivedAt)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Approved At</p>
-                <p className="font-bold text-foreground">{formatDate(receipt.approvedAt)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Purchase Order</p>
-                <button
-                  type="button"
-                  className="font-bold text-blue-600 hover:underline block text-left"
-                  onClick={() => receipt.purchaseOrderId && navigate(`/webapp/purchasing/purchase-orders/${receipt.purchaseOrderId}`)}
-                >
-                  {receipt.poNumber}
-                </button>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Notes</p>
-                <p className="text-sm text-foreground/80 italic">{receipt.notes || "-"}</p>
-              </div>
-            </div>
+            {/* Left Column: GR Activity Card */}
+            <Card className="flex-none flex flex-col min-h-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Activity</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Received By</p>
+                  <p className="text-sm font-medium text-foreground">{receipt.receivedByName || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Approved By</p>
+                  <p className="text-sm font-medium text-foreground">{receipt.approvedByName || "-"}</p>
+                </div>
+                {receipt.cancelledByName && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Cancelled By</p>
+                    <p className="text-sm font-medium text-red-600 dark:text-red-400">{receipt.cancelledByName}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Received Items Section */}
-          <div className="rounded-xl border border-border/80 bg-card shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-bold text-foreground">Received Items</h2>
-            <GoodsReceiptItemsTable items={receipt.items} />
+          {/* Right Column: Received Items */}
+          <div className="lg:col-span-2 flex flex-col min-h-0">
+            <Card className="flex-1 flex flex-col min-h-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Received Items</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 min-h-0 overflow-hidden p-0 flex flex-col">
+                <GoodsReceiptItemsTable items={receipt.items} />
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}

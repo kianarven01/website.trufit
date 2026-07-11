@@ -16,9 +16,9 @@ class CreateGoodsReceipt
         private readonly ReceiptNumberService $numberService
     ) {}
 
-    public function execute(array $data): GoodsReceipt
+    public function execute(array $data, ?string $userId = null): GoodsReceipt
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $userId) {
             $purchaseOrder = PurchaseOrder::with('items.receiptItems')
                 ->findOrFail($data['purchase_order_id']);
 
@@ -32,6 +32,7 @@ class CreateGoodsReceipt
                 'status' => 'DRAFT',
                 'received_at' => now(),
                 'notes' => $data['notes'] ?? null,
+                'received_by' => $userId,
             ]);
 
             $allowOverReceiving = $data['allow_over_receiving'] ?? false;

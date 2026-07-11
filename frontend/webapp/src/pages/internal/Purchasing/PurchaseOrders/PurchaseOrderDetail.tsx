@@ -9,6 +9,8 @@ import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatCurrency, formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scrollArea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
@@ -22,6 +24,9 @@ interface PurchaseOrderDetailModel {
   status: string;
   remarks?: string | null;
   totalAmount: number;
+  createdByName: string | null;
+  approvedByName: string | null;
+  cancelledByName: string | null;
   items: PurchaseOrderItemRow[];
   receiptModalItems: ReceiptPurchaseOrder["items"];
   goodsReceipts: Array<{
@@ -66,10 +71,15 @@ const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {
     const unitCost = Number(item.unit_cost ?? item.unitCost ?? 0);
     const lineTotal = Number(item.line_total ?? item.lineTotal ?? quantityOrdered * unitCost);
 
+    const manufacturer = product.manufacturer?.name || product.manufacturer || product.manufacturer_name || "";
+    const manufacturerStr = manufacturer ? ` — ${manufacturer}` : "";
+    const productName = `${String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product")}${manufacturerStr}`;
+
     return {
       id: String(item.id ?? ""),
-      productName: String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product"),
+      productName,
       sku: product.SKU ?? product.sku ?? item.sku ?? null,
+      partNumber: product.part_number ?? item.part_number ?? null,
       quantityOrdered,
       quantityReceived,
       unitCost,
@@ -82,10 +92,14 @@ const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {
     const quantityOrdered = Number(item.quantity_ordered ?? item.quantityOrdered ?? 0);
     const quantityReceived = Number(item.quantity_received ?? item.quantityReceived ?? getApprovedReceivedQuantity(item));
 
+    const manufacturer = product.manufacturer?.name || product.manufacturer || product.manufacturer_name || "";
+    const manufacturerStr = manufacturer ? ` — ${manufacturer}` : "";
+    const productName = `${String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product")}${manufacturerStr}`;
+
     return {
       id: String(item.id ?? ""),
       productId: String(item.product_id ?? item.productId ?? product.id ?? ""),
-      productName: String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product"),
+      productName,
       productSupplierId: String(item.product_supplier_id ?? item.productSupplierId ?? ""),
       quantityOrdered,
       quantityReceived,
@@ -102,6 +116,9 @@ const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {
     status: normalizeStatus(row.status),
     remarks: row.remarks ?? row.notes ?? null,
     totalAmount: Number(row.total_amount ?? row.totalAmount ?? row.total ?? 0),
+    createdByName: row.created_by_name ?? row.createdByName ?? null,
+    approvedByName: row.approved_by_name ?? row.approvedByName ?? null,
+    cancelledByName: row.cancelled_by_name ?? row.cancelledByName ?? null,
     items,
     receiptModalItems,
     goodsReceipts: goodsReceiptsRaw.map((receipt: any) => ({
@@ -217,7 +234,7 @@ const PurchaseOrderDetail = () => {
   const canDelete = status === "DRAFT";
 
   return (
-    <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-6 overflow-y-auto bg-background text-foreground">
+    <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       {toast && (
         <PurchasingToast
           type={toast.type}
@@ -281,84 +298,123 @@ const PurchaseOrderDetail = () => {
       ) : !purchaseOrder ? (
         <div className="rounded-xl border border-border bg-background p-8 text-center text-muted-foreground">Purchase order not found.</div>
       ) : (
-        <div className="space-y-6">
-          {/* Main Info Card */}
-          <div className="rounded-xl border border-border/80 bg-card shadow-sm hover:shadow-md transition-shadow p-6 border-l-4 border-l-blue-600">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{purchaseOrder.poNumber}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">Supplier: <span className="font-semibold text-foreground">{purchaseOrder.supplierName}</span></p>
-              </div>
-              <PurchaseStatusBadge status={purchaseOrder.status} />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 items-stretch min-h-0">
+          {/* Left Column: PO Info Card */}
+          <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
+            <Card className="flex-1 flex flex-col min-h-0">
+              <CardHeader className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-bold tracking-tight text-foreground">{purchaseOrder.poNumber}</CardTitle>
+                  <PurchaseStatusBadge status={purchaseOrder.status} />
+                </div>
+                <p className="text-xs text-muted-foreground">Supplier: <span className="font-semibold text-foreground">{purchaseOrder.supplierName}</span></p>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-5 overflow-auto">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Order Date</p>
+                  <p className="text-sm font-medium text-foreground">{formatDate(purchaseOrder.orderDate)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Expected Delivery</p>
+                  <p className="text-sm font-medium text-foreground">{formatDate(purchaseOrder.expectedDelivery)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Total Amount</p>
+                  <p className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(purchaseOrder.totalAmount)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Remarks</p>
+                  <p className="text-sm text-foreground/80 italic">{purchaseOrder.remarks || "-"}</p>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Order Date</p>
-                <p className="font-bold text-foreground">{formatDate(purchaseOrder.orderDate)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Expected Delivery</p>
-                <p className="font-bold text-foreground">{formatDate(purchaseOrder.expectedDelivery)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Amount</p>
-                <p className="font-extrabold text-blue-600 dark:text-blue-400 text-lg">{formatCurrency(purchaseOrder.totalAmount)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Remarks</p>
-                <p className="text-sm text-foreground/80 italic">{purchaseOrder.remarks || "-"}</p>
-              </div>
-            </div>
+            {/* Left Column: PO Activity Card */}
+            <Card className="flex-none flex flex-col min-h-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Activity</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Created / Submitted By</p>
+                  <p className="text-sm font-medium text-foreground">{purchaseOrder.createdByName || "-"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Approved By</p>
+                  <p className="text-sm font-medium text-foreground">{purchaseOrder.approvedByName || "-"}</p>
+                </div>
+                {purchaseOrder.cancelledByName && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Cancelled By</p>
+                    <p className="text-sm font-medium text-red-600 dark:text-red-400">{purchaseOrder.cancelledByName}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Line Items Section */}
-          <div className="rounded-xl border border-border/80 bg-card shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-bold text-foreground">Line Items</h2>
-            <PurchaseOrderItemsTable items={purchaseOrder.items} />
-          </div>
+          {/* Right Column: Tables */}
+          <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
+            {/* Line Items Section */}
+            <Card className="flex-[3] flex flex-col min-h-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Line Items</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 min-h-0 overflow-hidden p-0 flex flex-col">
+                <PurchaseOrderItemsTable items={purchaseOrder.items} />
+              </CardContent>
+            </Card>
 
-          {/* Goods Receipts Section */}
-          <div className="rounded-xl border border-border/80 bg-card shadow-sm p-6 space-y-4">
-            <h2 className="text-lg font-bold text-foreground">Goods Receipts</h2>
-            <div className="overflow-hidden rounded-xl border border-border/60 bg-background px-3">
-              <Table className="table-fixed w-full border-separate border-spacing-y-2">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[30%]">Receipt #</TableHead>
-                    <TableHead className="w-[45%]">Date</TableHead>
-                    <TableHead className="w-[25%] text-center">Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {purchaseOrder.goodsReceipts.length === 0 ? (
-                    <TableRow>
-                      <TableCell className="px-4 py-6 text-center text-muted-foreground" colSpan={3}>
-                        No goods receipts yet.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    purchaseOrder.goodsReceipts.map((receipt) => (
-                      <TableRow
-                        key={receipt.id}
-                        className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
-                        onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)}
-                      >
-                        <TableCell className="py-2.5">
-                          <span className="font-semibold text-sm">{receipt.receiptNumber}</span>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{formatDate(receipt.receivedAt)}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <PurchaseStatusBadge status={receipt.status} />
-                          </div>
-                        </TableCell>
+            {/* Goods Receipts Section */}
+            <Card className="flex-[2] flex flex-col min-h-0">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Goods Receipts</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 min-h-0 overflow-hidden p-0 flex flex-col">
+                <div className="flex flex-col flex-1 border rounded-lg mx-4 mb-4 overflow-hidden">
+                  <Table className="table-fixed w-full">
+                    <TableHeader className="bg-muted/50">
+                      <TableRow className="border-b">
+                        <TableHead className="w-[30%] text-center py-3">Receipt #</TableHead>
+                        <TableHead className="w-[45%] text-center py-3">Date</TableHead>
+                        <TableHead className="w-[25%] text-center py-3">Status</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    </TableHeader>
+                  </Table>
+                  <ScrollArea className="flex-1">
+                    <Table className="table-fixed w-full">
+                      <TableBody>
+                        {purchaseOrder.goodsReceipts.length === 0 ? (
+                          <TableRow>
+                            <TableCell className="px-4 py-6 text-center text-muted-foreground" colSpan={3}>
+                              No goods receipts yet.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          purchaseOrder.goodsReceipts.map((receipt) => (
+                            <TableRow
+                              key={receipt.id}
+                              className="cursor-pointer transition-all hover:bg-accent/30 border-b last:border-b-0"
+                              onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)}
+                            >
+                              <TableCell className="w-[30%] text-center py-2.5">
+                                <span className="font-semibold text-sm">{receipt.receiptNumber}</span>
+                              </TableCell>
+                              <TableCell className="w-[45%] text-center text-muted-foreground">{formatDate(receipt.receivedAt)}</TableCell>
+                              <TableCell className="w-[25%] text-center">
+                                <div className="flex justify-center">
+                                  <PurchaseStatusBadge status={receipt.status} />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       )}

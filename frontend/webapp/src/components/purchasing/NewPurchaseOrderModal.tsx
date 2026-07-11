@@ -19,6 +19,8 @@ interface ProductOption {
   id: string;
   name: string;
   sku?: string | null;
+  manufacturer?: string | null;
+  partNumber?: string | null;
   productSuppliers: ProductSupplierOption[];
 }
 
@@ -76,6 +78,8 @@ const normalizeProduct = (row: any): ProductOption => {
     id: String(row.id ?? ""),
     name: String(row.name ?? row.product_name ?? row.ProductName ?? "Unnamed Product"),
     sku: row.SKU ?? row.sku ?? null,
+    manufacturer: row.manufacturer_name ?? row.manufacturer ?? row.manufacturer?.name ?? null,
+    partNumber: row.part_number ?? null,
     productSuppliers: productSuppliersRaw.map((ps: any) => ({
       id: String(ps.id ?? ps.product_supplier_id ?? ps.pivot?.id ?? ""),
       product_id: String(ps.product_id ?? ps.productID ?? row.id ?? ""),
@@ -336,11 +340,15 @@ const NewPurchaseOrderModal = ({
                       onChange={(event) => updateItem(item.id, { productId: event.target.value })}
                     >
                       <option value="">Select part...</option>
-                      {supplierProducts.map((product) => (
-                        <option key={product.id} value={product.id}>
-                          {product.name}
-                        </option>
-                      ))}
+                      {supplierProducts.map((product) => {
+                        const manufacturerStr = product.manufacturer ? ` — ${product.manufacturer}` : "";
+                        const partNumberStr = product.partNumber ? ` (${product.partNumber})` : "";
+                        return (
+                          <option key={product.id} value={product.id}>
+                            {product.name}{manufacturerStr}{partNumberStr}
+                          </option>
+                        );
+                      })}
                     </select>
 
                     <input

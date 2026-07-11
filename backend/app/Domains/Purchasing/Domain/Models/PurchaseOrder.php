@@ -3,8 +3,10 @@
 namespace App\Domains\Purchasing\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 use App\Domains\Supplier\Domain\Models\Supplier;
+use App\Domains\Auth\Domain\Models\User;
 
 class PurchaseOrder extends Model
 {
@@ -51,6 +53,12 @@ class PurchaseOrder extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'created_by_name',
+        'approved_by_name',
+        'cancelled_by_name',
+    ];
+
     protected static function boot()
     {
         parent::boot();
@@ -79,5 +87,41 @@ class PurchaseOrder extends Model
     public function goodsReceipts()
     {
         return $this->hasMany(GoodsReceipt::class, 'purchase_order_id', 'id');
+    }
+
+    public function createdByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
+    public function approvedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by', 'id');
+    }
+
+    public function cancelledByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by', 'id');
+    }
+
+    public function getCreatedByNameAttribute(): ?string
+    {
+        return $this->createdByUser?->employee
+            ? trim($this->createdByUser->employee->first_name . ' ' . $this->createdByUser->employee->last_name)
+            : null;
+    }
+
+    public function getApprovedByNameAttribute(): ?string
+    {
+        return $this->approvedByUser?->employee
+            ? trim($this->approvedByUser->employee->first_name . ' ' . $this->approvedByUser->employee->last_name)
+            : null;
+    }
+
+    public function getCancelledByNameAttribute(): ?string
+    {
+        return $this->cancelledByUser?->employee
+            ? trim($this->cancelledByUser->employee->first_name . ' ' . $this->cancelledByUser->employee->last_name)
+            : null;
     }
 }

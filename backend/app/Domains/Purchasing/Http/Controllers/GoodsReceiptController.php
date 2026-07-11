@@ -5,9 +5,9 @@ namespace App\Domains\Purchasing\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Http\Requests\StoreGoodsReceiptRequest;
-use App\Domains\Purchasing\Http\Requests\ApproveGoodsReceiptRequest;
 use App\Domains\Purchasing\Application\UseCases\CreateGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ReturnGoodsReceiptItems;
@@ -22,7 +22,7 @@ class GoodsReceiptController extends Controller
         $status = $request->query('status');
         $perPage = (int) $request->query('per_page', 10);
 
-        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product']);
+        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product.manufacturer', 'receivedByUser.employee', 'approvedByUser.employee', 'cancelledByUser.employee']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -57,8 +57,11 @@ class GoodsReceiptController extends Controller
     {
         $receipt = GoodsReceipt::with([
             'purchaseOrder.supplier',
-            'items.product',
+            'items.product.manufacturer',
             'items.purchaseOrderItem',
+            'receivedByUser.employee',
+            'approvedByUser.employee',
+            'cancelledByUser.employee',
         ])->findOrFail($id);
 
         return response()->json([
@@ -69,9 +72,9 @@ class GoodsReceiptController extends Controller
     public function store(StoreGoodsReceiptRequest $request, CreateGoodsReceipt $createGoodsReceipt): JsonResponse
     {
         try {
-            $receipt = $createGoodsReceipt->execute($request->validated());
+            $receipt = $createGoodsReceipt->execute($request->validated(), $request->user()?->id);
 
-            $receipt->load(['purchaseOrder.supplier', 'items.product', 'items.purchaseOrderItem']);
+            $receipt->load(['purchaseOrder.supplier', 'items.product.manufacturer', 'items.purchaseOrderItem']);
 
             return response()->json([
                 'message' => 'Goods receipt draft created successfully.',
@@ -91,10 +94,10 @@ class GoodsReceiptController extends Controller
         }
     }
 
-    public function approve(string $id, ApproveGoodsReceipt $approveGoodsReceipt): JsonResponse
+    public function approve(string $id, Request $request, ApproveGoodsReceipt $approveGoodsReceipt): JsonResponse
     {
         try {
-            $receipt = $approveGoodsReceipt->execute($id);
+            $receipt = $approveGoodsReceipt->execute($id, $request->user()?->id);
 
             return response()->json([
                 'message' => 'Goods receipt approved. Inventory updated successfully.',
@@ -118,7 +121,7 @@ class GoodsReceiptController extends Controller
         }
     }
 
-    public function cancel(string $id): JsonResponse
+    public function cancel(string $id, Request $request): JsonResponse
     {
         $receipt = GoodsReceipt::findOrFail($id);
 
@@ -131,6 +134,7 @@ class GoodsReceiptController extends Controller
         $receipt->update([
             'status' => 'CANCELLED',
             'cancelled_at' => now(),
+            'cancelled_by' => $request->user()?->id,
         ]);
 
         return response()->json([
@@ -149,7 +153,7 @@ class GoodsReceiptController extends Controller
         ]);
 
         try {
-            $receipt = $returnGoodsReceiptItems->execute($id, $validated['items']);
+            $receipt = $returnGoodsReceiptItems->execute($id, $validated['items'], $request->user()?->id);
 
             return response()->json([
                 'message' => 'Goods receipt items returned successfully. Stock ledger was updated.',

@@ -13,9 +13,9 @@ class CreatePurchaseOrder
         private readonly PurchaseOrderNumberService $numberService
     ) {}
 
-    public function execute(array $data): PurchaseOrder
+    public function execute(array $data, ?string $userId = null): PurchaseOrder
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $userId) {
             $purchaseOrder = PurchaseOrder::create([
                 'po_number' => $this->numberService->generate(),
                 'supplier_id' => $data['supplier_id'],
@@ -26,6 +26,7 @@ class CreatePurchaseOrder
                 'remarks' => $data['remarks'] ?? null,
                 'subtotal' => 0,
                 'total_amount' => 0,
+                'created_by' => $userId,
             ]);
 
             $subtotal = 0;

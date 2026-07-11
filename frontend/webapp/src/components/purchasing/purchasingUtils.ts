@@ -1,3 +1,7 @@
+import { getRows } from "@/lib/api";
+
+export { getRows };
+
 export const formatCurrency = (value: number | string | null | undefined) =>
   new Intl.NumberFormat("en-PH", {
     style: "currency",
@@ -14,18 +18,6 @@ export const formatDate = (value: string | Date | null | undefined) => {
     day: "numeric",
     year: "numeric",
   }).format(date);
-};
-
-export const getRows = (data: any, keys: string[] = []): any[] => {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.data)) return data.data;
-
-  for (const key of keys) {
-    if (Array.isArray(data?.[key])) return data[key];
-  }
-
-  if (Array.isArray(data?.rows)) return data.rows;
-  return [];
 };
 
 export const getCleanApiError = (error: any, fallback = "Something went wrong. Please try again.") => {
@@ -46,6 +38,3 @@ export const getCleanApiError = (error: any, fallback = "Something went wrong. P
 };
 
 export const normalizeStatus = (status: unknown) => String(status || "DRAFT").toUpperCase();
-
-export const isActionStatus = (status: unknown, allowed: string[]) =>
-  allowed.includes(normalizeStatus(status));

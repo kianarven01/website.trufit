@@ -1,9 +1,11 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scrollArea";
 
 export interface PurchaseOrderItemRow {
   id: string;
   productName: string;
   sku?: string | null;
+  partNumber?: string | null;
   quantityOrdered: number;
   quantityReceived?: number;
   unitCost: number;
@@ -23,43 +25,49 @@ const formatCurrency = (value: number | string | null | undefined) =>
 
 const PurchaseOrderItemsTable = ({ items }: PurchaseOrderItemsTableProps) => {
   return (
-    <div className="overflow-hidden rounded-xl border border-border/60 bg-background px-3">
-      <Table className="table-fixed w-full border-separate border-spacing-y-2">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40%]">Product</TableHead>
-            <TableHead className="w-[15%] text-right">Ordered</TableHead>
-            <TableHead className="w-[15%] text-right">Received</TableHead>
-            <TableHead className="w-[15%] text-right">Unit Cost</TableHead>
-            <TableHead className="w-[15%] text-right">Line Total</TableHead>
+    <div className="flex flex-col flex-1 border rounded-lg mx-4 mb-4 overflow-hidden">
+      <Table className="table-fixed w-full">
+        <TableHeader className="bg-muted/50">
+          <TableRow className="border-b hover:bg-transparent">
+            <TableHead className="w-[30%] pl-4 py-3 text-left">Product</TableHead>
+            <TableHead className="w-[15%] text-center py-3">Part Number</TableHead>
+            <TableHead className="w-[13%] text-center py-3">Ordered</TableHead>
+            <TableHead className="w-[13%] text-center py-3">Received</TableHead>
+            <TableHead className="w-[14%] text-center py-3">Unit Cost</TableHead>
+            <TableHead className="w-[15%] text-center py-3">Line Total</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {items.length === 0 ? (
-            <TableRow>
-              <TableCell className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
-                No line items found.
-              </TableCell>
-            </TableRow>
-          ) : (
-            items.map((item) => (
-              <TableRow
-                key={item.id}
-                className="transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
-              >
-                <TableCell className="py-2.5">
-                  <p className="font-semibold text-foreground text-sm">{item.productName}</p>
-                  {item.sku && <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{item.sku}</p>}
-                </TableCell>
-                <TableCell className="text-right text-muted-foreground">{item.quantityOrdered}</TableCell>
-                <TableCell className="text-right text-muted-foreground">{item.quantityReceived ?? 0}</TableCell>
-                <TableCell className="text-right text-muted-foreground">{formatCurrency(item.unitCost)}</TableCell>
-                <TableCell className="text-right font-bold text-foreground">{formatCurrency(item.lineTotal)}</TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
       </Table>
+      <ScrollArea className="flex-1">
+        <Table className="table-fixed w-full">
+          <TableBody>
+            {items.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell className="px-4 py-6 text-center text-muted-foreground" colSpan={6}>
+                  No line items found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              items.map((item) => (
+                <TableRow
+                  key={item.id}
+                  className="hover:bg-transparent border-b last:border-b-0"
+                >
+                  <TableCell className="w-[30%] py-3 pl-4 text-left">
+                    <p className="font-semibold text-foreground text-sm">{item.productName}</p>
+                    {item.sku && <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{item.sku}</p>}
+                  </TableCell>
+                  <TableCell className="w-[15%] text-center text-muted-foreground py-3">{item.partNumber || "-"}</TableCell>
+                  <TableCell className="w-[13%] text-center text-muted-foreground py-3">{item.quantityOrdered}</TableCell>
+                  <TableCell className="w-[13%] text-center text-muted-foreground py-3">{item.quantityReceived ?? 0}</TableCell>
+                  <TableCell className="w-[14%] text-center text-muted-foreground py-3">{formatCurrency(item.unitCost)}</TableCell>
+                  <TableCell className="w-[15%] text-center font-bold text-foreground py-3">{formatCurrency(item.lineTotal)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
     </div>
   );
 };

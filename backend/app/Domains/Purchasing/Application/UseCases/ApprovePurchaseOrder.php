@@ -7,7 +7,7 @@ use RuntimeException;
 
 class ApprovePurchaseOrder
 {
-    public function execute(string $id): PurchaseOrder
+    public function execute(string $id, ?string $userId = null): PurchaseOrder
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 
@@ -18,6 +18,7 @@ class ApprovePurchaseOrder
         $purchaseOrder->update([
             'status' => 'APPROVED',
             'approved_at' => now(),
+            'approved_by' => $userId,
         ]);
 
         return $purchaseOrder;

@@ -19,9 +19,9 @@ class ReturnGoodsReceiptItems
         return $location?->id;
     }
 
-    public function execute(string $goodsReceiptId, array $itemsData): GoodsReceipt
+    public function execute(string $goodsReceiptId, array $itemsData, ?string $userId = null): GoodsReceipt
     {
-        return DB::transaction(function () use ($goodsReceiptId, $itemsData) {
+        return DB::transaction(function () use ($goodsReceiptId, $itemsData, $userId) {
             $receipt = GoodsReceipt::with(['items', 'purchaseOrder'])
                 ->lockForUpdate()
                 ->findOrFail($goodsReceiptId);

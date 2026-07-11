@@ -33,7 +33,8 @@ interface Product {
   id: string;
   name: string;
   partNumber: string;
-  manufacturer?: string;
+  sku?: string | null;
+  manufacturer?: string | null;
   price: number;
   stock: number;
   isVat?: boolean;
@@ -405,7 +406,7 @@ const SupplierDetails: React.FC = () => {
                   <Table className="table-fixed w-full">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-[20%] text-center">Product Name</TableHead>
+                        <TableHead className="w-[20%] text-left pl-4">Product Name</TableHead>
                         <TableHead className="w-[15%] text-center">Part Number</TableHead>
                         <TableHead className="w-[15%] text-center">Supplier Cost</TableHead>
                         <TableHead className="w-[15%] text-center">Selling Price</TableHead>
@@ -421,9 +422,10 @@ const SupplierDetails: React.FC = () => {
                     <Table className="table-fixed w-full">
                       <TableBody>
                         {paginate(products).map((prod, index) => (
-                          <TableRow key={prod.id}>
-                            <TableCell className="w-[20%] truncate">
-                              {prod.name}{prod.manufacturer ? ` — ${prod.manufacturer}` : ""}
+                          <TableRow key={prod.id} className="hover:bg-transparent">
+                            <TableCell className="w-[20%] py-3 pl-4 text-left">
+                              <p className="font-semibold text-foreground text-sm">{prod.name}{prod.manufacturer ? ` — ${prod.manufacturer}` : ""}</p>
+                              {prod.sku && <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{prod.sku}</p>}
                             </TableCell>
                             <TableCell className="w-[15%] text-center">
                               {prod.partNumber}

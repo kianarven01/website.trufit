@@ -16,9 +16,9 @@ class ApproveGoodsReceipt
     ) {
     }
 
-    public function execute(string $goodsReceiptId): GoodsReceipt
+    public function execute(string $goodsReceiptId, ?string $userId = null): GoodsReceipt
     {
-        return DB::transaction(function () use ($goodsReceiptId) {
+        return DB::transaction(function () use ($goodsReceiptId, $userId) {
             $receipt = GoodsReceipt::with([
                 'items',
                 'purchaseOrder.items.receiptItems.goodsReceipt',
@@ -47,6 +47,7 @@ class ApproveGoodsReceipt
             $receipt->update([
                 'status' => 'APPROVED',
                 'approved_at' => now(),
+                'approved_by' => $userId,
             ]);
 
             $this->purchaseOrderStatusService->updateReceiptStatus(

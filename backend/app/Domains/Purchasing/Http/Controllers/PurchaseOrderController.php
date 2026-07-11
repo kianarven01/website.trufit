@@ -22,7 +22,7 @@ class PurchaseOrderController extends Controller
         $status = $request->query('status');
         $perPage = (int) $request->query('per_page', 10);
 
-        $query = PurchaseOrder::with(['supplier', 'items.product', 'items.productSupplier', 'items.receiptItems.goodsReceipt']);
+        $query = PurchaseOrder::with(['supplier', 'items.product.manufacturer', 'items.productSupplier', 'items.receiptItems.goodsReceipt', 'createdByUser.employee', 'approvedByUser.employee', 'cancelledByUser.employee']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -54,10 +54,13 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::with([
             'supplier',
-            'items.product',
+            'items.product.manufacturer',
             'items.productSupplier',
             'items.receiptItems.goodsReceipt',
             'goodsReceipts.items',
+            'createdByUser.employee',
+            'approvedByUser.employee',
+            'cancelledByUser.employee',
         ])->findOrFail($id);
 
         return response()->json([
@@ -68,9 +71,9 @@ class PurchaseOrderController extends Controller
     public function store(StorePurchaseOrderRequest $request, CreatePurchaseOrder $createPurchaseOrder): JsonResponse
     {
         try {
-            $purchaseOrder = $createPurchaseOrder->execute($request->validated());
+            $purchaseOrder = $createPurchaseOrder->execute($request->validated(), $request->user()?->id);
 
-            $purchaseOrder->load(['supplier', 'items.product', 'items.productSupplier']);
+            $purchaseOrder->load(['supplier', 'items.product.manufacturer', 'items.productSupplier']);
 
             return response()->json([
                 'message' => 'Purchase order draft created successfully.',
@@ -84,10 +87,10 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    public function submit(string $id, SubmitPurchaseOrder $submitPurchaseOrder): JsonResponse
+    public function submit(string $id, Request $request, SubmitPurchaseOrder $submitPurchaseOrder): JsonResponse
     {
         try {
-            $purchaseOrder = $submitPurchaseOrder->execute($id);
+            $purchaseOrder = $submitPurchaseOrder->execute($id, $request->user()?->id);
 
             return response()->json([
                 'message' => 'Purchase order submitted for approval.',
@@ -105,10 +108,10 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    public function approve(string $id, ApprovePurchaseOrder $approvePurchaseOrder): JsonResponse
+    public function approve(string $id, Request $request, ApprovePurchaseOrder $approvePurchaseOrder): JsonResponse
     {
         try {
-            $purchaseOrder = $approvePurchaseOrder->execute($id);
+            $purchaseOrder = $approvePurchaseOrder->execute($id, $request->user()?->id);
 
             return response()->json([
                 'message' => 'Purchase order approved successfully.',
@@ -126,7 +129,7 @@ class PurchaseOrderController extends Controller
         }
     }
 
-    public function cancel(string $id): JsonResponse
+    public function cancel(string $id, Request $request): JsonResponse
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 
@@ -139,6 +142,7 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->update([
             'status' => 'CANCELLED',
             'cancelled_at' => now(),
+            'cancelled_by' => $request->user()?->id,
         ]);
 
         return response()->json([
@@ -195,7 +199,7 @@ class PurchaseOrderController extends Controller
             }
         });
 
-        $purchaseOrder->load(['supplier', 'items.product', 'items.productSupplier']);
+        $purchaseOrder->load(['supplier', 'items.product.manufacturer', 'items.productSupplier']);
 
         return response()->json([
             'message' => 'Purchase order updated successfully.',

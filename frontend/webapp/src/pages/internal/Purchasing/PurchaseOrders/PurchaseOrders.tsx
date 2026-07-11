@@ -24,15 +24,6 @@ interface PurchaseOrderRow {
   status: string;
 }
 
-const filterTabs = [
-  { label: "All", value: "ALL" },
-  { label: "Draft", value: "DRAFT" },
-  { label: "Submitted", value: "SUBMITTED" },
-  { label: "Approved", value: "APPROVED" },
-  { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
-  { label: "Received", value: "RECEIVED" },
-  { label: "Cancelled", value: "CANCELLED" },
-];
 
 const normalizePurchaseOrder = (row: any): PurchaseOrderRow => ({
   id: String(row.id ?? ""),
@@ -67,6 +58,32 @@ const PurchaseOrders = () => {
 
   const { page, setPage, pageSize, setPageSize } = usePagination(25);
   const [totalItems, setTotalItems] = useState(0);
+
+  const filtersConfig = [
+    {
+      key: "status",
+      label: "Status",
+      options: [
+        { label: "Draft", value: "DRAFT" },
+        { label: "Submitted", value: "SUBMITTED" },
+        { label: "Approved", value: "APPROVED" },
+        { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
+        { label: "Received", value: "RECEIVED" },
+        { label: "Cancelled", value: "CANCELLED" },
+      ],
+    },
+  ];
+
+  const activeFilters = {
+    status: activeFilter === "ALL" ? "all" : activeFilter,
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    if (key === "status") {
+      setActiveFilter(value === "all" ? "ALL" : value);
+      setPage(1);
+    }
+  };
 
   const showToast = (type: PurchasingToastType, title: string, message: string) => {
     setToast({ type, title, message });
@@ -202,26 +219,10 @@ const PurchaseOrders = () => {
         onSearch={(value) => { setSearch(value); setPage(1); }}
         onAdd={() => setIsCreateOpen(true)}
         addLabel="New PO"
+        filters={filtersConfig}
+        activeFilters={activeFilters}
+        onFilterChange={handleFilterChange}
       />
-
-      {/* Filters Pill Bar */}
-      <div className="flex flex-wrap items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            className={cn(
-              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-              activeFilter === tab.value
-                ? "bg-blue-600 dark:bg-blue-700 text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => { setActiveFilter(tab.value); setPage(1); }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {/* Table Container */}
       {loading ? (

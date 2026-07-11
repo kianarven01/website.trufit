@@ -7,7 +7,7 @@ use RuntimeException;
 
 class SubmitPurchaseOrder
 {
-    public function execute(string $id): PurchaseOrder
+    public function execute(string $id, ?string $userId = null): PurchaseOrder
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 

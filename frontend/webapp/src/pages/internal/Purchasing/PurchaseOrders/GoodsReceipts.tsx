@@ -11,7 +11,7 @@ import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ImageIcon, MoreVertical, Eye, Check, Trash2 } from "lucide-react";
+import { ImageIcon, MoreVertical, Eye, Check, Trash2, XCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface GoodsReceiptRow {
@@ -92,6 +92,7 @@ const GoodsReceipts = () => {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmApprove, setConfirmApprove] = useState<GoodsReceiptRow | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<GoodsReceiptRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<GoodsReceiptRow | null>(null);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
@@ -101,6 +102,32 @@ const GoodsReceipts = () => {
 
   const { page, setPage, pageSize, setPageSize } = usePagination(25);
   const [totalItems, setTotalItems] = useState(0);
+  const [activeFilter, setActiveFilter] = useState("ALL");
+
+  const filtersConfig = [
+    {
+      key: "status",
+      label: "Status",
+      options: [
+        { label: "Draft", value: "DRAFT" },
+        { label: "Approved", value: "APPROVED" },
+        { label: "Partially Returned", value: "PARTIALLY_RETURNED" },
+        { label: "Returned", value: "RETURNED" },
+        { label: "Cancelled", value: "CANCELLED" },
+      ],
+    },
+  ];
+
+  const activeFilters = {
+    status: activeFilter === "ALL" ? "all" : activeFilter,
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    if (key === "status") {
+      setActiveFilter(value === "all" ? "ALL" : value);
+      setPage(1);
+    }
+  };
 
   const showToast = (type: PurchasingToastType, title: string, message: string) => {
     setToast({ type, title, message });
@@ -115,6 +142,7 @@ const GoodsReceipts = () => {
           page,
           per_page: pageSize,
           search: search || undefined,
+          status: activeFilter !== "ALL" ? activeFilter : undefined,
         },
       });
       const rows = getRows(response.data, ["goods_receipts", "goodsReceipts"]);
@@ -148,7 +176,7 @@ const GoodsReceipts = () => {
   useEffect(() => {
     void loadGoodsReceipts();
     void loadReceivablePurchaseOrders();
-  }, [page, pageSize, search]);
+  }, [page, pageSize, search, activeFilter]);
 
   const filteredReceipts = receipts;
 
@@ -161,6 +189,17 @@ const GoodsReceipts = () => {
     } catch (error: any) {
       console.error(error);
       showToast("error", "Unable to approve receipt", getCleanApiError(error, "Failed to approve goods receipt."));
+    }
+  };
+
+  const cancelReceipt = async (receipt: GoodsReceiptRow) => {
+    try {
+      await api.post(`/purchasing/goods-receipts/${receipt.id}/cancel`);
+      showToast("success", "Goods receipt cancelled", `${receipt.receiptNumber} was cancelled.`);
+      await loadGoodsReceipts();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to cancel receipt", getCleanApiError(error, "Failed to cancel goods receipt."));
     }
   };
 
@@ -189,6 +228,9 @@ const GoodsReceipts = () => {
         onAdd={() => setModalOpen(true)}
         addLabel="Receive Delivery"
         addButtonClassName="bg-amber-500 hover:bg-amber-600 text-white"
+        filters={filtersConfig}
+        activeFilters={activeFilters}
+        onFilterChange={handleFilterChange}
       />
 
       {/* Table Container */}
@@ -257,6 +299,10 @@ const GoodsReceipts = () => {
                               <DropdownMenuItem onClick={() => setConfirmApprove(receipt)} className="cursor-pointer text-green-700 dark:text-green-400 focus:bg-green-500/10">
                                 <Check className="w-4 h-4 mr-2" />
                                 Approve
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setConfirmCancel(receipt)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Cancel
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => setConfirmDelete(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                                 <Trash2 className="w-4 h-4 mr-2" />
@@ -328,6 +374,27 @@ const GoodsReceipts = () => {
               onClick={() => { if (confirmDelete) void deleteReceipt(confirmDelete); setConfirmDelete(null); }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel Dialog */}
+      <AlertDialog open={!!confirmCancel} onOpenChange={(open) => { if (!open) setConfirmCancel(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Goods Receipt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel {confirmCancel?.receiptNumber}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => { if (confirmCancel) void cancelReceipt(confirmCancel); setConfirmCancel(null); }}
+            >
+              Cancel Receipt
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -71,6 +71,7 @@ class SupplierController extends Controller
                         'id' => $product->id,
                         'name' => $product->name,
                         'partNumber' => $product->part_number,
+                        'sku' => $product->SKU,
                         'manufacturer' => $product->manufacturer?->name,
                         'price' => $product->pivot->supplier_cost ?? 0,
                             'isVat' => $product->pivot->is_vat ?? false,

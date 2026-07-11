@@ -30,12 +30,12 @@ class ApproveGoodsReceipt
                 throw new RuntimeException('Goods receipt not found.', 404);
             }
 
-            if ($receipt->status === 'APPROVED') {
+            if (in_array($receipt->status, ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED'], true)) {
                 throw new RuntimeException('Goods receipt is already approved.', 409);
             }
 
-            if ($receipt->status !== 'DRAFT') {
-                throw new RuntimeException('Only draft goods receipts can be approved.', 422);
+            if (!in_array($receipt->status, ['DRAFT', 'SUBMITTED'], true)) {
+                throw new RuntimeException('Only draft or submitted goods receipts can be approved.', 422);
             }
 
             if ($receipt->items->isEmpty()) {
@@ -44,11 +44,18 @@ class ApproveGoodsReceipt
 
             $this->stockReceivingService->receiveGoods($receipt);
 
-            $receipt->update([
-                'status' => 'APPROVED',
+            $updateData = [
+                'status' => 'RECEIVED',
                 'approved_at' => now(),
                 'approved_by' => $userId,
-            ]);
+            ];
+
+            if ($receipt->status === 'DRAFT') {
+                $updateData['received_by'] = $userId;
+                $updateData['received_at'] = now();
+            }
+
+            $receipt->update($updateData);
 
             $this->purchaseOrderStatusService->updateReceiptStatus(
                 $receipt->purchaseOrder

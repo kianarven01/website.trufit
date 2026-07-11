@@ -4,6 +4,7 @@ export type PurchaseStatus =
   | "APPROVED"
   | "PARTIALLY_RECEIVED"
   | "RECEIVED"
+  | "COMPLETED"
   | "CANCELLED"
   | "PARTIALLY_RETURNED"
   | "RETURNED"
@@ -24,7 +25,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
   APPROVED: {
     label: "Approved",
-    className: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    className: "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
   },
   PARTIALLY_RECEIVED: {
     label: "Partially Received",
@@ -32,6 +33,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
   RECEIVED: {
     label: "Received",
+    className: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
+  },
+  COMPLETED: {
+    label: "Completed",
     className: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
   },
   CANCELLED: {

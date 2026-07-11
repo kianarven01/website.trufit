@@ -33,6 +33,7 @@ class PurchaseOrder extends Model
         'cancelled_at',
         'date_received',
         'created_by',
+        'submitted_by',
         'approved_by',
         'cancelled_by',
     ];
@@ -55,6 +56,7 @@ class PurchaseOrder extends Model
 
     protected $appends = [
         'created_by_name',
+        'submitted_by_name',
         'approved_by_name',
         'cancelled_by_name',
     ];
@@ -99,6 +101,11 @@ class PurchaseOrder extends Model
         return $this->belongsTo(User::class, 'approved_by', 'id');
     }
 
+    public function submittedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by', 'id');
+    }
+
     public function cancelledByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by', 'id');
@@ -115,6 +122,13 @@ class PurchaseOrder extends Model
     {
         return $this->approvedByUser?->employee
             ? trim($this->approvedByUser->employee->first_name . ' ' . $this->approvedByUser->employee->last_name)
+            : null;
+    }
+
+    public function getSubmittedByNameAttribute(): ?string
+    {
+        return $this->submittedByUser?->employee
+            ? trim($this->submittedByUser->employee->first_name . ' ' . $this->submittedByUser->employee->last_name)
             : null;
     }
 

@@ -21,8 +21,10 @@ interface GoodsReceiptDetailModel {
   approvedAt: string | null;
   status: string;
   notes?: string | null;
+  createdByName: string | null;
   receivedByName: string | null;
   approvedByName: string | null;
+  returnedByName: string | null;
   cancelledByName: string | null;
   items: GoodsReceiptItemRow[];
 }
@@ -40,8 +42,10 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
     approvedAt: row.approved_at ?? row.approvedAt ?? null,
     status: normalizeStatus(row.status),
     notes: row.notes ?? null,
+    createdByName: row.created_by_name ?? row.createdByName ?? null,
     receivedByName: row.received_by_name ?? row.receivedByName ?? null,
     approvedByName: row.approved_by_name ?? row.approvedByName ?? null,
+    returnedByName: row.returned_by_name ?? row.returnedByName ?? null,
     cancelledByName: row.cancelled_by_name ?? row.cancelledByName ?? null,
     items: itemsRaw.map((item: any) => {
       const product = item.product || {};
@@ -72,6 +76,7 @@ const GoodsReceiptDetail = () => {
   const [receipt, setReceipt] = useState<GoodsReceiptDetailModel | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmApprove, setConfirmApprove] = useState(false);
+  const [confirmReceive, setConfirmReceive] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
@@ -114,6 +119,19 @@ const GoodsReceiptDetail = () => {
       window.dispatchEvent(new Event('breadcrumb-update'));
     };
   }, [id]);
+
+  const receiveReceipt = async () => {
+    if (!receipt) return;
+
+    try {
+      await api.post(`/purchasing/goods-receipts/${receipt.id}/receive`);
+      showToast("success", "Goods receipt received", "The goods receipt was successfully marked as received.");
+      await loadGoodsReceipt();
+    } catch (error: any) {
+      console.error(error);
+      showToast("error", "Unable to receive goods receipt", getCleanApiError(error, "Failed to receive goods receipt."));
+    }
+  };
 
   const approveReceipt = async () => {
     if (!receipt) return;
@@ -173,18 +191,25 @@ const GoodsReceiptDetail = () => {
           <div className="flex flex-wrap items-center gap-2">
             {normalizeStatus(receipt.status) === "DRAFT" && (
               <>
-                <button className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => setConfirmApprove(true)}>
-                  Approve Receipt
-                </button>
-                <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmCancel(true)}>
-                  Cancel Receipt
+                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmReceive(true)}>
+                  Receive Goods
                 </button>
                 <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
                   <Trash2 size={16} /> Delete Receipt
                 </button>
               </>
             )}
-            {["APPROVED", "PARTIALLY_RETURNED"].includes(normalizeStatus(receipt.status)) && (
+            {normalizeStatus(receipt.status) === "SUBMITTED" && (
+              <>
+                <button className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => setConfirmApprove(true)}>
+                  Approve Receipt
+                </button>
+                <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmCancel(true)}>
+                  Cancel Receipt
+                </button>
+              </>
+            )}
+            {["RECEIVED", "PARTIALLY_RETURNED"].includes(normalizeStatus(receipt.status)) && (
               <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setReturnOpen(true)}>
                 Return Items
               </button>
@@ -245,6 +270,10 @@ const GoodsReceiptDetail = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Created By</p>
+                  <p className="text-sm font-medium text-foreground">{receipt.createdByName || "-"}</p>
+                </div>
+                <div className="space-y-1">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Received By</p>
                   <p className="text-sm font-medium text-foreground">{receipt.receivedByName || "-"}</p>
                 </div>
@@ -252,6 +281,12 @@ const GoodsReceiptDetail = () => {
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Approved By</p>
                   <p className="text-sm font-medium text-foreground">{receipt.approvedByName || "-"}</p>
                 </div>
+                {receipt.returnedByName && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Returned By</p>
+                    <p className="text-sm font-medium text-foreground">{receipt.returnedByName}</p>
+                  </div>
+                )}
                 {receipt.cancelledByName && (
                   <div className="space-y-1">
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Cancelled By</p>
@@ -301,9 +336,26 @@ const GoodsReceiptDetail = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={cancelReceipt}>
-              Cancel Receipt
+              Cancel Goods Receipt
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmReceive} onOpenChange={setConfirmReceive}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Receive Goods Receipt</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark {receipt?.receiptNumber} as received? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" onClick={receiveReceipt}>
+              Receive Goods
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

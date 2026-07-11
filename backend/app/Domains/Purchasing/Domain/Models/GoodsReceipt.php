@@ -24,8 +24,10 @@ class GoodsReceipt extends Model
         'received_at',
         'approved_at',
         'cancelled_at',
+        'created_by',
         'received_by',
         'approved_by',
+        'returned_by',
         'cancelled_by',
         'notes',
     ];
@@ -41,8 +43,10 @@ class GoodsReceipt extends Model
     ];
 
     protected $appends = [
+        'created_by_name',
         'received_by_name',
         'approved_by_name',
+        'returned_by_name',
         'cancelled_by_name',
     ];
 
@@ -71,6 +75,11 @@ class GoodsReceipt extends Model
         return $this->hasMany(GoodsReceiptItem::class, 'goods_receipt_id', 'id');
     }
 
+    public function createdByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
     public function receivedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'received_by', 'id');
@@ -81,9 +90,21 @@ class GoodsReceipt extends Model
         return $this->belongsTo(User::class, 'approved_by', 'id');
     }
 
+    public function returnedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'returned_by', 'id');
+    }
+
     public function cancelledByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by', 'id');
+    }
+
+    public function getCreatedByNameAttribute(): ?string
+    {
+        return $this->createdByUser?->employee
+            ? trim($this->createdByUser->employee->first_name . ' ' . $this->createdByUser->employee->last_name)
+            : null;
     }
 
     public function getReceivedByNameAttribute(): ?string
@@ -97,6 +118,13 @@ class GoodsReceipt extends Model
     {
         return $this->approvedByUser?->employee
             ? trim($this->approvedByUser->employee->first_name . ' ' . $this->approvedByUser->employee->last_name)
+            : null;
+    }
+
+    public function getReturnedByNameAttribute(): ?string
+    {
+        return $this->returnedByUser?->employee
+            ? trim($this->returnedByUser->employee->first_name . ' ' . $this->returnedByUser->employee->last_name)
             : null;
     }
 

@@ -34,7 +34,7 @@ const getApprovedReceivedQuantity = (row: any) => {
   return receiptItems
     .filter((receiptItem: any) => {
       const status = normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status);
-      return status === "APPROVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
+      return status === "RECEIVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
     })
     .reduce((sum: number, receiptItem: any) => {
       const received = Number(receiptItem.quantity_received || 0);

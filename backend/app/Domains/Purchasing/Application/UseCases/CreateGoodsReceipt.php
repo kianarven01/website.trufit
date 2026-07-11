@@ -26,13 +26,22 @@ class CreateGoodsReceipt
                 throw new RuntimeException('Goods receipt can only be created from an approved or partially received PO.', 422);
             }
 
+            $hasDraft = GoodsReceipt::where('purchase_order_id', $purchaseOrder->id)
+                ->where('status', 'DRAFT')
+                ->exists();
+
+            if ($hasDraft) {
+                throw new RuntimeException('A draft goods receipt already exists for this purchase order. Please approve or cancel it first.', 422);
+            }
+
             $receipt = GoodsReceipt::create([
                 'receipt_number' => $this->numberService->generate(),
                 'purchase_order_id' => $purchaseOrder->id,
                 'status' => 'DRAFT',
                 'received_at' => now(),
                 'notes' => $data['notes'] ?? null,
-                'received_by' => $userId,
+                'created_by' => $userId,
+                'received_by' => null,
             ]);
 
             $allowOverReceiving = $data['allow_over_receiving'] ?? false;

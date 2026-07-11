@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Http\Requests\StoreGoodsReceiptRequest;
 use App\Domains\Purchasing\Application\UseCases\CreateGoodsReceipt;
+use App\Domains\Purchasing\Application\UseCases\ReceiveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ReturnGoodsReceiptItems;
 use RuntimeException;
@@ -22,7 +23,7 @@ class GoodsReceiptController extends Controller
         $status = $request->query('status');
         $perPage = (int) $request->query('per_page', 10);
 
-        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product.manufacturer', 'receivedByUser.employee', 'approvedByUser.employee', 'cancelledByUser.employee']);
+        $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product.manufacturer', 'createdByUser.employee', 'receivedByUser.employee', 'approvedByUser.employee', 'returnedByUser.employee', 'cancelledByUser.employee']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -59,8 +60,10 @@ class GoodsReceiptController extends Controller
             'purchaseOrder.supplier',
             'items.product.manufacturer',
             'items.purchaseOrderItem',
+            'createdByUser.employee',
             'receivedByUser.employee',
             'approvedByUser.employee',
+            'returnedByUser.employee',
             'cancelledByUser.employee',
         ])->findOrFail($id);
 
@@ -74,7 +77,7 @@ class GoodsReceiptController extends Controller
         try {
             $receipt = $createGoodsReceipt->execute($request->validated(), $request->user()?->id);
 
-            $receipt->load(['purchaseOrder.supplier', 'items.product.manufacturer', 'items.purchaseOrderItem']);
+            $receipt->load(['purchaseOrder.supplier', 'items.product.manufacturer', 'items.purchaseOrderItem', 'createdByUser.employee', 'receivedByUser.employee']);
 
             return response()->json([
                 'message' => 'Goods receipt draft created successfully.',
@@ -89,6 +92,35 @@ class GoodsReceiptController extends Controller
         } catch (Throwable $e) {
             return response()->json([
                 'message' => 'Failed to create goods receipt.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function receive(string $id, Request $request, ReceiveGoodsReceipt $receiveGoodsReceipt): JsonResponse
+    {
+        try {
+            $receipt = $receiveGoodsReceipt->execute($id, $request->user()?->id);
+
+            $receipt->load(['purchaseOrder.supplier', 'items.product.manufacturer', 'items.purchaseOrderItem', 'createdByUser.employee', 'receivedByUser.employee']);
+
+            return response()->json([
+                'message' => 'Goods receipt marked as received successfully.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (RuntimeException $e) {
+            $status = $e->getCode();
+
+            if (!in_array($status, [400, 404, 409, 422], true)) {
+                $status = 400;
+            }
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $status);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to receive goods receipt.',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -125,9 +157,9 @@ class GoodsReceiptController extends Controller
     {
         $receipt = GoodsReceipt::findOrFail($id);
 
-        if ($receipt->status !== 'DRAFT') {
+        if (!in_array($receipt->status, ['DRAFT', 'RECEIVED'], true)) {
             return response()->json([
-                'message' => 'Only draft goods receipts can be cancelled.',
+                'message' => 'Only draft or received goods receipts can be cancelled.',
             ], 422);
         }
 

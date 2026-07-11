@@ -11,38 +11,52 @@ class PurchaseOrderStatusService
         $purchaseOrder->load('items.receiptItems.goodsReceipt');
 
         $allFullyReceived = true;
-        $anyReceived = false;
+        $totalReceived = 0;
+        $totalReturned = 0;
 
         foreach ($purchaseOrder->items as $item) {
-            $approvedReceived = $item->receiptItems
-                ->filter(fn ($receiptItem) => in_array($receiptItem->goodsReceipt?->status ?? '', ['APPROVED', 'PARTIALLY_RETURNED', 'RETURNED']))
-                ->map(fn ($receiptItem) => (int) $receiptItem->quantity_received - (int) $receiptItem->quantity_returned)
-                ->sum();
+            $received = $item->receiptItems
+                ->filter(fn ($receiptItem) => in_array($receiptItem->goodsReceipt?->status ?? '', ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED']))
+                ->sum(fn ($receiptItem) => (int) $receiptItem->quantity_received);
 
-            if ($approvedReceived > 0) {
-                $anyReceived = true;
-            }
+            $returned = $item->receiptItems
+                ->filter(fn ($receiptItem) => in_array($receiptItem->goodsReceipt?->status ?? '', ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED']))
+                ->sum(fn ($receiptItem) => (int) $receiptItem->quantity_returned);
 
-            if ($approvedReceived < $item->quantity_ordered) {
+            $totalReceived += $received;
+            $totalReturned += $returned;
+
+            $netReceived = $received - $returned;
+
+            if ($netReceived < $item->quantity_ordered) {
                 $allFullyReceived = false;
             }
         }
 
-        if ($allFullyReceived) {
+        $overallNet = $totalReceived - $totalReturned;
+
+        if ($totalReceived > 0 && $overallNet == 0) {
             $purchaseOrder->update([
-                'status' => 'RECEIVED',
-                'date_received' => now(),
+                'status' => 'RETURNED',
             ]);
             return;
         }
 
-        if ($anyReceived) {
+        if ($overallNet == 0) {
             $purchaseOrder->update([
-                'status' => 'PARTIALLY_RECEIVED',
+                'status' => 'APPROVED',
+            ]);
+            return;
+        }
+
+        if ($allFullyReceived) {
+            $purchaseOrder->update([
+                'status' => 'COMPLETED',
+                'date_received' => now(),
             ]);
         } else {
             $purchaseOrder->update([
-                'status' => 'APPROVED',
+                'status' => 'PARTIALLY_RECEIVED',
             ]);
         }
     }

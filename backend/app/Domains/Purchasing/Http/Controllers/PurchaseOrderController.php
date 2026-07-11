@@ -13,6 +13,7 @@ use App\Domains\Purchasing\Http\Requests\UpdatePurchaseOrderRequest;
 use App\Domains\Purchasing\Application\UseCases\CreatePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\SubmitPurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ApprovePurchaseOrder;
+use App\Domains\Purchasing\Application\UseCases\ClosePurchaseOrder;
 
 class PurchaseOrderController extends Controller
 {
@@ -22,7 +23,7 @@ class PurchaseOrderController extends Controller
         $status = $request->query('status');
         $perPage = (int) $request->query('per_page', 10);
 
-        $query = PurchaseOrder::with(['supplier', 'items.product.manufacturer', 'items.productSupplier', 'items.receiptItems.goodsReceipt', 'createdByUser.employee', 'approvedByUser.employee', 'cancelledByUser.employee']);
+        $query = PurchaseOrder::with(['supplier', 'items.product.manufacturer', 'items.productSupplier', 'items.receiptItems.goodsReceipt', 'createdByUser.employee', 'submittedByUser.employee', 'approvedByUser.employee', 'cancelledByUser.employee']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -59,6 +60,7 @@ class PurchaseOrderController extends Controller
             'items.receiptItems.goodsReceipt',
             'goodsReceipts.items',
             'createdByUser.employee',
+            'submittedByUser.employee',
             'approvedByUser.employee',
             'cancelledByUser.employee',
         ])->findOrFail($id);
@@ -73,7 +75,7 @@ class PurchaseOrderController extends Controller
         try {
             $purchaseOrder = $createPurchaseOrder->execute($request->validated(), $request->user()?->id);
 
-            $purchaseOrder->load(['supplier', 'items.product.manufacturer', 'items.productSupplier']);
+            $purchaseOrder->load(['supplier', 'items.product.manufacturer', 'items.productSupplier', 'createdByUser.employee']);
 
             return response()->json([
                 'message' => 'Purchase order draft created successfully.',
@@ -133,7 +135,7 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::findOrFail($id);
 
-        if (in_array($purchaseOrder->status, ['RECEIVED', 'CANCELLED'], true)) {
+        if (in_array($purchaseOrder->status, ['COMPLETED', 'CANCELLED'], true)) {
             return response()->json([
                 'message' => 'This purchase order cannot be cancelled.',
             ], 422);
@@ -149,6 +151,39 @@ class PurchaseOrderController extends Controller
             'message' => 'Purchase order cancelled successfully.',
             'purchase_order' => $purchaseOrder,
         ]);
+    }
+
+    public function close(string $id, Request $request, ClosePurchaseOrder $closePurchaseOrder): JsonResponse
+    {
+        try {
+            $purchaseOrder = $closePurchaseOrder->execute($id, $request->user()?->id);
+
+            $purchaseOrder->load([
+                'supplier',
+                'items.product.manufacturer',
+                'items.productSupplier',
+                'items.receiptItems.goodsReceipt',
+                'goodsReceipts.items',
+                'createdByUser.employee',
+                'submittedByUser.employee',
+                'approvedByUser.employee',
+                'cancelledByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Purchase order closed successfully.',
+                'purchase_order' => $purchaseOrder,
+            ]);
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to close purchase order.',
+                'error' => $e->getMessage(),
+            ], 400);
+        }
     }
 
     public function update(UpdatePurchaseOrderRequest $request, string $id): JsonResponse

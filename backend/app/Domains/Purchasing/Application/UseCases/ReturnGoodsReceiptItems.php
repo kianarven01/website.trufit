@@ -26,8 +26,8 @@ class ReturnGoodsReceiptItems
                 ->lockForUpdate()
                 ->findOrFail($goodsReceiptId);
 
-            if (!in_array($receipt->status, ['APPROVED', 'PARTIALLY_RETURNED'])) {
-                throw new RuntimeException('Only approved or partially returned goods receipts can have items returned.', 422);
+            if (!in_array($receipt->status, ['RECEIVED', 'PARTIALLY_RETURNED'])) {
+                throw new RuntimeException('Only received or partially returned goods receipts can have items returned.', 422);
             }
 
             $defaultLocationId = $this->getDefaultLocationId();
@@ -106,10 +106,13 @@ class ReturnGoodsReceiptItems
             } elseif ($totalReturned > 0) {
                 $newStatus = 'PARTIALLY_RETURNED';
             } else {
-                $newStatus = 'APPROVED';
+                $newStatus = 'RECEIVED';
             }
 
-            $receipt->update(['status' => $newStatus]);
+            $receipt->update([
+                'status' => $newStatus,
+                'returned_by' => $userId,
+            ]);
 
             if ($receipt->purchaseOrder) {
                 app(PurchaseOrderStatusService::class)->updateReceiptStatus($receipt->purchaseOrder);

@@ -89,7 +89,7 @@ const CreateGoodsReceiptModal = ({
         };
       })
     );
-  }, [selectedPurchaseOrder?.id]);
+  }, [selectedPurchaseOrder?.id, open]);
 
   const updateItem = (purchaseOrderItemId: string, changes: Partial<ReceiptLineState>) => {
     setItems((current) =>
@@ -151,7 +151,8 @@ const CreateGoodsReceiptModal = ({
       onOpenChange(false);
     } catch (error: any) {
       console.error(error);
-      onError?.(error instanceof Error ? error.message : getCleanApiError(error));
+      const errorMessage = error?.response ? getCleanApiError(error) : (error instanceof Error ? error.message : getCleanApiError(error));
+      onError?.(errorMessage);
     } finally {
       setSaving(false);
     }

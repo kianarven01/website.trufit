@@ -18,6 +18,7 @@ class SubmitPurchaseOrder
         $purchaseOrder->update([
             'status' => 'SUBMITTED',
             'submitted_at' => now(),
+            'submitted_by' => $userId,
         ]);
 
         return $purchaseOrder;

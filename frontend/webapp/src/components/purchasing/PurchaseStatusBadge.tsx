@@ -56,6 +56,26 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     label: "Returned",
     className: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
   },
+  MATCH_EXCEPTION: {
+    label: "Match Exception",
+    className: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300 animate-pulse",
+  },
+  OVERDUE: {
+    label: "Overdue",
+    className: "border-red-400 bg-red-100/50 text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 font-bold",
+  },
+  AWAITING_PAYMENT: {
+    label: "Awaiting Payment",
+    className: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  },
+  PAID: {
+    label: "Paid",
+    className: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
+  },
+  VOID: {
+    label: "Void",
+    className: "border-slate-300 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-550",
+  },
 };
 
 const toLabel = (value: string) =>

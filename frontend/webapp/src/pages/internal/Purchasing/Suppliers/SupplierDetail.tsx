@@ -15,7 +15,7 @@ import ContactSupplierModal from "@/components/popupModal/Purchasing/contactSupp
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { toast } from "sonner";
 
-import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent, Plus, MapPin } from "lucide-react";
+import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent, Plus, MapPin, ScrollText } from "lucide-react";
 import api from "@/api/axios";
 
 interface Supplier {
@@ -27,6 +27,7 @@ interface Supplier {
   contactPerson: string;
   viber: string;
   address: string;
+  paymentTerms?: string;
 }
 
 interface Product {
@@ -109,7 +110,7 @@ const SupplierDetails: React.FC = () => {
       if (res.data?.data) {
         setSupplier(res.data.data);
         setProducts(res.data.data.products || []);
-        
+
         sessionStorage.setItem(`breadcrumb-/webapp/purchasing/suppliers/${supplierId}`, res.data.data.name || "Supplier");
         window.dispatchEvent(new Event('breadcrumb-update'));
       }
@@ -271,36 +272,36 @@ const SupplierDetails: React.FC = () => {
   return (
     <div className="w-full h-full px-6 pt-1 pb-6 flex flex-col gap-6 overflow-y-auto">
 
-    {/* TOOLBAR */}
-    <div className="flex items-center justify-between gap-3 shrink-0">
-      <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
-      </Button>
-
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          onClick={() => setIsEditOpen(true)}
-        >
-          <Pencil className="w-4 h-4 mr-1" />
-          Edit Supplier
+      {/* TOOLBAR */}
+      <div className="flex items-center justify-between gap-3 shrink-0">
+        <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
 
-        <Button
-          size="sm"
-          variant="destructive"
-          onClick={() => setIsDeleteOpen(true)}
-        >
-          <XCircle className="w-4 h-4 mr-1" />
-          Remove Supplier
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={() => setIsEditOpen(true)}
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Edit Supplier
+          </Button>
+
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setIsDeleteOpen(true)}
+          >
+            <XCircle className="w-4 h-4 mr-1" />
+            Remove Supplier
+          </Button>
+        </div>
       </div>
-    </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 items-stretch min-h-0">
 
         <div className="lg:col-span-1 flex flex-col min-h-0">
-            <Card className="flex-1 flex flex-col">
+          <Card className="flex-1 flex flex-col">
             <CardHeader>
               <CardTitle className="text-lg">{supplier.name}</CardTitle>
               <p className="text-xs text-muted-foreground">{supplier.supplierCode}</p>
@@ -373,20 +374,33 @@ const SupplierDetails: React.FC = () => {
                 </div>
               </div>
 
+              {/* Payment Terms */}
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Payment Terms
+                </p>
+                <div className="flex items-center gap-2">
+                  <ScrollText className="w-3.5 h-3.5" />
+                  <p className="text-sm font-semibold text-foreground">
+                    {supplier.paymentTerms ? (supplier.paymentTerms === "NONE" ? "None (Prepaid / Immediate)" : supplier.paymentTerms.replace("_", " ")) : "COD"}
+                  </p>
+                </div>
+              </div>
+
 
             </CardContent>
 
             <CardFooter>
-              <Button 
-              className="w-full"
-              onClick={() => setIsContactOpen(true)}
-            >
-              Contact Supplier
-            </Button>
+              <Button
+                className="w-full"
+                onClick={() => setIsContactOpen(true)}
+              >
+                Contact Supplier
+              </Button>
             </CardFooter>
           </Card>
         </div>
-        
+
         <div className="lg:col-span-2 flex flex-col min-h-0">
           <Card className="flex flex-col flex-1 min-h-0">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -402,7 +416,7 @@ const SupplierDetails: React.FC = () => {
             <CardContent className="flex flex-col flex-1 overflow-hidden p-0">
               {products.length > 0 ? (
                 <div className="flex flex-col flex-1 border rounded-lg mx-4 mb-4 overflow-hidden">
-                  
+
                   <Table className="table-fixed w-full">
                     <TableHeader className="bg-muted/50">
                       <TableRow>
@@ -514,7 +528,7 @@ const SupplierDetails: React.FC = () => {
         onOpenChange={setIsEditOpen}
         supplier={supplier}
         onSaved={handleSaveSupplier}
-      />      
+      />
 
       <ContactSupplierModal
         open={isContactOpen}
@@ -525,7 +539,7 @@ const SupplierDetails: React.FC = () => {
           phone: supplier.phone,
           viber: supplier.viber,
         }}
-      />      
+      />
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
@@ -594,7 +608,7 @@ const SupplierDetails: React.FC = () => {
                   ))}
               </select>
             </div>
-            
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label className="text-xs">Supplier Cost</Label>
@@ -655,7 +669,7 @@ const SupplierDetails: React.FC = () => {
                   </label>
                 </div>
               </div>
-              
+
               {isVat && (
                 <div className="w-[120px] space-y-2">
                   <Label className="text-xs">VAT Percent (%)</Label>
@@ -686,7 +700,7 @@ const SupplierDetails: React.FC = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm font-semibold">{selectedProduct?.name}</p>
-            
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label className="text-xs">Supplier Cost</Label>
@@ -745,7 +759,7 @@ const SupplierDetails: React.FC = () => {
                   </label>
                 </div>
               </div>
-              
+
               {isVat && (
                 <div className="w-[120px] space-y-2">
                   <Label className="text-xs">VAT Percent (%)</Label>

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Domains\Purchasing\Http\Controllers\PurchaseOrderController;
 use App\Domains\Purchasing\Http\Controllers\GoodsReceiptController;
 use App\Domains\Purchasing\Http\Controllers\StockMovementController;
+use App\Domains\Purchasing\Http\Controllers\SupplierBillController;
 
 Route::prefix('purchasing')->group(function () {
     Route::get('/purchase-orders', [PurchaseOrderController::class, 'index']);
@@ -27,6 +28,13 @@ Route::prefix('purchasing')->group(function () {
     Route::post('/goods-receipts/{id}/return', [GoodsReceiptController::class, 'returnItems']);
     Route::delete('/goods-receipts/{id}', [GoodsReceiptController::class, 'destroy']);
     Route::get('/goods-receipts/{id}', [GoodsReceiptController::class, 'show']);
+
+    Route::get('/supplier-bills', [SupplierBillController::class, 'index']);
+    Route::post('/supplier-bills', [SupplierBillController::class, 'store']);
+    Route::get('/supplier-bills/{id}', [SupplierBillController::class, 'show']);
+    Route::post('/supplier-bills/{id}/approve', [SupplierBillController::class, 'approve']);
+    Route::post('/supplier-bills/{id}/pay', [SupplierBillController::class, 'pay']);
+    Route::post('/supplier-bills/{id}/void', [SupplierBillController::class, 'void']);
 
     Route::get('/stock-movements', [StockMovementController::class, 'index']);
 });

@@ -35,6 +35,7 @@ class SupplierController extends Controller
                     'contactPerson' => $supplier->CompanyContact,
                     'viber' => $supplier->Viber,
                     'address' => $supplier->address,
+                    'paymentTerms' => $supplier->payment_terms,
                 ];
             }),
         ]);
@@ -64,6 +65,7 @@ class SupplierController extends Controller
                     'viber' => $supplier->Viber,
                     'address' => $supplier->address,
                     'supplierCode' => $supplier->supplier_code,
+                    'paymentTerms' => $supplier->payment_terms,
                     'products' => $supplier->products->map(function ($product) use ($prices, $stockByProductSupplier) {
                         $pivotId = $product->pivot->id;
                         $priceObj = $prices->get($pivotId);
@@ -98,6 +100,7 @@ class SupplierController extends Controller
             'address' => 'required|string',
             'viber' => 'nullable|string|max:50',
             'supplierCode' => 'nullable|string|max:50',
+            'paymentTerms' => 'nullable|string|max:50',
         ]);
 
         $dto = SupplierDTO::fromRequest($validated);
@@ -115,6 +118,7 @@ class SupplierController extends Controller
                 'viber' => $supplier->Viber,
                 'address' => $supplier->address,
                 'supplierCode' => $supplier->supplier_code,
+                'paymentTerms' => $supplier->payment_terms,
             ],
         ], 201);
     }
@@ -129,6 +133,7 @@ class SupplierController extends Controller
             'address' => 'required|string',
             'viber' => 'nullable|string|max:50',
             'supplierCode' => 'nullable|string|max:50',
+            'paymentTerms' => 'nullable|string|max:50',
         ]);
 
         try {
@@ -147,6 +152,7 @@ class SupplierController extends Controller
                     'viber' => $supplier->Viber,
                     'address' => $supplier->address,
                     'supplierCode' => $supplier->supplier_code,
+                    'paymentTerms' => $supplier->payment_terms,
                 ],
             ]);
         } catch (ModelNotFoundException $e) {

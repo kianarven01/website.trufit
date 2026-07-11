@@ -1,4 +1,4 @@
-import { ClipboardList, PackageCheck, ScrollText } from "lucide-react";
+import { ClipboardList, PackageCheck, ScrollText, Receipt } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const cards = [
@@ -13,6 +13,12 @@ const cards = [
     description: "Record warehouse deliveries and approve stock receiving.",
     path: "/webapp/purchasing/goods-receipts",
     Icon: PackageCheck,
+  },
+  {
+    title: "Supplier Bills",
+    description: "Verify invoices, perform 3-way matching, and manage accounts payable.",
+    path: "/webapp/purchasing/supplier-bills",
+    Icon: Receipt,
   },
   {
     title: "Stock Ledger",
@@ -32,7 +38,7 @@ const Purchasing = () => {
         <p className="mt-1 text-sm text-muted-foreground">Manage purchase orders, goods receipts, and stock movement history.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(({ title, description, path, Icon }) => (
           <button
             key={path}

@@ -11,7 +11,8 @@ class SupplierDTO
         public readonly ?string $phone,
         public readonly ?string $viber,
         public readonly ?string $address,
-        public readonly ?string $supplierCode = null
+        public readonly ?string $supplierCode = null,
+        public readonly ?string $paymentTerms = null
     ) {}
 
     public static function fromRequest(array $data): self
@@ -23,7 +24,8 @@ class SupplierDTO
             phone: $data['phone'] ?? null,
             viber: $data['viber'] ?? null,
             address: $data['address'] ?? null,
-            supplierCode: $data['supplierCode'] ?? null
+            supplierCode: $data['supplierCode'] ?? null,
+            paymentTerms: $data['paymentTerms'] ?? null
         );
     }
 
@@ -36,6 +38,7 @@ class SupplierDTO
             'ContactNumber' => $this->phone,
             'Viber' => $this->viber,
             'address' => $this->address,
+            'payment_terms' => $this->paymentTerms,
         ];
     }
 }

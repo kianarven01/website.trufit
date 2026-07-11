@@ -29,7 +29,7 @@ const PurchaseOrderItemsTable = ({ items }: PurchaseOrderItemsTableProps) => {
       <Table className="table-fixed w-full">
         <TableHeader className="bg-muted/50">
           <TableRow className="border-b hover:bg-transparent">
-            <TableHead className="w-[30%] pl-4 py-3 text-left">Product</TableHead>
+            <TableHead className="w-[30%] pl-4 py-3 text-center">Product</TableHead>
             <TableHead className="w-[15%] text-center py-3">Part Number</TableHead>
             <TableHead className="w-[13%] text-center py-3">Ordered</TableHead>
             <TableHead className="w-[13%] text-center py-3">Received</TableHead>

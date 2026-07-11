@@ -144,6 +144,11 @@ const navItems: NavItem[] = [
         icon: TaskDone01Icon,
       },
       {
+        label: "Supplier Bills",
+        path: "/webapp/purchasing/supplier-bills",
+        icon: StickyNote01Icon,
+      },
+      {
         label: "Suppliers",
         path: "/webapp/purchasing/suppliers",
         icon: Briefcase01Icon,

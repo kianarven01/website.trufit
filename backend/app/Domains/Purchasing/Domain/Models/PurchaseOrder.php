@@ -91,6 +91,11 @@ class PurchaseOrder extends Model
         return $this->hasMany(GoodsReceipt::class, 'purchase_order_id', 'id');
     }
 
+    public function supplierBills()
+    {
+        return $this->hasMany(SupplierBill::class, 'purchase_order_id', 'id');
+    }
+
     public function createdByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by', 'id');

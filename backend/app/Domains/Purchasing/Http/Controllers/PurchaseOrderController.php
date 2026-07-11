@@ -24,7 +24,17 @@ class PurchaseOrderController extends Controller
         $status = $request->query('status');
         $perPage = (int) $request->query('per_page', 10);
 
-        $query = PurchaseOrder::with(['supplier', 'items.product.manufacturer', 'items.productSupplier', 'items.receiptItems.goodsReceipt', 'createdByUser.employee', 'submittedByUser.employee', 'approvedByUser.employee', 'cancelledByUser.employee']);
+        $query = PurchaseOrder::with([
+            'supplier',
+            'items.product.manufacturer',
+            'items.productSupplier',
+            'items.receiptItems.goodsReceipt',
+            'supplierBills.items',
+            'createdByUser.employee',
+            'submittedByUser.employee',
+            'approvedByUser.employee',
+            'cancelledByUser.employee'
+        ]);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -60,6 +70,7 @@ class PurchaseOrderController extends Controller
             'items.productSupplier',
             'items.receiptItems.goodsReceipt',
             'goodsReceipts.items',
+            'supplierBills.items',
             'createdByUser.employee',
             'submittedByUser.employee',
             'approvedByUser.employee',

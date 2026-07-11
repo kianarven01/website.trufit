@@ -22,6 +22,7 @@ interface Supplier {
   viber: string;
   address: string;
   supplierCode: string;
+  paymentTerms?: string;
 }
 
 interface Props {
@@ -45,6 +46,7 @@ const SupplierModal: React.FC<Props> = ({
   const [contactPerson, setContactPerson] = useState("");
   const [viber, setViber] = useState("");
   const [address, setAddress] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("COD");
   const [isSaving, setIsSaving] = useState(false);
 
   /* LOAD DATA WHEN OPEN */
@@ -58,6 +60,7 @@ const SupplierModal: React.FC<Props> = ({
       setContactPerson(supplier.contactPerson || "");
       setViber(supplier.viber || "");
       setAddress(supplier.address || "");
+      setPaymentTerms(supplier.paymentTerms || "COD");
     } else {
       setName("");
       setEmail("");
@@ -65,6 +68,7 @@ const SupplierModal: React.FC<Props> = ({
       setContactPerson("");
       setViber("");
       setAddress("");
+      setPaymentTerms("COD");
     }
   }, [open, supplier]);
 
@@ -104,6 +108,7 @@ const SupplierModal: React.FC<Props> = ({
       viber: viber.trim(),
       address: address.trim(),
       supplierCode: supplier?.supplierCode || "",
+      paymentTerms,
     };
 
     setIsSaving(true);
@@ -187,6 +192,22 @@ const SupplierModal: React.FC<Props> = ({
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Supplier Address"
               />
+            </div>
+
+            <div>
+              <Label className="text-xs">Payment Terms</Label>
+              <select
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                value={paymentTerms}
+                onChange={(e) => setPaymentTerms(e.target.value)}
+              >
+                <option value="NONE">None (Prepaid / Immediate)</option>
+                <option value="COD">COD (Cash on Delivery)</option>
+                <option value="NET_15">Net 15</option>
+                <option value="NET_30">Net 30</option>
+                <option value="NET_45">Net 45</option>
+                <option value="NET_60">Net 60</option>
+              </select>
             </div>
 
             <div>

@@ -1,0 +1,198 @@
+<?php
+
+namespace App\Domains\Purchasing\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use App\Domains\Purchasing\Domain\Models\SupplierBill;
+use App\Domains\Purchasing\Http\Requests\StoreSupplierBillRequest;
+use App\Domains\Purchasing\Application\UseCases\CreateSupplierBill;
+use App\Domains\Purchasing\Application\UseCases\ApproveSupplierBill;
+use App\Domains\Purchasing\Application\UseCases\PaySupplierBill;
+use RuntimeException;
+use Throwable;
+
+class SupplierBillController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        $search = $request->query('search');
+        $status = $request->query('status');
+        $perPage = (int) $request->query('per_page', 10);
+
+        $query = SupplierBill::with([
+            'purchaseOrder.supplier',
+            'createdByUser.employee',
+            'approvedByUser.employee',
+            'paidByUser.employee'
+        ]);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('bill_number', 'ILIKE', "%{$search}%")
+                  ->orWhereHas('purchaseOrder', function ($pq) use ($search) {
+                      $pq->where('po_number', 'ILIKE', "%{$search}%")
+                        ->orWhereHas('supplier', function ($sq) use ($search) {
+                            $sq->where('CompanyName', 'ILIKE', "%{$search}%");
+                        });
+                  });
+            });
+        }
+
+        if ($status && $status !== 'ALL') {
+            $query->where('status', strtoupper($status));
+        }
+
+        $paginated = $query->orderByDesc('created_at')->paginate($perPage);
+
+        return response()->json([
+            'supplier_bills' => $paginated->items(),
+            'pagination' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ]
+        ]);
+    }
+
+    public function show(string $id): JsonResponse
+    {
+        $bill = SupplierBill::with([
+            'purchaseOrder.supplier',
+            'items.purchaseOrderItem.receiptItems.goodsReceipt',
+            'items.product.manufacturer',
+            'createdByUser.employee',
+            'approvedByUser.employee',
+            'paidByUser.employee'
+        ])->findOrFail($id);
+
+        return response()->json([
+            'supplier_bill' => $bill,
+        ]);
+    }
+
+    public function store(StoreSupplierBillRequest $request, CreateSupplierBill $createSupplierBill): JsonResponse
+    {
+        try {
+            $bill = $createSupplierBill->execute($request->validated(), $request->user()?->id);
+
+            $bill->load([
+                'purchaseOrder.supplier',
+                'items.purchaseOrderItem.receiptItems.goodsReceipt',
+                'items.product.manufacturer',
+                'createdByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Supplier bill recorded successfully.',
+                'supplier_bill' => $bill,
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to create supplier bill.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function approve(string $id, Request $request, ApproveSupplierBill $approveSupplierBill): JsonResponse
+    {
+        try {
+            $bill = $approveSupplierBill->execute($id, $request->user()?->id);
+
+            $bill->load([
+                'purchaseOrder.supplier',
+                'items.purchaseOrderItem.receiptItems.goodsReceipt',
+                'items.product.manufacturer',
+                'createdByUser.employee',
+                'approvedByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Supplier bill approved/overridden successfully.',
+                'supplier_bill' => $bill,
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to approve supplier bill.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function pay(string $id, Request $request, PaySupplierBill $paySupplierBill): JsonResponse
+    {
+        try {
+            $bill = $paySupplierBill->execute($id, $request->user()?->id);
+
+            $bill->load([
+                'purchaseOrder.supplier',
+                'items.purchaseOrderItem.receiptItems.goodsReceipt',
+                'items.product.manufacturer',
+                'createdByUser.employee',
+                'approvedByUser.employee',
+                'paidByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Supplier bill payment recorded successfully.',
+                'supplier_bill' => $bill,
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to record supplier bill payment.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function void(string $id, Request $request): JsonResponse
+    {
+        try {
+            $bill = SupplierBill::findOrFail($id);
+
+            if ($bill->status === 'PAID') {
+                throw new RuntimeException('Paid supplier bills cannot be voided.', 422);
+            }
+
+            $bill->update([
+                'status' => 'VOID',
+            ]);
+
+            $bill->load([
+                'purchaseOrder.supplier',
+                'items.purchaseOrderItem.receiptItems.goodsReceipt',
+                'items.product.manufacturer',
+                'createdByUser.employee',
+            ]);
+
+            return response()->json([
+                'message' => 'Supplier bill voided successfully.',
+                'supplier_bill' => $bill,
+            ]);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], $e->getCode() ?: 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Failed to void supplier bill.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+}

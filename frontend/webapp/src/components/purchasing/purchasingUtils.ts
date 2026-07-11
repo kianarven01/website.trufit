@@ -38,3 +38,15 @@ export const getCleanApiError = (error: any, fallback = "Something went wrong. P
 };
 
 export const normalizeStatus = (status: unknown) => String(status || "DRAFT").toUpperCase();
+
+export const getBillStatus = (status: string | null | undefined, dueDate: string | null | undefined): string => {
+  const normStatus = String(status || "DRAFT").toUpperCase();
+  if ((normStatus === "AWAITING_PAYMENT" || normStatus === "MATCH_EXCEPTION") && dueDate) {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const cleanDueDate = String(dueDate).split(" ")[0]; // strip time if present
+    if (todayStr > cleanDueDate) {
+      return "OVERDUE";
+    }
+  }
+  return normStatus;
+};

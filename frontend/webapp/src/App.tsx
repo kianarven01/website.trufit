@@ -43,6 +43,8 @@ import PurchaseOrders from "./pages/internal/Purchasing/PurchaseOrders/PurchaseO
 import PurchaseOrderDetail from "./pages/internal/Purchasing/PurchaseOrders/PurchaseOrderDetail";
 import GoodsReceipts from "./pages/internal/Purchasing/PurchaseOrders/GoodsReceipts";
 import GoodsReceiptDetail from "./pages/internal/Purchasing/PurchaseOrders/GoodsReceiptDetail";
+import SupplierBillsList from "./pages/internal/Purchasing/PurchaseOrders/SupplierBillsList";
+import SupplierBillDetail from "./pages/internal/Purchasing/PurchaseOrders/SupplierBillDetail";
 import StockLedger from "./pages/internal/Purchasing/PurchaseOrders/StockLedger";
 
 import SupplierList from "./pages/internal/Purchasing/Suppliers/SupplierList";
@@ -149,6 +151,11 @@ const App: React.FC = () => {
                 <Route path="goods-receipts">
                   <Route index element={<GoodsReceipts />} />
                   <Route path=":id" element={<GoodsReceiptDetail />} />
+                </Route>
+
+                <Route path="supplier-bills">
+                  <Route index element={<SupplierBillsList />} />
+                  <Route path=":billId" element={<SupplierBillDetail />} />
                 </Route>
 
                 <Route path="stock-ledger" element={<StockLedger />} />

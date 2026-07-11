@@ -339,15 +339,15 @@ export default function SpolProductModal({
         const finalMarkup =
           supplier.pricing_mode === "manual"
             ? (costVal !== null && costVal > 0 && priceVal !== null
-                ? ((priceVal - costVal) / costVal) * 100
-                : null)
+              ? ((priceVal - costVal) / costVal) * 100
+              : null)
             : markupVal;
 
         const finalPrice =
           supplier.pricing_mode === "markup"
             ? (costVal !== null && markupVal !== null
-                ? costVal + costVal * (markupVal / 100)
-                : null)
+              ? costVal + costVal * (markupVal / 100)
+              : null)
             : priceVal;
 
         if (finalMarkup !== null) {
@@ -391,499 +391,497 @@ export default function SpolProductModal({
 
   return (
     <>
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          setForm({
-            name: "",
-            category_id: "",
-            unit: "",
-            selling_price: "",
-            description: "",
-            manufacturer_id: "",
-            part_number: "",
-          });
-          setProductSuppliers([]);
-          setShowInlineCategoryForm(false);
-          setInlineCategoryName("");
-        }
-        onOpenChange(nextOpen);
-      }}
-    >
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit Supplies & Oils Product" : "Add Supplies & Oils Product"}</DialogTitle>
-          <button
-            type="button"
-            className="text-xs font-medium text-primary hover:underline self-end"
-            onClick={() => setReferencesModalOpen(true)}
-          >
-            Manage References
-          </button>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Product Name <span className="text-destructive">*</span>
-            </span>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="e.g., Sundries, Brake Cleaner"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Category <span className="text-destructive">*</span>
-            </span>
-            <select
-              className="w-full border rounded-md px-3 py-2 bg-background text-sm"
-              value={showInlineCategoryForm ? ADD_NEW_CATEGORY : form.category_id}
-              disabled={mode === "edit" && isSundriesCategory}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === ADD_NEW_CATEGORY) {
-                  setShowInlineCategoryForm(true);
-                  return;
-                }
-                setShowInlineCategoryForm(false);
-                setForm({ ...form, category_id: value });
-              }}
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setForm({
+              name: "",
+              category_id: "",
+              unit: "",
+              selling_price: "",
+              description: "",
+              manufacturer_id: "",
+              part_number: "",
+            });
+            setProductSuppliers([]);
+            setShowInlineCategoryForm(false);
+            setInlineCategoryName("");
+          }
+          onOpenChange(nextOpen);
+        }}
+      >
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{mode === "edit" ? "Edit Supplies & Oils Product" : "Add Supplies & Oils Product"}</DialogTitle>
+            <button
+              type="button"
+              className="text-xs font-medium text-primary hover:underline self-end"
+              onClick={() => setReferencesModalOpen(true)}
             >
-              <option value="">Select category</option>
-              {spolCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {getOptionLabel(category)}
-                </option>
-              ))}
-              <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
-            </select>
+              Manage References
+            </button>
+          </DialogHeader>
 
-            {showInlineCategoryForm && (
-              <div className="mt-2 p-3 border rounded-lg bg-muted/30 space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={inlineCategoryName}
-                    onChange={(e) => setInlineCategoryName(e.target.value)}
-                    placeholder="Category name *"
-                    className="flex-1 border rounded-md px-3 py-1.5 text-sm bg-background"
-                  />
-                  <label className="flex items-center gap-1.5 text-sm whitespace-nowrap">
-                    <input type="checkbox" checked disabled className="rounded" />
-                    Supplies & Oils
-                  </label>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowInlineCategoryForm(false);
-                      setInlineCategoryName("");
-                    }}
-                    className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={savingInlineCategory || !inlineCategoryName.trim()}
-                    onClick={async () => {
-                      if (!inlineCategoryName.trim()) return;
-                      setSavingInlineCategory(true);
-                      try {
-                        const res = await api.post("/products/categories", {
-                          name: inlineCategoryName.trim(),
-                          is_spol: true,
-                        });
-                        const newCat = res.data?.data;
-                        if (newCat) {
-                          setLocalCategories((prev) => [...prev, { id: String(newCat.id), name: newCat.name, is_spol: true }]);
-                          setForm((prev) => ({ ...prev, category_id: String(newCat.id) }));
-                        }
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                Product Name <span className="text-destructive">*</span>
+              </span>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g., Sundries, Brake Cleaner"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                Category <span className="text-destructive">*</span>
+              </span>
+              <select
+                className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                value={showInlineCategoryForm ? ADD_NEW_CATEGORY : form.category_id}
+                disabled={mode === "edit" && isSundriesCategory}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === ADD_NEW_CATEGORY) {
+                    setShowInlineCategoryForm(true);
+                    return;
+                  }
+                  setShowInlineCategoryForm(false);
+                  setForm({ ...form, category_id: value });
+                }}
+              >
+                <option value="">Select category</option>
+                {spolCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getOptionLabel(category)}
+                  </option>
+                ))}
+                <option value={ADD_NEW_CATEGORY}>+ Add new category</option>
+              </select>
+
+              {showInlineCategoryForm && (
+                <div className="mt-2 p-3 border rounded-lg bg-muted/30 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={inlineCategoryName}
+                      onChange={(e) => setInlineCategoryName(e.target.value)}
+                      placeholder="Category name *"
+                      className="flex-1 border rounded-md px-3 py-1.5 text-sm bg-background"
+                    />
+                    <label className="flex items-center gap-1.5 text-sm whitespace-nowrap">
+                      <input type="checkbox" checked disabled className="rounded" />
+                      Supplies & Oils
+                    </label>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
                         setShowInlineCategoryForm(false);
                         setInlineCategoryName("");
-                      } catch (err: any) {
-                        toast.error(err?.response?.data?.message || "Failed to create category.");
-                      } finally {
-                        setSavingInlineCategory(false);
-                      }
-                    }}
-                    className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {savingInlineCategory ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {!isSundriesCategory && (
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Unit <span className="text-destructive">*</span>
-                </span>
-                <select
-                  className="w-full border rounded-md px-3 py-2 bg-background text-sm"
-                  value={form.unit}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === ADD_NEW_UNIT) {
-                      openReferenceModal("unit");
-                      return;
-                    }
-                    setForm({ ...form, unit: value });
-                  }}
-                >
-                  <option value="">Select unit</option>
-                  {units.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {getOptionLabel(unit)}
-                    </option>
-                  ))}
-                  <option value={ADD_NEW_UNIT}>+ Add new unit</option>
-                </select>
-              </div>
-            )}
-
-            {!hasSuppliers && (
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                Default Selling Price
-              </span>
-              <Input
-                type="number"
-                value={form.selling_price}
-                onChange={(e) => setForm({ ...form, selling_price: e.target.value })}
-                placeholder="0.00"
-                min="0"
-                step="0.01"
-              />
-            </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {!isSundriesCategory && (
-              <div className="space-y-1">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Manufacturer
-                </span>
-                <select
-                  className="w-full border rounded-md px-3 py-2 bg-background text-sm"
-                  value={form.manufacturer_id}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === ADD_NEW_MANUFACTURER) {
-                      openReferenceModal("manufacturer");
-                      return;
-                    }
-                    setForm({ ...form, manufacturer_id: value });
-                  }}
-                >
-                  <option value="">Select manufacturer</option>
-                  {localManufacturers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {getOptionLabel(m)}
-                    </option>
-                  ))}
-                  <option value={ADD_NEW_MANUFACTURER}>+ Add new manufacturer</option>
-                </select>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                Part Number
-              </span>
-              <Input
-                value={form.part_number}
-                onChange={(e) => setForm({ ...form, part_number: e.target.value })}
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">
-              Description
-            </span>
-            <Input
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Optional description"
-            />
-          </div>
-
-          {!isSundriesCategory && (
-          <div className="border rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium">Suppliers</p>
-                <p className="text-xs text-muted-foreground">
-                  Optional. Add suppliers for tracked items (brake cleaner, oil, etc.).
-                </p>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addSupplierRow}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Supplier
-              </Button>
-            </div>
-
-            {productSuppliers.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                No suppliers added. This product will use the default selling price.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {productSuppliers.map((supplierRow, index) => {
-                  const costVal = toNumberOrNull(supplierRow.supplier_cost);
-                  const markupVal = toNumberOrNull(supplierRow.markup);
-                  const priceVal = toNumberOrNull(supplierRow.price);
-
-                  const computedPrice =
-                    costVal !== null && markupVal !== null
-                      ? costVal + costVal * (markupVal / 100)
-                      : null;
-                  const computedMarkup =
-                    costVal !== null && costVal > 0 && priceVal !== null
-                      ? ((priceVal - costVal) / costVal) * 100
-                      : null;
-
-                  const displayedPrice =
-                    supplierRow.pricing_mode === "markup"
-                      ? formatNum(computedPrice)
-                      : supplierRow.price;
-                  const displayedMarkup =
-                    supplierRow.pricing_mode === "manual"
-                      ? formatNum(computedMarkup)
-                      : supplierRow.markup;
-
-                  return (
-                    <div
-                      key={index}
-                      className="rounded-lg border border-border p-3 space-y-3"
+                      }}
+                      className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
                     >
-                      <div className="grid grid-cols-12 gap-3 items-center">
-                        <select
-                          className="col-span-9 border rounded-md px-3 py-2 bg-background text-sm"
-                          value={supplierRow.supplier_id}
-                          onChange={(e) => updateSupplierRow(index, "supplier_id", e.target.value)}
-                        >
-                          <option value="">Select supplier</option>
-                          {validSupplierOptions.map((supplier) => (
-                            <option
-                              key={supplier.id}
-                              value={supplier.id}
-                              disabled={isSupplierAlreadySelected(supplier.id, index)}
-                            >
-                              {getOptionLabel(supplier)}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="col-span-3 px-2"
-                          onClick={() => removeSupplierRow(index)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-
-                      <div className="flex items-center justify-between rounded-md border p-2">
-                        <span className="text-xs text-muted-foreground">
-                          {supplierRow.pricing_mode === "markup"
-                            ? "Markup mode: calculates selling price."
-                            : "Manual mode: calculates markup."}
-                        </span>
-                        <div className="flex rounded-md border overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateSupplierRow(index, "pricing_mode", "manual");
-                              updateSupplierRow(index, "markup", "");
-                            }}
-                            className={`px-2 py-1 text-[11px] ${
-                              supplierRow.pricing_mode === "manual"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-background text-muted-foreground"
-                            }`}
-                          >
-                            Manual
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateSupplierRow(index, "pricing_mode", "markup");
-                              updateSupplierRow(index, "price", "");
-                            }}
-                            className={`px-2 py-1 text-[11px] border-l ${
-                              supplierRow.pricing_mode === "markup"
-                                ? "bg-primary text-primary-foreground"
-                                : "bg-background text-muted-foreground"
-                            }`}
-                          >
-                            Markup
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Supplier Cost
-                        </span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={supplierRow.supplier_cost}
-                          onChange={(e) => updateSupplierRow(index, "supplier_cost", e.target.value)}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Markup %
-                          </span>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder={
-                              supplierRow.pricing_mode === "manual"
-                                ? "Auto-calculated"
-                                : "e.g. 40"
-                            }
-                            value={displayedMarkup}
-                            disabled={supplierRow.pricing_mode === "manual"}
-                            onChange={(e) => updateSupplierRow(index, "markup", e.target.value)}
-                            className={supplierRow.pricing_mode === "manual" ? "opacity-70" : ""}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Selling Price
-                          </span>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder={
-                              supplierRow.pricing_mode === "markup"
-                                ? "Auto-calculated"
-                                : "Enter selling price"
-                            }
-                            value={displayedPrice}
-                            disabled={supplierRow.pricing_mode === "markup"}
-                            onChange={(e) => updateSupplierRow(index, "price", e.target.value)}
-                            className={supplierRow.pricing_mode === "markup" ? "opacity-70" : ""}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`spol_vat_${index}`}
-                          checked={supplierRow.is_vat}
-                          onChange={(e) =>
-                            updateSupplierRow(index, "is_vat", e.target.checked ? "true" : "")
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingInlineCategory || !inlineCategoryName.trim()}
+                      onClick={async () => {
+                        if (!inlineCategoryName.trim()) return;
+                        setSavingInlineCategory(true);
+                        try {
+                          const res = await api.post("/products/categories", {
+                            name: inlineCategoryName.trim(),
+                            is_spol: true,
+                          });
+                          const newCat = res.data?.data;
+                          if (newCat) {
+                            setLocalCategories((prev) => [...prev, { id: String(newCat.id), name: newCat.name, is_spol: true }]);
+                            setForm((prev) => ({ ...prev, category_id: String(newCat.id) }));
                           }
-                          className="rounded"
-                        />
-                        <label htmlFor={`spol_vat_${index}`} className="text-xs text-muted-foreground">
-                          VAT
-                        </label>
-                        {supplierRow.is_vat && (
-                          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            {PH_VAT_PERCENT}%
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                          setShowInlineCategoryForm(false);
+                          setInlineCategoryName("");
+                        } catch (err: any) {
+                          toast.error(err?.response?.data?.message || "Failed to create category.");
+                        } finally {
+                          setSavingInlineCategory(false);
+                        }
+                      }}
+                      className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {savingInlineCategory ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {!isSundriesCategory && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Unit <span className="text-destructive">*</span>
+                  </span>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                    value={form.unit}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === ADD_NEW_UNIT) {
+                        openReferenceModal("unit");
+                        return;
+                      }
+                      setForm({ ...form, unit: value });
+                    }}
+                  >
+                    <option value="">Select unit</option>
+                    {units.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {getOptionLabel(unit)}
+                      </option>
+                    ))}
+                    <option value={ADD_NEW_UNIT}>+ Add new unit</option>
+                  </select>
+                </div>
+              )}
+
+              {!hasSuppliers && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Default Selling Price
+                  </span>
+                  <Input
+                    type="number"
+                    value={form.selling_price}
+                    onChange={(e) => setForm({ ...form, selling_price: e.target.value })}
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {!isSundriesCategory && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Manufacturer
+                  </span>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                    value={form.manufacturer_id}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === ADD_NEW_MANUFACTURER) {
+                        openReferenceModal("manufacturer");
+                        return;
+                      }
+                      setForm({ ...form, manufacturer_id: value });
+                    }}
+                  >
+                    <option value="">Select manufacturer</option>
+                    {localManufacturers.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {getOptionLabel(m)}
+                      </option>
+                    ))}
+                    <option value={ADD_NEW_MANUFACTURER}>+ Add new manufacturer</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Part Number
+                </span>
+                <Input
+                  value={form.part_number}
+                  onChange={(e) => setForm({ ...form, part_number: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs font-medium text-muted-foreground">
+                Description
+              </span>
+              <Input
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Optional description"
+              />
+            </div>
+
+            {!isSundriesCategory && (
+              <div className="border rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Suppliers</p>
+                    <p className="text-xs text-muted-foreground">
+                      Optional. Add suppliers for tracked items (brake cleaner, oil, etc.).
+                    </p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={addSupplierRow}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Supplier
+                  </Button>
+                </div>
+
+                {productSuppliers.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                    No suppliers added. This product will use the default selling price.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {productSuppliers.map((supplierRow, index) => {
+                      const costVal = toNumberOrNull(supplierRow.supplier_cost);
+                      const markupVal = toNumberOrNull(supplierRow.markup);
+                      const priceVal = toNumberOrNull(supplierRow.price);
+
+                      const computedPrice =
+                        costVal !== null && markupVal !== null
+                          ? costVal + costVal * (markupVal / 100)
+                          : null;
+                      const computedMarkup =
+                        costVal !== null && costVal > 0 && priceVal !== null
+                          ? ((priceVal - costVal) / costVal) * 100
+                          : null;
+
+                      const displayedPrice =
+                        supplierRow.pricing_mode === "markup"
+                          ? formatNum(computedPrice)
+                          : supplierRow.price;
+                      const displayedMarkup =
+                        supplierRow.pricing_mode === "manual"
+                          ? formatNum(computedMarkup)
+                          : supplierRow.markup;
+
+                      return (
+                        <div
+                          key={index}
+                          className="rounded-lg border border-border p-3 space-y-3"
+                        >
+                          <div className="grid grid-cols-12 gap-3 items-center">
+                            <select
+                              className="col-span-9 border rounded-md px-3 py-2 bg-background text-sm"
+                              value={supplierRow.supplier_id}
+                              onChange={(e) => updateSupplierRow(index, "supplier_id", e.target.value)}
+                            >
+                              <option value="">Select supplier</option>
+                              {validSupplierOptions.map((supplier) => (
+                                <option
+                                  key={supplier.id}
+                                  value={supplier.id}
+                                  disabled={isSupplierAlreadySelected(supplier.id, index)}
+                                >
+                                  {getOptionLabel(supplier)}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="col-span-3 px-2"
+                              onClick={() => removeSupplierRow(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <div className="flex items-center justify-between rounded-md border p-2">
+                            <span className="text-xs text-muted-foreground">
+                              {supplierRow.pricing_mode === "markup"
+                                ? "Markup mode: calculates selling price."
+                                : "Manual mode: calculates markup."}
+                            </span>
+                            <div className="flex rounded-md border overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateSupplierRow(index, "pricing_mode", "manual");
+                                  updateSupplierRow(index, "markup", "");
+                                }}
+                                className={`px-2 py-1 text-[11px] ${supplierRow.pricing_mode === "manual"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-background text-muted-foreground"
+                                  }`}
+                              >
+                                Manual
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateSupplierRow(index, "pricing_mode", "markup");
+                                  updateSupplierRow(index, "price", "");
+                                }}
+                                className={`px-2 py-1 text-[11px] border-l ${supplierRow.pricing_mode === "markup"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-background text-muted-foreground"
+                                  }`}
+                              >
+                                Markup
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-xs font-medium text-muted-foreground">
+                              Supplier Cost
+                            </span>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={supplierRow.supplier_cost}
+                              onChange={(e) => updateSupplierRow(index, "supplier_cost", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Markup %
+                              </span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder={
+                                  supplierRow.pricing_mode === "manual"
+                                    ? "Auto-calculated"
+                                    : "e.g. 40"
+                                }
+                                value={displayedMarkup}
+                                disabled={supplierRow.pricing_mode === "manual"}
+                                onChange={(e) => updateSupplierRow(index, "markup", e.target.value)}
+                                className={supplierRow.pricing_mode === "manual" ? "opacity-70" : ""}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Selling Price
+                              </span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder={
+                                  supplierRow.pricing_mode === "markup"
+                                    ? "Auto-calculated"
+                                    : "Enter selling price"
+                                }
+                                value={displayedPrice}
+                                disabled={supplierRow.pricing_mode === "markup"}
+                                onChange={(e) => updateSupplierRow(index, "price", e.target.value)}
+                                className={supplierRow.pricing_mode === "markup" ? "opacity-70" : ""}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`spol_vat_${index}`}
+                              checked={supplierRow.is_vat}
+                              onChange={(e) =>
+                                updateSupplierRow(index, "is_vat", e.target.checked ? "true" : "")
+                              }
+                              className="rounded"
+                            />
+                            <label htmlFor={`spol_vat_${index}`} className="text-xs text-muted-foreground">
+                              VAT
+                            </label>
+                            {supplierRow.is_vat && (
+                              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {PH_VAT_PERCENT}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
-          )}
-        </div>
 
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={saving || !canSave}>
-            {saving ? "Saving..." : "Save Product"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving || !canSave}>
+              {saving ? "Saving..." : "Save Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-    <ProductReferencesModal
-      open={referencesModalOpen}
-      onOpenChange={setReferencesModalOpen}
-      mode="spol"
-      onChanged={async () => {
-        await onSaved();
-        const res = await api.get("/products/units");
-        const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
-        setUnits(Array.isArray(rows) ? rows : []);
-      }}
-    />
+      <ProductReferencesModal
+        open={referencesModalOpen}
+        onOpenChange={setReferencesModalOpen}
+        mode="spol"
+        onChanged={async () => {
+          await onSaved();
+          const res = await api.get("/products/units");
+          const rows = Array.isArray(res.data?.data) ? res.data.data : res.data;
+          setUnits(Array.isArray(rows) ? rows : []);
+        }}
+      />
 
-    <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {
-      if (!nextOpen) closeReferenceModal();
-    }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {referenceModalType === "manufacturer" && "Add Manufacturer"}
-            {referenceModalType === "unit" && "Add Unit"}
-          </DialogTitle>
-        </DialogHeader>
+      <Dialog open={referenceModalType !== null} onOpenChange={(nextOpen) => {
+        if (!nextOpen) closeReferenceModal();
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {referenceModalType === "manufacturer" && "Add Manufacturer"}
+              {referenceModalType === "unit" && "Add Unit"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-3">
-          <Input
-            placeholder="Name"
-            value={referenceForm.name}
-            onChange={(e) => setReferenceForm((prev) => ({ ...prev, name: e.target.value }))}
-          />
-
-          {referenceModalType === "manufacturer" && (
+          <div className="space-y-3">
             <Input
-              placeholder="Code (optional)"
-              value={referenceForm.code}
-              onChange={(e) => setReferenceForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+              placeholder="Name"
+              value={referenceForm.name}
+              onChange={(e) => setReferenceForm((prev) => ({ ...prev, name: e.target.value }))}
             />
-          )}
 
-          {referenceModalType === "unit" && (
-            <Input
-              placeholder="Abbreviation, example: pcs"
-              value={referenceForm.abbreviation}
-              onChange={(e) => setReferenceForm((prev) => ({ ...prev, abbreviation: e.target.value }))}
-            />
-          )}
-        </div>
+            {referenceModalType === "manufacturer" && (
+              <Input
+                placeholder="Code (optional)"
+                value={referenceForm.code}
+                onChange={(e) => setReferenceForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+              />
+            )}
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={closeReferenceModal} disabled={savingReference}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSaveReference} disabled={savingReference}>
-            {savingReference ? "Saving..." : "Save"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {referenceModalType === "unit" && (
+              <Input
+                placeholder="Abbreviation, example: pcs"
+                value={referenceForm.abbreviation}
+                onChange={(e) => setReferenceForm((prev) => ({ ...prev, abbreviation: e.target.value }))}
+              />
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeReferenceModal} disabled={savingReference}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSaveReference} disabled={savingReference}>
+              {savingReference ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

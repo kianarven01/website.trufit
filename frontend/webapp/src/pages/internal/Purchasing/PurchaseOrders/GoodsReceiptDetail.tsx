@@ -45,7 +45,7 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
       const manufacturer = product.manufacturer?.name || product.manufacturer || product.manufacturer_name || "";
       const manufacturerStr = manufacturer ? ` — ${manufacturer}` : "";
       const productName = `${String(product.name ?? item.product_name ?? item.productName ?? "Unnamed Product")}${manufacturerStr}`;
-      
+
       const quantityReceived = (item.receipt_items || item.receiptItems || [])
         .filter((ri: any) => {
           const grStatus = ri.goods_receipt?.status || ri.goodsReceipt?.status || "";

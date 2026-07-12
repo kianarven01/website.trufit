@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Pencil, Printer, ReceiptText, Trash2 } from "lucide-react";
+import { ArrowLeft, CircleCheck, MoreVertical, Pencil, Printer, ReceiptText, Trash2, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
 import CreateGoodsReceiptModal, { ReceiptPurchaseOrder } from "@/components/purchasing/CreateGoodsReceiptModal";
@@ -12,6 +12,7 @@ import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 interface PurchaseOrderItemRow {
@@ -276,26 +277,21 @@ const PurchaseOrderDetail = () => {
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          className="inline-flex w-fit items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
-          onClick={() => navigate("/webapp/purchasing/purchase-orders")}
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+            onClick={() => navigate("/webapp/purchasing/purchase-orders")}
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+          <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={handlePrint}>
+            <Printer size={16} /> Print
+          </button>
+        </div>
 
         {purchaseOrder && (
           <div className="flex flex-wrap items-center gap-2">
-            {canEdit && (
-              <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
-                <Pencil size={16} /> Edit PO
-              </button>
-            )}
-            {canDelete && (
-              <button type="button" className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)} disabled={actionLoading}>
-                <Trash2 size={16} /> Delete PO
-              </button>
-            )}
             {canSubmit && (
               <button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmAction({ action: "submit", label: "submit" })} disabled={actionLoading}>
                 Submit PO
@@ -306,14 +302,9 @@ const PurchaseOrderDetail = () => {
                 Approve PO
               </button>
             )}
-            {canCancel && (
-              <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmAction({ action: "cancel", label: "cancel" })} disabled={actionLoading}>
-                Cancel PO
-              </button>
-            )}
-            {(status === "PARTIALLY_RECEIVED" || status === "WAITING_TO_RECEIVE") && (
-              <button type="button" className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700" onClick={() => setConfirmClose(true)} disabled={actionLoading}>
-                Close PO
+            {canCreateReceipt && (
+              <button type="button" className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700" onClick={() => setReceiptModalOpen(true)}>
+                <ReceiptText size={16} /> Create Goods Receipt
               </button>
             )}
             {status === "CLOSED" && (
@@ -321,13 +312,38 @@ const PurchaseOrderDetail = () => {
                 Reopen PO
               </button>
             )}
-            <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={handlePrint}>
-              <Printer size={16} /> Print PO
-            </button>
-            {canCreateReceipt && (
-              <button type="button" className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600" onClick={() => setReceiptModalOpen(true)}>
-                <ReceiptText size={16} /> Create Goods Receipt
-              </button>
+
+            {/* Overflow menu for secondary actions */}
+            {(canEdit || canDelete || canCancel || (status === "PARTIALLY_RECEIVED" || status === "WAITING_TO_RECEIVE")) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="inline-flex items-center justify-center rounded-md border border-border px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted" disabled={actionLoading}>
+                    <MoreVertical size={16} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {canEdit && (
+                    <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                      <Pencil size={14} className="mr-2" /> Edit PO
+                    </DropdownMenuItem>
+                  )}
+                  {canCancel && (
+                    <DropdownMenuItem onClick={() => setConfirmAction({ action: "cancel", label: "cancel" })} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <XCircle size={14} className="mr-2" /> Cancel PO
+                    </DropdownMenuItem>
+                  )}
+                  {(status === "PARTIALLY_RECEIVED" || status === "WAITING_TO_RECEIVE") && (
+                    <DropdownMenuItem onClick={() => setConfirmClose(true)} className="text-amber-600 dark:text-amber-400 focus:bg-amber-500/10">
+                      <CircleCheck size={14} className="mr-2" /> Close PO
+                    </DropdownMenuItem>
+                  )}
+                  {canDelete && (
+                    <DropdownMenuItem onClick={() => setConfirmDelete(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <Trash2 size={14} className="mr-2" /> Delete PO
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         )}
@@ -522,7 +538,7 @@ const PurchaseOrderDetail = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-amber-600 text-white hover:bg-amber-700" onClick={closePurchaseOrder} disabled={actionLoading}>
               Close PO
             </AlertDialogAction>
@@ -539,7 +555,7 @@ const PurchaseOrderDetail = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" onClick={reopenPurchaseOrder} disabled={actionLoading}>
               Reopen PO
             </AlertDialogAction>

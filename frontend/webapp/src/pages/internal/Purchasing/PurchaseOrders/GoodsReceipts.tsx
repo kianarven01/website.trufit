@@ -293,7 +293,7 @@ const GoodsReceipts = () => {
                                     <Check className="w-4 h-4 mr-2" />
                                     Approve
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => setConfirmCancel(receipt)} className="cursor-pointer text-amber-700 dark:text-amber-400 focus:bg-amber-500/10">
+                                   <DropdownMenuItem onClick={() => setConfirmCancel(receipt)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                                     <XCircle className="w-4 h-4 mr-2" />
                                     Cancel
                                   </DropdownMenuItem>

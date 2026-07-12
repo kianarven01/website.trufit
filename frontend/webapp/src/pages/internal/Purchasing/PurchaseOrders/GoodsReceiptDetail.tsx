@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Pencil, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, Pencil, Printer, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
 import GoodsReceiptItemsTable, { GoodsReceiptItemRow } from "@/components/purchasing/GoodsReceiptItemsTable";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ReturnItemsModal from "@/components/purchasing/ReturnItemsModal";
 import CreateGoodsReceiptModal from "@/components/purchasing/CreateGoodsReceiptModal";
@@ -292,57 +293,74 @@ const GoodsReceiptDetail = () => {
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          className="inline-flex w-fit items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
-          onClick={() => navigate("/webapp/purchasing/goods-receipts")}
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+            onClick={() => navigate("/webapp/purchasing/goods-receipts")}
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+          <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={() => window.print()}>
+            <Printer size={16} /> Print
+          </button>
+        </div>
 
         {receipt && (
           <div className="flex flex-wrap items-center gap-2">
             {normalizeStatus(receipt.status) === "DRAFT" && (
-              <>
-                <button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" disabled={actionLoading} onClick={() => setConfirmReceive(true)}>
-                  Receive Goods
-                </button>
-                <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
-                  <Pencil size={16} /> Edit Receipt
-                </button>
-                <button type="button" className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" disabled={actionLoading} onClick={() => setConfirmDelete(true)}>
-                  <Trash2 size={16} /> Delete Receipt
-                </button>
-              </>
+              <button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" disabled={actionLoading} onClick={() => setConfirmReceive(true)}>
+                Receive Goods
+              </button>
             )}
             {normalizeStatus(receipt.status) === "SUBMITTED" && (
-              <>
-                <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" disabled={actionLoading} onClick={() => setConfirmApprove(true)}>
-                  Approve Receipt
-                </button>
-                <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" disabled={actionLoading} onClick={() => setConfirmCancel(true)}>
-                  Cancel Receipt
-                </button>
-              </>
+              <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" disabled={actionLoading} onClick={() => setConfirmApprove(true)}>
+                Approve Receipt
+              </button>
             )}
             {["RECEIVED", "PARTIALLY_RETURNED"].includes(normalizeStatus(receipt.status)) && (
-              <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" disabled={actionLoading} onClick={() => setReturnOpen(true)}>
+              <button type="button" className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700" disabled={actionLoading} onClick={() => setReturnOpen(true)}>
                 Return Items
               </button>
             )}
             {normalizeStatus(receipt.status) === "RETURN_REQUESTED" && (
-              <>
-                <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" disabled={actionLoading} onClick={() => setConfirmApproveReturn(true)}>
-                  Approve Return
-                </button>
-                <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" disabled={actionLoading} onClick={() => setConfirmRejectReturn(true)}>
-                  Reject Return
-                </button>
-              </>
+              <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" disabled={actionLoading} onClick={() => setConfirmApproveReturn(true)}>
+                Approve Return
+              </button>
             )}
-            <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => window.print()}>
-              <Printer size={16} /> Print Receipt
-            </button>
+
+            {/* Overflow menu for secondary actions */}
+            {(normalizeStatus(receipt.status) === "DRAFT" || normalizeStatus(receipt.status) === "SUBMITTED" || normalizeStatus(receipt.status) === "RETURN_REQUESTED") && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="inline-flex items-center justify-center rounded-md border border-border px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted" disabled={actionLoading}>
+                    <MoreVertical size={16} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {normalizeStatus(receipt.status) === "DRAFT" && (
+                    <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                      <Pencil size={14} className="mr-2" /> Edit Receipt
+                    </DropdownMenuItem>
+                  )}
+                  {normalizeStatus(receipt.status) === "SUBMITTED" && (
+                    <DropdownMenuItem onClick={() => setConfirmCancel(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      Cancel Receipt
+                    </DropdownMenuItem>
+                  )}
+                  {normalizeStatus(receipt.status) === "RETURN_REQUESTED" && (
+                    <DropdownMenuItem onClick={() => setConfirmRejectReturn(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      Reject Return
+                    </DropdownMenuItem>
+                  )}
+                  {normalizeStatus(receipt.status) === "DRAFT" && (
+                    <DropdownMenuItem onClick={() => setConfirmDelete(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <Trash2 size={14} className="mr-2" /> Delete Receipt
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         )}
       </div>
@@ -495,7 +513,7 @@ const GoodsReceiptDetail = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" disabled={actionLoading} onClick={cancelReceipt}>
               Cancel Goods Receipt
             </AlertDialogAction>
@@ -512,7 +530,7 @@ const GoodsReceiptDetail = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" disabled={actionLoading} onClick={receiveReceipt}>
               Receive Goods
             </AlertDialogAction>

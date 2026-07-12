@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, CreditCard, ShieldCheck, AlertTriangle, Calendar, FileText, Ban, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, CreditCard, MoreVertical, Printer, ShieldCheck, AlertTriangle, Calendar, FileText, Ban, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface BillItem {
@@ -193,20 +194,25 @@ export default function SupplierBillDetail() {
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden bg-background text-foreground">
       {/* HEADER */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
-        <button
-          type="button"
-          className="inline-flex w-fit items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
-          onClick={() => navigate("/webapp/purchasing/supplier-bills")}
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
+            onClick={() => navigate("/webapp/purchasing/supplier-bills")}
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+          <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={() => window.print()}>
+            <Printer size={16} /> Print
+          </button>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {bill.status === "MATCH_EXCEPTION" && (
             <button
               type="button"
               onClick={() => setShowApproveDialog(true)}
-              className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
             >
               Override & Approve
             </button>
@@ -222,14 +228,19 @@ export default function SupplierBillDetail() {
             </button>
           )}
 
-            {["DRAFT", "MATCH_EXCEPTION", "AWAITING_PAYMENT", "PAID"].includes(bill.status) && (
-            <button
-              type="button"
-              onClick={() => setShowVoidDialog(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20"
-            >
-              Void Bill
-            </button>
+          {["DRAFT", "MATCH_EXCEPTION", "AWAITING_PAYMENT", "PAID"].includes(bill.status) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="inline-flex items-center justify-center rounded-md border border-border px-2 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+                  <MoreVertical size={16} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowVoidDialog(true)} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                  Void Bill
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </div>
@@ -467,7 +478,7 @@ export default function SupplierBillDetail() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-white"
               disabled={actionLoading}
               onClick={handleVoid}
             >

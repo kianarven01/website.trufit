@@ -22,6 +22,7 @@ use RuntimeException;
 use App\Domains\Purchasing\Application\UseCases\RequestGoodsReceiptReturn;
 use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceiptReturn;
 use App\Domains\Purchasing\Application\UseCases\RejectGoodsReceiptReturn;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class GoodsReceiptController extends Controller
 {
@@ -88,6 +89,24 @@ class GoodsReceiptController extends Controller
         return response()->json([
             'goods_receipt' => $receipt,
         ]);
+    }
+
+    public function downloadPdf(string $id)
+    {
+        $receipt = GoodsReceipt::with([
+            'purchaseOrder.supplier',
+            'items.product',
+            'items.purchaseOrderItem',
+            'createdByUser.employee',
+            'receivedByUser.employee',
+            'approvedByUser.employee',
+        ])->findOrFail($id);
+
+        $filename = 'GR-' . ($receipt->receipt_number ?? str_pad(substr($receipt->id, 0, 8), 8, '0', STR_PAD_LEFT)) . '.pdf';
+
+        return Pdf::view('pdfs.goods-receipt', [
+            'receipt' => $receipt,
+        ])->format('a4')->inline($filename);
     }
 
     public function store(StoreGoodsReceiptRequest $request, CreateGoodsReceipt $createGoodsReceipt): JsonResponse

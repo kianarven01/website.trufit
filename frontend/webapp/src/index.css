@@ -161,3 +161,27 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 }
+
+/* ── Print styles: hide sidebar, header, action buttons ── */
+@media print {
+  aside, header, [data-no-print] {
+    display: none !important;
+  }
+  .flex.h-screen {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .flex.flex-1.flex-col.min-w-0 {
+    overflow: visible !important;
+  }
+  body {
+    overflow: visible !important;
+  }
+  #root > div {
+    overflow: visible !important;
+  }
+  @page {
+    margin: 1cm;
+  }
+}

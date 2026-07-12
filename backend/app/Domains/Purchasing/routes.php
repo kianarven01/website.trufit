@@ -19,6 +19,7 @@ Route::prefix('purchasing')->group(function () {
     Route::delete('/purchase-orders/{id}', [PurchaseOrderController::class, 'destroy']);
     Route::patch('/purchase-orders/{id}/restore', [PurchaseOrderController::class, 'restore']);
     Route::delete('/purchase-orders/{id}/force', [PurchaseOrderController::class, 'forceDelete']);
+    Route::get('/purchase-orders/{id}/download-pdf', [PurchaseOrderController::class, 'downloadPdf']);
     Route::get('/purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
 
     Route::get('/goods-receipts', [GoodsReceiptController::class, 'index']);
@@ -33,10 +34,12 @@ Route::prefix('purchasing')->group(function () {
     Route::delete('/goods-receipts/{id}', [GoodsReceiptController::class, 'destroy']);
     Route::patch('/goods-receipts/{id}/restore', [GoodsReceiptController::class, 'restore']);
     Route::delete('/goods-receipts/{id}/force', [GoodsReceiptController::class, 'forceDelete']);
+    Route::get('/goods-receipts/{id}/download-pdf', [GoodsReceiptController::class, 'downloadPdf']);
     Route::get('/goods-receipts/{id}', [GoodsReceiptController::class, 'show']);
 
     Route::get('/supplier-bills', [SupplierBillController::class, 'index']);
     Route::post('/supplier-bills', [SupplierBillController::class, 'store']);
+    Route::get('/supplier-bills/{id}/download-pdf', [SupplierBillController::class, 'downloadPdf']);
     Route::get('/supplier-bills/{id}', [SupplierBillController::class, 'show']);
     Route::post('/supplier-bills/{id}/approve', [SupplierBillController::class, 'approve']);
     Route::post('/supplier-bills/{id}/pay', [SupplierBillController::class, 'pay']);

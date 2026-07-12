@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, CreditCard, MoreVertical, Printer, ShieldCheck, AlertTriangle, Calendar, FileText, Ban, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface BillItem {
   id: string;
@@ -54,6 +55,27 @@ export default function SupplierBillDetail() {
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [showVoidDialog, setShowVoidDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  /* PDF preview */
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+
+  const handlePreviewPDF = useCallback(async () => {
+    if (!billId) return;
+    setIsLoadingPdf(true);
+    setShowPdfPreview(true);
+    try {
+      const response = await api.get(`/purchasing/supplier-bills/${billId}/download-pdf`, { responseType: 'blob' });
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
+    } catch {
+      toast.error("Failed to load PDF preview.");
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  }, [billId, pdfBlobUrl]);
 
   const loadBillDetails = async () => {
     setLoading(true);
@@ -193,7 +215,7 @@ export default function SupplierBillDetail() {
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden bg-background text-foreground">
       {/* HEADER */}
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between shrink-0" data-no-print>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -202,7 +224,7 @@ export default function SupplierBillDetail() {
           >
             <ArrowLeft size={16} /> Back
           </button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={() => window.print()}>
+          <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={handlePreviewPDF}>
             <Printer size={16} /> Print
           </button>
         </div>
@@ -487,6 +509,43 @@ export default function SupplierBillDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <DialogTitle className="text-lg font-semibold">
+              Bill Preview — {bill?.billNumber || "Supplier Bill"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Bill PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

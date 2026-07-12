@@ -23,6 +23,7 @@ use App\Domains\Purchasing\Application\UseCases\ApprovePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ClosePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ReopenPurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\CancelPurchaseOrder;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class PurchaseOrderController extends Controller
 {
@@ -95,6 +96,24 @@ class PurchaseOrderController extends Controller
         return response()->json([
             'purchase_order' => $purchaseOrder,
         ]);
+    }
+
+    public function downloadPdf(string $id)
+    {
+        $purchaseOrder = PurchaseOrder::with([
+            'supplier',
+            'items.product',
+            'items.productSupplier',
+            'createdByUser.employee',
+            'submittedByUser.employee',
+            'approvedByUser.employee',
+        ])->findOrFail($id);
+
+        $filename = 'PO-' . ($purchaseOrder->po_number ?? str_pad(substr($purchaseOrder->id, 0, 8), 8, '0', STR_PAD_LEFT)) . '.pdf';
+
+        return Pdf::view('pdfs.purchase-order', [
+            'purchaseOrder' => $purchaseOrder,
+        ])->format('a4')->inline($filename);
     }
 
     public function store(StorePurchaseOrderRequest $request, CreatePurchaseOrder $createPurchaseOrder): JsonResponse

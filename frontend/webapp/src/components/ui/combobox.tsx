@@ -141,14 +141,15 @@ const Combobox: FC<MakeComboboxProps> = ({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[--radix-popover-trigger-width] p-0 shadow-md border-border"
+        className="w-[--radix-popover-trigger-width] p-0 shadow-md border-border z-[51]"
         side="bottom"
         align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onWheel={(e) => e.stopPropagation()}
       >
         <Command className="border-none">
-          <CommandList className="max-h-[260px] p-1.5 overflow-y-auto">
+          <CommandList className="max-h-[260px] p-1.5">
           {(() => {
             const groupedItems = Object.entries(
               filteredItems.reduce((acc, item) => {

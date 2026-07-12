@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { ArrowLeft, CircleCheck, MoreVertical, Pencil, Printer, ReceiptText, Trash2, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface PurchaseOrderItemRow {
   id: string;
@@ -143,6 +144,27 @@ const PurchaseOrderDetail = () => {
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  /* PDF preview */
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+
+  const handlePreviewPDF = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingPdf(true);
+    setShowPdfPreview(true);
+    try {
+      const response = await api.get(`/purchasing/purchase-orders/${id}/download-pdf`, { responseType: 'blob' });
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
+    } catch {
+      toast.error("Failed to load PDF preview.");
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  }, [id, pdfBlobUrl]);
   const loadPurchaseOrder = async () => {
     if (!id) return;
 
@@ -207,7 +229,7 @@ const PurchaseOrderDetail = () => {
     }
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => handlePreviewPDF();
 
   const handleDelete = async () => {
     if (!purchaseOrder) return;
@@ -258,6 +280,7 @@ const PurchaseOrderDetail = () => {
   };
 
   const status = normalizeStatus(purchaseOrder?.status);
+  const canPrint = status !== "DRAFT";
 
   const receivedValue = useMemo(() => {
     if (!purchaseOrder) return 0;
@@ -276,7 +299,7 @@ const PurchaseOrderDetail = () => {
 
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-no-print>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -285,9 +308,11 @@ const PurchaseOrderDetail = () => {
           >
             <ArrowLeft size={16} /> Back
           </button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={handlePrint}>
-            <Printer size={16} /> Print
-          </button>
+          {canPrint && (
+            <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onClick={handlePrint}>
+              <Printer size={16} /> Print
+            </button>
+          )}
         </div>
 
         {purchaseOrder && (
@@ -597,6 +622,43 @@ const PurchaseOrderDetail = () => {
         }}
         onError={(message) => toast.error("Unable to save goods receipt", { description: message })}
       />
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <DialogTitle className="text-lg font-semibold">
+              PO Preview — {purchaseOrder?.poNumber || "Purchase Order"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="PO PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

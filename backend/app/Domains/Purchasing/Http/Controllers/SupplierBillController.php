@@ -12,6 +12,7 @@ use App\Domains\Purchasing\Application\UseCases\CreateSupplierBill;
 use App\Domains\Purchasing\Application\UseCases\ApproveSupplierBill;
 use App\Domains\Purchasing\Application\UseCases\PaySupplierBill;
 use Illuminate\Support\Facades\DB;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class SupplierBillController extends Controller
 {
@@ -77,6 +78,24 @@ class SupplierBillController extends Controller
         return response()->json([
             'supplier_bill' => $bill,
         ]);
+    }
+
+    public function downloadPdf(string $id)
+    {
+        $bill = SupplierBill::with([
+            'purchaseOrder.supplier',
+            'items.product',
+            'items.purchaseOrderItem',
+            'createdByUser.employee',
+            'approvedByUser.employee',
+            'paidByUser.employee',
+        ])->findOrFail($id);
+
+        $filename = 'SB-' . ($bill->bill_number ?? str_pad(substr($bill->id, 0, 8), 8, '0', STR_PAD_LEFT)) . '.pdf';
+
+        return Pdf::view('pdfs.supplier-bill', [
+            'bill' => $bill,
+        ])->format('a4')->inline($filename);
     }
 
     public function store(StoreSupplierBillRequest $request, CreateSupplierBill $createSupplierBill): JsonResponse

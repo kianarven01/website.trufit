@@ -3,6 +3,7 @@
 namespace App\Domains\Purchasing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Purchasing\Http\Controllers\Traits\HandlesUseCaseErrors;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Domains\Purchasing\Domain\Models\SupplierBill;
@@ -11,17 +12,16 @@ use App\Domains\Purchasing\Application\UseCases\CreateSupplierBill;
 use App\Domains\Purchasing\Application\UseCases\ApproveSupplierBill;
 use App\Domains\Purchasing\Application\UseCases\PaySupplierBill;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
-use Throwable;
 
 class SupplierBillController extends Controller
 {
+    use HandlesUseCaseErrors;
     public function index(Request $request): JsonResponse
     {
         $search = $request->query('search');
         $status = $request->query('status');
         $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
-        $perPage = (int) $request->query('per_page', 10);
+        $perPage = $this->clampPerPage($request->query('per_page', 10));
 
         $query = SupplierBill::with([
             'purchaseOrder.supplier',
@@ -95,15 +95,8 @@ class SupplierBillController extends Controller
                 'message' => 'Supplier bill recorded successfully.',
                 'supplier_bill' => $bill,
             ]);
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to create supplier bill.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'create supplier bill');
         }
     }
 
@@ -124,15 +117,8 @@ class SupplierBillController extends Controller
                 'message' => 'Supplier bill approved/overridden successfully.',
                 'supplier_bill' => $bill,
             ]);
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to approve supplier bill.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'approve supplier bill');
         }
     }
 
@@ -154,51 +140,46 @@ class SupplierBillController extends Controller
                 'message' => 'Supplier bill payment recorded successfully.',
                 'supplier_bill' => $bill,
             ]);
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to record supplier bill payment.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'record supplier bill payment');
         }
     }
 
     public function void(string $id, Request $request): JsonResponse
     {
         try {
-            $bill = SupplierBill::findOrFail($id);
+            $bill = DB::transaction(function () use ($id, $request) {
+                $bill = SupplierBill::lockForUpdate()->findOrFail($id);
 
-            if ($bill->status === 'PAID') {
-                throw new RuntimeException('Paid supplier bills cannot be voided.', 422);
-            }
+                if ($bill->status === 'VOID') {
+                    throw new RuntimeException('This supplier bill is already voided.', 422);
+                }
 
-            $bill->update([
-                'status' => 'VOID',
-            ]);
+                $bill->update([
+                    'status' => 'VOID',
+                    'voided_by' => $request->user()?->id,
+                    'voided_at' => now(),
+                ]);
+
+                return $bill;
+            });
 
             $bill->load([
                 'purchaseOrder.supplier',
                 'items.purchaseOrderItem.receiptItems.goodsReceipt',
                 'items.product.manufacturer',
                 'createdByUser.employee',
+                'approvedByUser.employee',
+                'paidByUser.employee',
+                'voidedByUser.employee',
             ]);
 
             return response()->json([
                 'message' => 'Supplier bill voided successfully.',
                 'supplier_bill' => $bill,
             ]);
-        } catch (RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to void supplier bill.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'void supplier bill');
         }
     }
 

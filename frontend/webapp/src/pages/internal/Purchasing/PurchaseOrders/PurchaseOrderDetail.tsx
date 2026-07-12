@@ -6,8 +6,8 @@ import CreateGoodsReceiptModal, { ReceiptPurchaseOrder } from "@/components/purc
 import NewPurchaseOrderModal from "@/components/purchasing/NewPurchaseOrderModal";
 import PurchaseOrderItemsTable from "@/components/purchasing/PurchaseOrderItemsTable";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
-import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
-import { formatCurrency, formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
+import { toast } from "sonner";
+import { formatCurrency, formatDate, getCleanApiError, getApprovedReceivedQuantity, normalizeStatus } from "@/components/purchasing/purchasingUtils";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scrollArea";
@@ -41,6 +41,7 @@ interface PurchaseOrderDetailModel {
   submittedByName: string | null;
   approvedByName: string | null;
   cancelledByName: string | null;
+  receivedAmount: number;
   items: PurchaseOrderItemRow[];
   receiptModalItems: ReceiptPurchaseOrder["items"];
   goodsReceipts: Array<{
@@ -50,25 +51,6 @@ interface PurchaseOrderDetailModel {
     receivedAt: string | null;
   }>;
 }
-
-const getApprovedReceivedQuantity = (row: any) => {
-  const receiptItems = Array.isArray(row.receipt_items)
-    ? row.receipt_items
-    : Array.isArray(row.receiptItems)
-      ? row.receiptItems
-      : [];
-
-  return receiptItems
-    .filter((receiptItem: any) => {
-      const status = normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status);
-      return status === "RECEIVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
-    })
-    .reduce((sum: number, receiptItem: any) => {
-      const received = Number(receiptItem.quantity_received || 0);
-      const returned = Number(receiptItem.quantity_returned || receiptItem.quantityReturned || 0);
-      return sum + (received - returned);
-    }, 0);
-};
 
 const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {
   const itemsRaw = Array.isArray(row.items) ? row.items : [];
@@ -136,6 +118,7 @@ const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {
     submittedByName: row.submitted_by_name ?? row.submittedByName ?? null,
     approvedByName: row.approved_by_name ?? row.approvedByName ?? null,
     cancelledByName: row.cancelled_by_name ?? row.cancelledByName ?? null,
+    receivedAmount: Number(row.received_amount ?? row.receivedAmount ?? 0),
     items,
     receiptModalItems,
     goodsReceipts: goodsReceiptsRaw.map((receipt: any) => ({
@@ -158,16 +141,7 @@ const PurchaseOrderDetail = () => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
-  const [toast, setToast] = useState<{
-    type: PurchasingToastType;
-    title: string;
-    message: string;
-  } | null>(null);
-
-  const showToast = (type: PurchasingToastType, title: string, message: string) => {
-    setToast({ type, title, message });
-  };
-
+  const [actionLoading, setActionLoading] = useState(false);
   const loadPurchaseOrder = async () => {
     if (!id) return;
 
@@ -182,7 +156,7 @@ const PurchaseOrderDetail = () => {
       window.dispatchEvent(new Event('breadcrumb-update'));
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to load purchase order", getCleanApiError(error, "Failed to load purchase order."));
+      toast.error("Unable to load purchase order", { description: getCleanApiError(error, "Failed to load purchase order.") });
       setPurchaseOrder(null);
     } finally {
       setLoading(false);
@@ -220,12 +194,15 @@ const PurchaseOrderDetail = () => {
     };
 
     try {
+      setActionLoading(true);
       await api.post(`/purchasing/purchase-orders/${purchaseOrder.id}/${action}`);
-      showToast("success", "Purchase order updated", `${purchaseOrder.poNumber} was ${labels[action]} successfully.`);
+      toast.success("Purchase order updated", { description: `${purchaseOrder.poNumber} was ${labels[action]} successfully.` });
       await loadPurchaseOrder();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to update purchase order", getCleanApiError(error, "Failed to update purchase order."));
+      toast.error("Unable to update purchase order", { description: getCleanApiError(error, "Failed to update purchase order.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -235,12 +212,15 @@ const PurchaseOrderDetail = () => {
     if (!purchaseOrder) return;
 
     try {
+      setActionLoading(true);
       await api.delete(`/purchasing/purchase-orders/${purchaseOrder.id}`);
-      showToast("success", "Purchase order deleted", `${purchaseOrder.poNumber} was deleted successfully.`);
+      toast.success("Purchase order deleted", { description: `${purchaseOrder.poNumber} was deleted successfully.` });
       navigate("/webapp/purchasing/purchase-orders");
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to delete purchase order", getCleanApiError(error, "Failed to delete purchase order."));
+      toast.error("Unable to delete purchase order", { description: getCleanApiError(error, "Failed to delete purchase order.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -248,12 +228,15 @@ const PurchaseOrderDetail = () => {
     if (!purchaseOrder) return;
 
     try {
+      setActionLoading(true);
       await api.post(`/purchasing/purchase-orders/${purchaseOrder.id}/close`);
-      showToast("success", "Purchase order closed", `${purchaseOrder.poNumber} was closed successfully.`);
+      toast.success("Purchase order closed", { description: `${purchaseOrder.poNumber} was closed successfully.` });
       await loadPurchaseOrder();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to close purchase order", getCleanApiError(error, "Failed to close purchase order."));
+      toast.error("Unable to close purchase order", { description: getCleanApiError(error, "Failed to close purchase order.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -261,12 +244,15 @@ const PurchaseOrderDetail = () => {
     if (!purchaseOrder) return;
 
     try {
+      setActionLoading(true);
       await api.post(`/purchasing/purchase-orders/${purchaseOrder.id}/reopen`);
-      showToast("success", "Purchase order reopened", `${purchaseOrder.poNumber} was reopened successfully.`);
+      toast.success("Purchase order reopened", { description: `${purchaseOrder.poNumber} was reopened successfully.` });
       await loadPurchaseOrder();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to reopen purchase order", getCleanApiError(error, "Failed to reopen purchase order."));
+      toast.error("Unable to reopen purchase order", { description: getCleanApiError(error, "Failed to reopen purchase order.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -274,28 +260,21 @@ const PurchaseOrderDetail = () => {
 
   const receivedValue = useMemo(() => {
     if (!purchaseOrder) return 0;
-    return purchaseOrder.items.reduce((sum, item) => sum + (item.quantityReceived * item.unitCost), 0);
+    return purchaseOrder.receivedAmount;
   }, [purchaseOrder]);
   const canSubmit = status === "DRAFT";
   const canApprove = status === "SUBMITTED";
-  const canCancel = ["DRAFT", "SUBMITTED", "WAITING_TO_RECEIVE"].includes(status);
-  const hasDraftReceipt = purchaseOrder?.goodsReceipts?.some((r) => normalizeStatus(r.status) === "DRAFT") ?? false;
-  const canCreateReceipt = ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "RETURNED"].includes(status) && !hasDraftReceipt;
+  const canCancel = ["DRAFT", "SUBMITTED", "WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED"].includes(status);
+  const hasActiveReceipt = purchaseOrder?.goodsReceipts?.some((r) => {
+    const s = normalizeStatus(r.status);
+    return s === "DRAFT" || s === "SUBMITTED";
+  }) ?? false;
+  const canCreateReceipt = ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED"].includes(status) && !hasActiveReceipt;
   const canEdit = status === "DRAFT";
   const canDelete = status === "DRAFT";
 
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
-      {toast && (
-        <PurchasingToast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          duration={4000}
-          onClose={() => setToast(null)}
-        />
-      )}
-
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
@@ -308,45 +287,45 @@ const PurchaseOrderDetail = () => {
         {purchaseOrder && (
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
-              <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
+              <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
                 <Pencil size={16} /> Edit PO
               </button>
             )}
             {canDelete && (
-              <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
+              <button type="button" className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)} disabled={actionLoading}>
                 <Trash2 size={16} /> Delete PO
               </button>
             )}
             {canSubmit && (
-              <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmAction({ action: "submit", label: "submit" })}>
+              <button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmAction({ action: "submit", label: "submit" })} disabled={actionLoading}>
                 Submit PO
               </button>
             )}
             {canApprove && (
-              <button className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => setConfirmAction({ action: "approve", label: "approve" })}>
+              <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => setConfirmAction({ action: "approve", label: "approve" })} disabled={actionLoading}>
                 Approve PO
               </button>
             )}
             {canCancel && (
-              <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmAction({ action: "cancel", label: "cancel" })}>
+              <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmAction({ action: "cancel", label: "cancel" })} disabled={actionLoading}>
                 Cancel PO
               </button>
             )}
-            {status === "PARTIALLY_RECEIVED" && (
-              <button className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700" onClick={() => setConfirmClose(true)}>
+            {(status === "PARTIALLY_RECEIVED" || status === "WAITING_TO_RECEIVE") && (
+              <button type="button" className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700" onClick={() => setConfirmClose(true)} disabled={actionLoading}>
                 Close PO
               </button>
             )}
             {status === "CLOSED" && (
-              <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmReopen(true)}>
+              <button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmReopen(true)} disabled={actionLoading}>
                 Reopen PO
               </button>
             )}
-            <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={handlePrint}>
+            <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={handlePrint}>
               <Printer size={16} /> Print PO
             </button>
             {canCreateReceipt && (
-              <button className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600" onClick={() => setReceiptModalOpen(true)}>
+              <button type="button" className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600" onClick={() => setReceiptModalOpen(true)}>
                 <ReceiptText size={16} /> Create Goods Receipt
               </button>
             )}
@@ -499,7 +478,9 @@ const PurchaseOrderDetail = () => {
               {confirmAction?.action === "cancel" && "Cancel Purchase Order"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to {confirmAction?.action} {purchaseOrder?.poNumber}? This action cannot be undone.
+              {confirmAction?.action === "cancel"
+                ? "This will cancel the PO, void any draft receipts and bills, and reverse all received stock. This action cannot be undone."
+                : `Are you sure you want to ${confirmAction?.action} ${purchaseOrder?.poNumber}? This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -507,6 +488,7 @@ const PurchaseOrderDetail = () => {
             <AlertDialogAction
               className={confirmAction?.action === "cancel" ? "bg-destructive text-white hover:bg-destructive/90" : "bg-blue-600 text-white hover:bg-blue-700"}
               onClick={() => { if (confirmAction) void runPoAction(confirmAction.action); setConfirmAction(null); }}
+              disabled={actionLoading}
             >
               {confirmAction?.action === "submit" ? "Submit" : confirmAction?.action === "approve" ? "Approve" : "Cancel PO"}
             </AlertDialogAction>
@@ -524,7 +506,7 @@ const PurchaseOrderDetail = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={handleDelete}>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={handleDelete} disabled={actionLoading}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -536,12 +518,12 @@ const PurchaseOrderDetail = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Close Purchase Order</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to close {purchaseOrder?.poNumber}? This will mark it as Completed and prevent any further Goods Receipts from being created.
+              Are you sure you want to close {purchaseOrder?.poNumber}? This will mark it as Closed and prevent any further Goods Receipts from being created.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go Back</AlertDialogCancel>
-            <AlertDialogAction className="bg-amber-600 text-white hover:bg-amber-700" onClick={closePurchaseOrder}>
+            <AlertDialogAction className="bg-amber-600 text-white hover:bg-amber-700" onClick={closePurchaseOrder} disabled={actionLoading}>
               Close PO
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -558,7 +540,7 @@ const PurchaseOrderDetail = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go Back</AlertDialogCancel>
-            <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" onClick={reopenPurchaseOrder}>
+            <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" onClick={reopenPurchaseOrder} disabled={actionLoading}>
               Reopen PO
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -583,10 +565,10 @@ const PurchaseOrderDetail = () => {
           })),
         } : undefined}
         onSaved={async () => {
-          showToast("success", "Purchase order updated", "The purchase order was updated successfully.");
+          toast.success("Purchase order updated", { description: "The purchase order was updated successfully." });
           await loadPurchaseOrder();
         }}
-        onError={(message) => showToast("error", "Unable to update purchase order", message)}
+        onError={(message) => toast.error("Unable to update purchase order", { description: message })}
       />
 
       <CreateGoodsReceiptModal
@@ -594,10 +576,10 @@ const PurchaseOrderDetail = () => {
         onOpenChange={setReceiptModalOpen}
         purchaseOrder={receiptPurchaseOrder}
         onSaved={async () => {
-          showToast("success", "Goods receipt saved", "The goods receipt was created successfully.");
+          toast.success("Goods receipt saved", { description: "The goods receipt was created successfully." });
           await loadPurchaseOrder();
         }}
-        onError={(message) => showToast("error", "Unable to save goods receipt", message)}
+        onError={(message) => toast.error("Unable to save goods receipt", { description: message })}
       />
     </div>
   );

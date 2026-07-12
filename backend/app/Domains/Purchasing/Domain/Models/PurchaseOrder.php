@@ -30,6 +30,7 @@ class PurchaseOrder extends Model
         'status',
         'subtotal',
         'total_amount',
+        'received_amount',
         'remarks',
         'submitted_at',
         'approved_at',
@@ -46,6 +47,7 @@ class PurchaseOrder extends Model
         'supplier_id' => 'string',
         'subtotal' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'received_amount' => 'decimal:2',
         'order_date' => 'datetime',
         'request_ship_date' => 'date',
         'eta' => 'datetime',
@@ -57,11 +59,18 @@ class PurchaseOrder extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected $hidden = [
+        'created_by',
+        'submitted_by',
+        'approved_by',
+        'cancelled_by',
+    ];
+
     protected $appends = [
-        'created_by_name',
-        'submitted_by_name',
-        'approved_by_name',
-        'cancelled_by_name',
+        'createdByName',
+        'submittedByName',
+        'approvedByName',
+        'cancelledByName',
     ];
 
     protected static function boot()

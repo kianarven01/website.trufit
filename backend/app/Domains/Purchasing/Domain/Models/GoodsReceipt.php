@@ -32,25 +32,40 @@ class GoodsReceipt extends Model
         'approved_by',
         'returned_by',
         'cancelled_by',
+        'return_request_items',
+        'return_requested_by',
+        'return_requested_at',
         'notes',
     ];
 
     protected $casts = [
         'id' => 'string',
         'purchase_order_id' => 'string',
+        'return_request_items' => 'array',
         'received_at' => 'datetime',
         'approved_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'return_requested_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
+    protected $hidden = [
+        'created_by',
+        'received_by',
+        'approved_by',
+        'returned_by',
+        'cancelled_by',
+        'return_requested_by',
+    ];
+
     protected $appends = [
-        'created_by_name',
-        'received_by_name',
-        'approved_by_name',
-        'returned_by_name',
-        'cancelled_by_name',
+        'createdByName',
+        'receivedByName',
+        'approvedByName',
+        'returnedByName',
+        'cancelledByName',
+        'returnRequestedByName',
     ];
 
     protected static function boot()
@@ -103,6 +118,11 @@ class GoodsReceipt extends Model
         return $this->belongsTo(User::class, 'cancelled_by', 'id');
     }
 
+    public function returnRequestedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'return_requested_by', 'id');
+    }
+
     public function getCreatedByNameAttribute(): ?string
     {
         return $this->createdByUser?->employee
@@ -135,6 +155,13 @@ class GoodsReceipt extends Model
     {
         return $this->cancelledByUser?->employee
             ? trim($this->cancelledByUser->employee->first_name . ' ' . $this->cancelledByUser->employee->last_name)
+            : null;
+    }
+
+    public function getReturnRequestedByNameAttribute(): ?string
+    {
+        return $this->returnRequestedByUser?->employee
+            ? trim($this->returnRequestedByUser->employee->first_name . ' ' . $this->returnRequestedByUser->employee->last_name)
             : null;
     }
 }

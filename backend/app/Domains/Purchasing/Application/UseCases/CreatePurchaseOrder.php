@@ -32,19 +32,16 @@ class CreatePurchaseOrder
             $subtotal = 0;
 
             foreach ($data['items'] as $item) {
-                $lineTotal = (float) $item['quantity_ordered'] * (float) $item['unit_cost'];
-
-                PurchaseOrderItem::create([
+                $poItem = PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
                     'product_id' => $item['product_id'],
                     'product_supplier_id' => $item['product_supplier_id'] ?? null,
                     'quantity_ordered' => $item['quantity_ordered'],
                     'unit_cost' => $item['unit_cost'],
-                    'line_total' => $lineTotal,
                     'notes' => $item['notes'] ?? null,
                 ]);
 
-                $subtotal += $lineTotal;
+                $subtotal += (float) $poItem->line_total;
             }
 
             $purchaseOrder->update([

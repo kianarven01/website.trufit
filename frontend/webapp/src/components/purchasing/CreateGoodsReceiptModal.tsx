@@ -54,11 +54,13 @@ interface CreateGoodsReceiptModalProps {
 
 
 
+const EMPTY_PO_LIST: ReceiptPurchaseOrder[] = [];
+
 const CreateGoodsReceiptModal = ({
   open,
   onOpenChange,
   purchaseOrder,
-  purchaseOrders = [],
+  purchaseOrders = EMPTY_PO_LIST,
   editGoodsReceipt = null,
   onSaved,
   onError,

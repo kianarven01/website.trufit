@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { ArrowLeft, Pencil, XCircle, Mail, Phone, User, MessageCircle, Edit, Trash2, Percent, Plus, MapPin, ScrollText } from "lucide-react";
 import api from "@/api/axios";
+import { formatCurrency } from "@/components/purchasing/purchasingUtils";
 
 interface Supplier {
   id: string;
@@ -126,6 +127,10 @@ const SupplierDetails: React.FC = () => {
     if (supplierId) {
       void loadSupplier();
     }
+    return () => {
+      sessionStorage.removeItem(`breadcrumb-/webapp/purchasing/suppliers/${supplierId}`);
+      window.dispatchEvent(new Event('breadcrumb-update'));
+    };
   }, [supplierId]);
 
 
@@ -445,7 +450,7 @@ const SupplierDetails: React.FC = () => {
                               {prod.partNumber}
                             </TableCell>
                             <TableCell className="w-[15%] text-center">
-                              ₱{Number(prod.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                              {formatCurrency(prod.price)}
                             </TableCell>
                             <TableCell className="w-[15%] text-center">
                               {prod.sellingPrice !== null && prod.sellingPrice !== undefined ? (

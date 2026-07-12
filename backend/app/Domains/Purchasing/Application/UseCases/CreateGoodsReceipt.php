@@ -22,16 +22,16 @@ class CreateGoodsReceipt
             $purchaseOrder = PurchaseOrder::with('items.receiptItems')
                 ->findOrFail($data['purchase_order_id']);
 
-            if (!in_array($purchaseOrder->status, ['WAITING_TO_RECEIVE', 'PARTIALLY_RECEIVED', 'RETURNED'], true)) {
-                throw new RuntimeException('Goods receipt can only be created from an active purchase order (Waiting to Receive, Partially Received, or Returned).', 422);
+            if (!in_array($purchaseOrder->status, ['WAITING_TO_RECEIVE', 'PARTIALLY_RECEIVED'], true)) {
+                throw new RuntimeException('Goods receipt can only be created from an active purchase order (Waiting to Receive or Partially Received).', 422);
             }
 
-            $hasDraft = GoodsReceipt::where('purchase_order_id', $purchaseOrder->id)
-                ->where('status', 'DRAFT')
+            $hasActive = GoodsReceipt::where('purchase_order_id', $purchaseOrder->id)
+                ->whereIn('status', ['DRAFT', 'SUBMITTED'])
                 ->exists();
 
-            if ($hasDraft) {
-                throw new RuntimeException('A draft goods receipt already exists for this purchase order. Please approve or cancel it first.', 422);
+            if ($hasActive) {
+                throw new RuntimeException('An active goods receipt (Draft or Submitted) already exists for this purchase order. Please approve or cancel it first.', 422);
             }
 
             $receipt = GoodsReceipt::create([
@@ -46,17 +46,19 @@ class CreateGoodsReceipt
 
             $allowOverReceiving = $data['allow_over_receiving'] ?? false;
 
-            foreach ($data['items'] as $itemData) {
-                $poItem = PurchaseOrderItem::with('receiptItems')
-                    ->where('purchase_order_id', $purchaseOrder->id)
-                    ->findOrFail($itemData['purchase_order_item_id']);
+            // Pre-index PO items to avoid N+1 queries
+            $poItemsById = $purchaseOrder->items->keyBy('id');
 
-                $alreadyReceived = $poItem->receiptItems()
-                    ->whereHas('goodsReceipt', function ($query) {
-                        $query->whereIn('status', ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED']);
-                    })
-                    ->selectRaw('SUM(quantity_received - quantity_returned) as total')
-                    ->value('total') ?? 0;
+            foreach ($data['items'] as $itemData) {
+                $poItem = $poItemsById->get($itemData['purchase_order_item_id']);
+
+                if (!$poItem) {
+                    throw new RuntimeException("Purchase order item not found: {$itemData['purchase_order_item_id']}", 422);
+                }
+
+                $alreadyReceived = $poItem->receiptItems
+                    ->filter(fn ($ri) => in_array($ri->goodsReceipt?->status, ['RECEIVED', 'PARTIALLY_RETURNED', 'RETURNED'], true))
+                    ->sum(fn ($ri) => $ri->quantity_received - $ri->quantity_returned);
 
                 $remaining = (int) $poItem->quantity_ordered - (int) $alreadyReceived;
                 $quantityReceived = (int) $itemData['quantity_received'];

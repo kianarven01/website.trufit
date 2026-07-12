@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { X, AlertCircle } from "lucide-react";
 import api from "@/api/axios";
-import { getCleanApiError, formatDate } from "./purchasingUtils";
+import { getCleanApiError, formatCurrency } from "./purchasingUtils";
 import { toast } from "sonner";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
@@ -47,29 +47,23 @@ interface BillLineItem {
   unitPrice: string;
 }
 
+const EMPTY_PO_LIST: BillPurchaseOrder[] = [];
+
 export default function CreateSupplierBillModal({
   open,
   onOpenChange,
   purchaseOrder,
-  purchaseOrders = [],
+  purchaseOrders = EMPTY_PO_LIST,
   onSaved,
   onError,
 }: CreateSupplierBillModalProps) {
   const [selectedPurchaseOrderId, setSelectedPurchaseOrderId] = useState("");
   const [billNumber, setBillNumber] = useState("");
-  const [billDate, setBillDate] = useState("");
+  const [billDate, setBillDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<BillLineItem[]>([]);
   const [saving, setSaving] = useState(false);
-
-  // Set today's date as default bill date
-  useEffect(() => {
-    if (open && !billDate) {
-      const today = new Date().toISOString().split("T")[0];
-      setBillDate(today);
-    }
-  }, [open, billDate]);
 
   // Set selected PO ID if passed as prop
   useEffect(() => {
@@ -80,6 +74,8 @@ export default function CreateSupplierBillModal({
         setSelectedPurchaseOrderId("");
       }
       setBillNumber("");
+      setBillDate(new Date().toISOString().split("T")[0]);
+      setDueDate("");
       setNotes("");
     }
   }, [open, purchaseOrder]);
@@ -116,24 +112,26 @@ export default function CreateSupplierBillModal({
   // Load items when PO is selected
   useEffect(() => {
     if (selectedPurchaseOrder) {
-      const lineItems = selectedPurchaseOrder.items.map((item) => {
-        const netReceived = item.quantityReceived;
-        const alreadyBilled = item.quantityBilled || 0;
-        const maxReceivable = Math.max(0, netReceived - alreadyBilled);
+      const lineItems = selectedPurchaseOrder.items
+        .map((item) => {
+          const netReceived = item.quantityReceived;
+          const alreadyBilled = item.quantityBilled || 0;
+          const maxReceivable = Math.max(0, netReceived - alreadyBilled);
 
-        return {
-          purchaseOrderItemId: item.id,
-          productName: item.productName,
-          sku: item.sku,
-          partNumber: item.partNumber,
-          quantityReceived: netReceived,
-          alreadyBilled,
-          maxReceivable,
-          quantityBilled: String(maxReceivable), // default to billing remaining received
-          poUnitPrice: item.unitCost,
-          unitPrice: String(item.unitCost), // default to agreed contract price
-        };
-      });
+          return {
+            purchaseOrderItemId: item.id,
+            productName: item.productName,
+            sku: item.sku,
+            partNumber: item.partNumber,
+            quantityReceived: netReceived,
+            alreadyBilled,
+            maxReceivable,
+            quantityBilled: String(maxReceivable),
+            poUnitPrice: item.unitCost,
+            unitPrice: String(item.unitCost),
+          };
+        })
+        .filter((item) => item.maxReceivable > 0);
       setItems(lineItems);
     } else {
       setItems([]);
@@ -213,7 +211,6 @@ export default function CreateSupplierBillModal({
       console.error(error);
       const errorMessage = error?.response ? getCleanApiError(error) : (error instanceof Error ? error.message : getCleanApiError(error));
       toast.error(errorMessage);
-      onError?.(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -348,7 +345,7 @@ export default function CreateSupplierBillModal({
                         </TableCell>
 
                         <TableCell className="py-3 text-right text-muted-foreground">
-                          ₱{item.poUnitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatCurrency(item.poUnitPrice)}
                         </TableCell>
 
                         <TableCell className="py-3">
@@ -368,7 +365,7 @@ export default function CreateSupplierBillModal({
                         </TableCell>
 
                         <TableCell className="py-3 text-right font-semibold text-foreground pr-6">
-                          ₱{lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatCurrency(lineTotal)}
                         </TableCell>
                       </TableRow>
                     );
@@ -401,7 +398,7 @@ export default function CreateSupplierBillModal({
             <div className="text-left">
               <span className="text-xs text-muted-foreground uppercase tracking-wider block">Total Invoice Value</span>
               <span className="text-xl font-bold text-foreground">
-                ₱{calculatedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {formatCurrency(calculatedTotal)}
               </span>
             </div>
 

@@ -48,14 +48,4 @@ class StockMovementController extends Controller
             ]
         ]);
     }
-
-    public function show(string $id): JsonResponse
-    {
-        $movement = StockMovement::with(['product', 'productSupplier', 'inventory'])
-            ->findOrFail($id);
-
-        return response()->json([
-            'stock_movement' => $movement,
-        ]);
-    }
 }

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
 import GoodsReceiptItemsTable, { GoodsReceiptItemRow } from "@/components/purchasing/GoodsReceiptItemsTable";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
-import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
+import { toast } from "sonner";
 import { formatDate, getCleanApiError, normalizeStatus } from "@/components/purchasing/purchasingUtils";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -27,6 +27,13 @@ interface GoodsReceiptDetailModel {
   approvedByName: string | null;
   returnedByName: string | null;
   cancelledByName: string | null;
+  returnRequestedByName: string | null;
+  returnRequestItems: Array<{
+    goods_receipt_item_id: string;
+    quantity_returned: number;
+    notes: string | null;
+  }> | null;
+  returnRequestedAt: string | null;
   items: GoodsReceiptItemRow[];
   purchaseOrder?: any | null;
 }
@@ -60,6 +67,7 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
         productSupplierId: String(item.product_supplier_id ?? item.productSupplierId ?? ""),
         quantityOrdered: Number(item.quantity_ordered ?? item.quantityOrdered ?? 0),
         quantityReceived,
+        receiptItems: item.receipt_items || item.receiptItems || [],
       };
     })
   } : null;
@@ -79,6 +87,9 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
     approvedByName: row.approved_by_name ?? row.approvedByName ?? null,
     returnedByName: row.returned_by_name ?? row.returnedByName ?? null,
     cancelledByName: row.cancelled_by_name ?? row.cancelledByName ?? null,
+    returnRequestedByName: row.return_requested_by_name ?? row.returnRequestedByName ?? null,
+    returnRequestItems: row.return_request_items ?? row.returnRequestItems ?? null,
+    returnRequestedAt: row.return_requested_at ?? row.returnRequestedAt ?? null,
     purchaseOrder: purchaseOrderMapped,
     items: itemsRaw.map((item: any) => {
       const product = item.product || {};
@@ -90,6 +101,8 @@ const normalizeGoodsReceipt = (row: any): GoodsReceiptDetailModel => {
 
       return {
         id: String(item.id ?? ""),
+        productId: String(item.product_id ?? item.productId ?? product.id ?? ""),
+        productSupplierId: String(item.product_supplier_id ?? item.productSupplierId ?? ""),
         productName,
         sku: String(product.sku ?? product.SKU ?? item.sku ?? "-"),
         partNumber: product.part_number ?? item.part_number ?? null,
@@ -114,18 +127,11 @@ const GoodsReceiptDetail = () => {
   const [confirmReceive, setConfirmReceive] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmApproveReturn, setConfirmApproveReturn] = useState(false);
+  const [confirmRejectReturn, setConfirmRejectReturn] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [toast, setToast] = useState<{
-    type: PurchasingToastType;
-    title: string;
-    message: string;
-  } | null>(null);
-
-  const showToast = (type: PurchasingToastType, title: string, message: string) => {
-    setToast({ type, title, message });
-  };
-
+  const [actionLoading, setActionLoading] = useState(false);
   const loadGoodsReceipt = async () => {
     if (!id) return;
 
@@ -140,7 +146,7 @@ const GoodsReceiptDetail = () => {
       window.dispatchEvent(new Event('breadcrumb-update'));
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to load goods receipt", getCleanApiError(error, "Failed to load goods receipt."));
+      toast.error("Unable to load goods receipt", { description: getCleanApiError(error, "Failed to load goods receipt.") });
       setReceipt(null);
     } finally {
       setLoading(false);
@@ -159,52 +165,110 @@ const GoodsReceiptDetail = () => {
   const receiveReceipt = async () => {
     if (!receipt) return;
 
+    setActionLoading(true);
     try {
       await api.post(`/purchasing/goods-receipts/${receipt.id}/receive`);
-      showToast("success", "Goods receipt received", "The goods receipt was successfully marked as received.");
+      toast.success("Goods receipt received", { description: "The goods receipt was successfully marked as received." });
       await loadGoodsReceipt();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to receive goods receipt", getCleanApiError(error, "Failed to receive goods receipt."));
+      toast.error("Unable to receive goods receipt", { description: getCleanApiError(error, "Failed to receive goods receipt.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const approveReceipt = async () => {
     if (!receipt) return;
 
+    setActionLoading(true);
     try {
       await api.post(`/purchasing/goods-receipts/${receipt.id}/approve`);
-      showToast("success", "Goods receipt approved", "Inventory was updated and stock movement was recorded.");
+      toast.success("Goods receipt approved", { description: "Inventory was updated and stock movement was recorded." });
       await loadGoodsReceipt();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to approve receipt", getCleanApiError(error, "Failed to approve goods receipt."));
+      toast.error("Unable to approve receipt", { description: getCleanApiError(error, "Failed to approve goods receipt.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const cancelReceipt = async () => {
     if (!receipt) return;
 
+    setActionLoading(true);
     try {
       await api.post(`/purchasing/goods-receipts/${receipt.id}/cancel`);
-      showToast("success", "Goods receipt cancelled", "The goods receipt was cancelled successfully.");
+      toast.success("Goods receipt cancelled", { description: "The goods receipt was cancelled successfully." });
       await loadGoodsReceipt();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to cancel receipt", getCleanApiError(error, "Failed to cancel goods receipt."));
+      toast.error("Unable to cancel receipt", { description: getCleanApiError(error, "Failed to cancel goods receipt.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const deleteReceipt = async () => {
     if (!receipt) return;
 
+    setActionLoading(true);
     try {
       await api.delete(`/purchasing/goods-receipts/${receipt.id}`);
-      showToast("success", "Goods receipt deleted", "The goods receipt was deleted successfully.");
+      toast.success("Goods receipt deleted", { description: "The goods receipt was deleted successfully." });
       navigate("/webapp/purchasing/goods-receipts");
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to delete goods receipt", getCleanApiError(error, "Failed to delete goods receipt."));
+      toast.error("Unable to delete goods receipt", { description: getCleanApiError(error, "Failed to delete goods receipt.") });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const approveReturn = async () => {
+    if (!receipt) return;
+
+    setActionLoading(true);
+    try {
+      const response = await api.post(`/purchasing/goods-receipts/${receipt.id}/return/approve`);
+      const results = response.data?.results || [];
+      const fullyApproved = results.filter((r: any) => r.approved === r.requested);
+      const partialItems = results.filter((r: any) => r.approved < r.requested && r.approved > 0);
+      const failedItems = results.filter((r: any) => r.approved === 0);
+
+      if (partialItems.length > 0) {
+        const details = partialItems.map((r: any) => `${r.requested} requested, ${r.approved} returned`).join("; ");
+        toast.warning("Return partially approved", { description: `${details}. Insufficient stock for full return.` });
+      } else if (failedItems.length > 0) {
+        const details = failedItems.map((r: any) => r.reason).join("; ");
+        toast.error("Return could not be processed", { description: details });
+      } else {
+        const totalApproved = fullyApproved.reduce((sum: number, r: any) => sum + r.approved, 0);
+        toast.success("Return approved", { description: `${totalApproved} item(s) returned. Inventory updated and stock movements recorded.` });
+      }
+      await loadGoodsReceipt();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Unable to approve return", { description: getCleanApiError(error, "Failed to approve return.") });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const rejectReturn = async () => {
+    if (!receipt) return;
+
+    setActionLoading(true);
+    try {
+      await api.post(`/purchasing/goods-receipts/${receipt.id}/return/reject`);
+      toast.success("Return request rejected", { description: "The return request has been rejected." });
+      await loadGoodsReceipt();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Unable to reject return", { description: getCleanApiError(error, "Failed to reject return.") });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -227,10 +291,6 @@ const GoodsReceiptDetail = () => {
 
   return (
     <div className="w-full h-full px-6 pt-3 pb-6 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
-      {toast && (
-        <PurchasingToast type={toast.type} title={toast.title} message={toast.message} duration={4000} onClose={() => setToast(null)} />
-      )}
-
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
@@ -244,33 +304,43 @@ const GoodsReceiptDetail = () => {
           <div className="flex flex-wrap items-center gap-2">
             {normalizeStatus(receipt.status) === "DRAFT" && (
               <>
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" onClick={() => setConfirmReceive(true)}>
+                <button type="button" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" disabled={actionLoading} onClick={() => setConfirmReceive(true)}>
                   Receive Goods
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
+                <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => setEditModalOpen(true)}>
                   <Pencil size={16} /> Edit Receipt
                 </button>
-                <button className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" onClick={() => setConfirmDelete(true)}>
+                <button type="button" className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20" disabled={actionLoading} onClick={() => setConfirmDelete(true)}>
                   <Trash2 size={16} /> Delete Receipt
                 </button>
               </>
             )}
             {normalizeStatus(receipt.status) === "SUBMITTED" && (
               <>
-                <button className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" onClick={() => setConfirmApprove(true)}>
+                <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" disabled={actionLoading} onClick={() => setConfirmApprove(true)}>
                   Approve Receipt
                 </button>
-                <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setConfirmCancel(true)}>
+                <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" disabled={actionLoading} onClick={() => setConfirmCancel(true)}>
                   Cancel Receipt
                 </button>
               </>
             )}
             {["RECEIVED", "PARTIALLY_RETURNED"].includes(normalizeStatus(receipt.status)) && (
-              <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" onClick={() => setReturnOpen(true)}>
+              <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" disabled={actionLoading} onClick={() => setReturnOpen(true)}>
                 Return Items
               </button>
             )}
-            <button className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => window.print()}>
+            {normalizeStatus(receipt.status) === "RETURN_REQUESTED" && (
+              <>
+                <button type="button" className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700" disabled={actionLoading} onClick={() => setConfirmApproveReturn(true)}>
+                  Approve Return
+                </button>
+                <button type="button" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700" disabled={actionLoading} onClick={() => setConfirmRejectReturn(true)}>
+                  Reject Return
+                </button>
+              </>
+            )}
+            <button type="button" className="inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-semibold hover:bg-muted" onClick={() => window.print()}>
               <Printer size={16} /> Print Receipt
             </button>
           </div>
@@ -349,12 +419,45 @@ const GoodsReceiptDetail = () => {
                     <p className="text-sm font-medium text-red-600 dark:text-red-400">{receipt.cancelledByName}</p>
                   </div>
                 )}
+                {receipt.returnRequestedByName && (
+                  <div className="space-y-1">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Return Requested By</p>
+                    <p className="text-sm font-medium text-foreground">{receipt.returnRequestedByName}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* Right Column: Received Items */}
           <div className="lg:col-span-2 flex flex-col min-h-0">
+            {normalizeStatus(receipt.status) === "RETURN_REQUESTED" && receipt.returnRequestItems && receipt.returnRequestItems.length > 0 && (
+              <Card className="mb-4 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-amber-700 dark:text-amber-300">Pending Return Request</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                    Requested by {receipt.returnRequestedByName || "Unknown"} on {formatDate(receipt.returnRequestedAt)}
+                  </p>
+                  <div className="space-y-1">
+                    {receipt.returnRequestItems.map((pending, idx) => {
+                      const item = receipt.items.find((i) => i.id === pending.goods_receipt_item_id);
+                      return (
+                        <div key={idx} className="flex items-center gap-2 text-sm">
+                          <span className="font-medium text-foreground">{item?.productName || "Unknown Item"}</span>
+                          <span className="text-muted-foreground">×</span>
+                          <span className="font-semibold text-foreground">{pending.quantity_returned}</span>
+                          {pending.notes && (
+                            <span className="text-xs text-muted-foreground italic">({pending.notes})</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <Card className="flex-1 flex flex-col min-h-0">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg">Received Items</CardTitle>
@@ -376,7 +479,7 @@ const GoodsReceiptDetail = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" onClick={approveReceipt}>
+            <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" disabled={actionLoading} onClick={approveReceipt}>
               Approve
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -393,7 +496,7 @@ const GoodsReceiptDetail = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go Back</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={cancelReceipt}>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" disabled={actionLoading} onClick={cancelReceipt}>
               Cancel Goods Receipt
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -410,7 +513,7 @@ const GoodsReceiptDetail = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go Back</AlertDialogCancel>
-            <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" onClick={receiveReceipt}>
+            <AlertDialogAction className="bg-blue-600 text-white hover:bg-blue-700" disabled={actionLoading} onClick={receiveReceipt}>
               Receive Goods
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -427,8 +530,42 @@ const GoodsReceiptDetail = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" onClick={deleteReceipt}>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" disabled={actionLoading} onClick={deleteReceipt}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmApproveReturn} onOpenChange={setConfirmApproveReturn}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Return Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will deduct the returned items from inventory. Items with insufficient stock will be partially returned. Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-green-600 text-white hover:bg-green-700" disabled={actionLoading} onClick={approveReturn}>
+              Approve Return
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmRejectReturn} onOpenChange={setConfirmRejectReturn}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Return Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reject this return request? The items will remain in inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-white hover:bg-destructive/90" disabled={actionLoading} onClick={rejectReturn}>
+              Reject Return
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -439,10 +576,10 @@ const GoodsReceiptDetail = () => {
         onOpenChange={setReturnOpen}
         goodsReceipt={receipt}
         onSaved={async () => {
-          showToast("success", "Return processed successfully", "The return items were processed and stock ledger was updated.");
+          toast.success("Return request submitted", { description: "The return request is awaiting approval." });
           await loadGoodsReceipt();
         }}
-        onError={(message) => showToast("error", "Unable to return items", message)}
+        onError={(message) => toast.error("Unable to submit return request", { description: message })}
       />
 
       {receipt?.purchaseOrder && (
@@ -452,10 +589,10 @@ const GoodsReceiptDetail = () => {
           purchaseOrder={receipt.purchaseOrder}
           editGoodsReceipt={editGoodsReceiptData}
           onSaved={async () => {
-            showToast("success", "Goods receipt updated", "The goods receipt was updated successfully.");
+            toast.success("Goods receipt updated", { description: "The goods receipt was updated successfully." });
             await loadGoodsReceipt();
           }}
-          onError={(message) => showToast("error", "Unable to update receipt", message)}
+          onError={(message) => toast.error("Unable to update receipt", { description: message })}
         />
       )}
     </div>

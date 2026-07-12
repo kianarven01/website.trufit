@@ -3,10 +3,14 @@
 namespace App\Domains\Purchasing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Purchasing\Http\Controllers\Traits\HandlesUseCaseErrors;
+use App\Domains\Purchasing\Application\Services\StockReceivingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
+use App\Domains\Purchasing\Domain\Models\StockMovement;
+use App\Domains\Purchasing\Application\Services\PurchaseOrderStatusService;
 use App\Domains\Purchasing\Http\Requests\StoreGoodsReceiptRequest;
 use App\Domains\Purchasing\Http\Requests\UpdateGoodsReceiptRequest;
 use App\Domains\Purchasing\Application\UseCases\CreateGoodsReceipt;
@@ -15,16 +19,19 @@ use App\Domains\Purchasing\Application\UseCases\ReceiveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceipt;
 use App\Domains\Purchasing\Application\UseCases\ReturnGoodsReceiptItems;
 use RuntimeException;
-use Throwable;
+use App\Domains\Purchasing\Application\UseCases\RequestGoodsReceiptReturn;
+use App\Domains\Purchasing\Application\UseCases\ApproveGoodsReceiptReturn;
+use App\Domains\Purchasing\Application\UseCases\RejectGoodsReceiptReturn;
 
 class GoodsReceiptController extends Controller
 {
+    use HandlesUseCaseErrors;
     public function index(Request $request): JsonResponse
     {
         $search = $request->query('search');
         $status = $request->query('status');
         $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
-        $perPage = (int) $request->query('per_page', 10);
+        $perPage = $this->clampPerPage($request->query('per_page', 10));
 
         $query = GoodsReceipt::with(['purchaseOrder.supplier', 'items.product.manufacturer', 'createdByUser.employee', 'receivedByUser.employee', 'approvedByUser.employee', 'returnedByUser.employee', 'cancelledByUser.employee']);
 
@@ -75,6 +82,7 @@ class GoodsReceiptController extends Controller
             'approvedByUser.employee',
             'returnedByUser.employee',
             'cancelledByUser.employee',
+            'returnRequestedByUser.employee',
         ])->findOrFail($id);
 
         return response()->json([
@@ -93,17 +101,8 @@ class GoodsReceiptController extends Controller
                 'message' => 'Goods receipt draft created successfully.',
                 'goods_receipt' => $receipt,
             ], 201);
-        } catch (RuntimeException $e) {
-            $code = $e->getCode();
-            $statusCode = is_numeric($code) && $code >= 100 && $code < 600 ? (int)$code : 422;
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $statusCode);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to create goods receipt.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'create goods receipt');
         }
     }
 
@@ -118,21 +117,8 @@ class GoodsReceiptController extends Controller
                 'message' => 'Goods receipt marked as received successfully.',
                 'goods_receipt' => $receipt,
             ]);
-        } catch (RuntimeException $e) {
-            $status = $e->getCode();
-
-            if (!in_array($status, [400, 404, 409, 422], true)) {
-                $status = 400;
-            }
-
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $status);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to receive goods receipt.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'receive goods receipt');
         }
     }
 
@@ -145,44 +131,41 @@ class GoodsReceiptController extends Controller
                 'message' => 'Goods receipt approved. Inventory updated successfully.',
                 'goods_receipt' => $receipt,
             ]);
-        } catch (RuntimeException $e) {
-            $status = $e->getCode();
-
-            if (!in_array($status, [400, 404, 409, 422], true)) {
-                $status = 400;
-            }
-
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $status);
-        } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Failed to approve goods receipt.',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'approve goods receipt');
         }
     }
 
-    public function cancel(string $id, Request $request): JsonResponse
+    public function cancel(string $id, Request $request, PurchaseOrderStatusService $poStatusService): JsonResponse
     {
-        $receipt = GoodsReceipt::findOrFail($id);
+        try {
+            $receipt = DB::transaction(function () use ($id, $request, $poStatusService) {
+                $receipt = GoodsReceipt::with('purchaseOrder')->lockForUpdate()->findOrFail($id);
 
-        if (!in_array($receipt->status, ['DRAFT', 'RECEIVED'], true)) {
+                if (!in_array($receipt->status, ['DRAFT', 'SUBMITTED'], true)) {
+                    throw new RuntimeException('Only draft or submitted goods receipts can be cancelled.', 422);
+                }
+
+                $receipt->update([
+                    'status' => 'CANCELLED',
+                    'cancelled_at' => now(),
+                    'cancelled_by' => $request->user()?->id,
+                ]);
+
+                if ($receipt->purchaseOrder) {
+                    $poStatusService->updateReceiptStatus($receipt->purchaseOrder);
+                }
+
+                return $receipt;
+            });
+
             return response()->json([
-                'message' => 'Only draft or received goods receipts can be cancelled.',
-            ], 422);
+                'message' => 'Goods receipt cancelled successfully.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'cancel goods receipt');
         }
-
-        $receipt->update([
-            'status' => 'CANCELLED',
-            'cancelled_at' => now(),
-            'cancelled_by' => $request->user()?->id,
-        ]);
-
-        return response()->json([
-            'message' => 'Goods receipt cancelled successfully.',
-            'goods_receipt' => $receipt,
-        ]);
     }
 
     public function returnItems(Request $request, string $id, ReturnGoodsReceiptItems $returnGoodsReceiptItems): JsonResponse
@@ -201,17 +184,58 @@ class GoodsReceiptController extends Controller
                 'message' => 'Goods receipt items returned successfully. Stock ledger was updated.',
                 'goods_receipt' => $receipt,
             ]);
-        } catch (RuntimeException $e) {
-            $code = $e->getCode();
-            $statusCode = is_numeric($code) && $code >= 100 && $code < 600 ? (int)$code : 422;
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'process return items');
+        }
+    }
+
+    public function requestReturn(Request $request, string $id, RequestGoodsReceiptReturn $useCase): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => ['required', 'array'],
+            'items.*.goods_receipt_item_id' => ['required', 'string'],
+            'items.*.quantity_returned' => ['required', 'integer', 'min:1'],
+            'items.*.notes' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $receipt = $useCase->execute($id, $validated['items'], $request->user()?->id);
+
             return response()->json([
-                'message' => $e->getMessage(),
-            ], $statusCode);
-        } catch (Throwable $e) {
+                'message' => 'Return request submitted successfully. Awaiting approval.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'request return');
+        }
+    }
+
+    public function approveReturn(string $id, Request $request, ApproveGoodsReceiptReturn $useCase): JsonResponse
+    {
+        try {
+            $result = $useCase->execute($id, $request->user()?->id);
+
             return response()->json([
-                'message' => 'Failed to process return items.',
-                'error' => $e->getMessage(),
-            ], 500);
+                'message' => 'Return approved. Inventory updated successfully.',
+                'goods_receipt' => $result['receipt'],
+                'results' => $result['results'],
+            ]);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'approve return');
+        }
+    }
+
+    public function rejectReturn(string $id, Request $request, RejectGoodsReceiptReturn $useCase): JsonResponse
+    {
+        try {
+            $receipt = $useCase->execute($id, $request->user()?->id);
+
+            return response()->json([
+                'message' => 'Return request rejected.',
+                'goods_receipt' => $receipt,
+            ]);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'reject return');
         }
     }
 
@@ -239,15 +263,8 @@ class GoodsReceiptController extends Controller
                 'message' => 'Goods receipt updated successfully.',
                 'goods_receipt' => $receipt,
             ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 422);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to update goods receipt.',
-                'error' => $e->getMessage(),
-            ], 400);
+            return $this->handleUseCaseException($e, 'update goods receipt');
         }
     }
 
@@ -289,6 +306,14 @@ class GoodsReceiptController extends Controller
         }
 
         DB::transaction(function () use ($receipt) {
+            // Reverse inventory before deleting movements
+            if (in_array($receipt->status, ['RECEIVED', 'PARTIALLY_RETURNED'], true)) {
+                $stockService = new StockReceivingService();
+                $stockService->undoReceive($receipt);
+            }
+
+            StockMovement::where('reference_type', 'GOODS_RECEIPT')
+                ->where('reference_id', $receipt->id)->delete();
             $receipt->items()->delete();
             $receipt->forceDelete();
         });

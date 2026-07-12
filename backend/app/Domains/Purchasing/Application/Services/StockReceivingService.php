@@ -2,19 +2,15 @@
 
 namespace App\Domains\Purchasing\Application\Services;
 
+use App\Domains\Purchasing\Application\Services\Traits\ResolvesDefaultLocation;
 use App\Domains\Inventory\Domain\Models\Inventory;
-use App\Domains\Inventory\Domain\Models\StockLocation;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\StockMovement;
 use RuntimeException;
 
 class StockReceivingService
 {
-    private function getDefaultLocationId(): ?string
-    {
-        $location = StockLocation::where('is_active', true)->orderBy('name')->first();
-        return $location?->id;
-    }
+    use ResolvesDefaultLocation;
 
     public function receiveGoods(GoodsReceipt $receipt): int
     {
@@ -93,5 +89,25 @@ class StockReceivingService
         }
 
         return $createdMovementCount;
+    }
+
+    public function undoReceive(GoodsReceipt $receipt): void
+    {
+        $receipt->loadMissing(['items']);
+
+        $stockMovements = StockMovement::where('reference_type', 'GOODS_RECEIPT')
+            ->where('reference_id', $receipt->id)
+            ->get();
+
+        foreach ($stockMovements as $movement) {
+            $inventory = Inventory::where('id', $movement->inventory_id)->lockForUpdate()->first();
+
+            if ($inventory) {
+                $inventory->quantity_on_hand = max(0, (int) $inventory->quantity_on_hand - (int) $movement->quantity);
+                $inventory->save();
+            }
+
+            $movement->delete();
+        }
     }
 }

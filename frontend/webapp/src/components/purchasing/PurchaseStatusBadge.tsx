@@ -56,6 +56,10 @@ const statusConfig: Record<string, { label: string; className: string }> = {
     label: "Returned",
     className: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
   },
+  RETURN_REQUESTED: {
+    label: "Return Requested",
+    className: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  },
   MATCH_EXCEPTION: {
     label: "Match Exception",
     className: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300 animate-pulse",

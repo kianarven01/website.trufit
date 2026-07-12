@@ -218,6 +218,11 @@ const NewPurchaseOrderModal = ({
       return;
     }
 
+    if (orderDate && requestShipDate && requestShipDate < orderDate) {
+      onError?.("Expected delivery date cannot be before the order date.");
+      return;
+    }
+
     const validItems = items.filter(
       (item) => item.productId && item.productSupplierId && Number(item.quantity) > 0
     );
@@ -320,6 +325,7 @@ const NewPurchaseOrderModal = ({
                 type="date"
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
                 value={requestShipDate}
+                min={orderDate || undefined}
                 onChange={(event) => setRequestShipDate(event.target.value)}
               />
             </div>

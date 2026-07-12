@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
-import { formatDate, getCleanApiError, getBillStatus } from "@/components/purchasing/purchasingUtils";
+import { formatDate, getCleanApiError, getBillStatus, formatCurrency } from "@/components/purchasing/purchasingUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
@@ -34,7 +34,6 @@ interface BillDetail {
   dueDate: string;
   totalAmount: number;
   notes?: string | null;
-  createdBy: string;
   createdByName?: string | null;
   approvedByName?: string | null;
   paidByName?: string | null;
@@ -108,10 +107,9 @@ export default function SupplierBillDetail() {
         dueDate: raw.due_date,
         totalAmount: parseFloat(raw.total_amount) || 0,
         notes: raw.notes,
-        createdBy: String(raw.created_by),
-        createdByName: raw.created_by_name,
-        approvedByName: raw.approved_by_name,
-        paidByName: raw.paid_by_name,
+        createdByName: raw.createdByName,
+        approvedByName: raw.approvedByName,
+        paidByName: raw.paidByName,
         paidAt: raw.paid_at,
         createdAt: raw.created_at,
         items: formattedItems,
@@ -206,6 +204,7 @@ export default function SupplierBillDetail() {
         <div className="flex flex-wrap items-center gap-2">
           {bill.status === "MATCH_EXCEPTION" && (
             <button
+              type="button"
               onClick={() => setShowApproveDialog(true)}
               className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
@@ -215,6 +214,7 @@ export default function SupplierBillDetail() {
 
           {bill.status === "AWAITING_PAYMENT" && (
             <button
+              type="button"
               onClick={() => setShowPayDialog(true)}
               className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
             >
@@ -222,8 +222,9 @@ export default function SupplierBillDetail() {
             </button>
           )}
 
-          {["DRAFT", "MATCH_EXCEPTION", "AWAITING_PAYMENT"].includes(bill.status) && (
+            {["DRAFT", "MATCH_EXCEPTION", "AWAITING_PAYMENT", "PAID"].includes(bill.status) && (
             <button
+              type="button"
               onClick={() => setShowVoidDialog(true)}
               className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20"
             >
@@ -280,7 +281,7 @@ export default function SupplierBillDetail() {
                 <div className="space-y-1 border-t border-border/60 pt-3">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Total Amount</p>
                   <p className="text-xl font-bold text-foreground">
-                    ₱{bill.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {formatCurrency(bill.totalAmount)}
                   </p>
                 </div>
               </CardContent>
@@ -293,7 +294,7 @@ export default function SupplierBillDetail() {
               <CardContent className="space-y-3">
                 <div className="space-y-1">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Created By</p>
-                  <p className="text-sm font-medium text-foreground">{bill.createdByName || `User ID: ${bill.createdBy}`}</p>
+                  <p className="text-sm font-medium text-foreground">{bill.createdByName || "System"}</p>
                   <p className="text-xs text-muted-foreground">{formatDate(bill.createdAt)}</p>
                 </div>
 
@@ -379,15 +380,15 @@ export default function SupplierBillDetail() {
                                 </TableCell>
                                 
                                 <TableCell className={`w-[13%] text-right py-3 ${priceMismatch ? "font-bold text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>
-                                  ₱{item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {formatCurrency(item.unitPrice)}
                                 </TableCell>
 
                                 <TableCell className="w-[13%] text-right text-muted-foreground py-3">
-                                  ₱{item.poItemUnitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {formatCurrency(item.poItemUnitCost)}
                                 </TableCell>
 
                                 <TableCell className="w-[18%] text-center font-bold text-foreground py-3">
-                                  ₱{item.lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  {formatCurrency(item.lineTotal)}
                                 </TableCell>
                               </TableRow>
                             );
@@ -442,7 +443,7 @@ export default function SupplierBillDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Record Payment?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this invoice of <strong>₱{bill.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> as paid?
+              Are you sure you want to mark this invoice of <strong>{formatCurrency(bill.totalAmount)}</strong> as paid?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

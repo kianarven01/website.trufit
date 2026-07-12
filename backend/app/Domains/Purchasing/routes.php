@@ -27,7 +27,9 @@ Route::prefix('purchasing')->group(function () {
     Route::post('/goods-receipts/{id}/receive', [GoodsReceiptController::class, 'receive']);
     Route::post('/goods-receipts/{id}/approve', [GoodsReceiptController::class, 'approve']);
     Route::post('/goods-receipts/{id}/cancel', [GoodsReceiptController::class, 'cancel']);
-    Route::post('/goods-receipts/{id}/return', [GoodsReceiptController::class, 'returnItems']);
+    Route::post('/goods-receipts/{id}/return/request', [GoodsReceiptController::class, 'requestReturn']);
+    Route::post('/goods-receipts/{id}/return/approve', [GoodsReceiptController::class, 'approveReturn']);
+    Route::post('/goods-receipts/{id}/return/reject', [GoodsReceiptController::class, 'rejectReturn']);
     Route::delete('/goods-receipts/{id}', [GoodsReceiptController::class, 'destroy']);
     Route::patch('/goods-receipts/{id}/restore', [GoodsReceiptController::class, 'restore']);
     Route::delete('/goods-receipts/{id}/force', [GoodsReceiptController::class, 'forceDelete']);

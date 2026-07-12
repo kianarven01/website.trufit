@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import CreateSupplierBillModal, { BillPurchaseOrder } from "@/components/purchasing/CreateSupplierBillModal";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
-import { formatDate, getCleanApiError, getRows, normalizeStatus, getBillStatus } from "@/components/purchasing/purchasingUtils";
+import { formatDate, getCleanApiError, normalizeStatus, getBillStatus, getApprovedReceivedQuantity, formatCurrency } from "@/components/purchasing/purchasingUtils";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
@@ -13,25 +13,6 @@ import { Eye, Plus, CreditCard, ShieldCheck, MoreVertical, Trash2, RefreshCw } f
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-
-const getApprovedReceivedQuantity = (row: any) => {
-  const receiptItems = Array.isArray(row.receipt_items)
-    ? row.receipt_items
-    : Array.isArray(row.receiptItems)
-      ? row.receiptItems
-      : [];
-
-  return receiptItems
-    .filter((receiptItem: any) => {
-      const status = normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status);
-      return status === "RECEIVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
-    })
-    .reduce((sum: number, receiptItem: any) => {
-      const received = Number(receiptItem.quantity_received || 0);
-      const returned = Number(receiptItem.quantity_returned || receiptItem.quantityReturned || 0);
-      return sum + (received - returned);
-    }, 0);
-};
 
 interface SupplierBillRow {
   id: string;
@@ -106,62 +87,63 @@ export default function SupplierBillsList() {
   const loadPurchaseOrders = async () => {
     try {
       const response = await api.get("/purchasing/purchase-orders", {
-        params: { per_page: 100 },
+        params: {
+          status: "WAITING_TO_RECEIVE,PARTIALLY_RECEIVED,COMPLETED,CLOSED",
+          per_page: 200,
+        },
       });
 
       const rawPOs = response.data?.purchase_orders || [];
       const eligiblePOs = rawPOs
-        .filter((po: any) =>
-          ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "COMPLETED"].includes(
-            normalizeStatus(po.status)
-          )
-        )
-        .map((po: any) => {
+        .flatMap((po: any) => {
+          if (!["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "COMPLETED", "CLOSED"].includes(normalizeStatus(po.status))) return [];
           const itemsRaw = Array.isArray(po.items) ? po.items : [];
           
           // Compute already billed quantities by PO item ID
-          const poBills = rawPOs.flatMap((p: any) => p.supplier_bills || p.supplierBills || []);
+          const poBills = po.supplier_bills || po.supplierBills || [];
           const billItems = poBills
             .filter((b: any) => b.status !== "VOID")
             .flatMap((b: any) => b.items || b.receiptItems || []);
 
-          return {
+          return [{
             id: String(po.id),
             poNumber: String(po.po_number),
             supplierName: String(po.supplier?.CompanyName ?? po.supplier?.name ?? "-"),
-            paymentTerms: String(po.supplier?.payment_terms ?? "NONE"),
-            items: itemsRaw.map((item: any) => {
-              const product = item.product || {};
-              const productName = product.name ?? item.product_name ?? "Unnamed Product";
-              const sku = product.SKU ?? product.sku ?? item.sku ?? "-";
-              const partNumber = product.part_number ?? item.part_number ?? "-";
-              
-              const approvedReceived = getApprovedReceivedQuantity(item);
+            supplierPaymentTerms: String(po.supplier?.payment_terms ?? "NONE"),
+            items: itemsRaw
+              .map((item: any) => {
+                const product = item.product || {};
+                const productName = product.name ?? item.product_name ?? "Unnamed Product";
+                const sku = product.SKU ?? product.sku ?? item.sku ?? "-";
+                const partNumber = product.part_number ?? item.part_number ?? "-";
 
-              // Sum already billed quantities
-              const totalBilled = billItems
-                .filter((bi: any) => {
-                  const targetId = bi.purchase_order_item_id ?? bi.purchaseOrderItemId;
-                  return String(targetId) === String(item.id);
-                })
-                .reduce((sum: number, bi: any) => {
-                  const qty = bi.quantity_billed ?? bi.quantityBilled ?? 0;
-                  return sum + Number(qty);
-                }, 0);
+                const approvedReceived = getApprovedReceivedQuantity(item);
 
-              return {
-                id: String(item.id),
-                productId: String(item.product_id),
-                productName,
-                sku,
-                partNumber,
-                quantityOrdered: Number(item.quantity_ordered),
-                quantityReceived: approvedReceived,
-                unitCost: Number(item.unit_cost),
-                quantityBilled: totalBilled,
-              };
-            }),
-          };
+                // Sum already billed quantities
+                const totalBilled = billItems
+                  .filter((bi: any) => {
+                    const targetId = bi.purchase_order_item_id ?? bi.purchaseOrderItemId;
+                    return String(targetId) === String(item.id);
+                  })
+                  .reduce((sum: number, bi: any) => {
+                    const qty = bi.quantity_billed ?? bi.quantityBilled ?? 0;
+                    return sum + Number(qty);
+                  }, 0);
+
+                return {
+                  id: String(item.id),
+                  productId: String(item.product_id),
+                  productName,
+                  sku,
+                  partNumber,
+                  quantityOrdered: Number(item.quantity_ordered),
+                  quantityReceived: approvedReceived,
+                  unitCost: Number(item.unit_cost),
+                  quantityBilled: totalBilled,
+                };
+              })
+              .filter((item) => item.quantityReceived > 0),
+          }];
         });
 
       setPurchaseOrders(eligiblePOs);
@@ -220,7 +202,7 @@ export default function SupplierBillsList() {
       <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+            <button type="button" className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
               <MoreVertical size={16} />
             </button>
           </DropdownMenuTrigger>
@@ -294,6 +276,7 @@ export default function SupplierBillsList() {
           archived: showArchived ? "true" : "false",
         }}
         onFilterChange={(key, value) => {
+          setPage(1);
           if (key === "status") {
             setStatusFilter(value);
           } else if (key === "archived") {
@@ -351,7 +334,7 @@ export default function SupplierBillsList() {
                     <TableCell className="text-center text-muted-foreground">{formatDate(bill.billDate)}</TableCell>
                     <TableCell className="text-center text-muted-foreground font-medium">{formatDate(bill.dueDate)}</TableCell>
                     <TableCell className="text-center font-semibold text-foreground">
-                      ₱{bill.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatCurrency(bill.totalAmount)}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">

@@ -3,11 +3,18 @@
 namespace App\Domains\Purchasing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Domains\Purchasing\Http\Controllers\Traits\HandlesUseCaseErrors;
+use App\Domains\Purchasing\Application\Services\StockReceivingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrder;
 use App\Domains\Purchasing\Domain\Models\PurchaseOrderItem;
+use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
+use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
+use App\Domains\Purchasing\Domain\Models\SupplierBill;
+use App\Domains\Purchasing\Domain\Models\SupplierBillItem;
+use App\Domains\Purchasing\Domain\Models\StockMovement;
 use App\Domains\Purchasing\Http\Requests\StorePurchaseOrderRequest;
 use App\Domains\Purchasing\Http\Requests\UpdatePurchaseOrderRequest;
 use App\Domains\Purchasing\Application\UseCases\CreatePurchaseOrder;
@@ -15,15 +22,17 @@ use App\Domains\Purchasing\Application\UseCases\SubmitPurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ApprovePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ClosePurchaseOrder;
 use App\Domains\Purchasing\Application\UseCases\ReopenPurchaseOrder;
+use App\Domains\Purchasing\Application\UseCases\CancelPurchaseOrder;
 
 class PurchaseOrderController extends Controller
 {
+    use HandlesUseCaseErrors;
     public function index(Request $request): JsonResponse
     {
         $search = $request->query('search');
         $status = $request->query('status');
         $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
-        $perPage = (int) $request->query('per_page', 10);
+        $perPage = $this->clampPerPage($request->query('per_page', 10));
 
         $query = PurchaseOrder::with([
             'supplier',
@@ -51,7 +60,8 @@ class PurchaseOrderController extends Controller
         }
 
         if ($status && $status !== 'ALL') {
-            $query->where('status', strtoupper($status));
+            $statuses = array_map('strtoupper', array_map('trim', explode(',', $status)));
+            $query->whereIn('status', $statuses);
         }
 
         $paginated = $query->orderByDesc('created_at')->paginate($perPage);
@@ -99,10 +109,7 @@ class PurchaseOrderController extends Controller
                 'purchase_order' => $purchaseOrder,
             ], 201);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to create purchase order.',
-                'error' => $e->getMessage(),
-            ], 400);
+            return $this->handleUseCaseException($e, 'create purchase order');
         }
     }
 
@@ -115,15 +122,8 @@ class PurchaseOrderController extends Controller
                 'message' => 'Purchase order submitted for approval.',
                 'purchase_order' => $purchaseOrder,
             ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 400);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to submit purchase order.',
-                'error' => $e->getMessage(),
-            ], 400);
+            return $this->handleUseCaseException($e, 'submit purchase order');
         }
     }
 
@@ -136,38 +136,23 @@ class PurchaseOrderController extends Controller
                 'message' => 'Purchase order approved successfully.',
                 'purchase_order' => $purchaseOrder,
             ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 400);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to approve purchase order.',
-                'error' => $e->getMessage(),
-            ], 400);
+            return $this->handleUseCaseException($e, 'approve purchase order');
         }
     }
 
-    public function cancel(string $id, Request $request): JsonResponse
+    public function cancel(string $id, Request $request, CancelPurchaseOrder $cancelPurchaseOrder): JsonResponse
     {
-        $purchaseOrder = PurchaseOrder::findOrFail($id);
+        try {
+            $purchaseOrder = $cancelPurchaseOrder->execute($id, $request->user()?->id);
 
-        if (in_array($purchaseOrder->status, ['COMPLETED', 'CANCELLED'], true)) {
             return response()->json([
-                'message' => 'This purchase order cannot be cancelled.',
-            ], 422);
+                'message' => 'Purchase order cancelled successfully. All linked draft receipts and bills have been voided, and stock has been reversed.',
+                'purchase_order' => $purchaseOrder,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->handleUseCaseException($e, 'cancel purchase order');
         }
-
-        $purchaseOrder->update([
-            'status' => 'CANCELLED',
-            'cancelled_at' => now(),
-            'cancelled_by' => $request->user()?->id,
-        ]);
-
-        return response()->json([
-            'message' => 'Purchase order cancelled successfully.',
-            'purchase_order' => $purchaseOrder,
-        ]);
     }
 
     public function close(string $id, Request $request, ClosePurchaseOrder $closePurchaseOrder): JsonResponse
@@ -191,17 +176,11 @@ class PurchaseOrderController extends Controller
                 'message' => 'Purchase order closed successfully.',
                 'purchase_order' => $purchaseOrder,
             ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 400);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to close purchase order.',
-                'error' => $e->getMessage(),
-            ], 400);
+            return $this->handleUseCaseException($e, 'close purchase order');
         }
     }
+
     public function reopen(string $id, Request $request, ReopenPurchaseOrder $reopenPurchaseOrder): JsonResponse
     {
         try {
@@ -223,15 +202,8 @@ class PurchaseOrderController extends Controller
                 'message' => 'Purchase order reopened successfully.',
                 'purchase_order' => $purchaseOrder,
             ]);
-        } catch (\RuntimeException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-            ], $e->getCode() ?: 400);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to reopen purchase order.',
-                'error' => $e->getMessage(),
-            ], 400);
+            return $this->handleUseCaseException($e, 'reopen purchase order');
         }
     }
     public function update(UpdatePurchaseOrderRequest $request, string $id): JsonResponse
@@ -260,19 +232,16 @@ class PurchaseOrderController extends Controller
                 $subtotal = 0;
 
                 foreach ($validated['items'] as $item) {
-                    $lineTotal = (float) $item['quantity_ordered'] * (float) $item['unit_cost'];
-
-                    PurchaseOrderItem::create([
+                    $poItem = PurchaseOrderItem::create([
                         'purchase_order_id' => $purchaseOrder->id,
                         'product_id' => $item['product_id'],
                         'product_supplier_id' => $item['product_supplier_id'] ?? null,
                         'quantity_ordered' => $item['quantity_ordered'],
                         'unit_cost' => $item['unit_cost'],
-                        'line_total' => $lineTotal,
                         'notes' => $item['notes'] ?? null,
                     ]);
 
-                    $subtotal += $lineTotal;
+                    $subtotal += (float) $poItem->line_total;
                 }
 
                 $purchaseOrder->update([
@@ -338,6 +307,30 @@ class PurchaseOrderController extends Controller
         }
 
         DB::transaction(function () use ($purchaseOrder) {
+            $stockService = new StockReceivingService();
+
+            $receiptIds = $purchaseOrder->goodsReceipts()->pluck('id');
+            if ($receiptIds->isNotEmpty()) {
+                // Reverse inventory for each approved receipt before deleting movements
+                $receipts = GoodsReceipt::whereIn('id', $receiptIds)
+                    ->whereIn('status', ['RECEIVED', 'PARTIALLY_RETURNED'])
+                    ->get();
+                foreach ($receipts as $receipt) {
+                    $stockService->undoReceive($receipt);
+                }
+
+                StockMovement::where('reference_type', 'GOODS_RECEIPT')
+                    ->whereIn('reference_id', $receiptIds)->delete();
+                GoodsReceiptItem::whereIn('goods_receipt_id', $receiptIds)->delete();
+                GoodsReceipt::whereIn('id', $receiptIds)->delete();
+            }
+
+            $billIds = $purchaseOrder->supplierBills()->pluck('id');
+            if ($billIds->isNotEmpty()) {
+                SupplierBillItem::whereIn('supplier_bill_id', $billIds)->delete();
+                SupplierBill::whereIn('id', $billIds)->delete();
+            }
+
             $purchaseOrder->items()->delete();
             $purchaseOrder->forceDelete();
         });

@@ -2,19 +2,13 @@
 
 namespace App\Domains\Purchasing\Application\UseCases;
 
-use App\Domains\Purchasing\Application\Services\PurchaseOrderStatusService;
-use App\Domains\Purchasing\Application\Services\Traits\ResolvesDefaultLocation;
-use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
-use App\Domains\Purchasing\Domain\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-class ReturnGoodsReceiptItems
+class RequestGoodsReceiptReturn
 {
-    use ResolvesDefaultLocation;
-
     public function execute(string $goodsReceiptId, array $itemsData, ?string $userId = null): GoodsReceipt
     {
         return DB::transaction(function () use ($goodsReceiptId, $itemsData, $userId) {
@@ -23,19 +17,11 @@ class ReturnGoodsReceiptItems
                 ->findOrFail($goodsReceiptId);
 
             if (!in_array($receipt->status, ['RECEIVED', 'PARTIALLY_RETURNED'])) {
-                throw new RuntimeException('Only received or partially returned goods receipts can have items returned.', 422);
+                throw new RuntimeException('Only received or partially returned goods receipts can have return requests.', 422);
             }
 
-            $defaultLocationId = $this->getDefaultLocationId();
-            if (!$defaultLocationId) {
-                throw new RuntimeException('No active warehouse location found.', 422);
-            }
-
-            // Pre-calculate bulk aggregates per purchase_order_item_id to avoid N+1
             $poItemIds = array_values(array_map(fn ($d) => $d['goods_receipt_item_id'], $itemsData));
-
             $grItems = GoodsReceiptItem::whereIn('id', $poItemIds)->get()->keyBy('id');
-
             $purchaseOrderItemIds = $grItems->pluck('purchase_order_item_id')->unique()->values()->all();
 
             $totalBilledByPoItem = DB::table('SupplierBillItems')
@@ -62,7 +48,7 @@ class ReturnGoodsReceiptItems
                 ->groupBy('GoodsReceiptItems.purchase_order_item_id')
                 ->pluck('total', 'purchase_order_item_id');
 
-            $returnedCount = 0;
+            $requestItems = [];
 
             foreach ($itemsData as $itemInput) {
                 $goodsReceiptItemId = $itemInput['goods_receipt_item_id'];
@@ -92,70 +78,29 @@ class ReturnGoodsReceiptItems
 
                 if ($quantityToReturn > $allowedReturn) {
                     throw new RuntimeException(
-                        "Cannot return {$quantityToReturn} item(s) because {$totalBilled} item(s) have already been billed out of {$totalReceived} received. " .
-                        "Only {$unbilledReceived} unbilled item(s) are available for return.",
+                        "Cannot return {$quantityToReturn} item(s) because {$totalBilled} item(s) have already been billed. " .
+                        "Only {$allowedReturn} item(s) are available for return.",
                         422
                     );
                 }
 
-                $inventory = Inventory::query()
-                    ->where('productID', $item->product_id)
-                    ->where('product_supplier_id', $item->product_supplier_id)
-                    ->where('location_id', $defaultLocationId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (!$inventory || (int)$inventory->quantity_on_hand < $quantityToReturn) {
-                    $onHand = $inventory ? $inventory->quantity_on_hand : 0;
-                    throw new RuntimeException("Cannot return item. Insufficient stock on hand (requested: {$quantityToReturn}, available: {$onHand}).", 422);
-                }
-
-                $inventory->quantity_on_hand = (int) $inventory->quantity_on_hand - $quantityToReturn;
-                $inventory->save();
-
-                $item->quantity_returned = $item->quantity_returned + $quantityToReturn;
-                $item->save();
-
-                StockMovement::create([
-                    'inventory_id' => $inventory->id,
-                    'product_id' => $item->product_id,
-                    'product_supplier_id' => $item->product_supplier_id,
-                    'movement_type' => 'RETURN',
-                    'quantity' => $quantityToReturn,
-                    'reference_type' => 'GOODS_RECEIPT',
-                    'reference_id' => $receipt->id,
-                    'notes' => 'Return items: ' . ($notes ? $notes : 'Defective / Excess goods'),
-                ]);
-
-                $returnedCount++;
+                $requestItems[] = [
+                    'goods_receipt_item_id' => $goodsReceiptItemId,
+                    'quantity_returned' => $quantityToReturn,
+                    'notes' => $notes,
+                ];
             }
 
-            if ($returnedCount === 0) {
+            if (empty($requestItems)) {
                 throw new RuntimeException('No items were selected for return.', 422);
             }
 
-            $receipt->load('items');
-            $totalReceived = $receipt->items->sum('quantity_received');
-            $totalPromo = $receipt->items->sum('quantity_promo');
-            $totalUnits = $totalReceived + $totalPromo;
-            $totalReturned = $receipt->items->sum('quantity_returned');
-
-            if ($totalReturned >= $totalUnits) {
-                $newStatus = 'RETURNED';
-            } elseif ($totalReturned > 0) {
-                $newStatus = 'PARTIALLY_RETURNED';
-            } else {
-                $newStatus = 'RECEIVED';
-            }
-
             $receipt->update([
-                'status' => $newStatus,
-                'returned_by' => $userId,
+                'status' => 'RETURN_REQUESTED',
+                'return_request_items' => $requestItems,
+                'return_requested_by' => $userId,
+                'return_requested_at' => now(),
             ]);
-
-            if ($receipt->purchaseOrder) {
-                app(PurchaseOrderStatusService::class)->updateReceiptStatus($receipt->purchaseOrder);
-            }
 
             return $receipt->fresh(['purchaseOrder.supplier', 'items.product', 'items.purchaseOrderItem']);
         });

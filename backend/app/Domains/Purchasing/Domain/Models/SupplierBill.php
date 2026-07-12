@@ -33,6 +33,8 @@ class SupplierBill extends Model
         'approved_by',
         'paid_by',
         'paid_at',
+        'voided_by',
+        'voided_at',
     ];
 
     protected $casts = [
@@ -42,14 +44,23 @@ class SupplierBill extends Model
         'due_date' => 'date',
         'total_amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'voided_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
+    protected $hidden = [
+        'created_by',
+        'approved_by',
+        'paid_by',
+        'voided_by',
+    ];
+
     protected $appends = [
-        'created_by_name',
-        'approved_by_name',
-        'paid_by_name',
+        'createdByName',
+        'approvedByName',
+        'paidByName',
+        'voidedByName',
     ];
 
     protected static function boot()
@@ -92,6 +103,11 @@ class SupplierBill extends Model
         return $this->belongsTo(User::class, 'paid_by', 'id');
     }
 
+    public function voidedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by', 'id');
+    }
+
     public function getCreatedByNameAttribute(): ?string
     {
         return $this->createdByUser?->employee
@@ -110,6 +126,13 @@ class SupplierBill extends Model
     {
         return $this->paidByUser?->employee
             ? trim($this->paidByUser->employee->first_name . ' ' . $this->paidByUser->employee->last_name)
+            : null;
+    }
+
+    public function getVoidedByNameAttribute(): ?string
+    {
+        return $this->voidedByUser?->employee
+            ? trim($this->voidedByUser->employee->first_name . ' ' . $this->voidedByUser->employee->last_name)
             : null;
     }
 }

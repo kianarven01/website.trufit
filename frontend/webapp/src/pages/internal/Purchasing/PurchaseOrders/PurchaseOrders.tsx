@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import NewPurchaseOrderModal from "@/components/purchasing/NewPurchaseOrderModal";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
-import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
-import { formatCurrency, formatDate, getCleanApiError, getRows, normalizeStatus } from "@/components/purchasing/purchasingUtils";
+import { toast } from "sonner";
+import { formatCurrency, formatDate, getCleanApiError, getRows, normalizeStatus, normalizePurchaseOrderRow, PurchaseOrderRow } from "@/components/purchasing/purchasingUtils";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import DataToolbar from "@/components/DataToolbar";
@@ -14,34 +14,29 @@ import { cn } from "@/lib/utils";
 import { ImageIcon, MoreVertical, Eye, Send, Check, Trash2, XCircle, FileText, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-interface PurchaseOrderRow {
-  id: string;
-  poNumber: string;
-  supplierName: string;
-  orderDate: string | null;
-  expectedDelivery: string | null;
-  totalAmount: number;
-  status: string;
-  deletedAt?: string | null;
-}
 
-
-const normalizePurchaseOrder = (row: any): PurchaseOrderRow => ({
-  id: String(row.id ?? ""),
-  poNumber: String(row.po_number ?? row.poNumber ?? row.id ?? "-"),
-  supplierName: String(
-    row.supplier?.name ??
-      row.supplier?.CompanyName ??
-      row.supplier_name ??
-      row.supplierName ??
-      "-"
-  ),
-  orderDate: row.order_date ?? row.orderDate ?? row.created_at ?? null,
-  expectedDelivery: row.request_ship_date ?? row.expected_delivery_date ?? row.eta ?? null,
-  totalAmount: Number(row.total_amount ?? row.totalAmount ?? row.total ?? 0),
-  status: normalizeStatus(row.status),
-  deletedAt: row.deleted_at ?? null,
-});
+const PO_FILTERS_CONFIG = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "DRAFT" },
+      { label: "Submitted", value: "SUBMITTED" },
+      { label: "Approved", value: "APPROVED" },
+      { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
+      { label: "Received", value: "RECEIVED" },
+      { label: "Cancelled", value: "CANCELLED" },
+    ],
+  },
+  {
+    key: "archived",
+    label: "Archived",
+    options: [
+      { label: "Show Archived", value: "true" },
+      { label: "Hide Archived", value: "false" },
+    ],
+  },
+];
 
 const PurchaseOrders = () => {
   const navigate = useNavigate();
@@ -54,37 +49,8 @@ const PurchaseOrders = () => {
   const [confirmAction, setConfirmAction] = useState<{ order: PurchaseOrderRow; action: "submit" | "approve" | "cancel"; label: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<PurchaseOrderRow | null>(null);
   const [confirmForceDelete, setConfirmForceDelete] = useState<PurchaseOrderRow | null>(null);
-  const [toast, setToast] = useState<{
-    type: PurchasingToastType;
-    title: string;
-    message: string;
-  } | null>(null);
-
   const { page, setPage, pageSize, setPageSize } = usePagination(25);
   const [totalItems, setTotalItems] = useState(0);
-
-  const filtersConfig = [
-    {
-      key: "status",
-      label: "Status",
-      options: [
-        { label: "Draft", value: "DRAFT" },
-        { label: "Submitted", value: "SUBMITTED" },
-        { label: "Approved", value: "APPROVED" },
-        { label: "Partially Received", value: "PARTIALLY_RECEIVED" },
-        { label: "Received", value: "RECEIVED" },
-        { label: "Cancelled", value: "CANCELLED" },
-      ],
-    },
-    {
-      key: "archived",
-      label: "Archived",
-      options: [
-        { label: "Show Archived", value: "true" },
-        { label: "Hide Archived", value: "false" },
-      ],
-    },
-  ];
 
   const activeFilters = {
     status: activeFilter === "ALL" ? "all" : activeFilter,
@@ -101,10 +67,6 @@ const PurchaseOrders = () => {
     }
   };
 
-  const showToast = (type: PurchasingToastType, title: string, message: string) => {
-    setToast({ type, title, message });
-  };
-
   const loadPurchaseOrders = async () => {
     setLoading(true);
 
@@ -119,11 +81,11 @@ const PurchaseOrders = () => {
         },
       });
       const rows = getRows(response.data, ["purchase_orders", "purchaseOrders"]);
-      setOrders(rows.map(normalizePurchaseOrder).filter((order) => order.id));
+      setOrders(rows.flatMap((row) => { const o = normalizePurchaseOrderRow(row); return o.id ? [o] : []; }));
       setTotalItems(response.data?.pagination?.total ?? rows.length);
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to load purchase orders", getCleanApiError(error, "Failed to load purchase orders."));
+      toast.error("Unable to load purchase orders", { description: getCleanApiError(error, "Failed to load purchase orders.") });
       setOrders([]);
       setTotalItems(0);
     } finally {
@@ -144,44 +106,44 @@ const PurchaseOrders = () => {
 
     try {
       await api.post(`/purchasing/purchase-orders/${order.id}/${action}`);
-      showToast("success", "Purchase order updated", `${order.poNumber} was ${labels[action]} successfully.`);
+      toast.success("Purchase order updated", { description: `${order.poNumber} was ${labels[action]} successfully.` });
       await loadPurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to update purchase order", getCleanApiError(error, "Failed to update purchase order."));
+      toast.error("Unable to update purchase order", { description: getCleanApiError(error, "Failed to update purchase order.") });
     }
   };
 
   const archivePo = async (order: PurchaseOrderRow) => {
     try {
       await api.delete(`/purchasing/purchase-orders/${order.id}`);
-      showToast("success", "Purchase order archived", `${order.poNumber} was archived successfully.`);
+      toast.success("Purchase order archived", { description: `${order.poNumber} was archived successfully.` });
       await loadPurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to archive purchase order", getCleanApiError(error, "Failed to archive purchase order."));
+      toast.error("Unable to archive purchase order", { description: getCleanApiError(error, "Failed to archive purchase order.") });
     }
   };
 
   const handleRestore = async (order: PurchaseOrderRow) => {
     try {
       await api.patch(`/purchasing/purchase-orders/${order.id}/restore`);
-      showToast("success", "Purchase order restored", `${order.poNumber} has been restored.`);
+      toast.success("Purchase order restored", { description: `${order.poNumber} has been restored.` });
       await loadPurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to restore purchase order", getCleanApiError(error, "Failed to restore purchase order."));
+      toast.error("Unable to restore purchase order", { description: getCleanApiError(error, "Failed to restore purchase order.") });
     }
   };
 
   const handleForceDelete = async (order: PurchaseOrderRow) => {
     try {
       await api.delete(`/purchasing/purchase-orders/${order.id}/force`);
-      showToast("success", "Purchase order deleted", `${order.poNumber} was permanently deleted.`);
+      toast.success("Purchase order deleted", { description: `${order.poNumber} was permanently deleted.` });
       await loadPurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to permanently delete purchase order", getCleanApiError(error, "Failed to permanently delete purchase order."));
+      toast.error("Unable to permanently delete purchase order", { description: getCleanApiError(error, "Failed to permanently delete purchase order.") });
     }
   };
 
@@ -192,7 +154,7 @@ const PurchaseOrders = () => {
       <div className="flex items-center justify-end" onClick={(event) => event.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+            <button type="button" className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
               <MoreVertical size={16} />
             </button>
           </DropdownMenuTrigger>
@@ -264,23 +226,13 @@ const PurchaseOrders = () => {
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
-      {toast && (
-        <PurchasingToast
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          duration={4000}
-          onClose={() => setToast(null)}
-        />
-      )}
-
       {/* Toolbar */}
       <DataToolbar
         searchPlaceholder="Search PO number or supplier..."
         onSearch={(value) => { setSearch(value); setPage(1); }}
         onAdd={() => setIsCreateOpen(true)}
         addLabel="New PO"
-        filters={filtersConfig}
+        filters={PO_FILTERS_CONFIG}
         activeFilters={activeFilters}
         onFilterChange={handleFilterChange}
       />
@@ -324,7 +276,11 @@ const PurchaseOrders = () => {
                     </TableCell>
                     <TableCell className="text-center font-medium">{order.supplierName}</TableCell>
                     <TableCell className="text-center text-muted-foreground">{formatDate(order.orderDate)}</TableCell>
-                    <TableCell className="text-center font-semibold text-foreground">{formatCurrency(order.totalAmount)}</TableCell>
+                    <TableCell className="text-center font-semibold text-foreground">
+                      {["CLOSED", "RETURNED", "COMPLETED"].includes(order.status)
+                        ? formatCurrency(order.receivedAmount)
+                        : formatCurrency(order.totalAmount)}
+                    </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center">
                         <PurchaseStatusBadge status={order.status} />
@@ -425,10 +381,10 @@ const PurchaseOrders = () => {
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         onSaved={async () => {
-          showToast("success", "Purchase order created", "The purchase order was saved as draft.");
+          toast.success("Purchase order created", { description: "The purchase order was saved as draft." });
           await loadPurchaseOrders();
         }}
-        onError={(message) => showToast("error", "Unable to save purchase order", message)}
+        onError={(message) => toast.error("Unable to save purchase order", { description: message })}
       />
     </div>
   );

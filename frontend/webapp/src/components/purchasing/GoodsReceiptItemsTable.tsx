@@ -3,6 +3,8 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 
 export interface GoodsReceiptItemRow {
   id: string;
+  productId?: string;
+  productSupplierId?: string;
   productName: string;
   sku?: string | null;
   partNumber?: string | null;

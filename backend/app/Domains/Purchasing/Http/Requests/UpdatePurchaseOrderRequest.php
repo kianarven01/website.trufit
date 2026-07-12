@@ -31,6 +31,13 @@ class UpdatePurchaseOrderRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
+            $orderDate = $this->input('order_date');
+            $requestShipDate = $this->input('request_ship_date');
+
+            if ($orderDate && $requestShipDate && $requestShipDate < $orderDate) {
+                $validator->errors()->add('request_ship_date', 'Expected delivery date cannot be before the order date.');
+            }
+
             $items = $this->input('items');
             if (is_array($items)) {
                 $productIds = [];

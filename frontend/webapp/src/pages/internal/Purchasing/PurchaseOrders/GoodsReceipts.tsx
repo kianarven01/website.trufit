@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import CreateGoodsReceiptModal, { ReceiptPurchaseOrder } from "@/components/purchasing/CreateGoodsReceiptModal";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
-import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
-import { formatDate, getCleanApiError, getRows, normalizeStatus } from "@/components/purchasing/purchasingUtils";
+import { toast } from "sonner";
+import { formatDate, getCleanApiError, getRows, getApprovedReceivedQuantity, normalizeStatus, normalizeGoodsReceiptRow, GoodsReceiptRow } from "@/components/purchasing/purchasingUtils";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import DataToolbar from "@/components/DataToolbar";
@@ -13,53 +13,6 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { cn } from "@/lib/utils";
 import { ImageIcon, MoreVertical, Eye, Check, Trash2, XCircle, RefreshCw } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-interface GoodsReceiptRow {
-  id: string;
-  receiptNumber: string;
-  poNumber: string;
-  supplierName: string;
-  receivedAt: string | null;
-  status: string;
-  notes?: string | null;
-  deletedAt?: string | null;
-}
-
-const getApprovedReceivedQuantity = (row: any) => {
-  const receiptItems = Array.isArray(row.receipt_items)
-    ? row.receipt_items
-    : Array.isArray(row.receiptItems)
-      ? row.receiptItems
-      : [];
-
-  return receiptItems
-    .filter((receiptItem: any) => {
-      const status = normalizeStatus(receiptItem.goods_receipt?.status ?? receiptItem.goodsReceipt?.status);
-      return status === "RECEIVED" || status === "PARTIALLY_RETURNED" || status === "RETURNED";
-    })
-    .reduce((sum: number, receiptItem: any) => {
-      const received = Number(receiptItem.quantity_received || 0);
-      const returned = Number(receiptItem.quantity_returned || receiptItem.quantityReturned || 0);
-      return sum + (received - returned);
-    }, 0);
-};
-
-const normalizeGoodsReceipt = (row: any): GoodsReceiptRow => ({
-  id: String(row.id ?? ""),
-  receiptNumber: String(row.receipt_number ?? row.receiptNumber ?? row.id ?? "-"),
-  poNumber: String(row.purchase_order?.po_number ?? row.purchaseOrder?.poNumber ?? row.po_number ?? "-"),
-  supplierName: String(
-    row.purchase_order?.supplier?.name ??
-      row.purchase_order?.supplier?.CompanyName ??
-      row.purchaseOrder?.supplier?.name ??
-      row.supplier_name ??
-      "-"
-  ),
-  receivedAt: row.received_at ?? row.receivedAt ?? row.created_at ?? null,
-  status: normalizeStatus(row.status),
-  notes: row.notes ?? null,
-  deletedAt: row.deleted_at ?? null,
-});
 
 const normalizePurchaseOrderForReceipt = (row: any): ReceiptPurchaseOrder => {
   const itemsRaw = Array.isArray(row.items) ? row.items : [];
@@ -86,6 +39,29 @@ const normalizePurchaseOrderForReceipt = (row: any): ReceiptPurchaseOrder => {
   };
 };
 
+const GR_FILTERS_CONFIG = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "DRAFT" },
+      { label: "Approved", value: "APPROVED" },
+      { label: "Return Requested", value: "RETURN_REQUESTED" },
+      { label: "Partially Returned", value: "PARTIALLY_RETURNED" },
+      { label: "Returned", value: "RETURNED" },
+      { label: "Cancelled", value: "CANCELLED" },
+    ],
+  },
+  {
+    key: "archived",
+    label: "Archived",
+    options: [
+      { label: "Show Archived", value: "true" },
+      { label: "Hide Archived", value: "false" },
+    ],
+  },
+];
+
 const GoodsReceipts = () => {
   const navigate = useNavigate();
   const [receipts, setReceipts] = useState<GoodsReceiptRow[]>([]);
@@ -98,37 +74,9 @@ const GoodsReceipts = () => {
   const [confirmDelete, setConfirmDelete] = useState<GoodsReceiptRow | null>(null);
   const [confirmForceDelete, setConfirmForceDelete] = useState<GoodsReceiptRow | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [toast, setToast] = useState<{
-    type: PurchasingToastType;
-    title: string;
-    message: string;
-  } | null>(null);
-
   const { page, setPage, pageSize, setPageSize } = usePagination(25);
   const [totalItems, setTotalItems] = useState(0);
   const [activeFilter, setActiveFilter] = useState("ALL");
-
-  const filtersConfig = [
-    {
-      key: "status",
-      label: "Status",
-      options: [
-        { label: "Draft", value: "DRAFT" },
-        { label: "Approved", value: "APPROVED" },
-        { label: "Partially Returned", value: "PARTIALLY_RETURNED" },
-        { label: "Returned", value: "RETURNED" },
-        { label: "Cancelled", value: "CANCELLED" },
-      ],
-    },
-    {
-      key: "archived",
-      label: "Archived",
-      options: [
-        { label: "Show Archived", value: "true" },
-        { label: "Hide Archived", value: "false" },
-      ],
-    },
-  ];
 
   const activeFilters = {
     status: activeFilter === "ALL" ? "all" : activeFilter,
@@ -145,10 +93,6 @@ const GoodsReceipts = () => {
     }
   };
 
-  const showToast = (type: PurchasingToastType, title: string, message: string) => {
-    setToast({ type, title, message });
-  };
-
   const loadGoodsReceipts = async () => {
     setLoading(true);
 
@@ -163,11 +107,11 @@ const GoodsReceipts = () => {
         },
       });
       const rows = getRows(response.data, ["goods_receipts", "goodsReceipts"]);
-      setReceipts(rows.map(normalizeGoodsReceipt).filter((receipt) => receipt.id));
+      setReceipts(rows.flatMap((row) => { const r = normalizeGoodsReceiptRow(row); return r.id ? [r] : []; }));
       setTotalItems(response.data?.pagination?.total ?? rows.length);
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to load goods receipts", getCleanApiError(error, "Failed to load goods receipts."));
+      toast.error("Unable to load goods receipts", { description: getCleanApiError(error, "Failed to load goods receipts.") });
       setReceipts([]);
       setTotalItems(0);
     } finally {
@@ -180,9 +124,10 @@ const GoodsReceipts = () => {
       const response = await api.get("/purchasing/purchase-orders");
       const rows = getRows(response.data, ["purchase_orders", "purchaseOrders"]);
       setPurchaseOrders(
-        rows
-          .map(normalizePurchaseOrderForReceipt)
-          .filter((po) => ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED", "RETURNED"].includes(normalizeStatus(po.status)))
+        rows.flatMap((row) => {
+          const po = normalizePurchaseOrderForReceipt(row);
+          return ["WAITING_TO_RECEIVE", "PARTIALLY_RECEIVED"].includes(normalizeStatus(po.status)) ? [po] : [];
+        })
       );
     } catch (error) {
       console.error(error);
@@ -195,71 +140,66 @@ const GoodsReceipts = () => {
     void loadReceivablePurchaseOrders();
   }, [page, pageSize, search, activeFilter, showArchived]);
 
-  const filteredReceipts = receipts;
-
   const approveReceipt = async (receipt: GoodsReceiptRow) => {
     try {
       await api.post(`/purchasing/goods-receipts/${receipt.id}/approve`);
-      showToast("success", "Goods receipt approved", `${receipt.receiptNumber} was approved and inventory was updated.`);
+      toast.success("Goods receipt approved", { description: `${receipt.receiptNumber} was approved and inventory was updated.` });
       await loadGoodsReceipts();
       await loadReceivablePurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to approve receipt", getCleanApiError(error, "Failed to approve goods receipt."));
+      toast.error("Unable to approve receipt", { description: getCleanApiError(error, "Failed to approve goods receipt.") });
     }
   };
 
   const cancelReceipt = async (receipt: GoodsReceiptRow) => {
     try {
       await api.post(`/purchasing/goods-receipts/${receipt.id}/cancel`);
-      showToast("success", "Goods receipt cancelled", `${receipt.receiptNumber} was cancelled.`);
+      toast.success("Goods receipt cancelled", { description: `${receipt.receiptNumber} was cancelled.` });
       await loadGoodsReceipts();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to cancel receipt", getCleanApiError(error, "Failed to cancel goods receipt."));
+      toast.error("Unable to cancel receipt", { description: getCleanApiError(error, "Failed to cancel goods receipt.") });
     }
   };
 
   const archiveReceipt = async (receipt: GoodsReceiptRow) => {
     try {
       await api.delete(`/purchasing/goods-receipts/${receipt.id}`);
-      showToast("success", "Goods receipt archived", `${receipt.receiptNumber} was archived successfully.`);
+      toast.success("Goods receipt archived", { description: `${receipt.receiptNumber} was archived successfully.` });
       await loadGoodsReceipts();
       await loadReceivablePurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to archive goods receipt", getCleanApiError(error, "Failed to archive goods receipt."));
+      toast.error("Unable to archive goods receipt", { description: getCleanApiError(error, "Failed to archive goods receipt.") });
     }
   };
 
   const handleRestore = async (receipt: GoodsReceiptRow) => {
     try {
       await api.patch(`/purchasing/goods-receipts/${receipt.id}/restore`);
-      showToast("success", "Goods receipt restored", `${receipt.receiptNumber} has been restored.`);
+      toast.success("Goods receipt restored", { description: `${receipt.receiptNumber} has been restored.` });
       await loadGoodsReceipts();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to restore goods receipt", getCleanApiError(error, "Failed to restore goods receipt."));
+      toast.error("Unable to restore goods receipt", { description: getCleanApiError(error, "Failed to restore goods receipt.") });
     }
   };
 
   const handleForceDelete = async (receipt: GoodsReceiptRow) => {
     try {
       await api.delete(`/purchasing/goods-receipts/${receipt.id}/force`);
-      showToast("success", "Goods receipt deleted", `${receipt.receiptNumber} was permanently deleted.`);
+      toast.success("Goods receipt deleted", { description: `${receipt.receiptNumber} was permanently deleted.` });
       await loadGoodsReceipts();
       await loadReceivablePurchaseOrders();
     } catch (error: any) {
       console.error(error);
-      showToast("error", "Unable to permanently delete goods receipt", getCleanApiError(error, "Failed to permanently delete goods receipt."));
+      toast.error("Unable to permanently delete goods receipt", { description: getCleanApiError(error, "Failed to permanently delete goods receipt.") });
     }
   };
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
-      {toast && (
-        <PurchasingToast type={toast.type} title={toast.title} message={toast.message} duration={4000} onClose={() => setToast(null)} />
-      )}
 
       {/* Toolbar */}
       <DataToolbar
@@ -268,7 +208,7 @@ const GoodsReceipts = () => {
         onAdd={() => setModalOpen(true)}
         addLabel="Receive Delivery"
         addButtonClassName="bg-amber-500 hover:bg-amber-600 text-white"
-        filters={filtersConfig}
+        filters={GR_FILTERS_CONFIG}
         activeFilters={activeFilters}
         onFilterChange={handleFilterChange}
       />
@@ -299,7 +239,7 @@ const GoodsReceipts = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReceipts.map((receipt) => (
+                {receipts.map((receipt) => (
                   <TableRow
                     key={receipt.id}
                     onClick={() => navigate(`/webapp/purchasing/goods-receipts/${receipt.id}`)}
@@ -324,7 +264,7 @@ const GoodsReceipts = () => {
                       <div className="flex justify-end">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+                            <button type="button" className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
                               <MoreVertical size={16} />
                             </button>
                           </DropdownMenuTrigger>
@@ -489,11 +429,11 @@ const GoodsReceipts = () => {
         onOpenChange={setModalOpen}
         purchaseOrders={purchaseOrders}
         onSaved={async () => {
-          showToast("success", "Goods receipt saved", "The goods receipt was saved successfully.");
+          toast.success("Goods receipt saved", { description: "The goods receipt was saved successfully." });
           await loadGoodsReceipts();
           await loadReceivablePurchaseOrders();
         }}
-        onError={(message) => showToast("error", "Unable to save goods receipt", message)}
+        onError={(message) => toast.error("Unable to save goods receipt", { description: message })}
       />
     </div>
   );

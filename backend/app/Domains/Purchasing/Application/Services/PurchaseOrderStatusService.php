@@ -17,6 +17,7 @@ class PurchaseOrderStatusService
         $allFullyReceived = true;
         $totalReceived = 0;
         $totalReturned = 0;
+        $receivedAmount = 0;
 
         foreach ($purchaseOrder->items as $item) {
             $received = $item->receiptItems
@@ -31,22 +32,28 @@ class PurchaseOrderStatusService
             $totalReturned += $returned;
 
             $netReceived = $received - $returned;
+            $receivedAmount += $netReceived * (float) $item->unit_cost;
 
             if ($netReceived < $item->quantity_ordered) {
                 $allFullyReceived = false;
             }
         }
 
+        // Always persist received_amount (including for CLOSED POs)
+        $purchaseOrder->update([
+            'received_amount' => round($receivedAmount, 2),
+        ]);
+
         $overallNet = $totalReceived - $totalReturned;
+
+        if ($purchaseOrder->status === 'CLOSED') {
+            return;
+        }
 
         if ($totalReceived > 0 && $overallNet == 0) {
             $purchaseOrder->update([
                 'status' => 'RETURNED',
             ]);
-            return;
-        }
-
-        if ($purchaseOrder->status === 'CLOSED') {
             return;
         }
 

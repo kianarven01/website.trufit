@@ -1,5 +1,6 @@
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
+import { formatCurrency } from "@/components/purchasing/purchasingUtils";
 
 export interface PurchaseOrderItemRow {
   id: string;
@@ -15,13 +16,6 @@ export interface PurchaseOrderItemRow {
 interface PurchaseOrderItemsTableProps {
   items: PurchaseOrderItemRow[];
 }
-
-const formatCurrency = (value: number | string | null | undefined) =>
-  new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency: "PHP",
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0));
 
 const PurchaseOrderItemsTable = ({ items }: PurchaseOrderItemsTableProps) => {
   return (

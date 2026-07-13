@@ -33,13 +33,13 @@
         .meta-cell:last-child { border-right: none; }
         .meta-cell .label { font-size: 8px; color: #888; text-transform: uppercase; margin-bottom: 1px; }
         .meta-cell .value { font-size: 10px; font-weight: bold; color: #1a1a2e; }
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }
         .items-table th { background: #0033a0; color: #fff; padding: 6px 8px; font-size: 9px; text-transform: uppercase; text-align: left; font-weight: 600; }
-        .items-table th.num { text-align: right; }
-        .items-table th.cnt { text-align: center; }
+        .items-table th.num { text-align: right !important; }
+        .items-table th.cnt { text-align: center !important; }
         .items-table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 9.5px; }
-        .items-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-        .items-table td.cnt { text-align: center; }
+        .items-table td.num { text-align: right !important; font-variant-numeric: tabular-nums; }
+        .items-table td.cnt { text-align: center !important; }
         .items-table tr:nth-child(even) { background: #f8f9fa; }
         .items-table tr.subtotal-row td { border-top: 2px solid #0033a0; font-weight: bold; background: #f0f4ff; }
         .totals-section { display: flex; justify-content: flex-end; margin-bottom: 15px; }
@@ -146,11 +146,11 @@
         <thead>
             <tr>
                 <th width="4%">#</th>
-                <th width="34%">Product Name</th>
-                <th width="10%" class="cnt">Tax Code</th>
-                <th width="14%" class="cnt">Quantity</th>
-                <th width="19%" class="num">Unit Price</th>
-                <th width="19%" class="num">Total</th>
+                <th width="36%">Product Name</th>
+                <th width="18%" class="cnt" style="text-align: center;">Tax Code</th>
+                <th width="18%" class="cnt" style="text-align: center;">Quantity</th>
+                <th width="12%" class="num" style="text-align: right;">Unit Price</th>
+                <th width="12%" class="num" style="text-align: right;">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -166,10 +166,10 @@
                         <br><span style="font-size:8px; color:#666;">{{ $item->notes }}</span>
                     @endif
                 </td>
-                <td class="cnt">{{ ($item->tax_type === 'NON_TAXABLE' ? 'Non-VAT' : 'VAT') }}</td>
-                <td class="cnt">{{ $item->quantity_ordered }}</td>
-                <td class="num">{{ number_format($item->unit_cost, 2) }}</td>
-                <td class="num">{{ number_format($item->line_total, 2) }}</td>
+                <td class="cnt" style="text-align: center;">{{ ($item->tax_type === 'NON_TAXABLE' ? 'Non-VAT' : 'VAT') }}</td>
+                <td class="cnt" style="text-align: center;">{{ $item->quantity_ordered }}</td>
+                <td class="num" style="text-align: right;">{{ number_format($item->unit_cost, 2) }}</td>
+                <td class="num" style="text-align: right;">{{ number_format($item->line_total, 2) }}</td>
             </tr>
             @endforeach
             @if($purchaseOrder->items->count() === 0)

@@ -33,7 +33,7 @@
         .meta-cell:last-child { border-right: none; }
         .meta-cell .label { font-size: 8px; color: #888; text-transform: uppercase; margin-bottom: 1px; }
         .meta-cell .value { font-size: 10px; font-weight: bold; color: #1a1a2e; }
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }
         .items-table th { background: #0033a0; color: #fff; padding: 6px 8px; font-size: 9px; text-transform: uppercase; text-align: left; font-weight: 600; }
         .items-table th.num { text-align: right; }
         .items-table th.cnt { text-align: center; }
@@ -150,12 +150,12 @@
             <tr>
                 <th width="4%">#</th>
                 <th width="30%">Product Name</th>
-                <th width="10%" class="cnt">Ordered</th>
-                <th width="10%" class="cnt">Received</th>
-                <th width="10%" class="cnt">Free/Promo</th>
-                <th width="10%" class="cnt">Returned</th>
-                <th width="13%" class="num">Unit Cost</th>
-                <th width="13%" class="num">Total</th>
+                <th width="10%" class="cnt" style="text-align: center;">Ordered</th>
+                <th width="10%" class="cnt" style="text-align: center;">Received</th>
+                <th width="10%" class="cnt" style="text-align: center;">Free/Promo</th>
+                <th width="10%" class="cnt" style="text-align: center;">Returned</th>
+                <th width="13%" class="num" style="text-align: right;">Unit Cost</th>
+                <th width="13%" class="num" style="text-align: right;">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -172,12 +172,12 @@
                         <br><span style="font-size:8px; color:#888;">P/N: {{ $item->product->part_number }}</span>
                     @endif
                 </td>
-                <td class="cnt">{{ $item->purchaseOrderItem->quantity_ordered ?? '' }}</td>
-                <td class="cnt">{{ $item->quantity_received }}</td>
-                <td class="cnt">{{ $item->quantity_promo ?: '' }}</td>
-                <td class="cnt">{{ $item->quantity_returned ?: '' }}</td>
-                <td class="num">{{ number_format($unitCost, 2) }}</td>
-                <td class="num">{{ number_format($lineTotal, 2) }}</td>
+                <td class="cnt" style="text-align: center;">{{ $item->purchaseOrderItem->quantity_ordered ?? '' }}</td>
+                <td class="cnt" style="text-align: center;">{{ $item->quantity_received }}</td>
+                <td class="cnt" style="text-align: center;">{{ $item->quantity_promo ?: '' }}</td>
+                <td class="cnt" style="text-align: center;">{{ $item->quantity_returned ?: '' }}</td>
+                <td class="num" style="text-align: right;">{{ number_format($unitCost, 2) }}</td>
+                <td class="num" style="text-align: right;">{{ number_format($lineTotal, 2) }}</td>
             </tr>
             @endforeach
             @if($receipt->items->count() === 0)

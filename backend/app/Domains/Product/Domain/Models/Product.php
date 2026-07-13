@@ -40,6 +40,8 @@ class Product extends Model
         'is_oem',
         'oem_reference_number',
         'unit',
+        'conversion_factor',
+        'base_unit_id',
         'part_id',
         'manufacturer_id',
         'preferred_supplier_id',
@@ -51,6 +53,8 @@ class Product extends Model
         'category_id' => 'integer',
         'manufacturer_id' => 'integer',
         'unit' => 'integer',
+        'conversion_factor' => 'integer',
+        'base_unit_id' => 'integer',
         'part_id' => 'integer',
         'is_oem' => 'boolean',
         'deleted_at' => 'datetime',
@@ -69,6 +73,11 @@ class Product extends Model
     public function unitRelation()
     {
         return $this->belongsTo(Unit::class, 'unit', 'id');
+    }
+
+    public function baseUnit()
+    {
+        return $this->belongsTo(Unit::class, 'base_unit_id', 'id');
     }
 
     public function vehicleCompatibilities()

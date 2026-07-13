@@ -38,6 +38,7 @@ class InventoryController extends Controller
                 'product.part',
                 'product.manufacturer',
                 'product.unitRelation',
+                'product.baseUnit',
                 'product.preferredSupplier.supplier',
                 'product.preferredSupplier.price',
                 'product.productSuppliers.inventory',
@@ -76,7 +77,7 @@ class InventoryController extends Controller
             $existingProductIds = $inventoryRows->pluck('product_id')->filter()->values();
 
             $archivedWithoutInventory = Product::onlyTrashed()
-                ->with(['category', 'manufacturer', 'unitRelation'])
+                ->with(['category', 'manufacturer', 'unitRelation', 'baseUnit'])
                 ->whereDoesntHave('category', fn ($q) => $q->where('name', 'Sundries'))
                 ->when($search, function ($query) use ($search) {
                     $query->where('name', 'ILIKE', "%{$search}%")
@@ -116,6 +117,7 @@ class InventoryController extends Controller
                 'product.part',
                 'product.manufacturer',
                 'product.unitRelation',
+                'product.baseUnit',
                 'product.preferredSupplier.supplier',
                 'product.preferredSupplier.price',
                 'product.productSuppliers.inventory',
@@ -230,6 +232,7 @@ class InventoryController extends Controller
             'product.part',
             'product.manufacturer',
             'product.unitRelation',
+            'product.baseUnit',
             'product.preferredSupplier.supplier',
             'product.preferredSupplier.price',
             'location',
@@ -272,6 +275,7 @@ class InventoryController extends Controller
             'product.part',
             'product.manufacturer',
             'product.unitRelation',
+            'product.baseUnit',
             'product.preferredSupplier.supplier',
             'product.preferredSupplier.price',
             'location',
@@ -344,6 +348,7 @@ class InventoryController extends Controller
             'product.part',
             'product.manufacturer',
             'product.unitRelation',
+            'product.baseUnit',
             'product.preferredSupplier.supplier',
             'product.preferredSupplier.price',
             'location',
@@ -492,9 +497,9 @@ class InventoryController extends Controller
                 'manufacturer_id' => $product->manufacturer_id,
                 'manufacturer_name' => $product->manufacturer?->name,
 
-                'unit' => $product->unit,
-                'unit_name' => $product->unitRelation?->name,
-                'unit_abbreviation' => $product->unitRelation?->abbreviation,
+                'unit' => ($product->conversion_factor > 1 && $product->base_unit_id) ? $product->base_unit_id : $product->unit,
+                'unit_name' => ($product->conversion_factor > 1 && $product->baseUnit) ? $product->baseUnit->name : $product->unitRelation?->name,
+                'unit_abbreviation' => ($product->conversion_factor > 1 && $product->baseUnit) ? $product->baseUnit->abbreviation : $product->unitRelation?->abbreviation,
             ] : null,
 
             'selling_price' => $product ? $this->getSellingPrice($product) : null,
@@ -552,9 +557,9 @@ class InventoryController extends Controller
                 'part_name' => $product->part?->name,
                 'manufacturer_id' => $product->manufacturer_id,
                 'manufacturer_name' => $product->manufacturer?->name,
-                'unit' => $product->unit,
-                'unit_name' => $product->unitRelation?->name,
-                'unit_abbreviation' => $product->unitRelation?->abbreviation,
+                'unit' => ($product->conversion_factor > 1 && $product->base_unit_id) ? $product->base_unit_id : $product->unit,
+                'unit_name' => ($product->conversion_factor > 1 && $product->baseUnit) ? $product->baseUnit->name : $product->unitRelation?->name,
+                'unit_abbreviation' => ($product->conversion_factor > 1 && $product->baseUnit) ? $product->baseUnit->abbreviation : $product->unitRelation?->abbreviation,
             ] : null,
             'quantity_on_hand' => $totalOnHand,
             'reserved_quantity' => $totalReserved,
@@ -598,9 +603,9 @@ class InventoryController extends Controller
                 'part_name' => $product->part?->name,
                 'manufacturer_id' => $product->manufacturer_id,
                 'manufacturer_name' => $product->manufacturer?->name,
-                'unit' => $product->unit,
-                'unit_name' => $product->unitRelation?->name,
-                'unit_abbreviation' => $product->unitRelation?->abbreviation,
+                'unit' => ($product->conversion_factor > 1 && $product->base_unit_id) ? $product->base_unit_id : $product->unit,
+                'unit_name' => ($product->conversion_factor > 1 && $product->baseUnit) ? $product->baseUnit->name : $product->unitRelation?->name,
+                'unit_abbreviation' => ($product->conversion_factor > 1 && $product->baseUnit) ? $product->baseUnit->abbreviation : $product->unitRelation?->abbreviation,
             ],
             'quantity_on_hand' => 0,
             'reserved_quantity' => 0,

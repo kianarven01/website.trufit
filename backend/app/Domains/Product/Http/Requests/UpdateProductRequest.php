@@ -71,6 +71,8 @@ class UpdateProductRequest extends FormRequest
             'preferred_supplier_id' => ['sometimes', 'nullable', 'string', 'uuid'],
             'auto_generate_sku' => ['sometimes', 'boolean'],
             'selling_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'conversion_factor' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'base_unit_id' => ['sometimes', 'nullable', 'integer'],
             'is_spol' => ['sometimes', 'boolean'],
             'item_type' => ['sometimes', 'nullable', 'string', 'in:part,spol'],
             'suppliers' => ['sometimes', 'nullable', 'array'],

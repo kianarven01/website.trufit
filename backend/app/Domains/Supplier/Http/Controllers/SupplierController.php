@@ -81,6 +81,7 @@ class SupplierController extends Controller
                             'stock' => $stockByProductSupplier->get($pivotId, 0),
                             'sellingPrice' => $priceObj ? $priceObj->Price : null,
                             'markup' => $priceObj ? $priceObj->Markup : null,
+                            'conversion_factor' => $product->conversion_factor ?? 1,
                         ];
                     })->values(),
                 ],

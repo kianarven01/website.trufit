@@ -86,6 +86,8 @@ interface Product {
   categoryId?: string | number | null;
   preferredSupplierId?: string | null;
   suppliers?: ProductSupplier[];
+  conversionFactor?: number;
+  baseUnitId?: string | number | null;
   compatibleVehicles?: {
     id?: string;
     make: string;
@@ -343,6 +345,8 @@ const normalizeProduct = (row: any): Product => ({
     row.Brand?.name ||
     row.brand_name ||
     "-",
+  conversionFactor: row.conversion_factor ?? row.conversionFactor ?? 1,
+  baseUnitId: row.base_unit_id ?? row.baseUnitId ?? null,
   barcode: row.barcode || "",
   categoryId: row.category_id ?? row.categoryId ?? null,
   preferredSupplierId: row.preferred_supplier_id ?? row.preferredSupplierId ?? null,
@@ -972,6 +976,8 @@ const ProductDetail: React.FC = () => {
     category_id: product.categoryId || null,
     manufacturer_id: product.manufacturerId || null,
     unit: product.unitId || null,
+    conversion_factor: product.conversionFactor ?? 1,
+    base_unit_id: product.baseUnitId || null,
   };
 
   const handlePrintBarcodeLabels = () => {
@@ -1979,6 +1985,7 @@ const ProductDetail: React.FC = () => {
         open={isAddSupplierOpen}
         onOpenChange={setIsAddSupplierOpen}
         productId={product.id}
+        conversionFactor={product.conversionFactor ?? 1}
         suppliers={suppliers}
         existingSupplierIds={product?.suppliers?.map((s: any) => s.supplier_id || s.id) || []}
         onSaved={async () => {

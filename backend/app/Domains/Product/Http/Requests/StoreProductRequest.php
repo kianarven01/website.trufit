@@ -40,6 +40,8 @@ class StoreProductRequest extends FormRequest
 
             'item_type' => ['nullable', 'string', 'in:part,spol'],
             'selling_price' => ['nullable', 'numeric', 'min:0'],
+            'conversion_factor' => ['nullable', 'integer', 'min:1'],
+            'base_unit_id' => ['nullable', 'integer'],
 
             'suppliers' => ['nullable', 'array'],
             'suppliers.*.supplier_id' => ['required_with:suppliers', 'uuid', 'distinct'],

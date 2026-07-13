@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Plus, Trash2, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";
 import ProductReferencesModal from "./productReferencesModal";
@@ -66,6 +66,7 @@ export default function SpolProductModal({
   onError,
 }: SpolProductModalProps) {
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [units, setUnits] = useState<Option[]>([]);
   const [referencesModalOpen, setReferencesModalOpen] = useState(false);
   const [localManufacturers, setLocalManufacturers] = useState<Option[]>(manufacturers);
@@ -73,6 +74,9 @@ export default function SpolProductModal({
   const [referenceModalType, setReferenceModalType] = useState<ReferenceModalType>(null);
   const [savingReference, setSavingReference] = useState(false);
   const [referenceForm, setReferenceForm] = useState({ name: "", code: "", abbreviation: "" });
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -82,6 +86,8 @@ export default function SpolProductModal({
     description: "",
     manufacturer_id: "",
     part_number: "",
+    conversion_factor: "",
+    base_unit_id: "",
   });
 
   const [productSuppliers, setProductSuppliers] = useState<ProductSupplierInput[]>([]);
@@ -127,6 +133,8 @@ export default function SpolProductModal({
     if (!open) return;
 
     if (mode === "edit" && product) {
+      setImageFile(null);
+      setImagePreview(product.image_path || product.image || "");
       setForm({
         name: product.name || "",
         category_id: product.categoryId ? String(product.categoryId) : "",
@@ -135,18 +143,24 @@ export default function SpolProductModal({
         description: product.description === "-" ? "" : (product.description || ""),
         manufacturer_id: product.manufacturerId ? String(product.manufacturerId) : "",
         part_number: product.partNumber || "",
+        conversion_factor: product.conversion_factor && product.conversion_factor > 1
+          ? String(product.conversion_factor)
+          : "",
+        base_unit_id: product.base_unit_id ? String(product.base_unit_id) : "",
       });
       setProductSuppliers(
         (product.suppliers || []).map((s: any) => ({
           supplier_id: String(s.supplier_id || s.supplierId || s.id || ""),
           supplier_cost: String(s.supplier_cost || s.supplierCost || ""),
-          markup: String(s.markup || ""),
-          price: String(s.price || s.Price || ""),
-          pricing_mode: (s.markup != null && s.markup !== "" ? "markup" : "manual") as PricingMode,
+          markup: String(s.active_price?.Markup ?? s.markup ?? ""),
+          price: String(s.active_price?.Price ?? s.price ?? s.Price ?? ""),
+          pricing_mode: (s.active_price?.Markup != null && s.active_price?.Markup !== "" ? "markup" : "manual") as PricingMode,
           is_vat: Boolean(s.is_vat),
         }))
       );
     } else {
+      setImageFile(null);
+      setImagePreview("");
       setForm({
         name: "",
         category_id: "",
@@ -155,8 +169,14 @@ export default function SpolProductModal({
         description: "",
         manufacturer_id: "",
         part_number: "",
+        conversion_factor: "",
+        base_unit_id: "",
       });
       setProductSuppliers([]);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
 
     setShowInlineCategoryForm(false);
@@ -216,6 +236,12 @@ export default function SpolProductModal({
     return productSuppliers.some(
       (row, i) => i !== currentIndex && String(row.supplier_id) === String(supplierId)
     );
+  };
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const openReferenceModal = (type: ReferenceModalType) => {
@@ -305,7 +331,7 @@ export default function SpolProductModal({
       payload.append("name", form.name.trim());
       payload.append("category_id", form.category_id);
       payload.append("unit", form.unit);
-      payload.append("is_spol", "true");
+      payload.append("is_spol", "1");
       payload.append("item_type", "spol");
 
       if (form.description.trim()) {
@@ -319,6 +345,15 @@ export default function SpolProductModal({
       }
       if (form.selling_price && !hasSuppliers) {
         payload.append("selling_price", form.selling_price);
+      }
+      if (form.conversion_factor.trim()) {
+        payload.append("conversion_factor", form.conversion_factor.trim());
+      }
+      if (form.base_unit_id) {
+        payload.append("base_unit_id", form.base_unit_id);
+      }
+      if (imageFile) {
+        payload.append("image", imageFile);
       }
 
       const validSuppliers = productSuppliers.filter((s) => {
@@ -336,17 +371,22 @@ export default function SpolProductModal({
         const markupVal = toNumberOrNull(supplier.markup);
         const priceVal = toNumberOrNull(supplier.price);
 
+        const conversionFactor = toNumberOrNull(form.conversion_factor) ?? 1;
+        const unitCost = costVal !== null && conversionFactor > 1
+          ? costVal / conversionFactor
+          : costVal;
+
         const finalMarkup =
           supplier.pricing_mode === "manual"
-            ? (costVal !== null && costVal > 0 && priceVal !== null
-              ? ((priceVal - costVal) / costVal) * 100
+            ? (unitCost !== null && unitCost > 0 && priceVal !== null
+              ? ((priceVal - unitCost) / unitCost) * 100
               : null)
             : markupVal;
 
         const finalPrice =
           supplier.pricing_mode === "markup"
-            ? (costVal !== null && markupVal !== null
-              ? costVal + costVal * (markupVal / 100)
+            ? (unitCost !== null && markupVal !== null
+              ? unitCost + unitCost * (markupVal / 100)
               : null)
             : priceVal;
 
@@ -395,6 +435,8 @@ export default function SpolProductModal({
         open={open}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
+            setImageFile(null);
+            setImagePreview("");
             setForm({
               name: "",
               category_id: "",
@@ -403,15 +445,20 @@ export default function SpolProductModal({
               description: "",
               manufacturer_id: "",
               part_number: "",
+              conversion_factor: "",
+              base_unit_id: "",
             });
             setProductSuppliers([]);
             setShowInlineCategoryForm(false);
             setInlineCategoryName("");
           }
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
           onOpenChange(nextOpen);
         }}
       >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{mode === "edit" ? "Edit Supplies & Oils Product" : "Add Supplies & Oils Product"}</DialogTitle>
             <button
@@ -423,8 +470,64 @@ export default function SpolProductModal({
             </button>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-4">
+            <div
+              className="col-span-2 border border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-accent/30 transition"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0];
+                if (file) {
+                  handleFile(file);
+                }
+              }}
+            >
+              {imagePreview ? (
+                <div className="relative w-full">
+                  <img
+                    src={imagePreview}
+                    alt="Product preview"
+                    className="w-full h-48 object-cover rounded-lg border"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 bg-background border rounded-full p-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setImageFile(null);
+                      setImagePreview("");
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = "";
+                      }
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <UploadCloud className="w-8 h-8 mb-2 text-muted-foreground" />
+                  <p className="text-sm font-medium">Drop product image here</p>
+                  <p className="text-xs text-muted-foreground">or click to browse</p>
+                </>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFile(file);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="space-y-1 col-span-1">
               <span className="text-xs font-medium text-muted-foreground">
                 Product Name <span className="text-destructive">*</span>
               </span>
@@ -435,12 +538,12 @@ export default function SpolProductModal({
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 col-span-1">
               <span className="text-xs font-medium text-muted-foreground">
                 Category <span className="text-destructive">*</span>
               </span>
               <select
-                className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                className="w-full border rounded-md px-3 py-2 bg-background text-sm h-10"
                 value={showInlineCategoryForm ? ADD_NEW_CATEGORY : form.category_id}
                 disabled={mode === "edit" && isSundriesCategory}
                 onChange={(e) => {
@@ -521,14 +624,14 @@ export default function SpolProductModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 col-span-2">
               {!isSundriesCategory && (
-                <div className="space-y-1">
+                <div className="space-y-1 col-span-1">
                   <span className="text-xs font-medium text-muted-foreground">
                     Unit <span className="text-destructive">*</span>
                   </span>
                   <select
-                    className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                    className="w-full border rounded-md px-3 py-2 bg-background text-sm h-10"
                     value={form.unit}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -551,7 +654,7 @@ export default function SpolProductModal({
               )}
 
               {!hasSuppliers && (
-                <div className="space-y-1">
+                <div className="space-y-1 col-span-1">
                   <span className="text-xs font-medium text-muted-foreground">
                     Default Selling Price
                   </span>
@@ -567,14 +670,69 @@ export default function SpolProductModal({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* UOM Conversion Section */}
+            {!isSundriesCategory && (
+              <div className="col-span-2 border rounded-xl p-4 space-y-3">
+                <div>
+                  <p className="text-sm font-medium">Unit Conversion (Optional)</p>
+                  <p className="text-xs text-muted-foreground">
+                    If this product is purchased in bulk units (e.g., drums) but tracked in smaller units (e.g., liters), set the conversion factor.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Conversion Factor
+                    </span>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 200 (1 drum = 200 liters)"
+                      value={form.conversion_factor}
+                      onChange={(e) => setForm({ ...form, conversion_factor: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Base Unit (Inventory Unit)
+                    </span>
+                    <select
+                      className="w-full border rounded-md px-3 py-2 bg-background text-sm h-10"
+                      value={form.base_unit_id}
+                      onChange={(e) => setForm({ ...form, base_unit_id: e.target.value })}
+                    >
+                      <option value="">Same as purchase unit</option>
+                      {units.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {getOptionLabel(unit)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {form.conversion_factor && Number(form.conversion_factor) > 1 && form.base_unit_id && (
+                  <div className="text-xs text-primary font-medium bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                    1{" "}
+                    {units.find((u) => String(u.id) === String(form.unit))?.name || "purchase unit"}
+                    {" "}= {form.conversion_factor}{" "}
+                    {units.find((u) => String(u.id) === String(form.base_unit_id))?.name || "base units"}
+                    {" "}in inventory
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 col-span-2">
               {!isSundriesCategory && (
-                <div className="space-y-1">
+                <div className="space-y-1 col-span-1">
                   <span className="text-xs font-medium text-muted-foreground">
                     Manufacturer
                   </span>
                   <select
-                    className="w-full border rounded-md px-3 py-2 bg-background text-sm"
+                    className="w-full border rounded-md px-3 py-2 bg-background text-sm h-10"
                     value={form.manufacturer_id}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -596,7 +754,7 @@ export default function SpolProductModal({
                 </div>
               )}
 
-              <div className="space-y-1">
+              <div className="space-y-1 col-span-1">
                 <span className="text-xs font-medium text-muted-foreground">
                   Part Number
                 </span>
@@ -608,7 +766,7 @@ export default function SpolProductModal({
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 col-span-2">
               <span className="text-xs font-medium text-muted-foreground">
                 Description
               </span>
@@ -620,7 +778,7 @@ export default function SpolProductModal({
             </div>
 
             {!isSundriesCategory && (
-              <div className="border rounded-xl p-4 space-y-3">
+              <div className="border rounded-xl p-4 space-y-3 col-span-2">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium">Suppliers</p>
@@ -645,13 +803,18 @@ export default function SpolProductModal({
                       const markupVal = toNumberOrNull(supplierRow.markup);
                       const priceVal = toNumberOrNull(supplierRow.price);
 
+                      const conversionFactor = toNumberOrNull(form.conversion_factor) ?? 1;
+                      const unitCost = costVal !== null && conversionFactor > 1
+                        ? costVal / conversionFactor
+                        : costVal;
+
                       const computedPrice =
-                        costVal !== null && markupVal !== null
-                          ? costVal + costVal * (markupVal / 100)
+                        unitCost !== null && markupVal !== null
+                          ? unitCost + unitCost * (markupVal / 100)
                           : null;
                       const computedMarkup =
-                        costVal !== null && costVal > 0 && priceVal !== null
-                          ? ((priceVal - costVal) / costVal) * 100
+                        unitCost !== null && unitCost > 0 && priceVal !== null
+                          ? ((priceVal - unitCost) / unitCost) * 100
                           : null;
 
                       const displayedPrice =

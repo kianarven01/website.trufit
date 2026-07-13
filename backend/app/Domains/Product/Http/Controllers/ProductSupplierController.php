@@ -58,15 +58,21 @@ class ProductSupplierController extends Controller
             $productSupplier->update(['supplier_cost' => $validated['supplier_cost']]);
         }
 
-        // Auto-calculate markup or price from supplier_cost
+        // Auto-calculate markup or price from supplier_cost, factoring in unit conversion factor
         $supplierCost = $productSupplier->supplier_cost ?? 0;
+        $conversionFactor = (int) ($product->conversion_factor ?? 1);
+        if ($conversionFactor < 1) {
+            $conversionFactor = 1;
+        }
+        $unitCost = $supplierCost / $conversionFactor;
+
         $newPrice = $validated['price'] ?? null;
         $newMarkup = $validated['markup'] ?? null;
 
-        if ($newPrice !== null && $newMarkup === null && $supplierCost > 0) {
-            $newMarkup = round((($newPrice - $supplierCost) / $supplierCost) * 100, 2);
-        } elseif ($newMarkup !== null && $newPrice === null && $supplierCost > 0) {
-            $newPrice = round($supplierCost * (1 + $newMarkup / 100), 2);
+        if ($newPrice !== null && $newMarkup === null && $unitCost > 0) {
+            $newMarkup = round((($newPrice - $unitCost) / $unitCost) * 100, 2);
+        } elseif ($newMarkup !== null && $newPrice === null && $unitCost > 0) {
+            $newPrice = round($unitCost * (1 + $newMarkup / 100), 2);
         }
 
         // Upsert ProductPrice record

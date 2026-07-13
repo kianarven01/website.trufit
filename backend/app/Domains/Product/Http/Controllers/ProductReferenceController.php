@@ -286,7 +286,16 @@ class ProductReferenceController extends Controller
             ], 422);
         }
 
-        $unit->delete();
+        try {
+            $unit->delete();
+        } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'foreign key constraint')) {
+                return response()->json([
+                    'message' => 'Cannot delete this unit. It is being used by existing products.',
+                ], 422);
+            }
+            throw $e;
+        }
 
         return response()->json([
             'message' => 'Unit deleted successfully.',

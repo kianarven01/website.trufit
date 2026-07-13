@@ -290,6 +290,7 @@ const handleFileProcessing = (file: File, category: string) => {
                     {isImage ? (
                       <img
                         src={currentData.url}
+                        alt="Vehicle record preview"
                         className="w-full h-full object-contain"
                       />
                     ) : (
@@ -394,6 +395,7 @@ const handleFileProcessing = (file: File, category: string) => {
           {isImage ? (
             <img
               src={fullScreenPreview!}
+              alt="Fullscreen preview"
               className="max-w-full max-h-full object-contain"
             />
           ) : (

@@ -320,9 +320,15 @@ function NoteEditor({
     if (editorRef.current) {
       editorRef.current.innerHTML = initial?.contentHtml ?? "";
     }
+    let timerId: any = null;
     if (autoFocus) {
-      setTimeout(() => editorRef.current?.focus(), 30);
+      timerId = setTimeout(() => editorRef.current?.focus(), 30);
     }
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

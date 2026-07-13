@@ -6,7 +6,9 @@ import { getCleanApiError } from "./purchasingUtils";
 interface GoodsReceiptItemModel {
   id: string;
   productId?: string;
+  product_id?: string;
   productSupplierId?: string;
+  product_supplier_id?: string;
   quantityReceived?: number;
   quantity_received?: number;
   quantityPromo?: number;
@@ -50,6 +52,7 @@ interface ReturnLineState {
   totalBilled: number;
   qtyToReturn: string;
   notes: string;
+  quantityReturned: number;
 }
 
 const ReturnItemsModal = ({
@@ -124,6 +127,7 @@ const ReturnItemsModal = ({
         totalBilled,
         qtyToReturn: "0",
         notes: "",
+        quantityReturned: Number(quantityReturned),
       };
     });
 

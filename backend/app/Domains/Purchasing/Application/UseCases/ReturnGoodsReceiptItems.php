@@ -5,6 +5,7 @@ namespace App\Domains\Purchasing\Application\UseCases;
 use App\Domains\Purchasing\Application\Services\PurchaseOrderStatusService;
 use App\Domains\Purchasing\Application\Services\Traits\ResolvesDefaultLocation;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
 use App\Domains\Purchasing\Domain\Models\StockMovement;
@@ -98,6 +99,14 @@ class ReturnGoodsReceiptItems
                     );
                 }
 
+                // Apply UOM conversion for inventory deduction
+                $product = $item->product ?? Product::find($item->product_id);
+                $conversionFactor = (int) ($product->conversion_factor ?? 1);
+                if ($conversionFactor < 1) {
+                    $conversionFactor = 1;
+                }
+                $quantityToDeductInBaseUnits = $quantityToReturn * $conversionFactor;
+
                 $inventory = Inventory::query()
                     ->where('productID', $item->product_id)
                     ->where('product_supplier_id', $item->product_supplier_id)
@@ -105,14 +114,15 @@ class ReturnGoodsReceiptItems
                     ->lockForUpdate()
                     ->first();
 
-                if (!$inventory || (int)$inventory->quantity_on_hand < $quantityToReturn) {
+                if (!$inventory || (int)$inventory->quantity_on_hand < $quantityToDeductInBaseUnits) {
                     $onHand = $inventory ? $inventory->quantity_on_hand : 0;
-                    throw new RuntimeException("Cannot return item. Insufficient stock on hand (requested: {$quantityToReturn}, available: {$onHand}).", 422);
+                    throw new RuntimeException("Cannot return item. Insufficient stock on hand (requested: {$quantityToDeductInBaseUnits} base units, available: {$onHand}).", 422);
                 }
 
-                $inventory->quantity_on_hand = (int) $inventory->quantity_on_hand - $quantityToReturn;
+                $inventory->quantity_on_hand = (int) $inventory->quantity_on_hand - $quantityToDeductInBaseUnits;
                 $inventory->save();
 
+                // GR item tracks returns in PO units (drums)
                 $item->quantity_returned = $item->quantity_returned + $quantityToReturn;
                 $item->save();
 
@@ -121,10 +131,11 @@ class ReturnGoodsReceiptItems
                     'product_id' => $item->product_id,
                     'product_supplier_id' => $item->product_supplier_id,
                     'movement_type' => 'RETURN',
-                    'quantity' => $quantityToReturn,
+                    'quantity' => $quantityToDeductInBaseUnits,
                     'reference_type' => 'GOODS_RECEIPT',
                     'reference_id' => $receipt->id,
-                    'notes' => 'Return items: ' . ($notes ? $notes : 'Defective / Excess goods'),
+                    'notes' => 'Return items: ' . ($notes ? $notes : 'Defective / Excess goods')
+                        . ($conversionFactor > 1 ? " [converted: {$quantityToReturn} × {$conversionFactor} = {$quantityToDeductInBaseUnits}]" : ''),
                 ]);
 
                 $returnedCount++;

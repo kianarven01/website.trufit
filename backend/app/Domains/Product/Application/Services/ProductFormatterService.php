@@ -55,6 +55,11 @@ class ProductFormatterService
             'unit_name' => $product->unitRelation?->name,
             'unit_abbreviation' => $product->unitRelation?->abbreviation,
 
+            'conversion_factor' => $product->conversion_factor ?? 1,
+            'base_unit_id' => $product->base_unit_id,
+            'base_unit_name' => $product->baseUnit?->name,
+            'base_unit_abbreviation' => $product->baseUnit?->abbreviation,
+
             'manufacturer_id' => $product->manufacturer_id,
             'manufacturer' => $product->manufacturer?->name,
             'manufacturer_name' => $product->manufacturer?->name,

@@ -142,7 +142,7 @@ export default function SupplierBillsList() {
                   quantityBilled: totalBilled,
                 };
               })
-              .filter((item) => item.quantityReceived > 0),
+              .filter((item: any) => item.quantityReceived > 0),
           }];
         });
 

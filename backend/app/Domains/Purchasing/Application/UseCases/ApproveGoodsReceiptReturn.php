@@ -5,6 +5,7 @@ namespace App\Domains\Purchasing\Application\UseCases;
 use App\Domains\Purchasing\Application\Services\PurchaseOrderStatusService;
 use App\Domains\Purchasing\Application\Services\Traits\ResolvesDefaultLocation;
 use App\Domains\Inventory\Domain\Models\Inventory;
+use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Purchasing\Domain\Models\GoodsReceipt;
 use App\Domains\Purchasing\Domain\Models\GoodsReceiptItem;
 use App\Domains\Purchasing\Domain\Models\StockMovement;
@@ -89,6 +90,13 @@ class ApproveGoodsReceiptReturn
                     continue;
                 }
 
+                // Apply UOM conversion for inventory deduction
+                $product = $item->product ?? Product::find($item->product_id);
+                $conversionFactor = (int) ($product->conversion_factor ?? 1);
+                if ($conversionFactor < 1) {
+                    $conversionFactor = 1;
+                }
+
                 $inventory = Inventory::query()
                     ->where('productID', $item->product_id)
                     ->where('product_supplier_id', $item->product_supplier_id)
@@ -97,21 +105,29 @@ class ApproveGoodsReceiptReturn
                     ->first();
 
                 $onHand = $inventory ? (int) $inventory->quantity_on_hand : 0;
-                $actualQty = min($approvedQty, $onHand);
+                $approvedInBaseUnits = $approvedQty * $conversionFactor;
+                $actualBaseUnits = min($approvedInBaseUnits, $onHand);
+
+                // Calculate how many PO units we can actually return based on available base units
+                $actualQty = $conversionFactor > 1
+                    ? (int) floor($actualBaseUnits / $conversionFactor)
+                    : $actualBaseUnits;
+                $actualBaseUnitsToDeduct = $actualQty * $conversionFactor;
 
                 if ($actualQty <= 0) {
                     $results[] = [
                         'goods_receipt_item_id' => $goodsReceiptItemId,
                         'requested' => $requestedQty,
                         'approved' => 0,
-                        'reason' => "Insufficient stock (available: {$onHand})",
+                        'reason' => "Insufficient stock (available: {$onHand} base units)",
                     ];
                     continue;
                 }
 
-                $inventory->quantity_on_hand = $onHand - $actualQty;
+                $inventory->quantity_on_hand = $onHand - $actualBaseUnitsToDeduct;
                 $inventory->save();
 
+                // GR item tracks returns in PO units
                 $item->quantity_returned = $item->quantity_returned + $actualQty;
                 $item->save();
 
@@ -120,10 +136,11 @@ class ApproveGoodsReceiptReturn
                     'product_id' => $item->product_id,
                     'product_supplier_id' => $item->product_supplier_id,
                     'movement_type' => 'RETURN',
-                    'quantity' => $actualQty,
+                    'quantity' => $actualBaseUnitsToDeduct,
                     'reference_type' => 'GOODS_RECEIPT',
                     'reference_id' => $receipt->id,
-                    'notes' => 'Return approved: ' . ($notes ?: 'Defective / Excess goods'),
+                    'notes' => 'Return approved: ' . ($notes ?: 'Defective / Excess goods')
+                        . ($conversionFactor > 1 ? " [converted: {$actualQty} × {$conversionFactor} = {$actualBaseUnitsToDeduct}]" : ''),
                 ]);
 
                 $anyReturned = true;

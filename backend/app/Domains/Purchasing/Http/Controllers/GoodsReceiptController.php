@@ -96,6 +96,8 @@ class GoodsReceiptController extends Controller
         $receipt = GoodsReceipt::with([
             'purchaseOrder.supplier',
             'items.product.manufacturer',
+            'items.product.unitRelation',
+            'items.product.baseUnit',
             'items.purchaseOrderItem',
             'createdByUser.employee',
             'receivedByUser.employee',

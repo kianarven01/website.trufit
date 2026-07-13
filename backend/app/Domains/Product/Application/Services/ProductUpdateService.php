@@ -55,6 +55,8 @@ class ProductUpdateService
                 'is_oem',
                 'oem_reference_number',
                 'unit',
+                'conversion_factor',
+                'base_unit_id',
                 'part_id',
                 'manufacturer_id',
                 'preferred_supplier_id',
@@ -192,52 +194,93 @@ class ProductUpdateService
 
     private function updateProductSuppliers(Product $product, array $suppliers): void
     {
-        // Remove existing product suppliers
-        ProductSupplier::where('product_id', $product->id)->delete();
+        // Filter out suppliers with empty supplier_id
+        $validSuppliers = array_filter($suppliers, fn($s) => !empty($s['supplier_id']));
 
-        // Create new product suppliers
-        foreach ($suppliers as $supplier) {
-            if (empty($supplier['supplier_id'])) {
-                continue;
+        // Build map of incoming supplier IDs
+        $incomingIds = array_map(fn($s) => (string) $s['supplier_id'], $validSuppliers);
+
+        // Load existing suppliers
+        $existingSuppliers = ProductSupplier::where('product_id', $product->id)->get();
+        $existingMap = $existingSuppliers->keyBy('supplier_id');
+
+        // Delete suppliers NOT in the incoming payload (user removed them)
+        foreach ($existingSuppliers as $existing) {
+            if (!in_array((string) $existing->supplier_id, $incomingIds, true)) {
+                $existing->delete();
+            }
+        }
+
+        // Upsert suppliers from payload
+        $firstSupplierId = null;
+        foreach ($validSuppliers as $supplier) {
+            $supplierId = (string) $supplier['supplier_id'];
+
+            if ($firstSupplierId === null) {
+                $firstSupplierId = $supplierId;
             }
 
-            $productSupplier = ProductSupplier::create([
-                'product_id' => $product->id,
-                'supplier_id' => $supplier['supplier_id'],
-                'supplier_cost' => $supplier['supplier_cost'] ?? null,
-                'is_vat' => $supplier['is_vat'] ?? false,
-                'vat_percent' => $supplier['vat_percent'] ?? null,
-            ]);
+            $existing = $existingMap->get($supplierId);
 
-            // Create price record if markup or price provided
+            if ($existing) {
+                // Update existing supplier
+                $existing->update([
+                    'supplier_cost' => $supplier['supplier_cost'] ?? $existing->supplier_cost,
+                    'is_vat' => $supplier['is_vat'] ?? $existing->is_vat,
+                    'vat_percent' => $supplier['vat_percent'] ?? $existing->vat_percent,
+                ]);
+                $productSupplier = $existing;
+            } else {
+                // Create new supplier
+                $productSupplier = ProductSupplier::create([
+                    'product_id' => $product->id,
+                    'supplier_id' => $supplierId,
+                    'supplier_cost' => $supplier['supplier_cost'] ?? null,
+                    'is_vat' => $supplier['is_vat'] ?? false,
+                    'vat_percent' => $supplier['vat_percent'] ?? null,
+                ]);
+            }
+
+            // Upsert price record
             $markup = $supplier['markup'] ?? null;
             $price = $supplier['price'] ?? null;
 
             if ($price === null && $markup !== null && isset($supplier['supplier_cost'])) {
-                $price = (float) $supplier['supplier_cost'] + ((float) $supplier['supplier_cost'] * ((float) $markup / 100));
+                $conversionFactor = (int) ($product->conversion_factor ?? 1);
+                if ($conversionFactor < 1) {
+                    $conversionFactor = 1;
+                }
+                $unitCost = (float) $supplier['supplier_cost'] / $conversionFactor;
+                $price = $unitCost + ($unitCost * ((float) $markup / 100));
             }
 
             if ($price !== null) {
-                \App\Domains\Product\Domain\Models\ProductPrice::create([
-                    'id' => (string) \Illuminate\Support\Str::uuid(),
-                    'product_supplier_id' => $productSupplier->id,
-                    'Price' => $price,
-                    'Markup' => $markup,
-                ]);
+                $existingPrice = \App\Domains\Product\Domain\Models\ProductPrice::where('product_supplier_id', $productSupplier->id)->first();
+
+                if ($existingPrice) {
+                    $existingPrice->update([
+                        'Price' => $price,
+                        'Markup' => $markup,
+                    ]);
+                } else {
+                    \App\Domains\Product\Domain\Models\ProductPrice::create([
+                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'product_supplier_id' => $productSupplier->id,
+                        'Price' => $price,
+                        'Markup' => $markup,
+                    ]);
+                }
             }
         }
 
         // Set preferred supplier to first one if exists
-        if (!empty($suppliers)) {
-            $firstSupplierId = $suppliers[0]['supplier_id'] ?? null;
-            if ($firstSupplierId) {
-                $product->update(['preferred_supplier_id' => null]);
-                $productSupplier = ProductSupplier::where('product_id', $product->id)
-                    ->where('supplier_id', $firstSupplierId)
-                    ->first();
-                if ($productSupplier) {
-                    $product->update(['preferred_supplier_id' => $productSupplier->id]);
-                }
+        if ($firstSupplierId) {
+            $product->update(['preferred_supplier_id' => null]);
+            $productSupplier = ProductSupplier::where('product_id', $product->id)
+                ->where('supplier_id', $firstSupplierId)
+                ->first();
+            if ($productSupplier) {
+                $product->update(['preferred_supplier_id' => $productSupplier->id]);
             }
         }
     }

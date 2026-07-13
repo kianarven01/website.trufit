@@ -49,6 +49,8 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'is_oem' => $productData['is_oem'] ?? false,
                 'oem_reference_number' => $productData['oem_reference_number'] ?? null,
                 'unit' => $productData['unit'] ?? $productData['unit_id'] ?? null,
+                'conversion_factor' => $productData['conversion_factor'] ?? null,
+                'base_unit_id' => $productData['base_unit_id'] ?? null,
                 'part_id' => $productData['part_id'] ?? null,
                 'manufacturer_id' => $productData['manufacturer_id'] ?? null,
             ]);
@@ -74,7 +76,12 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 $price = $supplier['price'] ?? null;
 
                 if ($price === null && $markup !== null && isset($supplier['supplier_cost'])) {
-                    $price = (float) $supplier['supplier_cost'] + ((float) $supplier['supplier_cost'] * ((float) $markup / 100));
+                    $conversionFactor = (int) ($productData['conversion_factor'] ?? 1);
+                    if ($conversionFactor < 1) {
+                        $conversionFactor = 1;
+                    }
+                    $unitCost = (float) $supplier['supplier_cost'] / $conversionFactor;
+                    $price = $unitCost + ($unitCost * ((float) $markup / 100));
                 }
                 // Create the product price record
                 ProductPrice::create([

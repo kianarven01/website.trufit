@@ -103,6 +103,8 @@ class PurchaseOrderController extends Controller
         $purchaseOrder = PurchaseOrder::with([
             'supplier',
             'items.product.manufacturer',
+            'items.product.unitRelation',
+            'items.product.baseUnit',
             'items.productSupplier',
             'createdByUser.employee',
             'submittedByUser.employee',

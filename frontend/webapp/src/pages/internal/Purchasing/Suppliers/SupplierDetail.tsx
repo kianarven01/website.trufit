@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,12 +70,19 @@ const SupplierDetails: React.FC = () => {
   const [isVat, setIsVat] = useState(false);
   const [vatPercent, setVatPercent] = useState("12");
 
+  const activeProduct = useMemo(() => {
+    if (isCostOpen) return selectedProduct;
+    return catalogProducts.find((p) => String(p.id) === String(selectedProductId)) || null;
+  }, [isCostOpen, selectedProduct, catalogProducts, selectedProductId]);
+
   const handleCostChange = (val: string) => {
     setSupplierCost(val);
     const costNum = parseFloat(val);
     const priceNum = parseFloat(sellingPrice);
     if (!isNaN(costNum) && costNum > 0 && !isNaN(priceNum)) {
-      const calculatedMarkup = ((priceNum - costNum) / costNum) * 100;
+      const factor = activeProduct?.conversion_factor ?? activeProduct?.conversionFactor ?? 1;
+      const unitCost = costNum / factor;
+      const calculatedMarkup = ((priceNum - unitCost) / unitCost) * 100;
       setMarkup(calculatedMarkup.toFixed(2));
     }
   };
@@ -85,7 +92,9 @@ const SupplierDetails: React.FC = () => {
     const costNum = parseFloat(supplierCost);
     const priceNum = parseFloat(val);
     if (!isNaN(costNum) && costNum > 0 && !isNaN(priceNum)) {
-      const calculatedMarkup = ((priceNum - costNum) / costNum) * 100;
+      const factor = activeProduct?.conversion_factor ?? activeProduct?.conversionFactor ?? 1;
+      const unitCost = costNum / factor;
+      const calculatedMarkup = ((priceNum - unitCost) / unitCost) * 100;
       setMarkup(calculatedMarkup.toFixed(2));
     }
   };
@@ -95,7 +104,9 @@ const SupplierDetails: React.FC = () => {
     const costNum = parseFloat(supplierCost);
     const markupNum = parseFloat(val);
     if (!isNaN(costNum) && !isNaN(markupNum)) {
-      const calculatedPrice = costNum * (1 + markupNum / 100);
+      const factor = activeProduct?.conversion_factor ?? activeProduct?.conversionFactor ?? 1;
+      const unitCost = costNum / factor;
+      const calculatedPrice = unitCost * (1 + markupNum / 100);
       setSellingPrice(calculatedPrice.toFixed(2));
     }
   };
@@ -648,6 +659,13 @@ const SupplierDetails: React.FC = () => {
               </div>
             </div>
 
+            {activeProduct && (activeProduct.conversion_factor ?? activeProduct.conversionFactor ?? 1) > 1 && (
+              <div className="text-[11px] text-amber-600 bg-amber-500/5 border border-amber-500/20 rounded-md px-3 py-1.5 leading-normal">
+                This product uses unit conversion (1 unit = {activeProduct.conversion_factor ?? activeProduct.conversionFactor} base units). 
+                Markup is calculated using the cost per base unit of ₱{(!isNaN(parseFloat(supplierCost)) ? (parseFloat(supplierCost) / (activeProduct.conversion_factor ?? activeProduct.conversionFactor ?? 1)).toFixed(2) : "0.00")}.
+              </div>
+            )}
+
             <div className="flex gap-4 items-center pt-2">
               <div className="flex-1 space-y-2">
                 <Label className="text-xs">Tax Type</Label>
@@ -737,6 +755,13 @@ const SupplierDetails: React.FC = () => {
                 />
               </div>
             </div>
+
+            {activeProduct && (activeProduct.conversion_factor ?? activeProduct.conversionFactor ?? 1) > 1 && (
+              <div className="text-[11px] text-amber-600 bg-amber-500/5 border border-amber-500/20 rounded-md px-3 py-1.5 leading-normal">
+                This product uses unit conversion (1 unit = {activeProduct.conversion_factor ?? activeProduct.conversionFactor} base units). 
+                Markup is calculated using the cost per base unit of ₱{(!isNaN(parseFloat(supplierCost)) ? (parseFloat(supplierCost) / (activeProduct.conversion_factor ?? activeProduct.conversionFactor ?? 1)).toFixed(2) : "0.00")}.
+              </div>
+            )}
 
             <div className="flex gap-4 items-center pt-2">
               <div className="flex-1 space-y-2">

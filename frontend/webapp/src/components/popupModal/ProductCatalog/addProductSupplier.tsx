@@ -21,6 +21,7 @@ interface AddProductSupplierModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productId: string;
+  conversionFactor?: number;
   suppliers: SupplierOption[];
   existingSupplierIds?: string[];
   onSaved?: () => void | Promise<void>;
@@ -37,6 +38,7 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
   open,
   onOpenChange,
   productId,
+  conversionFactor = 1,
   suppliers,
   existingSupplierIds = [],
   onSaved,
@@ -61,17 +63,22 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
     return suppliers.filter((s) => !existingSupplierIds.includes(s.id));
   }, [suppliers, existingSupplierIds]);
 
-  const computedPrice = useMemo(() => {
-    if (costValue === null || markupValue === null) return null;
+  const unitCostValue = useMemo(() => {
+    if (costValue === null) return null;
+    return conversionFactor > 1 ? costValue / conversionFactor : costValue;
+  }, [costValue, conversionFactor]);
 
-    return costValue + costValue * (markupValue / 100);
-  }, [costValue, markupValue]);
+  const computedPrice = useMemo(() => {
+    if (unitCostValue === null || markupValue === null) return null;
+
+    return unitCostValue + unitCostValue * (markupValue / 100);
+  }, [unitCostValue, markupValue]);
 
   const computedMarkup = useMemo(() => {
-    if (costValue === null || costValue <= 0 || priceValue === null) return null;
+    if (unitCostValue === null || unitCostValue <= 0 || priceValue === null) return null;
 
-    return ((priceValue - costValue) / costValue) * 100;
-  }, [costValue, priceValue]);
+    return ((priceValue - unitCostValue) / unitCostValue) * 100;
+  }, [unitCostValue, priceValue]);
 
   const displayedPrice =
     pricingMode === "markup" ? formatNumberInput(computedPrice) : price;
@@ -292,6 +299,13 @@ const AddProductSupplierModal: React.FC<AddProductSupplierModalProps> = ({
               </p>
             )}
           </div>
+
+          {conversionFactor > 1 && (
+            <div className="text-[11px] text-amber-600 bg-amber-500/5 border border-amber-500/20 rounded-md px-3 py-1.5 leading-normal">
+              This product uses unit conversion (1 unit = {conversionFactor} base units). 
+              Markup is calculated using the cost per base unit of ₱{(!isNaN(parseFloat(supplierCost)) ? (parseFloat(supplierCost) / conversionFactor).toFixed(2) : "0.00")}.
+            </div>
+          )}
 
           <div className="flex items-center justify-between rounded-md border p-3">
             <div className="flex items-center gap-2">

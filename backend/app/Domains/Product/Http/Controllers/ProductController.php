@@ -317,6 +317,7 @@ class ProductController extends Controller
             'category',
             'manufacturer',
             'unitRelation',
+            'baseUnit',
             'part',
             'productSuppliers.supplier',
             'productSuppliers.price',

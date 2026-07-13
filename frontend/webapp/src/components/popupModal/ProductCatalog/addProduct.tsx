@@ -124,6 +124,8 @@ export default function ProductModal({
     manufacturer_id: "",
     barcode: "",
     part_number: "",
+    conversion_factor: "",
+    base_unit_id: "",
   });
 
   const [productSuppliers, setProductSuppliers] = useState<
@@ -204,6 +206,10 @@ export default function ProductModal({
         : "",
       barcode: product.barcode || "",
       part_number: product.part_number || "",
+      conversion_factor: product.conversion_factor && product.conversion_factor > 1
+        ? String(product.conversion_factor)
+        : "",
+      base_unit_id: product.base_unit_id ? String(product.base_unit_id) : "",
     });
 
     if (fileInputRef.current) {
@@ -465,6 +471,8 @@ export default function ProductModal({
       manufacturer_id: "",
       barcode: "",
       part_number: "",
+      conversion_factor: "",
+      base_unit_id: "",
     });
 
     setProductSuppliers([]);
@@ -696,6 +704,14 @@ export default function ProductModal({
         payload.append("unit", form.unit || "");
       }
 
+      if (form.conversion_factor.trim()) {
+        payload.append("conversion_factor", form.conversion_factor.trim());
+      }
+
+      if (form.base_unit_id) {
+        payload.append("base_unit_id", form.base_unit_id);
+      }
+
       if (form.manufacturer_id || isEditMode) {
         payload.append("manufacturer_id", form.manufacturer_id || "");
       }
@@ -732,17 +748,22 @@ export default function ProductModal({
           const markupVal = toNumberOrNull(supplier.markup);
           const priceVal = toNumberOrNull(supplier.price);
 
+          const conversionFactor = toNumberOrNull(form.conversion_factor) ?? 1;
+          const unitCost = costVal !== null && conversionFactor > 1
+            ? costVal / conversionFactor
+            : costVal;
+
           const finalMarkup =
             supplier.pricing_mode === "manual"
-              ? (costVal !== null && costVal > 0 && priceVal !== null
-                  ? ((priceVal - costVal) / costVal) * 100
+              ? (unitCost !== null && unitCost > 0 && priceVal !== null
+                  ? ((priceVal - unitCost) / unitCost) * 100
                   : null)
               : markupVal;
 
           const finalPrice =
             supplier.pricing_mode === "markup"
-              ? (costVal !== null && markupVal !== null
-                  ? costVal + costVal * (markupVal / 100)
+              ? (unitCost !== null && markupVal !== null
+                  ? unitCost + unitCost * (markupVal / 100)
                   : null)
               : priceVal;
 
@@ -1157,6 +1178,59 @@ export default function ProductModal({
             <option value={ADD_NEW_UNIT}>+ Add new unit</option>
           </select>
 
+          {/* UOM Conversion Section */}
+          <div className="col-span-2 border rounded-xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-medium">Unit Conversion (Optional)</p>
+              <p className="text-xs text-muted-foreground">
+                If this product is purchased in bulk units (e.g., drums) but tracked in smaller units (e.g., liters), set the conversion factor.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Conversion Factor
+                </span>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 200 (1 drum = 200 liters)"
+                  value={form.conversion_factor}
+                  onChange={(e) => updateField("conversion_factor", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Base Unit (Inventory Unit)
+                </span>
+                <select
+                  className="w-full border rounded-md px-3 py-2 bg-background"
+                  value={form.base_unit_id}
+                  onChange={(e) => updateField("base_unit_id", e.target.value)}
+                >
+                  <option value="">Same as purchase unit</option>
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name || "Unnamed unit"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {form.conversion_factor && Number(form.conversion_factor) > 1 && form.base_unit_id && (
+              <div className="text-xs text-primary font-medium bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                1{" "}
+                {units.find((u) => String(u.id) === String(form.unit))?.name || "purchase unit"}
+                {" "}= {form.conversion_factor}{" "}
+                {units.find((u) => String(u.id) === String(form.base_unit_id))?.name || "base units"}
+                {" "}in inventory
+              </div>
+            )}
+          </div>
+
           <Input
             placeholder="Part number"
             value={form.part_number}
@@ -1204,13 +1278,18 @@ export default function ProductModal({
                   const markupVal = toNumberOrNull(supplierRow.markup);
                   const priceVal = toNumberOrNull(supplierRow.price);
 
+                  const conversionFactor = toNumberOrNull(form.conversion_factor) ?? 1;
+                  const unitCost = costVal !== null && conversionFactor > 1
+                    ? costVal / conversionFactor
+                    : costVal;
+
                   const computedPrice =
-                    costVal !== null && markupVal !== null
-                      ? costVal + costVal * (markupVal / 100)
+                    unitCost !== null && markupVal !== null
+                      ? unitCost + unitCost * (markupVal / 100)
                       : null;
                   const computedMarkup =
-                    costVal !== null && costVal > 0 && priceVal !== null
-                      ? ((priceVal - costVal) / costVal) * 100
+                    unitCost !== null && unitCost > 0 && priceVal !== null
+                      ? ((priceVal - unitCost) / unitCost) * 100
                       : null;
 
                   const displayedPrice =

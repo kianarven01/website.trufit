@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -67,6 +67,9 @@ const SupplierModal: React.FC<Props> = ({
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
 
+  /* Holds the supplier address string for parsing after provinces/cities load */
+  const pendingAddressRef = useRef<string>("");
+
   /* Derived selected items */
   const selectedProvince = useMemo(() => provinces.find((p) => p.code === selectedProvinceCode) || null, [provinces, selectedProvinceCode]);
   const selectedCity = useMemo(() => cities.find((c) => c.code === selectedCityCode) || null, [cities, selectedCityCode]);
@@ -132,7 +135,19 @@ const SupplierModal: React.FC<Props> = ({
           ["1300000000", "1400000000"].includes(r.code)
         );
         const merged = [...provincesData, ...regionOverrides];
-        setProvinces(merged.sort((a, b) => a.name.localeCompare(b.name)));
+        const sorted = merged.sort((a, b) => a.name.localeCompare(b.name));
+        setProvinces(sorted);
+
+        /* If editing, match province from pending address */
+        const addr = pendingAddressRef.current;
+        if (addr) {
+          const normalizedAddr = addr.toLowerCase();
+          const match = sorted.find((p) => {
+            const label = p.name.includes("National Capital Region") ? "metro manila" : p.name.toLowerCase();
+            return normalizedAddr.includes(label);
+          });
+          if (match) setSelectedProvinceCode(match.code);
+        }
       })
       .catch(() => toast.error("Failed to load provinces."))
       .finally(() => setLoadingProvinces(false));
@@ -157,7 +172,51 @@ const SupplierModal: React.FC<Props> = ({
       .then(([citiesData, munisData]: [PsgcItem[], PsgcItem[]]) => {
         const all = [...citiesData, ...munisData];
         const filtered = all.filter((c) => c.code.substring(0, 2) === provincePrefix);
-        setCities(filtered.sort((a, b) => a.name.localeCompare(b.name)));
+        const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
+        setCities(sorted);
+
+        /* If editing, match city from pending address */
+        const addr = pendingAddressRef.current;
+        if (addr) {
+          /* Strip province name first to prevent "Manila" matching inside "Metro Manila" */
+          const provObj = provinces.find((p) => p.code === selectedProvinceCode);
+          const provLabel = provObj
+            ? (provObj.name.includes("National Capital Region") ? "metro manila" : provObj.name.toLowerCase())
+            : "";
+          const addrWithoutProvince = provLabel
+            ? addr.toLowerCase().replace(new RegExp(provLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "")
+            : addr.toLowerCase();
+
+          const match = sorted.find((c) => {
+            const label = sanitize(c.name).replace(/^City (?:of )?/i, "").trim().toLowerCase();
+            return addrWithoutProvince.includes(label);
+          });
+          if (match) {
+            setSelectedCityCode(match.code);
+            if (match.zip_code) setZipCode(match.zip_code);
+
+            /* Extract street & barangay: strip city, province, "Philippines", zip from address */
+            const cityName = sanitize(match.name).replace(/^City (?:of )?/i, "").trim();
+            const provObj = provinces.find((p) => p.code === selectedProvinceCode);
+            const provName = provObj
+              ? (provObj.name.includes("National Capital Region") ? "Metro Manila" : sanitize(provObj.name))
+              : "";
+            let remainder = addr
+              .replace(/,?\s*Philippines\s*\d{0,4}\s*$/, "")
+              .trim();
+            if (provName) remainder = remainder.replace(new RegExp(provName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "").replace(/^,\s*|,\s*$/g, "").trim();
+            if (cityName) remainder = remainder.replace(new RegExp(cityName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), "").replace(/^,\s*|,\s*$/g, "").trim();
+            const leftParts = remainder.split(",").map((s) => s.trim()).filter(Boolean);
+            if (leftParts.length >= 2) {
+              setUnitStreet(leftParts[0]);
+              setBarangay(leftParts.slice(1).join(", "));
+            } else if (leftParts.length === 1) {
+              setUnitStreet(leftParts[0]);
+              setBarangay("");
+            }
+          }
+          pendingAddressRef.current = "";
+        }
       })
       .catch(() => toast.error("Failed to load cities."))
       .finally(() => setLoadingCities(false));
@@ -175,33 +234,22 @@ const SupplierModal: React.FC<Props> = ({
       setViber(supplier.viber || "");
       setPaymentTerms(supplier.paymentTerms || "COD");
 
-      /* Parse existing address to pre-select province/city */
+      /* Store address for parsing after provinces/cities load */
       const addr = supplier.address || "";
-      const matchedProvince = provinces.find((p) =>
-        addr.toLowerCase().includes(p.name.toLowerCase())
-      );
-      if (matchedProvince) {
-        setSelectedProvinceCode(matchedProvince.code);
-        setTimeout(() => {
-          const cityMatch = cities.find((c) =>
-            addr.toLowerCase().includes(c.name.toLowerCase())
-          );
-          if (cityMatch) {
-            setSelectedCityCode(cityMatch.code);
-            setZipCode(cityMatch.zip_code || "");
-          }
-        }, 500);
-      }
-      /* Extract street */
-      const provinceIdx = matchedProvince
-        ? addr.toLowerCase().indexOf(matchedProvince.name.toLowerCase())
-        : -1;
-      const street = provinceIdx > 0 ? addr.substring(0, provinceIdx).replace(/,\s*$/, "") : addr;
-      setUnitStreet(street);
+      pendingAddressRef.current = addr;
 
-      /* Extract zip code */
+      /* Extract zip immediately (no API dependency) */
       const zipMatch = addr.match(/\b(\d{4})\b/);
-      if (zipMatch) setZipCode(zipMatch[1]);
+      setZipCode(zipMatch?.[1] || "");
+
+      /* Street/barangay parsed after city match — clear for now */
+      setUnitStreet("");
+      setBarangay("");
+
+      /* Province/city cleared — will be set by the fetch useEffects */
+      setSelectedProvinceCode("");
+      setSelectedCityCode("");
+      setCities([]);
     } else {
       setName("");
       setEmail("");
@@ -215,6 +263,7 @@ const SupplierModal: React.FC<Props> = ({
       setBarangay("");
       setZipCode("");
       setCities([]);
+      pendingAddressRef.current = "";
     }
   }, [open, supplier]);
 

@@ -11,6 +11,7 @@ export interface PurchaseOrderItemRow {
   quantityReceived?: number;
   unitCost: number;
   lineTotal: number;
+  taxType?: string;
 }
 
 interface PurchaseOrderItemsTableProps {
@@ -50,6 +51,11 @@ const PurchaseOrderItemsTable = ({ items }: PurchaseOrderItemsTableProps) => {
                   <TableCell className="w-[30%] py-3 pl-4 text-left">
                     <p className="font-semibold text-foreground text-sm">{item.productName}</p>
                     {item.sku && <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{item.sku}</p>}
+                    {item.taxType && (
+                      <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-medium ${item.taxType === 'TAXABLE' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {item.taxType === 'TAXABLE' ? 'VAT' : 'Non-VAT'}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="w-[15%] text-center text-muted-foreground py-3">{item.partNumber || "-"}</TableCell>
                   <TableCell className="w-[13%] text-center text-muted-foreground py-3">{item.quantityOrdered}</TableCell>

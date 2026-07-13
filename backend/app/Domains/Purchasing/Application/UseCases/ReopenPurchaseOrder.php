@@ -22,6 +22,8 @@ class ReopenPurchaseOrder
                 'status' => 'WAITING_TO_RECEIVE',
             ]);
 
+            app(PurchaseOrderStatusService::class)->updateReceiptStatus($purchaseOrder);
+
             return $purchaseOrder->fresh();
         });
     }

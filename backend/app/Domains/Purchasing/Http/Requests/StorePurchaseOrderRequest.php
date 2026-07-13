@@ -25,6 +25,7 @@ class StorePurchaseOrderRequest extends FormRequest
             'items.*.quantity_ordered' => ['required', 'integer', 'min:1'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
             'items.*.notes' => ['nullable', 'string'],
+            'items.*.tax_type' => ['sometimes', 'string', 'in:TAXABLE,NON_TAXABLE'],
         ];
     }
 

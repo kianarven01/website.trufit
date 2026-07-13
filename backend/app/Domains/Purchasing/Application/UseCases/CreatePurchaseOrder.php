@@ -39,6 +39,7 @@ class CreatePurchaseOrder
                     'quantity_ordered' => $item['quantity_ordered'],
                     'unit_cost' => $item['unit_cost'],
                     'notes' => $item['notes'] ?? null,
+                    'tax_type' => $item['tax_type'] ?? 'TAXABLE',
                 ]);
 
                 $subtotal += (float) $poItem->line_total;

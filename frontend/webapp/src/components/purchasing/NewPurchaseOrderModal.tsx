@@ -30,6 +30,7 @@ interface LineItemState {
   productSupplierId: string;
   quantity: string;
   unitCost: string;
+  taxType: string;
 }
 
 interface NewPurchaseOrderModalProps {
@@ -49,6 +50,7 @@ interface NewPurchaseOrderModalProps {
       productSupplierId: string;
       quantity: string;
       unitCost: string;
+      taxType?: string;
     }>;
   };
 }
@@ -95,6 +97,7 @@ const createEmptyLine = (): LineItemState => ({
   productSupplierId: "",
   quantity: "1",
   unitCost: "0",
+  taxType: "TAXABLE",
 });
 
 const NewPurchaseOrderModal = ({
@@ -172,6 +175,7 @@ const NewPurchaseOrderModal = ({
               productSupplierId: item.productSupplierId,
               quantity: item.quantity,
               unitCost: item.unitCost,
+              taxType: item.taxType || "TAXABLE",
             }))
           : [createEmptyLine()]
       );
@@ -251,6 +255,7 @@ const NewPurchaseOrderModal = ({
           product_supplier_id: item.productSupplierId,
           quantity_ordered: Number(item.quantity),
           unit_cost: Number(item.unitCost || 0),
+          tax_type: item.taxType || "TAXABLE",
         })),
       };
 
@@ -274,7 +279,7 @@ const NewPurchaseOrderModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-background shadow-xl">
+      <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-border bg-background shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">{editPurchaseOrder ? "Edit Purchase Order" : "New Purchase Order"}</h2>
@@ -372,7 +377,7 @@ const NewPurchaseOrderModal = ({
                     <input
                       type="number"
                       min="1"
-                      className="col-span-4 h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring md:col-span-2"
+                      className="col-span-3 h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring md:col-span-1"
                       value={item.quantity}
                       onChange={(event) => updateItem(item.id, { quantity: event.target.value })}
                     />
@@ -381,12 +386,21 @@ const NewPurchaseOrderModal = ({
                       type="number"
                       min="0"
                       step="0.01"
-                      className="col-span-5 h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring md:col-span-3"
+                      className="col-span-4 h-10 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring md:col-span-2"
                       value={item.unitCost}
                       onChange={(event) => updateItem(item.id, { unitCost: event.target.value })}
                     />
 
-                    <div className="col-span-2 flex items-center justify-end text-sm font-medium md:col-span-1">
+                    <select
+                      className="col-span-3 h-10 rounded-md border border-input bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring md:col-span-2"
+                      value={item.taxType}
+                      onChange={(event) => updateItem(item.id, { taxType: event.target.value })}
+                    >
+                      <option value="TAXABLE">VAT</option>
+                      <option value="NON_TAXABLE">Non-VAT</option>
+                    </select>
+
+                    <div className="col-span-1 flex items-center justify-end text-sm font-medium md:col-span-1">
                       {formatCurrency(lineTotal)}
                     </div>
 

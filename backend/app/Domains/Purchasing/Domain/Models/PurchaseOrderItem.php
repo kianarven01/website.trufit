@@ -25,6 +25,7 @@ class PurchaseOrderItem extends Model
         'unit_cost',
         'line_total',
         'notes',
+        'tax_type',
     ];
 
     protected $casts = [

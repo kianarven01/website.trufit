@@ -27,6 +27,7 @@ interface PurchaseOrderItemRow {
   quantityReceived: number;
   unitCost: number;
   lineTotal: number;
+  taxType: string;
 }
 
 interface PurchaseOrderDetailModel {
@@ -84,6 +85,7 @@ const normalizePurchaseOrder = (row: any): PurchaseOrderDetailModel => {
       quantityReceived,
       unitCost,
       lineTotal,
+      taxType: item.tax_type ?? item.taxType ?? "TAXABLE",
     };
   });
 
@@ -603,6 +605,7 @@ const PurchaseOrderDetail = () => {
             productSupplierId: item.productSupplierId,
             quantity: String(item.quantityOrdered),
             unitCost: String(item.unitCost),
+            taxType: item.taxType,
           })),
         } : undefined}
         onSaved={async () => {

@@ -102,7 +102,7 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder = PurchaseOrder::with([
             'supplier',
-            'items.product',
+            'items.product.manufacturer',
             'items.productSupplier',
             'createdByUser.employee',
             'submittedByUser.employee',
@@ -257,6 +257,8 @@ class PurchaseOrderController extends Controller
                         'product_supplier_id' => $item['product_supplier_id'] ?? null,
                         'quantity_ordered' => $item['quantity_ordered'],
                         'unit_cost' => $item['unit_cost'],
+                        'notes' => $item['notes'] ?? null,
+                        'tax_type' => $item['tax_type'] ?? 'TAXABLE',
                         'notes' => $item['notes'] ?? null,
                     ]);
 

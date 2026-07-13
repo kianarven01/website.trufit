@@ -51,9 +51,10 @@
         .remarks { margin-bottom: 15px; }
         .remarks .label { font-size: 9px; font-weight: bold; color: #0033a0; text-transform: uppercase; margin-bottom: 3px; }
         .remarks .value { font-size: 9.5px; color: #333; min-height: 20px; }
-        .signatures { display: flex; gap: 40px; margin-top: 25px; padding-top: 15px; }
-        .sig-block { flex: 1; text-align: center; }
-        .sig-line { border-top: 1px solid #333; margin-top: 40px; padding-top: 5px; font-size: 9px; color: #555; }
+        .signatures { display: flex; justify-content: flex-end; margin-top: 15px; padding-top: 15px; }
+        .sig-block { width: 180px; text-align: center; }
+        .sig-name { border-bottom: 1px solid #333; padding-bottom: 4px; font-size: 10px; font-weight: bold; color: #1a1a2e; margin-bottom: 2px; }
+        .sig-label { font-size: 9px; color: #555; }
         .footer { text-align: center; font-size: 8px; color: #999; margin-top: 20px; padding-top: 8px; border-top: 1px solid #eee; }
     </style>
 </head>
@@ -74,20 +75,20 @@
             @else
                 <div class="company-name">TRUFIT</div>
             @endif
-            <div class="company-name" style="font-size: 13px;">TRUFIT Auto Center</div>
+            <div class="company-name" style="font-size: 13px;">TRUFIT Trading and Services Corp.</div>
             <div class="company-details">
                 1042 Vinzons Ave. P1 Brgy. Gahonon<br>
                 Daet, Camarines Norte, Philippines<br>
                 Tel: 09187747788 / 09757210388<br>
-                Email: trufitautocenter@gmail.com
+                Email: trufitautocenter@gmail.com<br>
+                Web: trufitautocenter.com
             </div>
         </div>
         <div class="po-title-section">
             <div class="po-title">Purchase Order</div>
             <div class="po-meta">
                 <strong>PO #:</strong> {{ $purchaseOrder->po_number }}<br>
-                <strong>Date:</strong> {{ $purchaseOrder->order_date ? $purchaseOrder->order_date->format('M d, Y') : '' }}<br>
-                <strong>Status:</strong> {{ $purchaseOrder->status }}
+                <strong>Date:</strong> {{ $purchaseOrder->order_date ? $purchaseOrder->order_date->format('M d, Y') : '' }}
             </div>
         </div>
     </div>
@@ -103,6 +104,8 @@
                 <div class="value">{{ $purchaseOrder->supplier->address ?? '' }}</div>
                 <div class="label">Attn: Contact Person</div>
                 <div class="value">{{ $purchaseOrder->supplier->contactPerson ?? '' }}</div>
+                <div class="label">Email</div>
+                <div class="value">{{ $purchaseOrder->supplier->email ?? '' }}</div>
                 <div class="label">Phone</div>
                 <div class="value">{{ $purchaseOrder->supplier->phone ?? '' }}</div>
             </div>
@@ -116,6 +119,8 @@
                 <div class="value">1042 Vinzons Ave. P1 Brgy. Gahonon<br>Daet, Camarines Norte, Philippines</div>
                 <div class="label">Phone</div>
                 <div class="value">09187747788</div>
+                <div class="label">Email</div>
+                <div class="value">trufitautocenter@gmail.com</div>
             </div>
         </div>
     </div>
@@ -127,8 +132,8 @@
             <div class="value">{{ str_replace('_', ' ', $purchaseOrder->supplier->paymentTerms ?? 'COD') }}</div>
         </div>
         <div class="meta-cell">
-            <div class="label">Delivery Date</div>
-            <div class="value">{{ $purchaseOrder->request_ship_date ? $purchaseOrder->request_ship_date->format('M d, Y') : '—' }}</div>
+            <div class="label">Expected Delivery Date</div>
+            <div class="value">{{ $purchaseOrder->request_ship_date ? $purchaseOrder->request_ship_date->format('M d, Y') : '' }}</div>
         </div>
         <div class="meta-cell">
             <div class="label">Prepared By</div>
@@ -140,11 +145,12 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th width="5%">#</th>
-                <th width="45%">Description</th>
-                <th width="10%" class="cnt">Qty</th>
-                <th width="20%" class="num">Unit Price</th>
-                <th width="20%" class="num">Total</th>
+                <th width="4%">#</th>
+                <th width="34%">Product Name</th>
+                <th width="10%" class="cnt">Tax Code</th>
+                <th width="14%" class="cnt">Quantity</th>
+                <th width="19%" class="num">Unit Price</th>
+                <th width="19%" class="num">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -152,7 +158,7 @@
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>
-                    {{ $item->product->name ?? 'Unknown Product' }}
+                    {{ $item->product->name ?? 'Unknown Product' }}@if($item->product->manufacturer) <span style="color:#888;"> — {{ $item->product->manufacturer->name }}</span>@endif
                     @if($item->product->part_number)
                         <br><span style="font-size:8px; color:#888;">P/N: {{ $item->product->part_number }}</span>
                     @endif
@@ -160,17 +166,18 @@
                         <br><span style="font-size:8px; color:#666;">{{ $item->notes }}</span>
                     @endif
                 </td>
+                <td class="cnt">{{ ($item->tax_type === 'NON_TAXABLE' ? 'Non-VAT' : 'VAT') }}</td>
                 <td class="cnt">{{ $item->quantity_ordered }}</td>
                 <td class="num">{{ number_format($item->unit_cost, 2) }}</td>
                 <td class="num">{{ number_format($item->line_total, 2) }}</td>
             </tr>
             @endforeach
             @if($purchaseOrder->items->count() === 0)
-            <tr><td colspan="5" style="text-align:center; color:#999; padding:20px;">No items</td></tr>
+            <tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">No items</td></tr>
             @endif
             {{-- Empty rows to fill space --}}
             @for($i = 0; $i < max(5 - $purchaseOrder->items->count(), 0); $i++)
-            <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
             @endfor
         </tbody>
     </table>
@@ -190,23 +197,16 @@
     </div>
 
     {{-- Remarks --}}
-    @if($purchaseOrder->remarks)
     <div class="remarks">
         <div class="label">Remarks</div>
-        <div class="value">{{ $purchaseOrder->remarks }}</div>
+        <div class="value">{{ $purchaseOrder->remarks ?? '' }}</div>
     </div>
-    @endif
 
     {{-- Signatures --}}
     <div class="signatures">
         <div class="sig-block">
-            <div class="sig-line">Prepared By</div>
-        </div>
-        <div class="sig-block">
-            <div class="sig-line">Approved By</div>
-        </div>
-        <div class="sig-block">
-            <div class="sig-line">Received By</div>
+            <div class="sig-name">{{ $purchaseOrder->approvedByName ?? '' }}</div>
+            <div class="sig-label">Approved By</div>
         </div>
     </div>
 

@@ -25,6 +25,7 @@ class UpdatePurchaseOrderRequest extends FormRequest
             'items.*.quantity_ordered' => ['required_with:items', 'integer', 'min:1'],
             'items.*.unit_cost' => ['required_with:items', 'numeric', 'min:0'],
             'items.*.notes' => ['nullable', 'string'],
+            'items.*.tax_type' => ['sometimes', 'string', 'in:TAXABLE,NON_TAXABLE'],
         ];
     }
 

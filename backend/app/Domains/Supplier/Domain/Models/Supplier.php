@@ -49,4 +49,29 @@ class Supplier extends Model
             'vat_percent',
         ]);
     }
+
+    public function getNameAttribute(): ?string
+    {
+        return $this->attributes['CompanyName'] ?? null;
+    }
+
+    public function getContactPersonAttribute(): ?string
+    {
+        return $this->attributes['CompanyContact'] ?? null;
+    }
+
+    public function getEmailAttribute(): ?string
+    {
+        return $this->attributes['Email'] ?? null;
+    }
+
+    public function getPhoneAttribute(): ?string
+    {
+        return $this->attributes['ContactNumber'] ?? null;
+    }
+
+    public function getPaymentTermsAttribute(): ?string
+    {
+        return $this->attributes['payment_terms'] ?? null;
+    }
 }

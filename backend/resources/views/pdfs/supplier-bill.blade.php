@@ -18,21 +18,16 @@
         .company-info { flex: 1; }
         .company-name { font-size: 20px; font-weight: bold; color: #0033a0; margin: 0 0 4px 0; }
         .company-details { font-size: 9px; color: #555; line-height: 1.5; }
-        .bill-title-section { text-align: right; }
-        .bill-title { font-size: 22px; font-weight: bold; color: #0033a0; margin: 0; text-transform: uppercase; }
-        .bill-meta { font-size: 10px; color: #333; margin-top: 6px; line-height: 1.6; }
-        .bill-meta strong { color: #0033a0; }
+        .po-title-section { text-align: right; }
+        .po-title { font-size: 22px; font-weight: bold; color: #0033a0; margin: 0; text-transform: uppercase; }
+        .po-meta { font-size: 10px; color: #333; margin-top: 6px; line-height: 1.6; }
+        .po-meta strong { color: #0033a0; }
         .parties { display: flex; gap: 20px; margin-bottom: 15px; }
         .party-box { flex: 1; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
         .party-header { background: #0033a0; color: #fff; padding: 5px 10px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
         .party-body { padding: 8px 10px; font-size: 9.5px; line-height: 1.5; }
         .party-body .label { font-size: 8px; color: #888; text-transform: uppercase; margin-bottom: 1px; }
         .party-body .value { font-weight: bold; color: #1a1a2e; margin-bottom: 6px; }
-        .meta-bar { display: flex; gap: 0; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
-        .meta-cell { flex: 1; padding: 6px 10px; border-right: 1px solid #ccc; }
-        .meta-cell:last-child { border-right: none; }
-        .meta-cell .label { font-size: 8px; color: #888; text-transform: uppercase; margin-bottom: 1px; }
-        .meta-cell .value { font-size: 10px; font-weight: bold; color: #1a1a2e; }
         .items-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
         .items-table th { background: #0033a0; color: #fff; padding: 6px 8px; font-size: 9px; text-transform: uppercase; text-align: left; font-weight: 600; }
         .items-table th.num { text-align: right; }
@@ -50,9 +45,10 @@
         .remarks { margin-bottom: 15px; }
         .remarks .label { font-size: 9px; font-weight: bold; color: #0033a0; text-transform: uppercase; margin-bottom: 3px; }
         .remarks .value { font-size: 9.5px; color: #333; min-height: 20px; }
-        .signatures { display: flex; gap: 40px; margin-top: 25px; padding-top: 15px; }
-        .sig-block { flex: 1; text-align: center; }
-        .sig-line { border-top: 1px solid #333; margin-top: 40px; padding-top: 5px; font-size: 9px; color: #555; }
+        .signatures { display: flex; justify-content: flex-end; margin-top: 15px; padding-top: 15px; }
+        .sig-block { width: 180px; text-align: center; }
+        .sig-name { border-bottom: 1px solid #333; padding-bottom: 4px; font-size: 10px; font-weight: bold; color: #1a1a2e; margin-bottom: 2px; }
+        .sig-label { font-size: 9px; color: #555; }
         .footer { text-align: center; font-size: 8px; color: #999; margin-top: 20px; padding-top: 8px; border-top: 1px solid #eee; }
     </style>
 </head>
@@ -73,17 +69,18 @@
             @else
                 <div class="company-name">TRUFIT</div>
             @endif
-            <div class="company-name" style="font-size: 13px;">TRUFIT Auto Center</div>
+            <div class="company-name" style="font-size: 13px;">TRUFIT Trading and Services Corp.</div>
             <div class="company-details">
                 1042 Vinzons Ave. P1 Brgy. Gahonon<br>
                 Daet, Camarines Norte, Philippines<br>
                 Tel: 09187747788 / 09757210388<br>
-                Email: trufitautocenter@gmail.com
+                Email: trufitautocenter@gmail.com<br>
+                Web: trufitautocenter.com
             </div>
         </div>
-        <div class="bill-title-section">
-            <div class="bill-title">Supplier Bill</div>
-            <div class="bill-meta">
+        <div class="po-title-section">
+            <div class="po-title">Supplier Bill</div>
+            <div class="po-meta">
                 <strong>Bill #:</strong> {{ $bill->bill_number }}<br>
                 <strong>PO #:</strong> {{ $bill->purchaseOrder->po_number ?? '' }}<br>
                 <strong>Status:</strong> {{ $bill->status }}
@@ -91,7 +88,7 @@
         </div>
     </div>
 
-    {{-- Vendor --}}
+    {{-- Vendor / Bill Details --}}
     <div class="parties">
         <div class="party-box">
             <div class="party-header">Vendor</div>
@@ -102,21 +99,23 @@
                 <div class="value">{{ $bill->purchaseOrder->supplier->address ?? '' }}</div>
                 <div class="label">Attn: Contact Person</div>
                 <div class="value">{{ $bill->purchaseOrder->supplier->contactPerson ?? '' }}</div>
+                <div class="label">Email</div>
+                <div class="value">{{ $bill->purchaseOrder->supplier->email ?? '' }}</div>
                 <div class="label">Phone</div>
                 <div class="value">{{ $bill->purchaseOrder->supplier->phone ?? '' }}</div>
+                <div class="label">Payment Terms</div>
+                <div class="value">{{ str_replace('_', ' ', $bill->purchaseOrder->supplier->paymentTerms ?? 'COD') }}</div>
             </div>
         </div>
         <div class="party-box">
             <div class="party-header">Bill Details</div>
             <div class="party-body">
                 <div class="label">Bill Date</div>
-                <div class="value">{{ $bill->bill_date ? $bill->bill_date->format('M d, Y') : '—' }}</div>
+                <div class="value">{{ $bill->bill_date ? $bill->bill_date->format('M d, Y') : '' }}</div>
                 <div class="label">Due Date</div>
-                <div class="value">{{ $bill->due_date ? $bill->due_date->format('M d, Y') : '—' }}</div>
-                <div class="label">Payment Terms</div>
-                <div class="value">{{ str_replace('_', ' ', $bill->purchaseOrder->supplier->paymentTerms ?? 'COD') }}</div>
+                <div class="value">{{ $bill->due_date ? $bill->due_date->format('M d, Y') : '' }}</div>
                 <div class="label">Created By</div>
-                <div class="value">{{ $bill->createdByName ?? '—' }}</div>
+                <div class="value">{{ $bill->createdByName ?? '' }}</div>
             </div>
         </div>
     </div>
@@ -125,11 +124,11 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th width="5%">#</th>
-                <th width="40%">Description</th>
+                <th width="4%">#</th>
+                <th width="44%">Product Name</th>
                 <th width="12%" class="cnt">Qty Billed</th>
-                <th width="20%" class="num">Unit Price</th>
-                <th width="23%" class="num">Line Total</th>
+                <th width="18%" class="num">Unit Price</th>
+                <th width="22%" class="num">Line Total</th>
             </tr>
         </thead>
         <tbody>
@@ -137,7 +136,7 @@
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>
-                    {{ $item->product->name ?? 'Unknown Product' }}
+                    {{ $item->product->name ?? 'Unknown Product' }}@if($item->product->manufacturer) <span style="color:#888;"> — {{ $item->product->manufacturer->name }}</span>@endif
                     @if($item->product->part_number)
                         <br><span style="font-size:8px; color:#888;">P/N: {{ $item->product->part_number }}</span>
                     @endif
@@ -150,6 +149,9 @@
             @if($bill->items->count() === 0)
             <tr><td colspan="5" style="text-align:center; color:#999; padding:20px;">No items</td></tr>
             @endif
+            @for($i = 0; $i < max(5 - $bill->items->count(), 0); $i++)
+            <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>
+            @endfor
         </tbody>
     </table>
 
@@ -164,23 +166,16 @@
     </div>
 
     {{-- Remarks --}}
-    @if($bill->notes)
     <div class="remarks">
-        <div class="label">Notes</div>
-        <div class="value">{{ $bill->notes }}</div>
+        <div class="label">Remarks</div>
+        <div class="value">{{ $bill->notes ?? '' }}</div>
     </div>
-    @endif
 
     {{-- Signatures --}}
     <div class="signatures">
         <div class="sig-block">
-            <div class="sig-line">Prepared By</div>
-        </div>
-        <div class="sig-block">
-            <div class="sig-line">Approved By</div>
-        </div>
-        <div class="sig-block">
-            <div class="sig-line">Paid By</div>
+            <div class="sig-name">{{ $bill->approvedByName ?? '' }}</div>
+            <div class="sig-label">Approved By</div>
         </div>
     </div>
 

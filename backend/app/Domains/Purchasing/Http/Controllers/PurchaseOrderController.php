@@ -259,7 +259,6 @@ class PurchaseOrderController extends Controller
                         'unit_cost' => $item['unit_cost'],
                         'notes' => $item['notes'] ?? null,
                         'tax_type' => $item['tax_type'] ?? 'TAXABLE',
-                        'notes' => $item['notes'] ?? null,
                     ]);
 
                     $subtotal += (float) $poItem->line_total;

@@ -137,7 +137,7 @@
         </div>
         <div class="meta-cell">
             <div class="label">Prepared By</div>
-            <div class="value">{{ $purchaseOrder->createdByName ?? '—' }}</div>
+            <div class="value">{{ $purchaseOrder->createdByName ?? '' }}</div>
         </div>
     </div>
 

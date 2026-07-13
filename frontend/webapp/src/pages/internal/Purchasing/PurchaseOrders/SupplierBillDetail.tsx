@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "@/api/axios";
 import PurchaseStatusBadge from "@/components/purchasing/PurchaseStatusBadge";
@@ -60,6 +60,7 @@ export default function SupplierBillDetail() {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const pdfBlobUrlRef = useRef<string | null>(null);
 
   const handlePreviewPDF = useCallback(async () => {
     if (!billId) return;
@@ -67,15 +68,16 @@ export default function SupplierBillDetail() {
     setShowPdfPreview(true);
     try {
       const response = await api.get(`/purchasing/supplier-bills/${billId}/download-pdf`, { responseType: 'blob' });
-      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      if (pdfBlobUrlRef.current) window.URL.revokeObjectURL(pdfBlobUrlRef.current);
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      pdfBlobUrlRef.current = url;
       setPdfBlobUrl(url);
     } catch {
       toast.error("Failed to load PDF preview.");
     } finally {
       setIsLoadingPdf(false);
     }
-  }, [billId, pdfBlobUrl]);
+  }, [billId]);
 
   const loadBillDetails = async () => {
     setLoading(true);
@@ -513,8 +515,9 @@ export default function SupplierBillDetail() {
       {/* ========== PDF PREVIEW DIALOG ========== */}
       <Dialog open={showPdfPreview} onOpenChange={(open) => {
         setShowPdfPreview(open);
-        if (!open && pdfBlobUrl) {
-          window.URL.revokeObjectURL(pdfBlobUrl);
+        if (!open && pdfBlobUrlRef.current) {
+          window.URL.revokeObjectURL(pdfBlobUrlRef.current);
+          pdfBlobUrlRef.current = null;
           setPdfBlobUrl(null);
         }
       }}>

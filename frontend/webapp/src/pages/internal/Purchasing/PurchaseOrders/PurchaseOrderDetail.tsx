@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { ArrowLeft, CircleCheck, MoreVertical, Pencil, Printer, ReceiptText, Trash2, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
@@ -151,6 +151,7 @@ const PurchaseOrderDetail = () => {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const pdfBlobUrlRef = useRef<string | null>(null);
 
   const handlePreviewPDF = useCallback(async () => {
     if (!id) return;
@@ -158,15 +159,16 @@ const PurchaseOrderDetail = () => {
     setShowPdfPreview(true);
     try {
       const response = await api.get(`/purchasing/purchase-orders/${id}/download-pdf`, { responseType: 'blob' });
-      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      if (pdfBlobUrlRef.current) window.URL.revokeObjectURL(pdfBlobUrlRef.current);
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      pdfBlobUrlRef.current = url;
       setPdfBlobUrl(url);
     } catch {
       toast.error("Failed to load PDF preview.");
     } finally {
       setIsLoadingPdf(false);
     }
-  }, [id, pdfBlobUrl]);
+  }, [id]);
   const loadPurchaseOrder = async () => {
     if (!id) return;
 
@@ -629,8 +631,9 @@ const PurchaseOrderDetail = () => {
       {/* ========== PDF PREVIEW DIALOG ========== */}
       <Dialog open={showPdfPreview} onOpenChange={(open) => {
         setShowPdfPreview(open);
-        if (!open && pdfBlobUrl) {
-          window.URL.revokeObjectURL(pdfBlobUrl);
+        if (!open && pdfBlobUrlRef.current) {
+          window.URL.revokeObjectURL(pdfBlobUrlRef.current);
+          pdfBlobUrlRef.current = null;
           setPdfBlobUrl(null);
         }
       }}>

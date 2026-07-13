@@ -95,11 +95,12 @@ class GoodsReceiptController extends Controller
     {
         $receipt = GoodsReceipt::with([
             'purchaseOrder.supplier',
-            'items.product',
+            'items.product.manufacturer',
             'items.purchaseOrderItem',
             'createdByUser.employee',
             'receivedByUser.employee',
             'approvedByUser.employee',
+            'returnedByUser.employee',
         ])->findOrFail($id);
 
         $filename = 'GR-' . ($receipt->receipt_number ?? str_pad(substr($receipt->id, 0, 8), 8, '0', STR_PAD_LEFT)) . '.pdf';

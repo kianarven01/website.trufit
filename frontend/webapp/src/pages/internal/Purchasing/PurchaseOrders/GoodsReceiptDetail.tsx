@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { ArrowLeft, MoreVertical, Pencil, Printer, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "@/api/axios";
@@ -139,6 +139,7 @@ const GoodsReceiptDetail = () => {
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const pdfBlobUrlRef = useRef<string | null>(null);
 
   const handlePreviewPDF = useCallback(async () => {
     if (!id) return;
@@ -146,15 +147,16 @@ const GoodsReceiptDetail = () => {
     setShowPdfPreview(true);
     try {
       const response = await api.get(`/purchasing/goods-receipts/${id}/download-pdf`, { responseType: 'blob' });
-      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      if (pdfBlobUrlRef.current) window.URL.revokeObjectURL(pdfBlobUrlRef.current);
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      pdfBlobUrlRef.current = url;
       setPdfBlobUrl(url);
     } catch {
       toast.error("Failed to load PDF preview.");
     } finally {
       setIsLoadingPdf(false);
     }
-  }, [id, pdfBlobUrl]);
+  }, [id]);
   const loadGoodsReceipt = async () => {
     if (!id) return;
 
@@ -641,8 +643,9 @@ const GoodsReceiptDetail = () => {
       {/* ========== PDF PREVIEW DIALOG ========== */}
       <Dialog open={showPdfPreview} onOpenChange={(open) => {
         setShowPdfPreview(open);
-        if (!open && pdfBlobUrl) {
-          window.URL.revokeObjectURL(pdfBlobUrl);
+        if (!open && pdfBlobUrlRef.current) {
+          window.URL.revokeObjectURL(pdfBlobUrlRef.current);
+          pdfBlobUrlRef.current = null;
           setPdfBlobUrl(null);
         }
       }}>

@@ -84,7 +84,7 @@ class SupplierBillController extends Controller
     {
         $bill = SupplierBill::with([
             'purchaseOrder.supplier',
-            'items.product',
+            'items.product.manufacturer',
             'items.purchaseOrderItem',
             'createdByUser.employee',
             'approvedByUser.employee',

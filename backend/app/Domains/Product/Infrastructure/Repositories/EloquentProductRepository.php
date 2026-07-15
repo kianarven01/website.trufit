@@ -46,8 +46,6 @@ class EloquentProductRepository implements ProductRepositoryInterface
                 'category_id' => $categoryId,
                 'barcode' => $productData['barcode'] ?? $productData['SKU'] ?? $productData['sku'] ?? null,
                 'part_number' => $productData['part_number'] ?? null,
-                'is_oem' => $productData['is_oem'] ?? false,
-                'oem_reference_number' => $productData['oem_reference_number'] ?? null,
                 'unit' => $productData['unit'] ?? $productData['unit_id'] ?? null,
                 'conversion_factor' => $productData['conversion_factor'] ?? null,
                 'base_unit_id' => $productData['base_unit_id'] ?? null,

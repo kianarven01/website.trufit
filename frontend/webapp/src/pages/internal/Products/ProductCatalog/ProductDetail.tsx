@@ -74,7 +74,6 @@ interface Product {
   partId?: string | number | null;
   manufacturerId?: string | number | null;
   unitId?: string | number | null;
-  oemRef?: string | null;
   description: string;
   unit: string;
   unitAbbreviation?: string | null;
@@ -325,7 +324,6 @@ const normalizeProduct = (row: any): Product => ({
     (typeof row.unit === "number" || typeof row.unit === "string"
       ? row.unit
       : null),
-  oemRef: row.oem_reference_number || row.oemRef || null,
   description: row.description || "-",
   unit: row.unit?.name || row.Unit?.name || row.unit_name || row.unit || "-",
   unitAbbreviation:

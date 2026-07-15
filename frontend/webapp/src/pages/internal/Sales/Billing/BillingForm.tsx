@@ -25,6 +25,7 @@ import {
 import { ArrowLeft, Plus, Trash2, Import } from "lucide-react";
 import { toast } from "sonner";
 import { BillingStatement, BillingItem } from "./BillingList";
+import api from "@/api/axios";
 
 interface ImportedSalesOrder {
   id: string;
@@ -101,10 +102,28 @@ const BillingForm: React.FC = () => {
 
   // Load Sales Orders for Import & Set dynamic breadcrumb
   useEffect(() => {
-    const stored = localStorage.getItem("sales_orders");
-    if (stored) {
-      setSalesOrders(JSON.parse(stored));
-    }
+    const fetchSOList = async () => {
+      try {
+        const res = await api.get("/sales-orders");
+        const data = res.data.data;
+        if (Array.isArray(data)) {
+          const normalized = data.map((o: any) => {
+            const customerName = o.customer ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() : "—";
+            const plateNo = o.vehicle ? o.vehicle.plate_number : "—";
+            return {
+              id: o.id,
+              so_number: o.so_number || o.id.substring(0, 8).toUpperCase(),
+              customerName,
+              plateNo,
+            };
+          });
+          setSalesOrders(normalized as any);
+        }
+      } catch (err) {
+        console.error("Failed to load Sales Orders for Billing", err);
+      }
+    };
+    fetchSOList();
 
     sessionStorage.setItem("breadcrumb-/webapp/sales/billing/create", "Create Billing Statement");
     window.dispatchEvent(new Event("breadcrumb-update"));
@@ -116,47 +135,55 @@ const BillingForm: React.FC = () => {
   }, []);
 
   // Handle importing a Sales Order
-  const handleImportSalesOrder = (soId: string) => {
+  const handleImportSalesOrder = async (soId: string) => {
     if (!soId) return;
-    const so = salesOrders.find((o) => o.id === soId);
-    if (!so) return;
+    try {
+      toast.info("Loading Sales Order items...");
+      const res = await api.get(`/sales-orders/${soId}`);
+      const so = res.data.data;
+      if (!so) return;
 
-    setSelectedSOId(soId);
-    setSoid(so.id);
-    setJoid(so.id.replace("SO-", "JO-"));
-    setEstimateNo(so.id.replace("SO-", "EST-"));
-    setPoid("—");
+      setSelectedSOId(soId);
+      setSoid(so.so_number || so.id.substring(0, 8).toUpperCase());
+      setJoid("—");
+      setEstimateNo(so.estimate_id ? "EST-REF" : "—");
+      setPoid("—");
 
-    setCustomerName(so.customer.name);
-    setCustomerEmail(so.customer.email);
-    setCustomerMobile(so.customer.mobile);
-    setCustomerLandline("—");
-    setCustomerBusiness("—");
-    setCustomerAddress(so.customer.address);
+      const customerName = so.customer ? `${so.customer.first_name || ""} ${so.customer.last_name || ""}`.trim() : "—";
+      setCustomerName(customerName);
+      setCustomerEmail(so.customer?.email || "—");
+      setCustomerMobile(so.customer?.mobile_number || "—");
+      setCustomerLandline("—");
+      setCustomerBusiness("—");
+      setCustomerAddress(so.customer?.address || "—");
 
-    setVehiclePlate(so.vehicle.plateNo);
-    setVehicleYear(so.vehicle.year);
-    setVehicleMake(so.vehicle.make);
-    setVehicleModel(so.vehicle.model);
-    setVehicleVariant(so.vehicle.variant);
-    setVehicleColor("—");
-    setVehicleEngine("—");
-    setVehicleVIN("—");
-    setVehicleRegistration("—");
-    setVehicleDealer("—");
-    setVehicleMileage(so.vehicle.mileage);
-    
-    // Map SO products to billing items
-    const billingItems: BillingItem[] = so.products.map((p, idx) => ({
-      id: p.id || `so-item-${idx}`,
-      name: p.name,
-      qty: p.qty,
-      price: p.price,
-      amount: p.amount,
-      type: "part"
-    }));
-    setItems(billingItems);
-    toast.success(`Successfully imported items from Sales Order ${so.id}`);
+      setVehiclePlate(so.vehicle?.plate_number || "—");
+      setVehicleYear(so.vehicle?.year_model || "—");
+      setVehicleMake(so.vehicle?.make || "—");
+      setVehicleModel(so.vehicle?.model || "—");
+      setVehicleVariant(so.vehicle?.variant || "—");
+      setVehicleColor(so.vehicle?.color || "—");
+      setVehicleEngine("—");
+      setVehicleVIN("—");
+      setVehicleRegistration("—");
+      setVehicleDealer("—");
+      setVehicleMileage(Number(so.vehicle?.mileage) || 0);
+
+      const itemsList = Array.isArray(so.items) ? so.items : [];
+      const billingItems: BillingItem[] = itemsList.map((p: any, idx: number) => ({
+        id: p.id || `so-item-${idx}`,
+        name: p.product?.name || "Unknown Product",
+        qty: Number(p.quantity) || 1,
+        price: Number(p.UnitPrice) || 0,
+        amount: Number(p.SubTotal) || 0,
+        type: "part"
+      }));
+      setItems(billingItems);
+      toast.success(`Successfully imported items from Sales Order ${so.so_number || soId}`);
+    } catch (err) {
+      console.error("Failed to import Sales Order details", err);
+      toast.error("Failed to import Sales Order details");
+    }
   };
 
   // Add manual item
@@ -302,9 +329,9 @@ const BillingForm: React.FC = () => {
                   <SelectValue placeholder="Select Sales Order..." />
                 </SelectTrigger>
                 <SelectContent className="z-[100]">
-                  {salesOrders.map((so) => (
+                  {salesOrders.map((so: any) => (
                     <SelectItem key={so.id} value={so.id}>
-                      {so.id} — {so.customer.name} ({so.vehicle.plateNo})
+                      {so.so_number} — {so.customerName} ({so.plateNo})
                     </SelectItem>
                   ))}
                 </SelectContent>

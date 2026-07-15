@@ -107,9 +107,6 @@ class ProductFormatterService
             'vehicle_compatibilities' => $this->formatVehicleCompatibilities($product),
             'compatible_vehicles' => $this->formatVehicleCompatibilities($product),
 
-            'is_oem' => $product->is_oem,
-            'oem_reference_number' => $product->oem_reference_number,
-
             'fitment_type' => $fitmentType,
             'equivalent_to_product_id' => $equivalentToProductId,
             'equivalent_to_product_name' => $equivalentToProductName,

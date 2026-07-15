@@ -7,7 +7,7 @@ interface Role {
 }
 
 interface KeyGeneratorProps {
-  onComplete: () => void;
+  onComplete?: () => void;
 }
 
 const KeyGenerator: React.FC<KeyGeneratorProps> = ({ onComplete }) => {

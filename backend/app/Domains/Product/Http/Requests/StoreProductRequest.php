@@ -32,9 +32,6 @@ class StoreProductRequest extends FormRequest
             'part_number' => ['required_if:item_type,part', 'nullable', 'string', 'max:255'],
             'part_id' => ['required_if:item_type,part', 'nullable', 'integer'],
 
-            'is_oem' => ['nullable', 'boolean'],
-            'oem_reference_number' => ['nullable', 'string', 'max:255'],
-
             'car_variant_id' => ['nullable', 'integer'],
             'compatibility_notes' => ['nullable', 'string'],
 

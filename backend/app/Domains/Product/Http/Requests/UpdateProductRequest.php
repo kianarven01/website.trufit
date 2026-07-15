@@ -35,14 +35,6 @@ class UpdateProductRequest extends FormRequest
             $mapped['part_number'] = $this->input('partNumber');
         }
 
-        if ($this->has('isOEM') && !$this->has('is_oem')) {
-            $mapped['is_oem'] = $this->input('isOEM');
-        }
-
-        if ($this->has('oemRef') && !$this->has('oem_reference_number')) {
-            $mapped['oem_reference_number'] = $this->input('oemRef');
-        }
-
         if ($this->has('imagePath') && !$this->has('image_path')) {
             $mapped['image_path'] = $this->input('imagePath');
         }
@@ -63,8 +55,6 @@ class UpdateProductRequest extends FormRequest
             'category_id' => ['sometimes', 'nullable', 'integer'],
             'barcode' => ['sometimes', 'nullable', 'string', 'max:255'],
             'part_number' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'is_oem' => ['sometimes', 'boolean'],
-            'oem_reference_number' => ['sometimes', 'nullable', 'string', 'max:255'],
             'unit' => ['sometimes', 'nullable', 'integer'],
             'part_id' => ['sometimes', 'nullable', 'integer'],
             'manufacturer_id' => ['sometimes', 'nullable', 'integer'],

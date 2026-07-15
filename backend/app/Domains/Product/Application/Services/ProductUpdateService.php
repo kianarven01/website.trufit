@@ -52,8 +52,6 @@ class ProductUpdateService
                 'category_id',
                 'barcode',
                 'part_number',
-                'is_oem',
-                'oem_reference_number',
                 'unit',
                 'conversion_factor',
                 'base_unit_id',
@@ -87,7 +85,6 @@ class ProductUpdateService
             'image_path',
             'barcode',
             'part_number',
-            'oem_reference_number',
         ] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;

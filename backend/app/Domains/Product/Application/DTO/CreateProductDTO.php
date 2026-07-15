@@ -33,8 +33,6 @@ class CreateProductDTO
             'manufacturer_id' => $data['manufacturer_id'] ?? null,
             'barcode' => $data['barcode'] ?? null,
             'part_id' => $data['part_id'] ?? null,
-            'is_oem' => filter_var($data['is_oem'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'oem_reference_number' => $data['oem_reference_number'] ?? null,
             'selling_price' => isset($data['selling_price']) ? (float) $data['selling_price'] : null,
             'conversion_factor' => isset($data['conversion_factor']) ? (int) $data['conversion_factor'] : 1,
             'base_unit_id' => isset($data['base_unit_id']) ? (int) $data['base_unit_id'] : null,

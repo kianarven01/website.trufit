@@ -60,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     require app_path('Domains/Customer/routes.php');
     require app_path('Domains/Estimate/routes.php');
     require app_path('Domains/Purchasing/routes.php');
+    require app_path('Domains/SalesOrder/routes.php');
     // Future Domains will go here:
     // require app_path('Domains/Inventory/routes.php');
     // require app_path('Domains/Sales/routes.php');

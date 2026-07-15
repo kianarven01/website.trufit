@@ -37,8 +37,6 @@ class Product extends Model
         'category_id',
         'barcode',
         'part_number',
-        'is_oem',
-        'oem_reference_number',
         'unit',
         'conversion_factor',
         'base_unit_id',
@@ -56,7 +54,6 @@ class Product extends Model
         'conversion_factor' => 'integer',
         'base_unit_id' => 'integer',
         'part_id' => 'integer',
-        'is_oem' => 'boolean',
         'deleted_at' => 'datetime',
     ];
 

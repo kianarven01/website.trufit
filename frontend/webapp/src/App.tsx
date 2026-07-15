@@ -29,6 +29,7 @@ import ServiceDetail from "./pages/internal/Services/Service Catalog/ServiceDeta
 
 import SalesOrder from "./pages/internal/Sales/SalesOrder/SalesOrderList";
 import SalesOrderDetail from "./pages/internal/Sales/SalesOrder/SalesOrderDetail";
+import SalesOrderForm from "./pages/internal/Sales/SalesOrder/SalesOrderForm";
 
 import Estimates from "./pages/internal/Sales/Estimates/Estimates";
 import AddEstimate from "./pages/internal/Sales/Estimates/EstimateForm";
@@ -121,6 +122,8 @@ const App: React.FC = () => {
               <Route path="sales">
                 <Route path="sales-orders">
                   <Route index element={<SalesOrder />} />
+                  <Route path="create" element={<SalesOrderForm mode="create" />} />
+                  <Route path=":id/edit" element={<SalesOrderForm mode="edit" />} />
                   <Route path=":id" element={<SalesOrderDetail />} />
                 </Route>
 

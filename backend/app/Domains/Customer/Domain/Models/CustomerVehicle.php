@@ -26,7 +26,8 @@ class CustomerVehicle extends Model
         'model',
         'variant',
         'selling_dealer',
-        'vehicle_variant_id'
+        'vehicle_variant_id',
+        'mileage',
     ];
 
     public function customer()

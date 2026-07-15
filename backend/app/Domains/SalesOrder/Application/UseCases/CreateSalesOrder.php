@@ -13,21 +13,9 @@ class CreateSalesOrder
     public function execute(array $data, ?string $userId = null): SalesOrder
     {
         return DB::transaction(function () use ($data, $userId) {
-            $today = now();
-            $dateStr = $today->format('ymd');
-            $prefix = 'SO-' . $dateStr . '-';
-
-            $lastOrder = SalesOrder::where('so_number', 'like', $prefix . '%')
-                ->orderBy('so_number', 'desc')
-                ->lockForUpdate()
-                ->first();
-
-            $nextSequence = 1;
-            if ($lastOrder && preg_match('/-(\d+)$/', $lastOrder->so_number, $matches)) {
-                $nextSequence = ((int) $matches[1]) + 1;
-            }
-
-            $salesOrderNumber = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+            do {
+                $salesOrderNumber = 'SO-' . now()->format('ymd') . '-' . random_int(1000, 9999);
+            } while (SalesOrder::withTrashed()->where('so_number', $salesOrderNumber)->exists());
 
             $employeeId = auth()->user() ? auth()->user()->employeeID : null;
 
@@ -40,6 +28,9 @@ class CreateSalesOrder
             $customerId = $data['customer_id'] ?? null;
             $vehicleId = $data['vehicle_id'] ?? null;
             $items = $data['items'] ?? [];
+
+            // Auto-detect type: REPAIR if linked to estimate, COUNTER otherwise
+            $type = $data['type'] ?? ($estimateId ? 'REPAIR' : 'COUNTER');
 
             if ($estimateId) {
                 $estimate = Estimate::with('items')->find($estimateId);
@@ -72,11 +63,11 @@ class CreateSalesOrder
                 'customerID' => $customerId,
                 'vehicle_id' => $vehicleId,
                 'employee' => $employeeId,
+                'type' => $type,
                 'mileage' => $data['mileage'] ?? null,
                 'Total' => 0,
                 'Balance' => 0,
                 'Status' => 'DRAFT',
-                'StockAvailability' => 'IN_STOCK',
                 'remarks' => $data['notes'] ?? null,
             ]);
 
@@ -109,7 +100,7 @@ class CreateSalesOrder
                 'Balance' => $totalAmount,
             ]);
 
-            return $salesOrder->load(['customer', 'vehicle', 'estimate', 'items.product', 'creator', 'approver']);
+            return $salesOrder->load(['customer', 'vehicle', 'estimate', 'items.product', 'creator', 'approvedByEmployee']);
         });
     }
 }

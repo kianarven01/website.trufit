@@ -444,6 +444,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
     const payload = {
       customer_id: selectedCustomer.id,
       vehicle_id: selectedVehicle ? selectedVehicle.id : null,
+      type: "COUNTER",
       mileage: mileage ? Number(mileage) : null,
       notes,
       items: validLines.map((l) => {

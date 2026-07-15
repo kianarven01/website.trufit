@@ -100,40 +100,6 @@ const BillingForm: React.FC = () => {
   const [newItemPrice, setNewItemPrice] = useState(0);
   const [newItemType, setNewItemType] = useState<BillingItem["type"]>("part");
 
-  // Load Sales Orders for Import & Set dynamic breadcrumb
-  useEffect(() => {
-    const fetchSOList = async () => {
-      try {
-        const res = await api.get("/sales-orders");
-        const data = res.data.data;
-        if (Array.isArray(data)) {
-          const normalized = data.map((o: any) => {
-            const customerName = o.customer ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() : "—";
-            const plateNo = o.vehicle ? o.vehicle.plate_number : "—";
-            return {
-              id: o.id,
-              so_number: o.so_number || o.id.substring(0, 8).toUpperCase(),
-              customerName,
-              plateNo,
-            };
-          });
-          setSalesOrders(normalized as any);
-        }
-      } catch (err) {
-        console.error("Failed to load Sales Orders for Billing", err);
-      }
-    };
-    fetchSOList();
-
-    sessionStorage.setItem("breadcrumb-/webapp/sales/billing/create", "Create Billing Statement");
-    window.dispatchEvent(new Event("breadcrumb-update"));
-
-    return () => {
-      sessionStorage.removeItem("breadcrumb-/webapp/sales/billing/create");
-      window.dispatchEvent(new Event("breadcrumb-update"));
-    };
-  }, []);
-
   // Handle importing a Sales Order
   const handleImportSalesOrder = async (soId: string) => {
     if (!soId) return;
@@ -185,6 +151,51 @@ const BillingForm: React.FC = () => {
       toast.error("Failed to import Sales Order details");
     }
   };
+
+  // Load Sales Orders for Import & Set dynamic breadcrumb
+  useEffect(() => {
+    const fetchSOList = async () => {
+      try {
+        const res = await api.get("/sales-orders");
+        const data = res.data.data;
+        if (Array.isArray(data)) {
+          const normalized = data.map((o: any) => {
+            const customerName = o.customer ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() : "—";
+            const plateNo = o.vehicle ? o.vehicle.plate_number : "—";
+            return {
+              id: o.id,
+              so_number: o.so_number || o.id.substring(0, 8).toUpperCase(),
+              customerName,
+              plateNo,
+            };
+          });
+          setSalesOrders(normalized as any);
+
+          // Auto-import if query parameter 'import_so' is present
+          const params = new URLSearchParams(window.location.search);
+          const importSoId = params.get("import_so");
+          if (importSoId) {
+            // Find if the SO ID exists in the fetched list to verify validity
+            const exists = normalized.some((so) => so.id === importSoId);
+            if (exists) {
+              handleImportSalesOrder(importSoId);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load Sales Orders for Billing", err);
+      }
+    };
+    fetchSOList();
+
+    sessionStorage.setItem("breadcrumb-/webapp/sales/billing/create", "Create Billing Statement");
+    window.dispatchEvent(new Event("breadcrumb-update"));
+
+    return () => {
+      sessionStorage.removeItem("breadcrumb-/webapp/sales/billing/create");
+      window.dispatchEvent(new Event("breadcrumb-update"));
+    };
+  }, []);
 
   // Add manual item
   const handleAddItem = () => {

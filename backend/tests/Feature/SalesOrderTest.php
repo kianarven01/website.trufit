@@ -233,7 +233,7 @@ class SalesOrderTest extends TestCase
         SalesOrder::where('id', $orderId)->update(['Status' => 'IN_PROGRESS']);
 
         // Complete it
-        $this->postJson("/api/sales-orders/{$orderId}/close")->assertOk();
+        $this->postJson("/api/sales-orders/{$orderId}/complete")->assertOk();
 
         // Try to cancel completed — should fail
         $this->postJson("/api/sales-orders/{$orderId}/cancel")->assertStatus(422);

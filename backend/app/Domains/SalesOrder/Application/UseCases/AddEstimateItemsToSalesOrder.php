@@ -1,0 +1,84 @@
+<?php
+
+namespace App\Domains\SalesOrder\Application\UseCases;
+
+use App\Domains\SalesOrder\Domain\Models\SalesOrder;
+use App\Domains\SalesOrder\Domain\Models\SalesOrderItem;
+use App\Domains\Estimate\Domain\Models\EstimateItem;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
+
+class AddEstimateItemsToSalesOrder
+{
+    public function execute(SalesOrder $salesOrder, array $estimateItemIds, ?string $userId = null): SalesOrder
+    {
+        return DB::transaction(function () use ($salesOrder, $estimateItemIds, $userId) {
+            $estimate = $salesOrder->estimate;
+
+            if (!$estimate) {
+                throw new InvalidArgumentException('This Sales Order has no linked estimate.');
+            }
+
+            if (!in_array($salesOrder->Status, ['APPROVED', 'IN_PROGRESS'])) {
+                throw new InvalidArgumentException('Only APPROVED or IN_PROGRESS Sales Orders can have items added.');
+            }
+
+            $estimateItems = EstimateItem::whereIn('id', $estimateItemIds)
+                ->where('estimate_id', $estimate->id)
+                ->get();
+
+            if ($estimateItems->isEmpty()) {
+                throw new InvalidArgumentException('No valid estimate items found.');
+            }
+
+            $existingProductIds = $salesOrder->items->pluck('ProductID')->toArray();
+
+            $added = 0;
+            foreach ($estimateItems as $estItem) {
+                if ($estItem->item_type !== 'part' || !$estItem->product_id) {
+                    continue;
+                }
+
+                if (in_array($estItem->product_id, $existingProductIds)) {
+                    continue;
+                }
+
+                $quantity = (int) $estItem->quantity;
+                $unitPrice = round((float) $estItem->unit_price, 2);
+                $subTotal = round($quantity * $unitPrice, 2);
+
+                SalesOrderItem::create([
+                    'SalesOrderID' => $salesOrder->id,
+                    'ProductID' => $estItem->product_id,
+                    'quantity' => $quantity,
+                    'UnitPrice' => $unitPrice,
+                    'SubTotal' => $subTotal,
+                    'needs_ordering' => $estItem->needs_ordering ?? false,
+                ]);
+
+                $existingProductIds[] = $estItem->product_id;
+                $added++;
+            }
+
+            if ($added === 0) {
+                throw new InvalidArgumentException('All selected items are already on this Sales Order.');
+            }
+
+            $salesOrder->touch();
+
+            return $salesOrder->fresh([
+                'customer',
+                'vehicle',
+                'estimate',
+                'items.product.manufacturer',
+                'items.product.productSuppliers.inventory',
+                'items.product.inventoryRows',
+                'creator',
+                'approvedByEmployee',
+                'submittedByUser.employee',
+                'cancelledByUser.employee',
+                'startedByUser.employee',
+            ]);
+        });
+    }
+}

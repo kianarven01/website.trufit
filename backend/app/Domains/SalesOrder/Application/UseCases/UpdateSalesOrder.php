@@ -37,7 +37,7 @@ class UpdateSalesOrder
 
                     $quantity = (int) ($item['quantity'] ?? 1);
                     $unitPrice = (float) ($item['unit_price'] ?? 0);
-                    $subtotal = $quantity * $unitPrice;
+                    $subtotal = round($quantity * $unitPrice, 2);
 
                     SalesOrderItem::create([
                         'id' => \Illuminate\Support\Str::uuid(),

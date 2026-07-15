@@ -22,6 +22,15 @@ class CancelSalesOrder
                 throw new RuntimeException('This sales order cannot be cancelled.', 422);
             }
 
+            $hasIssuedItems = $salesOrder->items()->where('is_issued', true)->exists();
+
+            if ($hasIssuedItems) {
+                throw new RuntimeException(
+                    'Cannot cancel sales order with issued items. Please return all issued items first.',
+                    422
+                );
+            }
+
             $oldStatus = $salesOrder->Status;
 
             $salesOrder->update([

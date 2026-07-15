@@ -5,6 +5,44 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// BLOCK dangerous migration commands — base tables are created outside Laravel migrations
+Artisan::command('migrate:fresh', function () {
+    $this->error('╔══════════════════════════════════════════════════════════╗');
+    $this->error('║  DANGEROUS: migrate:fresh is PROHIBITED on this app.   ║');
+    $this->error('║                                                        ║');
+    $this->error('║  Base tables were created outside Laravel migrations.  ║');
+    $this->error('║  Running this WILL DESTROY the database irreversibly.  ║');
+    $this->error('║                                                        ║');
+    $this->error('║  Use: php artisan migrate --force                      ║');
+    $this->error('║  To rebuild from scratch: php artisan db:load-schema   ║');
+    $this->error('╚══════════════════════════════════════════════════════════╝');
+    return 1;
+})->purpose('BLOCKED — use migrate instead');
+
+Artisan::command('migrate:refresh', function () {
+    $this->error('╔══════════════════════════════════════════════════════════╗');
+    $this->error('║  DANGEROUS: migrate:refresh is PROHIBITED on this app. ║');
+    $this->error('║  Use: php artisan migrate --force                      ║');
+    $this->error('╚══════════════════════════════════════════════════════════╝');
+    return 1;
+})->purpose('BLOCKED — use migrate instead');
+
+Artisan::command('migrate:reset', function () {
+    $this->error('╔══════════════════════════════════════════════════════════╗');
+    $this->error('║  DANGEROUS: migrate:reset is PROHIBITED on this app.   ║');
+    $this->error('║  Use: php artisan migrate --force                      ║');
+    $this->error('╚══════════════════════════════════════════════════════════╝');
+    return 1;
+})->purpose('BLOCKED — use migrate instead');
+
+Artisan::command('db:wipe', function () {
+    $this->error('╔══════════════════════════════════════════════════════════╗');
+    $this->error('║  DANGEROUS: db:wipe is PROHIBITED on this app.         ║');
+    $this->error('║  This would destroy all base tables.                   ║');
+    $this->error('╚══════════════════════════════════════════════════════════╝');
+    return 1;
+})->purpose('BLOCKED — base tables must be preserved');
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

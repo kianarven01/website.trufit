@@ -38,6 +38,9 @@ import {
   Pencil,
   Trash2,
   RefreshCw,
+  Play,
+  CircleCheck,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";
@@ -48,6 +51,7 @@ interface SalesOrder {
   id: string;
   so_number: string;
   status: string;
+  type: string;
   customerName: string;
   plateNo: string;
   itemCount: number;
@@ -81,6 +85,14 @@ const SO_FILTERS_CONFIG: FilterOption[] = [
     ],
   },
   {
+    key: "type",
+    label: "Type",
+    options: [
+      { label: "Counter Sale", value: "COUNTER" },
+      { label: "Repair Order", value: "REPAIR" },
+    ],
+  },
+  {
     key: "archived",
     label: "Archived",
     options: [
@@ -95,6 +107,7 @@ const SalesOrderList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
+  const [typeFilter, setTypeFilter] = useState("ALL");
   const [showArchived, setShowArchived] = useState(false);
   const [paginationData, setPaginationData] = useState({
     total: 0,
@@ -111,12 +124,16 @@ const SalesOrderList: React.FC = () => {
 
   const activeFilters = {
     status: activeFilter === "ALL" ? "all" : activeFilter,
+    type: typeFilter === "ALL" ? "all" : typeFilter,
     archived: showArchived ? "true" : "false",
   };
 
   const handleFilterChange = (key: string, value: string) => {
     if (key === "status") {
       setActiveFilter(value === "all" ? "ALL" : value);
+      setPage(1);
+    } else if (key === "type") {
+      setTypeFilter(value === "all" ? "ALL" : value);
       setPage(1);
     } else if (key === "archived") {
       setShowArchived(value === "true");
@@ -132,6 +149,7 @@ const SalesOrderList: React.FC = () => {
       params.set("page", String(page));
       if (search) params.set("search", search);
       if (activeFilter !== "ALL") params.set("status", activeFilter);
+      if (typeFilter !== "ALL") params.set("type", typeFilter);
       if (showArchived) params.set("archived", "true");
 
       const res = await api.get(`/sales-orders?${params.toString()}`);
@@ -142,6 +160,7 @@ const SalesOrderList: React.FC = () => {
         id: o.id,
         so_number: o.so_number || o.id.substring(0, 8).toUpperCase(),
         status: o.Status || "DRAFT",
+        type: o.type || "COUNTER",
         customerName: o.customer
           ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() || "—"
           : "—",
@@ -158,11 +177,12 @@ const SalesOrderList: React.FC = () => {
       }
     } catch (err) {
       console.error("Failed to load Sales Orders", err);
+      toast.error("Failed to load Sales Orders");
       setOrders([]);
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, activeFilter, showArchived]);
+  }, [page, pageSize, search, activeFilter, typeFilter, showArchived]);
 
   useEffect(() => {
     fetchOrders();
@@ -175,6 +195,9 @@ const SalesOrderList: React.FC = () => {
         submit: "Sales Order submitted for approval.",
         approve: "Sales Order approved & stock reserved.",
         cancel: "Sales Order cancelled.",
+        "start-work": "Sales Order work started.",
+        complete: "Sales Order completed.",
+        reopen: "Sales Order reopened.",
       };
       toast.success(messages[action] || "Action completed.");
       fetchOrders();
@@ -271,6 +294,52 @@ const SalesOrderList: React.FC = () => {
                   </>
                 )}
 
+                {order.status === "APPROVED" && order.type !== "COUNTER" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "start-work", label: "Start Work" })} className="cursor-pointer">
+                      <Play className="w-4 h-4 mr-2" />
+                      Start Work
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "cancel", label: "Cancel Order", className: "bg-destructive text-white hover:bg-destructive/90" })} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancel
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {order.status === "APPROVED" && order.type === "COUNTER" && (
+                  <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "cancel", label: "Cancel Order", className: "bg-destructive text-white hover:bg-destructive/90" })} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel
+                  </DropdownMenuItem>
+                )}
+
+                {order.status === "IN_PROGRESS" && order.type !== "COUNTER" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "complete", label: "Complete", className: "bg-amber-600 text-white hover:bg-amber-700" })} className="cursor-pointer">
+                      <CircleCheck className="w-4 h-4 mr-2" />
+                      Complete
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "cancel", label: "Cancel Order", className: "bg-destructive text-white hover:bg-destructive/90" })} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Cancel
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {order.status === "COMPLETED" && order.type !== "COUNTER" && (
+                  <>
+                    <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "reopen", label: "Reopen" })} className="cursor-pointer">
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reopen
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConfirmDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Archive SO
+                    </DropdownMenuItem>
+                  </>
+                )}
+
                 {order.status === "CANCELLED" && (
                   <DropdownMenuItem onClick={() => setConfirmDelete(order)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                     <Trash2 className="w-4 h-4 mr-2" />
@@ -310,19 +379,21 @@ const SalesOrderList: React.FC = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[15%] text-center">SO #</TableHead>
-                  <TableHead className="w-[22%] text-center">Customer</TableHead>
-                  <TableHead className="w-[12%] text-center">Plate No.</TableHead>
-                  <TableHead className="w-[8%] text-center">Items</TableHead>
-                  <TableHead className="w-[15%] text-center">Total</TableHead>
+                  <TableHead className="w-[14%] text-center">SO #</TableHead>
+                  <TableHead className="w-[20%] text-center">Customer</TableHead>
+                  <TableHead className="w-[10%] text-center">Plate No.</TableHead>
+                  <TableHead className="w-[8%] text-center">Type</TableHead>
+                  <TableHead className="w-[6%] text-center">Items</TableHead>
+                  <TableHead className="w-[13%] text-center">Total</TableHead>
                   <TableHead className="w-[10%] text-center">Status</TableHead>
                   <TableHead className="w-[10%] text-center">Date</TableHead>
-                  <TableHead className="w-[8%] text-right pr-4"></TableHead>
+                  <TableHead className="w-[7%] text-right pr-4"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((o) => {
                   const config = statusConfig[o.status] || { label: o.status, variant: "default" };
+                  const isCounter = o.type === "COUNTER";
                   return (
                     <TableRow
                       key={o.id}
@@ -340,8 +411,13 @@ const SalesOrderList: React.FC = () => {
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${isCounter ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-sky-50 text-sky-700 border-sky-200"}`}>
+                          {isCounter ? "Counter" : "Repair"}
+                        </span>
+                      </TableCell>
                       <TableCell className="font-semibold">{o.itemCount}</TableCell>
-                      <TableCell className="font-semibold">₱{o.total.toLocaleString()}</TableCell>
+                      <TableCell className="font-semibold">₱{o.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell>
                         <Badge variant={config.variant} className="whitespace-nowrap px-3 justify-center">
                           {config.label}
@@ -389,6 +465,8 @@ const SalesOrderList: React.FC = () => {
               Are you sure you want to {confirmAction?.action} this Sales Order?
               {confirmAction?.action === "approve" && " This will reserve inventory stock."}
               {confirmAction?.action === "cancel" && " Reserved stock will be released."}
+              {confirmAction?.action === "complete" && " This marks the order as completed."}
+              {confirmAction?.action === "reopen" && " This will return the order to In Progress."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

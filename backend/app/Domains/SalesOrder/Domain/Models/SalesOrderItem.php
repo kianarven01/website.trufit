@@ -25,6 +25,9 @@ class SalesOrderItem extends Model
         'CostAtSale',
         'TaxAtSale',
         'needs_ordering',
+        'is_issued',
+        'issued_at',
+        'issued_by',
     ];
 
     protected $casts = [
@@ -33,6 +36,8 @@ class SalesOrderItem extends Model
         'SubTotal' => 'decimal:2',
         'CostAtSale' => 'decimal:2',
         'needs_ordering' => 'boolean',
+        'is_issued' => 'boolean',
+        'issued_at' => 'datetime',
     ];
 
     public function salesOrder()

@@ -55,6 +55,10 @@ import {
   CircleCheck,
   Play,
   RefreshCw,
+  PackageCheck,
+  PackageX,
+  Plus,
+  Import,
 } from "lucide-react";
 import DataToolbar from "@/components/DataToolbar";
 import api from "@/api/axios";
@@ -93,12 +97,14 @@ interface Product {
   amount: number;
   needsOrdering: boolean;
   quantityOnHand: number | null;
+  isIssued: boolean;
 }
 
 interface SalesOrder {
   id: string;
   so_number: string;
   status: string;
+  type: string;
   customer: Customer;
   vehicle: Vehicle | null;
   products: Product[];
@@ -116,11 +122,13 @@ interface SalesOrder {
   approvedAt?: string;
   cancelledAt?: string;
   completedAt?: string;
+  archived?: boolean;
+  estimate_id?: string;
+  estimate?: { id: string; estimate_number?: string };
 }
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
   DRAFT: { label: "Draft", variant: "default" as const },
-  PENDING: { label: "Pending", variant: "pending" as const },
   SUBMITTED: { label: "Submitted", variant: "outline" as const },
   APPROVED: { label: "Approved", variant: "approved" as const },
   IN_PROGRESS: { label: "In Progress", variant: "received" as const },
@@ -142,6 +150,12 @@ const SalesOrderDetails: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<{ action: string; label: string; description: string; className?: string } | null>(null);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [confirmForceDelete, setConfirmForceDelete] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [estimateItemsModalOpen, setEstimateItemsModalOpen] = useState(false);
+  const [availableEstimateItems, setAvailableEstimateItems] = useState<any[]>([]);
+  const [selectedEstimateItems, setSelectedEstimateItems] = useState<Set<string>>(new Set());
+  const [isLoadingEstimateItems, setIsLoadingEstimateItems] = useState(false);
+  const [isAddingItems, setIsAddingItems] = useState(false);
 
   const peso = (n: number) =>
     `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -165,15 +179,15 @@ const SalesOrderDetails: React.FC = () => {
       const products = items.map((i: any) => {
         const product = i.product;
         let quantityOnHand: number | null = null;
-        if (product?.product_suppliers?.length) {
-          const total = product.product_suppliers.reduce(
-            (sum: number, ps: any) => sum + Number(ps.inventory?.quantity_on_hand ?? 0),
+        if (product?.inventory_rows?.length) {
+          const total = product.inventory_rows.reduce(
+            (sum: number, row: any) => sum + Number(row.quantity_on_hand ?? 0),
             0
           );
           quantityOnHand = total;
-        } else if (product?.inventory_rows?.length) {
-          const total = product.inventory_rows.reduce(
-            (sum: number, row: any) => sum + Number(row.quantity_on_hand ?? 0),
+        } else if (product?.product_suppliers?.length) {
+          const total = product.product_suppliers.reduce(
+            (sum: number, ps: any) => sum + Number(ps.inventory?.quantity_on_hand ?? 0),
             0
           );
           quantityOnHand = total;
@@ -188,6 +202,7 @@ const SalesOrderDetails: React.FC = () => {
           amount: Number(i.SubTotal) || 0,
           needsOrdering: Boolean(i.needs_ordering),
           quantityOnHand,
+          isIssued: Boolean(i.is_issued),
         };
       });
 
@@ -221,6 +236,7 @@ const SalesOrderDetails: React.FC = () => {
         id: o.id,
         so_number: orderNumber,
         status: o.Status || "DRAFT",
+        type: o.type || "COUNTER",
         customer,
         vehicle,
         products,
@@ -268,10 +284,11 @@ const SalesOrderDetails: React.FC = () => {
       const messages: Record<string, string> = {
         submit: "Sales Order submitted for approval.",
         approve: "Sales Order approved & stock reserved.",
-        close: "Sales Order completed.",
+        complete: "Sales Order completed.",
         reopen: "Sales Order reopened.",
         cancel: "Sales Order cancelled & stock released.",
         "start-work": "Sales Order work started.",
+        void: "Sales Order voided & stock returned to inventory.",
       };
       toast.success(messages[action] || "Action completed.");
       fetchOrderDetails();
@@ -290,6 +307,109 @@ const SalesOrderDetails: React.FC = () => {
       navigate("/webapp/sales/sales-orders");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to archive Sales Order");
+    }
+  };
+
+  const handleIssueItems = async () => {
+    if (!order || selectedItems.size === 0) return;
+    try {
+      setIsSubmitting(true);
+      await api.post(`/sales-orders/${order.id}/issue`, {
+        item_ids: Array.from(selectedItems),
+      });
+      toast.success("Items issued successfully. Stock has been deducted.");
+      setSelectedItems(new Set());
+      fetchOrderDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to issue items");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReturnItems = async () => {
+    if (!order || selectedItems.size === 0) return;
+    try {
+      setIsSubmitting(true);
+      await api.post(`/sales-orders/${order.id}/return`, {
+        item_ids: Array.from(selectedItems),
+      });
+      toast.success("Items returned successfully. Stock has been restored.");
+      setSelectedItems(new Set());
+      fetchOrderDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to return items");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllItems = () => {
+    if (!order) return;
+    const selectableItems = order.products.filter(
+      (p) => !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0
+    );
+    if (selectedItems.size === selectableItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(selectableItems.map((p) => p.id)));
+    }
+  };
+
+  const openEstimateItemsModal = async () => {
+    if (!order) return;
+    setEstimateItemsModalOpen(true);
+    setSelectedEstimateItems(new Set());
+    setIsLoadingEstimateItems(true);
+    try {
+      const res = await api.get(`/sales-orders/${order.id}/estimate-items`);
+      setAvailableEstimateItems(res.data.data || []);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to load estimate items");
+      setEstimateItemsModalOpen(false);
+    } finally {
+      setIsLoadingEstimateItems(false);
+    }
+  };
+
+  const toggleEstimateItemSelection = (itemId: string) => {
+    setSelectedEstimateItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const handleAddEstimateItems = async () => {
+    if (!order || selectedEstimateItems.size === 0) return;
+    setIsAddingItems(true);
+    try {
+      const res = await api.post(`/sales-orders/${order.id}/add-items`, {
+        estimate_item_ids: Array.from(selectedEstimateItems),
+      });
+      setOrder(res.data.data);
+      setEstimateItemsModalOpen(false);
+      toast.success(`${selectedEstimateItems.size} item(s) added from estimate.`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to add items");
+    } finally {
+      setIsAddingItems(false);
     }
   };
 
@@ -343,15 +463,6 @@ const SalesOrderDetails: React.FC = () => {
     }
   };
 
-  const ACTION_CONFIRMATIONS: Record<string, { action: string; label: string; description: string; className?: string }> = {
-    submit: { action: "submit", label: "Submit", description: "Are you sure you want to submit this Sales Order for approval?" },
-    approve: { action: "approve", label: "Approve", description: "Are you sure you want to approve this Sales Order? This will reserve inventory stock.", className: "bg-green-600 text-white hover:bg-green-700" },
-    "start-work": { action: "start-work", label: "Start Work", description: "Are you sure you want to start work on this Sales Order?" },
-    close: { action: "close", label: "Complete", description: "Are you sure you want to mark this Sales Order as completed?" },
-    reopen: { action: "reopen", label: "Reopen", description: "Are you sure you want to reopen this Sales Order? It will return to In Progress." },
-    cancel: { action: "cancel", label: "Cancel Order", description: "Are you sure you want to cancel this Sales Order? Reserved stock will be released.", className: "bg-destructive text-white hover:bg-destructive/90" },
-  };
-
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -371,6 +482,27 @@ const SalesOrderDetails: React.FC = () => {
 
   const items = order.products;
   const config = statusConfig[order.status] || { label: order.status, variant: "default" };
+  const isCounter = order.type === "COUNTER";
+  const hasIssuedItems = order.products.some((p) => p.isIssued);
+  const allItemsIssued = order.products.length > 0 && order.products.every((p) => p.isIssued);
+  const isReadyToBill = (isCounter && order.status === "APPROVED" && allItemsIssued) || (!isCounter && order.status === "COMPLETED");
+
+  const ACTION_CONFIRMATIONS: Record<string, { action: string; label: string; description: string; className?: string }> = {
+    submit: { action: "submit", label: "Submit", description: "Are you sure you want to submit this Sales Order for approval?" },
+    approve: {
+      action: "approve",
+      label: isCounter ? "Approve & Deduct" : "Approve & Reserve",
+      description: isCounter
+        ? "Are you sure you want to approve this Sales Order? This will immediately deduct inventory stock."
+        : "Are you sure you want to approve this Sales Order? This will reserve inventory stock.",
+      className: "bg-green-600 text-white hover:bg-green-700",
+    },
+    "start-work": { action: "start-work", label: "Start Work", description: "Are you sure you want to start work on this Sales Order?" },
+    complete: { action: "complete", label: "Complete", description: "Are you sure you want to mark this Sales Order as completed?" },
+    reopen: { action: "reopen", label: "Reopen", description: "Are you sure you want to reopen this Sales Order? It will return to In Progress." },
+    cancel: { action: "cancel", label: "Cancel Order", description: "Are you sure you want to cancel this Sales Order? Reserved stock will be released.", className: "bg-destructive text-white hover:bg-destructive/90" },
+    void: { action: "void", label: "Void Sale", description: "Are you sure you want to void this Sales Order? All issued items will be returned to inventory stock, and the order will be cancelled.", className: "bg-destructive text-white hover:bg-destructive/90" },
+  };
 
   return (
     <div className="w-full h-full pl-4 pr-3 pb-4 flex flex-col gap-4 overflow-y-auto font-sans">
@@ -394,36 +526,61 @@ const SalesOrderDetails: React.FC = () => {
               {order.status === "SUBMITTED" && (
                 <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.approve)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700">
                   <CheckCircle2 className="w-4 h-4 mr-1" />
-                  Approve & Reserve
+                  {isCounter ? "Approve & Deduct" : "Approve & Reserve"}
                 </Button>
               )}
 
               {order.status === "APPROVED" && (
-                <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS["start-work"])} disabled={isSubmitting}>
-                  <Play className="w-4 h-4 mr-1" />
-                  Start Work
-                </Button>
+                <>
+                  {!isCounter && (
+                    <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS["start-work"])} disabled={isSubmitting}>
+                      <Play className="w-4 h-4 mr-1" />
+                      Start Work
+                    </Button>
+                  )}
+                  {order.estimate_id && (
+                    <Button variant="outline" size="sm" onClick={openEstimateItemsModal} disabled={isSubmitting}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Item
+                    </Button>
+                  )}
+                </>
               )}
 
-              {order.status === "IN_PROGRESS" && (
-                <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.close)} disabled={isSubmitting}>
-                  <CircleCheck className="w-4 h-4 mr-1" />
-                  Complete
-                </Button>
+              {order.status === "IN_PROGRESS" && !isCounter && (
+                <>
+                  <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.complete)} disabled={isSubmitting}>
+                    <CircleCheck className="w-4 h-4 mr-1" />
+                    Complete
+                  </Button>
+                  {order.estimate_id && (
+                    <Button variant="outline" size="sm" onClick={openEstimateItemsModal} disabled={isSubmitting}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add Item
+                    </Button>
+                  )}
+                </>
               )}
 
-              {order.status === "COMPLETED" && (
+              {order.status === "COMPLETED" && !isCounter && (
                 <Button variant="outline" size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.reopen)} disabled={isSubmitting}>
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reopen
                 </Button>
               )}
 
-              {!["DRAFT", "CANCELLED", "COMPLETED"].includes(order.status) && (
-                <Button variant="destructive" size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.cancel)} disabled={isSubmitting}>
+              {hasIssuedItems && ["APPROVED", "IN_PROGRESS", "COMPLETED"].includes(order.status) ? (
+                <Button variant="destructive" size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.void)} disabled={isSubmitting}>
                   <XCircle className="w-4 h-4 mr-1" />
-                  Cancel
+                  Void Sale
                 </Button>
+              ) : (
+                !["DRAFT", "CANCELLED", "COMPLETED"].includes(order.status) && (
+                  <Button variant="destructive" size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.cancel)} disabled={isSubmitting}>
+                    <XCircle className="w-4 h-4 mr-1" />
+                    Cancel
+                  </Button>
+                )
               )}
 
               <DropdownMenu>
@@ -434,8 +591,8 @@ const SalesOrderDetails: React.FC = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="z-[100]">
                   {order.status === "COMPLETED" && (
-                    <DropdownMenuItem onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.cancel)} className="text-destructive focus:text-destructive">
-                      <XCircle className="h-4 w-4 mr-2" /> Cancel
+                    <DropdownMenuItem onClick={() => setConfirmAction(hasIssuedItems ? ACTION_CONFIRMATIONS.void : ACTION_CONFIRMATIONS.cancel)} className="text-destructive focus:text-destructive cursor-pointer">
+                      <XCircle className="h-4 w-4 mr-2" /> {hasIssuedItems ? "Void Sale" : "Cancel"}
                     </DropdownMenuItem>
                   )}
                   {order.status === "DRAFT" && (
@@ -449,6 +606,11 @@ const SalesOrderDetails: React.FC = () => {
                   {(order.status === "DRAFT" || order.status === "CANCELLED") && (
                     <DropdownMenuItem onClick={() => setConfirmArchive(true)} className="text-destructive focus:text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" /> Archive SO
+                    </DropdownMenuItem>
+                  )}
+                  {order.archived && (
+                    <DropdownMenuItem onClick={() => setConfirmForceDelete(true)} className="text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -564,11 +726,37 @@ const SalesOrderDetails: React.FC = () => {
           {/* PARTS TABLE */}
           <div className="lg:col-span-2 space-y-4">
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Box className="size-5 text-orange-500" />
-                <h2 className="text-sm font-semibold text-foreground">
-                  Reserved Parts & Products
-                </h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Box className="size-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Reserved Parts & Products
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={handleIssueItems}
+                        disabled={isSubmitting || selectedItems.size === 0}
+                      >
+                        <PackageCheck className="h-3 w-3" /> Issue Selected
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={handleReturnItems}
+                        disabled={isSubmitting || selectedItems.size === 0}
+                      >
+                        <PackageX className="h-3 w-3" /> Return Selected
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="border rounded-lg overflow-hidden">
@@ -576,13 +764,23 @@ const SalesOrderDetails: React.FC = () => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
+                        {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                          <TableHead className="text-xs text-center w-[4%]">
+                            <input
+                              type="checkbox"
+                              className="rounded"
+                              checked={order.products.filter(p => !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 && selectedItems.size === order.products.filter(p => !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length}
+                              onChange={toggleAllItems}
+                            />
+                          </TableHead>
+                        )}
                         <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
                         <TableHead className="text-xs text-center w-[13%]">Part Number</TableHead>
                         <TableHead className="text-xs text-center w-[13%]">Stock Status</TableHead>
                         <TableHead className="text-xs text-center w-[10%]">Unit Price</TableHead>
                         <TableHead className="text-xs text-center w-[8%]">Quantity</TableHead>
                         <TableHead className="text-xs text-center w-[12%]">Amount</TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">Needs Order</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -593,8 +791,21 @@ const SalesOrderDetails: React.FC = () => {
                             : p.quantityOnHand <= 0
                             ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
                             : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
+                        const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
+                        const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued;
                         return (
                         <TableRow key={p.id} className="hover:bg-transparent">
+                          {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                            <TableCell className="text-center">
+                              <input
+                                type="checkbox"
+                                className="rounded"
+                                checked={selectedItems.has(p.id)}
+                                disabled={!canSelect && !canSelectReturn}
+                                onChange={() => toggleItemSelection(p.id)}
+                              />
+                            </TableCell>
+                          )}
                           <TableCell className="text-left px-4">
                             <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
                           </TableCell>
@@ -614,7 +825,11 @@ const SalesOrderDetails: React.FC = () => {
                           <TableCell className="text-center font-semibold">{p.qty}</TableCell>
                           <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
                           <TableCell className="text-center">
-                            {p.needsOrdering ? (
+                            {p.isIssued ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                Issued
+                              </span>
+                            ) : p.needsOrdering ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                 To Order
                               </span>
@@ -657,6 +872,44 @@ const SalesOrderDetails: React.FC = () => {
                     <span className="text-muted-foreground">Order Status</span>
                     <Badge variant={config.variant}>{config.label}</Badge>
                   </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Order Type</span>
+                    <Badge variant={isCounter ? "outline" : "default"} className={isCounter ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-sky-50 text-sky-700 border-sky-200"}>
+                      {isCounter ? "Counter Sale" : "Repair Order"}
+                    </Badge>
+                  </div>
+
+                  {isReadyToBill && (
+                    <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 p-3 rounded-lg flex flex-col gap-2 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-emerald-800 dark:text-emerald-400 font-semibold text-xs flex items-center gap-1">
+                          <CheckCircle2 className="size-3.5" />
+                          Ready for Invoicing
+                        </span>
+                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-[10px] px-1.5 py-0.5">
+                          To Bill
+                        </Badge>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(`/webapp/sales/billing/create?import_so=${order.id}`)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-8 flex items-center justify-center gap-1 mt-1"
+                      >
+                        <Import className="size-3.5 mr-1" />
+                        Create Billing Statement
+                      </Button>
+                    </div>
+                  )}
+
+                  {order.estimate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Estimate Ref.</span>
+                      <span className="font-mono text-xs font-medium text-foreground">
+                        {order.estimate.estimate_number || order.estimate.id?.substring(0, 8).toUpperCase() || "—"}
+                      </span>
+                    </div>
+                  )}
 
                   {order.remarks && (
                     <div>
@@ -857,6 +1110,98 @@ const SalesOrderDetails: React.FC = () => {
                 <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
                 <p className="text-sm text-muted-foreground">Generating PDF...</p>
               </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Estimate Items Modal */}
+      <Dialog open={estimateItemsModalOpen} onOpenChange={setEstimateItemsModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Add Items from Estimate</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isLoadingEstimateItems ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : availableEstimateItems.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground border border-dashed rounded-lg">
+                <p className="text-sm font-medium">No available items</p>
+                <p className="text-xs mt-1">All estimate items are already on this Sales Order.</p>
+              </div>
+            ) : (
+              <>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[5%] text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded"
+                            checked={selectedEstimateItems.size === availableEstimateItems.length}
+                            onChange={() => {
+                              if (selectedEstimateItems.size === availableEstimateItems.length) {
+                                setSelectedEstimateItems(new Set());
+                              } else {
+                                setSelectedEstimateItems(new Set(availableEstimateItems.map((i) => i.id)));
+                              }
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead className="text-xs">Product</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Part No.</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Qty</TableHead>
+                        <TableHead className="text-xs text-center w-[15%]">Unit Price</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {availableEstimateItems.map((item) => (
+                        <TableRow key={item.id} className="hover:bg-muted/30">
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              className="rounded"
+                              checked={selectedEstimateItems.has(item.id)}
+                              onChange={() => toggleEstimateItemSelection(item.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-left">
+                            <span className="font-medium">
+                              {item.manufacturer ? `${item.manufacturer} — ` : ""}{item.product_name}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground">{item.sku}</TableCell>
+                          <TableCell className="text-center font-semibold">{item.quantity}</TableCell>
+                          <TableCell className="text-center font-medium">{peso(item.unit_price)}</TableCell>
+                          <TableCell className="text-center">
+                            {item.needs_ordering ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                To Order
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setEstimateItemsModalOpen(false)}>Cancel</Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddEstimateItems}
+                    disabled={isAddingItems || selectedEstimateItems.size === 0}
+                  >
+                    {isAddingItems ? "Adding..." : `Add ${selectedEstimateItems.size} Item(s)`}
+                  </Button>
+                </div>
+              </>
             )}
           </div>
         </DialogContent>

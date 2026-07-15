@@ -26,27 +26,31 @@ class SalesOrder extends Model
         'Total',
         'Balance',
         'Status',
-        'StockAvailability',
-        'job_order_id',
+        'type',
         'so_number',
         'remarks',
         'estimate_id',
         'vehicle_id',
         'mileage',
         'approved_by',
+        'approved_at',
         'submitted_by',
         'submitted_at',
         'cancelled_by',
         'cancelled_at',
         'completed_at',
+        'started_by',
+        'started_at',
     ];
 
     protected $casts = [
         'Total' => 'decimal:2',
         'Balance' => 'decimal:2',
         'submitted_at' => 'datetime',
+        'approved_at' => 'datetime',
         'cancelled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'started_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -56,6 +60,7 @@ class SalesOrder extends Model
         'approved_by',
         'submitted_by',
         'cancelled_by',
+        'started_by',
     ];
 
     protected $appends = [
@@ -63,6 +68,7 @@ class SalesOrder extends Model
         'submittedByName',
         'approvedByName',
         'cancelledByName',
+        'startedByName',
     ];
 
     public function customer()
@@ -90,11 +96,6 @@ class SalesOrder extends Model
         return $this->belongsTo(Employee::class, 'employee', 'id');
     }
 
-    public function approver()
-    {
-        return $this->belongsTo(Employee::class, 'approved_by', 'id');
-    }
-
     public function approvedByEmployee()
     {
         return $this->belongsTo(Employee::class, 'approved_by', 'id');
@@ -108,6 +109,11 @@ class SalesOrder extends Model
     public function cancelledByUser()
     {
         return $this->belongsTo(User::class, 'cancelled_by', 'id');
+    }
+
+    public function startedByUser()
+    {
+        return $this->belongsTo(User::class, 'started_by', 'id');
     }
 
     public function getCreatedByNameAttribute(): ?string
@@ -135,6 +141,13 @@ class SalesOrder extends Model
     {
         return $this->cancelledByUser?->employee
             ? trim($this->cancelledByUser->employee->first_name . ' ' . $this->cancelledByUser->employee->last_name)
+            : null;
+    }
+
+    public function getStartedByNameAttribute(): ?string
+    {
+        return $this->startedByUser?->employee
+            ? trim($this->startedByUser->employee->first_name . ' ' . $this->startedByUser->employee->last_name)
             : null;
     }
 }

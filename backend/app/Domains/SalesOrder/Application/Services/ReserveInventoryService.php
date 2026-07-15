@@ -16,52 +16,66 @@ class ReserveInventoryService
      */
     public function reserve(SalesOrder $salesOrder): void
     {
-        DB::transaction(function () use ($salesOrder) {
-            $reservableItems = $salesOrder->items->reject(fn ($item) => $item->needs_ordering);
+        $reservableItems = $salesOrder->items->reject(fn ($item) => $item->needs_ordering);
 
-            if ($reservableItems->isEmpty()) {
-                return;
+        if ($reservableItems->isEmpty()) {
+            return;
+        }
+
+        $productIds = $reservableItems->pluck('ProductID')->unique()->toArray();
+
+        $inventories = Inventory::whereIn('productID', $productIds)
+            ->lockForUpdate()
+            ->get()
+            ->groupBy('productID');
+
+        foreach ($reservableItems as $item) {
+            $qtyNeeded = (int) $item->quantity;
+            $productId = $item->ProductID;
+
+            $productInventories = $inventories->get($productId) ?? collect();
+
+            // Calculate total available stock across all warehouses/locations
+            $totalAvailable = $productInventories->sum(fn ($inv) => max(0, $inv->quantity_on_hand - $inv->reserved_quantity));
+
+            if ($qtyNeeded > $totalAvailable) {
+                $productName = $item->product ? $item->product->name : $productId;
+                throw new RuntimeException(
+                    "Insufficient stock for '{$productName}'. Available: {$totalAvailable}, Requested: {$qtyNeeded}.",
+                    422
+                );
             }
 
-            $productIds = $reservableItems->pluck('ProductID')->unique()->toArray();
-
-            $inventoryMap = Inventory::whereIn('productID', $productIds)
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('productID');
-
-            foreach ($reservableItems as $item) {
-                $qty = (int) $item->quantity;
-                $productId = $item->ProductID;
-
-                $inventory = $inventoryMap->get($productId);
-
-                if (!$inventory) {
-                    $inventory = new Inventory();
-                    $inventory->productID = $productId;
-                    $inventory->quantity_on_hand = 0;
-                    $inventory->reserved_quantity = 0;
-                    $defaultLocation = DB::table('Main.StockLocations')->first();
-                    if ($defaultLocation) {
-                        $inventory->location_id = $defaultLocation->id;
-                    }
-                    $inventory->save();
-                    $inventoryMap->put($productId, $inventory);
+            // Distribute reservation among rows that have available stock
+            foreach ($productInventories as $inventory) {
+                if ($qtyNeeded <= 0) {
+                    break;
                 }
 
-                $available = $inventory->quantity_on_hand - $inventory->reserved_quantity;
-
-                if ($qty > $available) {
-                    throw new RuntimeException(
-                        "Insufficient stock for product {$productId}. Available: {$available}, requested: {$qty}.",
-                        422
-                    );
+                $availableInRow = $inventory->quantity_on_hand - $inventory->reserved_quantity;
+                if ($availableInRow <= 0) {
+                    continue;
                 }
 
-                $inventory->reserved_quantity += $qty;
+                $reserveFromRow = min($qtyNeeded, $availableInRow);
+                $inventory->reserved_quantity += $reserveFromRow;
+                $inventory->save();
+                $qtyNeeded -= $reserveFromRow;
+            }
+
+            // If we still need quantity (e.g. no inventory rows existed at all), create a default row
+            if ($qtyNeeded > 0) {
+                $inventory = new Inventory();
+                $inventory->productID = $productId;
+                $inventory->quantity_on_hand = 0;
+                $inventory->reserved_quantity = $qtyNeeded;
+                $defaultLocation = DB::table('Main.StockLocations')->first();
+                if ($defaultLocation) {
+                    $inventory->location_id = $defaultLocation->id;
+                }
                 $inventory->save();
             }
-        });
+        }
     }
 
     /**
@@ -69,28 +83,28 @@ class ReserveInventoryService
      */
     public function unreserve(SalesOrder $salesOrder): void
     {
-        DB::transaction(function () use ($salesOrder) {
-            $reservableItems = $salesOrder->items->reject(fn ($item) => $item->needs_ordering);
+        $reservableItems = $salesOrder->items->reject(fn ($item) => $item->needs_ordering);
 
-            if ($reservableItems->isEmpty()) {
-                return;
-            }
+        if ($reservableItems->isEmpty()) {
+            return;
+        }
 
-            $productIds = $reservableItems->pluck('ProductID')->unique()->toArray();
-
-            $inventoryMap = Inventory::whereIn('productID', $productIds)
+        foreach ($reservableItems as $item) {
+            $qtyToUnreserve = (int) $item->quantity;
+            $productInventories = Inventory::where('productID', $item->ProductID)
+                ->where('reserved_quantity', '>', 0)
                 ->lockForUpdate()
-                ->get()
-                ->keyBy('productID');
+                ->get();
 
-            foreach ($reservableItems as $item) {
-                $inventory = $inventoryMap->get($item->ProductID);
-
-                if ($inventory) {
-                    $inventory->reserved_quantity = max(0, $inventory->reserved_quantity - (int) $item->quantity);
-                    $inventory->save();
+            foreach ($productInventories as $inventory) {
+                if ($qtyToUnreserve <= 0) {
+                    break;
                 }
+                $unreserveFromRow = min($qtyToUnreserve, $inventory->reserved_quantity);
+                $inventory->reserved_quantity -= $unreserveFromRow;
+                $inventory->save();
+                $qtyToUnreserve -= $unreserveFromRow;
             }
-        });
+        }
     }
 }

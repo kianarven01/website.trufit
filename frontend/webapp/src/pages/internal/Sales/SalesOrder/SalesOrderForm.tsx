@@ -345,6 +345,31 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
   };
 
   const updateLine = (idx: number, field: keyof SalesOrderLine, value: any) => {
+    if (field === "ProductId" && value) {
+      const duplicateIdx = lines.findIndex((l, i) => i !== idx && l.ProductId === value);
+      if (duplicateIdx !== -1) {
+        const currentQty = lines[idx].quantity;
+        setLines((prev) => {
+          const next = prev.map((l, i) => {
+            if (i !== duplicateIdx) return l;
+            const updatedQty = l.quantity + currentQty;
+            const product = partsMap[l.ProductId];
+            const unitPrice = product ? product.price : 0;
+            return {
+              ...l,
+              quantity: updatedQty,
+              amount: updatedQty * unitPrice,
+              needsOrdering: product ? updatedQty > (product.quantityOnHand ?? 0) : false,
+            };
+          });
+          const filtered = next.filter((_, i) => i !== idx);
+          return filtered.length > 0 ? filtered : [emptyLine()];
+        });
+        toast.info("Product is already in the list. Added quantity to existing line.");
+        return;
+      }
+    }
+
     setLines((prev) =>
       prev.map((l, i) => {
         if (i !== idx) return l;
@@ -435,7 +460,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
       return;
     }
 
-    const validLines = lines.filter((l) => l.ProductId && l.quantity >= 1);
+    const validLines = lines.filter((l) => l.ProductId);
     if (validLines.length === 0) {
       toast.error("Add at least one product line.");
       return;
@@ -444,7 +469,6 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
     const payload = {
       customer_id: selectedCustomer.id,
       vehicle_id: selectedVehicle ? selectedVehicle.id : null,
-      type: "COUNTER",
       mileage: mileage ? Number(mileage) : null,
       notes,
       items: validLines.map((l) => {
@@ -731,7 +755,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
         {/* BOTTOM ROW: PARTS CATALOG TABLE & SUMMARY */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* PARTS TABLE (lg:col-span-2) */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-4">     
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -826,13 +850,14 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                 value={
                                   l.quantity === 0 ? "" : String(l.quantity)
                                 }
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  const qty = v === "" ? 0 : Math.max(1, Number(v));
-                                  updateLine(idx, "quantity", qty);
-                                }}
+                                onChange={(e) =>
+                                  updateLine(
+                                    idx,
+                                    "quantity",
+                                    Number(e.target.value),
+                                  )
+                                }
                                 min={1}
-                                step="1"
                                 className="text-center"
                                 placeholder="0"
                               />

@@ -156,6 +156,8 @@ const SalesOrderDetails: React.FC = () => {
   const [selectedEstimateItems, setSelectedEstimateItems] = useState<Set<string>>(new Set());
   const [isLoadingEstimateItems, setIsLoadingEstimateItems] = useState(false);
   const [isAddingItems, setIsAddingItems] = useState(false);
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
 
   const peso = (n: number) =>
     `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -203,6 +205,7 @@ const SalesOrderDetails: React.FC = () => {
           needsOrdering: Boolean(i.needs_ordering),
           quantityOnHand,
           isIssued: Boolean(i.is_issued),
+          quantityReturned: Number(i.quantity_returned) || 0,
         };
       });
 
@@ -327,15 +330,32 @@ const SalesOrderDetails: React.FC = () => {
     }
   };
 
-  const handleReturnItems = async () => {
-    if (!order || selectedItems.size === 0) return;
+  const openReturnModal = () => {
+    if (!order) return;
+    const initialQtys: Record<string, number> = {};
+    order.products.forEach((p) => {
+      if (selectedItems.has(p.id)) {
+        initialQtys[p.id] = p.qty - p.quantityReturned;
+      }
+    });
+    setReturnQuantities(initialQtys);
+    setReturnDialogOpen(true);
+  };
+
+  const submitReturnItems = async () => {
+    if (!order) return;
     try {
       setIsSubmitting(true);
+      const payload = Object.entries(returnQuantities).map(([itemId, qty]) => ({
+        id: itemId,
+        quantity: qty,
+      }));
       await api.post(`/sales-orders/${order.id}/return`, {
-        item_ids: Array.from(selectedItems),
+        returns: payload,
       });
       toast.success("Items returned successfully. Stock has been restored.");
       setSelectedItems(new Set());
+      setReturnDialogOpen(false);
       fetchOrderDetails();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to return items");
@@ -734,22 +754,24 @@ const SalesOrderDetails: React.FC = () => {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                  {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                     <>
+                      {order.status !== "COMPLETED" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          onClick={handleIssueItems}
+                          disabled={isSubmitting || selectedItems.size === 0}
+                        >
+                          <PackageCheck className="h-3 w-3" /> Issue Selected
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-7 gap-1 text-xs"
-                        onClick={handleIssueItems}
-                        disabled={isSubmitting || selectedItems.size === 0}
-                      >
-                        <PackageCheck className="h-3 w-3" /> Issue Selected
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 gap-1 text-xs"
-                        onClick={handleReturnItems}
+                        onClick={openReturnModal}
                         disabled={isSubmitting || selectedItems.size === 0}
                       >
                         <PackageX className="h-3 w-3" /> Return Selected
@@ -792,10 +814,10 @@ const SalesOrderDetails: React.FC = () => {
                             ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
                             : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
                         const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
-                        const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued;
+                        const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued && (p.qty > p.quantityReturned);
                         return (
                         <TableRow key={p.id} className="hover:bg-transparent">
-                          {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                          {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                             <TableCell className="text-center">
                               <input
                                 type="checkbox"
@@ -822,12 +844,21 @@ const SalesOrderDetails: React.FC = () => {
                             )}
                           </TableCell>
                           <TableCell className="text-center font-medium">{peso(p.price)}</TableCell>
-                          <TableCell className="text-center font-semibold">{p.qty}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="font-semibold">{p.qty}</div>
+                            {p.quantityReturned > 0 && (
+                              <div className="text-[10px] text-rose-600 font-medium">Returned: {p.quantityReturned}</div>
+                            )}
+                          </TableCell>
                           <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
                           <TableCell className="text-center">
                             {p.isIssued ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                 Issued
+                              </span>
+                            ) : p.quantityReturned > 0 && p.quantityReturned === p.qty ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                Returned
                               </span>
                             ) : p.needsOrdering ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
@@ -1203,6 +1234,77 @@ const SalesOrderDetails: React.FC = () => {
                 </div>
               </>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Parts Modal */}
+      <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Return Issued Parts & Products</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-muted-foreground">
+              Select the quantities you want to return to inventory. Unreturned quantities will remain issued.
+            </p>
+            <div className="border rounded-lg overflow-hidden bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Product Name</TableHead>
+                    <TableHead className="text-xs text-center w-[30%]">Qty to Return</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {order.products
+                    .filter((p) => selectedItems.has(p.id))
+                    .map((p) => {
+                      const maxQty = p.qty - p.quantityReturned;
+                      const currentVal = returnQuantities[p.id] ?? maxQty;
+                      return (
+                        <TableRow key={p.id} className="hover:bg-transparent">
+                          <TableCell className="text-left font-medium text-xs">
+                            {p.name}
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              Issued: {maxQty}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={maxQty}
+                              value={currentVal}
+                              onChange={(e) => {
+                                const val = Math.max(1, Math.min(maxQty, parseInt(e.target.value, 10) || 0));
+                                setReturnQuantities((prev) => ({
+                                  ...prev,
+                                  [p.id]: val,
+                                }));
+                              }}
+                              className="h-8 text-center text-xs font-semibold"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setReturnDialogOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-700 text-white font-medium"
+                onClick={submitReturnItems}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Returning..." : "Confirm Return"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

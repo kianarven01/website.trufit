@@ -82,6 +82,18 @@ class IssueSalesOrderItems
                         'reserved_quantity' => max(0, $inventory->reserved_quantity - $reduceReserved),
                     ]);
 
+                    \App\Domains\Purchasing\Domain\Models\StockMovement::create([
+                        'inventory_id' => $inventory->id,
+                        'product_id' => $item->ProductID,
+                        'product_supplier_id' => $inventory->product_supplier_id,
+                        'movement_type' => 'OUT_SALES',
+                        'quantity' => $deductFromRow,
+                        'reference_type' => 'SALES_ORDER',
+                        'reference_id' => $salesOrder->id,
+                        'notes' => "Issued {$deductFromRow} units for Sales Order " . ($salesOrder->so_number ?? $salesOrder->id),
+                        'created_by' => $userId,
+                    ]);
+
                     $qtyToIssue -= $deductFromRow;
                 }
 

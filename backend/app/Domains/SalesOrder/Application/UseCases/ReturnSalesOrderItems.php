@@ -9,14 +9,18 @@ use RuntimeException;
 
 class ReturnSalesOrderItems
 {
-    public function execute(string $id, array $itemIds, ?string $userId = null): SalesOrder
+    public function execute(string $id, array $returns, ?string $userId = null): SalesOrder
     {
-        return DB::transaction(function () use ($id, $itemIds, $userId) {
+        return DB::transaction(function () use ($id, $returns, $userId) {
             $salesOrder = SalesOrder::lockForUpdate()->findOrFail($id);
 
-            if (!in_array($salesOrder->Status, ['IN_PROGRESS', 'COMPLETED'], true)) {
-                throw new RuntimeException('Sales order must be in progress or completed to return items.', 422);
+            if (!in_array($salesOrder->Status, ['APPROVED', 'IN_PROGRESS', 'COMPLETED'], true)) {
+                throw new RuntimeException('Sales order must be approved, in progress, or completed to return items.', 422);
             }
+
+            // Index returns by item ID
+            $returnQtys = collect($returns)->keyBy('id')->map(fn($r) => (int) $r['quantity']);
+            $itemIds = $returnQtys->keys()->all();
 
             $items = $salesOrder->items()->whereIn('id', $itemIds)->lockForUpdate()->get();
 
@@ -24,30 +28,66 @@ class ReturnSalesOrderItems
                 throw new RuntimeException('No valid items found to return.', 422);
             }
 
-            $returnedCount = 0;
-
             foreach ($items as $item) {
                 if (!$item->is_issued) {
                     continue;
                 }
 
+                $qtyToReturn = $returnQtys->get($item->id, 0);
+                if ($qtyToReturn <= 0) {
+                    continue;
+                }
+
+                $maxReturnable = (int) $item->quantity - (int) $item->quantity_returned;
+                if ($qtyToReturn > $maxReturnable) {
+                    throw new RuntimeException(
+                        "Cannot return {$qtyToReturn} units for '{$item->product->name}'. Only {$maxReturnable} units are returnable.",
+                        422
+                    );
+                }
+
+                // Restore stock back to inventory
                 $inventory = Inventory::where('productID', $item->ProductID)
                     ->lockForUpdate()
                     ->first();
 
-                if ($inventory) {
-                    $inventory->update([
-                        'quantity_on_hand' => $inventory->quantity_on_hand + $item->quantity,
-                    ]);
+                if (!$inventory) {
+                    $inventory = new Inventory();
+                    $inventory->productID = $item->ProductID;
+                    $inventory->quantity_on_hand = 0;
+                    $inventory->reserved_quantity = 0;
+                    $defaultLocation = DB::table('Main.StockLocations')->first();
+                    if ($defaultLocation) {
+                        $inventory->location_id = $defaultLocation->id;
+                    }
+                    $inventory->save();
                 }
 
-                $item->update([
-                    'is_issued' => false,
-                    'issued_at' => null,
-                    'issued_by' => null,
+                $inventory->update([
+                    'quantity_on_hand' => $inventory->quantity_on_hand + $qtyToReturn,
                 ]);
 
-                $returnedCount++;
+                // Update item's quantity_returned and is_issued state
+                $newQtyReturned = (int) $item->quantity_returned + $qtyToReturn;
+                $item->update([
+                    'quantity_returned' => $newQtyReturned,
+                    'is_issued' => $newQtyReturned < (int) $item->quantity,
+                    'issued_at' => $newQtyReturned < (int) $item->quantity ? $item->issued_at : null,
+                    'issued_by' => $newQtyReturned < (int) $item->quantity ? $item->issued_by : null,
+                ]);
+
+                // Log StockMovement
+                \App\Domains\Purchasing\Domain\Models\StockMovement::create([
+                    'inventory_id' => $inventory->id,
+                    'product_id' => $item->ProductID,
+                    'product_supplier_id' => $inventory->product_supplier_id,
+                    'movement_type' => 'RETURN',
+                    'quantity' => $qtyToReturn,
+                    'reference_type' => 'SALES_ORDER',
+                    'reference_id' => $salesOrder->id,
+                    'notes' => "Returned {$qtyToReturn} units for Sales Order " . ($salesOrder->so_number ?? $salesOrder->id),
+                    'created_by' => $userId,
+                ]);
             }
 
             return $salesOrder->fresh(['items.product.manufacturer', 'items.product.productSuppliers.inventory', 'items.product.inventoryRows']);

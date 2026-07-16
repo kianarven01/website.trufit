@@ -28,10 +28,12 @@ class SalesOrderItem extends Model
         'is_issued',
         'issued_at',
         'issued_by',
+        'quantity_returned',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
+        'quantity_returned' => 'integer',
         'UnitPrice' => 'decimal:2',
         'SubTotal' => 'decimal:2',
         'CostAtSale' => 'decimal:2',

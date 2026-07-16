@@ -16,7 +16,18 @@ class ReserveInventoryService
      */
     public function reserve(SalesOrder $salesOrder): void
     {
-        $reservableItems = $salesOrder->items->reject(fn ($item) => $item->needs_ordering);
+        $this->reserveItems($salesOrder->items);
+    }
+
+    /**
+     * Reserve inventory for a specific list/collection of SalesOrderItems.
+     *
+     * @param iterable $items
+     * @throws RuntimeException
+     */
+    public function reserveItems(iterable $items): void
+    {
+        $reservableItems = collect($items)->reject(fn ($item) => $item->needs_ordering);
 
         if ($reservableItems->isEmpty()) {
             return;

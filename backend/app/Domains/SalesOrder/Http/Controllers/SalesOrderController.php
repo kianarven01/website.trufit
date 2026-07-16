@@ -302,11 +302,12 @@ class SalesOrderController extends Controller
     {
         try {
             $validated = $request->validate([
-                'item_ids' => 'required|array|min:1',
-                'item_ids.*' => 'required|uuid',
+                'returns' => 'required|array|min:1',
+                'returns.*.id' => 'required|uuid',
+                'returns.*.quantity' => 'required|integer|min:1',
             ]);
 
-            $order = $returnSalesOrderItems->execute($id, $validated['item_ids'], $request->user()?->id);
+            $order = $returnSalesOrderItems->execute($id, $validated['returns'], $request->user()?->id);
 
             return response()->json([
                 'message' => 'Items returned successfully. Stock has been restored.',

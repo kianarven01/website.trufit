@@ -5,11 +5,16 @@ namespace App\Domains\SalesOrder\Application\UseCases;
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
 use App\Domains\SalesOrder\Domain\Models\SalesOrderItem;
 use App\Domains\Estimate\Domain\Models\EstimateItem;
+use App\Domains\SalesOrder\Application\Services\ReserveInventoryService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class AddEstimateItemsToSalesOrder
 {
+    public function __construct(
+        private readonly ReserveInventoryService $reserveInventoryService
+    ) {}
+
     public function execute(SalesOrder $salesOrder, array $estimateItemIds, ?string $userId = null): SalesOrder
     {
         return DB::transaction(function () use ($salesOrder, $estimateItemIds, $userId) {
@@ -34,6 +39,7 @@ class AddEstimateItemsToSalesOrder
             $existingProductIds = $salesOrder->items->pluck('ProductID')->toArray();
 
             $added = 0;
+            $newItems = [];
             foreach ($estimateItems as $estItem) {
                 if ($estItem->item_type !== 'part' || !$estItem->product_id) {
                     continue;
@@ -47,7 +53,7 @@ class AddEstimateItemsToSalesOrder
                 $unitPrice = round((float) $estItem->unit_price, 2);
                 $subTotal = round($quantity * $unitPrice, 2);
 
-                SalesOrderItem::create([
+                $newItem = SalesOrderItem::create([
                     'SalesOrderID' => $salesOrder->id,
                     'ProductID' => $estItem->product_id,
                     'quantity' => $quantity,
@@ -56,6 +62,7 @@ class AddEstimateItemsToSalesOrder
                     'needs_ordering' => $estItem->needs_ordering ?? false,
                 ]);
 
+                $newItems[] = $newItem;
                 $existingProductIds[] = $estItem->product_id;
                 $added++;
             }
@@ -63,6 +70,9 @@ class AddEstimateItemsToSalesOrder
             if ($added === 0) {
                 throw new InvalidArgumentException('All selected items are already on this Sales Order.');
             }
+
+            // Auto-reserve the newly added items
+            $this->reserveInventoryService->reserveItems($newItems);
 
             $salesOrder->touch();
 

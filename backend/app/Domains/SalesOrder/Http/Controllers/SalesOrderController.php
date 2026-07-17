@@ -405,7 +405,17 @@ class SalesOrderController extends Controller
             ], 422);
         }
 
-        $order->delete();
+        DB::transaction(function () use ($order) {
+            $order->delete();
+
+            // Auto-archive the linked Billing Statement if it is a COUNTER sale
+            if ($order->type === 'COUNTER') {
+                $statement = \App\Domains\Billing\Domain\Models\BillingStatement::where('SOID', $order->id)->first();
+                if ($statement) {
+                    $statement->delete();
+                }
+            }
+        });
 
         return response()->json([
             'message' => 'Sales Order archived successfully.',
@@ -420,7 +430,17 @@ class SalesOrderController extends Controller
             return response()->json(['message' => 'Archived Sales Order not found.'], 404);
         }
 
-        $order->restore();
+        DB::transaction(function () use ($order) {
+            $order->restore();
+
+            // Auto-restore the linked Billing Statement if it is a COUNTER sale
+            if ($order->type === 'COUNTER') {
+                $statement = \App\Domains\Billing\Domain\Models\BillingStatement::onlyTrashed()->where('SOID', $order->id)->first();
+                if ($statement) {
+                    $statement->restore();
+                }
+            }
+        });
 
         return response()->json([
             'message' => 'Sales Order restored successfully.',

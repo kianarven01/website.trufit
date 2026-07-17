@@ -118,6 +118,7 @@ class SalesOrderTest extends TestCase
             'customer_id' => $this->customer->customer_id,
             'vehicle_id' => $this->vehicle->id,
             'notes' => 'Test Sales Order',
+            'type' => 'REPAIR',
             'items' => [
                 [
                     'product_id' => $this->product->id,
@@ -214,6 +215,7 @@ class SalesOrderTest extends TestCase
 
         $payload = [
             'customer_id' => $this->customer->customer_id,
+            'type' => 'REPAIR',
             'items' => [
                 [
                     'product_id' => $this->product->id,

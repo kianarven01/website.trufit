@@ -4,13 +4,14 @@ namespace App\Domains\Billing\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Domains\Customer\Domain\Models\Customer;
 use App\Domains\Customer\Domain\Models\CustomerVehicle;
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
 
 class BillingStatement extends Model
 {
-    use HasUuids;
+    use HasUuids, SoftDeletes;
 
     protected $table = 'BillingStatement';
     protected $primaryKey = 'id';

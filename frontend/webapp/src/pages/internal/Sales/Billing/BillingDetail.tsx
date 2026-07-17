@@ -42,6 +42,10 @@ import {
   Fuel,
   Calculator,
   FileText,
+  Archive,
+  RotateCcw,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { BillingStatement, PaymentEntry, BillingItem } from "./BillingList";
@@ -52,7 +56,8 @@ const STORAGE_KEY = "billing_statements";
 const mapBillingStatement = (b: any): BillingStatement => {
   const customer = b.customer || {};
   const vehicle = b.vehicle || {};
-  const salesOrder = b.salesOrder || {};
+  const salesOrder = b.sales_order || b.salesOrder || {};
+  const jobOrder = b.job_order || b.jobOrder || {};
   const payments = Array.isArray(b.payments) ? b.payments : [];
 
   // Prefer billing items from BillingStatementItems table, fallback to SO items for backward compatibility
@@ -94,7 +99,7 @@ const mapBillingStatement = (b: any): BillingStatement => {
     date: b.Date || new Date().toISOString(),
     status: b.status || "Unpaid",
     soid: salesOrder.so_number || b.SOID || "—",
-    joid: b.JOID || "—",
+    joid: jobOrder.jo_number || b.JOID || "—",
     items,
     tax: Number(b.tax) || 0,
     total: Number(b.Total) || 0,
@@ -115,6 +120,7 @@ const BillingDetail: React.FC = () => {
   const navigate = useNavigate();
   const [statement, setStatement] = useState<BillingStatement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isArchived, setIsArchived] = useState(false);
 
   // Payment Dialog States
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -133,8 +139,13 @@ const BillingDetail: React.FC = () => {
       if (b) {
         const mapped = mapBillingStatement(b);
         setStatement(mapped);
+        setIsArchived(!!b.deleted_at);
         const paid = mapped.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
         setPayAmount((mapped.total - paid).toString());
+
+        const billNumber = mapped.billNumber || b.id.substring(0, 8).toUpperCase();
+        sessionStorage.setItem(`breadcrumb-/webapp/sales/billing/${id}`, billNumber);
+        window.dispatchEvent(new Event("breadcrumb-update"));
       }
     } catch (err) {
       console.error(err);
@@ -147,6 +158,12 @@ const BillingDetail: React.FC = () => {
   // Load statement
   useEffect(() => {
     fetchStatement();
+    return () => {
+      if (id) {
+        sessionStorage.removeItem(`breadcrumb-/webapp/sales/billing/${id}`);
+        window.dispatchEvent(new Event("breadcrumb-update"));
+      }
+    };
   }, [id]);
 
   if (isLoading) {
@@ -235,6 +252,45 @@ const BillingDetail: React.FC = () => {
     }
   };
 
+  // Archive Billing Statement
+  const handleArchive = async () => {
+    try {
+      await api.delete(`/billing-statements/${id}`);
+      toast.success("Billing statement archived successfully");
+      navigate("/webapp/sales/billing");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to archive billing statement");
+    }
+  };
+
+  // Restore Billing Statement
+  const handleRestore = async () => {
+    try {
+      await api.patch(`/billing-statements/${id}/restore`);
+      toast.success("Billing statement restored successfully");
+      fetchStatement();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to restore billing statement");
+    }
+  };
+
+  // Permanently Delete Billing Statement
+  const handleForceDelete = async () => {
+    if (!window.confirm("This will permanently delete this billing statement and all associated payments. This action cannot be undone. Continue?")) {
+      return;
+    }
+    try {
+      await api.delete(`/billing-statements/${id}/force`);
+      toast.success("Billing statement permanently deleted");
+      navigate("/webapp/sales/billing");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to delete billing statement");
+    }
+  };
+
   const getStatusBadge = (status: BillingStatement["status"]) => {
     switch (status) {
       case "Paid":
@@ -256,30 +312,75 @@ const BillingDetail: React.FC = () => {
         {/* HEADER */}
         <DataToolbar
           variant="detail"
-          title="Billing Details"
+          title={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/webapp/sales/billing")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back
+            </Button>
+          }
           actions={
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/webapp/sales/billing")}
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back
-              </Button>
-              {statement.status !== "Paid" && statement.status !== "Cancelled" && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleCancelBilling}
-                >
-                  <XCircle className="w-4 h-4 mr-1.5" />
-                  Cancel Bill
-                </Button>
+              {isArchived ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRestore}
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1.5" />
+                    Restore
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleForceDelete}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1.5" />
+                    Delete Permanently
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {statement.status !== "Paid" && statement.status !== "Cancelled" && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleCancelBilling}
+                    >
+                      <XCircle className="w-4 h-4 mr-1.5" />
+                      Cancel Bill
+                    </Button>
+                  )}
+                  {(statement.status === "Cancelled" || statement.status === "Paid") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleArchive}
+                      className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                    >
+                      <Archive className="w-4 h-4 mr-1.5" />
+                      Archive
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           }
         />
+
+        {isArchived && (
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-orange-300 bg-orange-50 text-orange-800">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-sm">This billing statement has been archived.</p>
+              <p className="text-xs text-orange-600">Archived records are hidden from the active billing list. You can restore it or delete it permanently.</p>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-6">
           {/* CUSTOMER + VEHICLE DETAILS SIDE-BY-SIDE */}
@@ -559,40 +660,53 @@ const BillingDetail: React.FC = () => {
             <div className="space-y-4">
               
               {/* DOCUMENT REFERENCES CARD */}
-              <Card className="shadow-lg border-muted">
-                <CardHeader className="bg-muted/10 py-4 rounded-t-lg">
-                  <div className="flex items-center gap-2 text-primary">
-                    <FileText className="size-5" />
-                    <h2 className="font-semibold text-foreground text-sm">Document References</h2>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-5 space-y-3.5 text-xs">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-medium">Estimate Ref</span>
-                    <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
-                      {statement.estimateNo || statement.id.replace("BILL-", "EST-")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-medium">Sales Order (SO)</span>
-                    <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
-                      {statement.soid || statement.id.replace("BILL-", "SO-")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-medium">Job Order (JO)</span>
-                    <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
-                      {statement.joid || statement.id.replace("BILL-", "JO-")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground font-medium">Purchase Order (PO)</span>
-                    <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
-                      {statement.poid || statement.id.replace("BILL-", "PO-")}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+              {((statement.estimateNo && statement.estimateNo !== "—") ||
+                (statement.soid && statement.soid !== "—") ||
+                (statement.joid && statement.joid !== "—") ||
+                (statement.poid && statement.poid !== "—")) && (
+                <Card className="shadow-lg border-muted">
+                  <CardHeader className="bg-muted/10 py-4 rounded-t-lg">
+                    <div className="flex items-center gap-2 text-primary">
+                      <FileText className="size-5" />
+                      <h2 className="font-semibold text-foreground text-sm">Document References</h2>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-3.5 text-xs">
+                    {statement.estimateNo && statement.estimateNo !== "—" && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground font-medium">Estimate Ref</span>
+                        <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
+                          {statement.estimateNo}
+                        </span>
+                      </div>
+                    )}
+                    {statement.soid && statement.soid !== "—" && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground font-medium">Sales Order (SO)</span>
+                        <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
+                          {statement.soid}
+                        </span>
+                      </div>
+                    )}
+                    {statement.joid && statement.joid !== "—" && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground font-medium">Job Order (JO)</span>
+                        <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
+                          {statement.joid}
+                        </span>
+                      </div>
+                    )}
+                    {statement.poid && statement.poid !== "—" && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground font-medium">Purchase Order (PO)</span>
+                        <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
+                          {statement.poid}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* BILLING SUMMARY CARD */}
               <Card className="shadow-lg border-primary/20">
@@ -810,7 +924,7 @@ const BillingDetail: React.FC = () => {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">VEHICLE DETAILS:</h3>
                 <div className="font-semibold text-sm mt-1">{statement.vehicleInfo || "—"}</div>
                 <div className="text-xs text-zinc-600 mt-0.5">Plate Number: <span className="font-bold">{statement.vehiclePlate || "—"}</span></div>
-                {statement.soid && (
+                {statement.soid && statement.soid !== "—" && (
                   <div className="text-xs text-zinc-600 mt-0.5">Sales Order: <span className="font-mono">{statement.soid}</span></div>
                 )}
               </div>

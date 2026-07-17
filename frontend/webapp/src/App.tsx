@@ -37,7 +37,6 @@ import AddEstimate from "./pages/internal/Sales/Estimates/EstimateForm";
 import EstimateDetail from "./pages/internal/Sales/Estimates/EstimateDetail";
 
 import BillingList from "./pages/internal/Sales/Billing/BillingList";
-import BillingForm from "./pages/internal/Sales/Billing/BillingForm";
 import BillingDetail from "./pages/internal/Sales/Billing/BillingDetail";
 
 import Purchasing from "./pages/internal/Purchasing/PurchaseOrders/Purchasing";
@@ -138,7 +137,6 @@ const App: React.FC = () => {
 
                 <Route path="billing">
                   <Route index element={<BillingList />} />
-                  <Route path="create" element={<BillingForm />} />
                   <Route path=":id" element={<BillingDetail />} />
                 </Route>
               </Route>

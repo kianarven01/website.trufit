@@ -9,6 +9,7 @@ use App\Domains\Billing\Application\UseCases\AddPaymentToBillingStatement;
 use App\Domains\Billing\Application\UseCases\CancelBillingStatement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class BillingController extends Controller
 {
@@ -17,6 +18,7 @@ class BillingController extends Controller
         $search = $request->query('search');
         $status = $request->query('status');
         $perPage = (int)$request->query('per_page', 25);
+        $archived = $request->query('archived') === 'true';
 
         $query = BillingStatement::with([
             'customer',
@@ -26,6 +28,10 @@ class BillingController extends Controller
             'payments',
             'items',
         ]);
+
+        if ($archived) {
+            $query->onlyTrashed();
+        }
 
         if ($status && $status !== 'all') {
             $query->where('status', $status);
@@ -51,7 +57,7 @@ class BillingController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $statement = BillingStatement::with([
+        $statement = BillingStatement::withTrashed()->with([
             'customer',
             'vehicle',
             'salesOrder.items.product.manufacturer',
@@ -121,6 +127,52 @@ class BillingController extends Controller
         return response()->json([
             'message' => 'Billing statement cancelled successfully',
             'data' => $statement
+        ]);
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $statement = BillingStatement::findOrFail($id);
+
+        if (!in_array($statement->status, ['Cancelled', 'Paid'], true)) {
+            return response()->json([
+                'message' => 'Only cancelled or paid billing statements can be archived.',
+            ], 422);
+        }
+
+        $statement->delete();
+
+        return response()->json([
+            'message' => 'Billing statement archived successfully.',
+        ]);
+    }
+
+    public function restore(string $id): JsonResponse
+    {
+        $statement = BillingStatement::onlyTrashed()->findOrFail($id);
+        $statement->restore();
+
+        return response()->json([
+            'message' => 'Billing statement restored successfully.',
+        ]);
+    }
+
+    public function forceDelete(string $id): JsonResponse
+    {
+        $statement = BillingStatement::onlyTrashed()->findOrFail($id);
+
+        DB::transaction(function () use ($statement) {
+            // Delete associated payments
+            $statement->payments()->delete();
+
+            // Delete associated billing items
+            $statement->items()->delete();
+
+            $statement->forceDelete();
+        });
+
+        return response()->json([
+            'message' => 'Billing statement permanently deleted.',
         ]);
     }
 }

@@ -14,7 +14,13 @@ import {
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
-import { Receipt } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Receipt, MoreVertical, Eye, Archive, RotateCcw, Trash2 } from "lucide-react";
 import api from "@/api/axios";
 import { toast } from "sonner";
 import TableSkeleton from "@/components/ui/TableSkeleton";
@@ -87,12 +93,20 @@ const statusFilterOptions: FilterOption[] = [
       { label: "Cancelled", value: "Cancelled" },
     ],
   },
+  {
+    key: "archived",
+    label: "Archived",
+    options: [
+      { label: "Show Archived", value: "true" },
+    ],
+  },
 ];
 
 const mapBillingStatement = (b: any): BillingStatement => {
   const customer = b.customer || {};
   const vehicle = b.vehicle || {};
-  const salesOrder = b.salesOrder || {};
+  const salesOrder = b.sales_order || b.salesOrder || {};
+  const jobOrder = b.job_order || b.jobOrder || {};
   const payments = Array.isArray(b.payments) ? b.payments : [];
 
   return {
@@ -119,7 +133,7 @@ const mapBillingStatement = (b: any): BillingStatement => {
     date: b.Date || new Date().toISOString(),
     status: b.status || "Unpaid",
     soid: salesOrder.so_number || b.SOID || "—",
-    joid: b.jobOrder?.jo_number || b.JOID || "—",
+    joid: jobOrder.jo_number || b.JOID || "—",
     items: [],
     tax: Number(b.tax) || 0,
     total: Number(b.Total) || 0,
@@ -142,6 +156,7 @@ const BillingList: React.FC = () => {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({
     status: "all",
+    archived: "all",
   });
   const navigate = useNavigate();
 
@@ -153,6 +168,7 @@ const BillingList: React.FC = () => {
       const params = {
         search: search || undefined,
         status: filters.status === "all" ? undefined : filters.status,
+        archived: filters.archived === "true" ? "true" : undefined,
         page,
         per_page: pageSize
       };
@@ -167,7 +183,7 @@ const BillingList: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [search, filters.status, page, pageSize]);
+  }, [search, filters.status, filters.archived, page, pageSize]);
 
   useEffect(() => {
     fetchStatements();
@@ -175,10 +191,45 @@ const BillingList: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, filters.status, setPage]);
+  }, [search, filters.status, filters.archived, setPage]);
 
   const filtered = statements;
   const paginated = statements;
+  const isArchivedView = filters.archived === "true";
+
+  // Archive
+  const handleArchive = async (s: BillingStatement) => {
+    try {
+      await api.delete(`/billing-statements/${s.id}`);
+      toast.success("Billing statement archived");
+      fetchStatements();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to archive");
+    }
+  };
+
+  // Restore
+  const handleRestore = async (s: BillingStatement) => {
+    try {
+      await api.patch(`/billing-statements/${s.id}/restore`);
+      toast.success("Billing statement restored");
+      fetchStatements();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to restore");
+    }
+  };
+
+  // Force Delete
+  const handleForceDelete = async (s: BillingStatement) => {
+    if (!window.confirm("Permanently delete this billing statement? This cannot be undone.")) return;
+    try {
+      await api.delete(`/billing-statements/${s.id}/force`);
+      toast.success("Billing statement permanently deleted");
+      fetchStatements();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete");
+    }
+  };
 
   const getStatusBadge = (status: BillingStatement["status"]) => {
     switch (status) {
@@ -205,8 +256,6 @@ const BillingList: React.FC = () => {
         onFilterChange={(key, value) =>
           setFilters((prev) => ({ ...prev, [key]: value }))
         }
-        onAdd={() => navigate("/webapp/sales/billing/create")}
-        addLabel="Create Bill"
       />
 
       {isLoading ? (
@@ -219,18 +268,19 @@ const BillingList: React.FC = () => {
       ) : statements.length > 0 ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
           <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full min-w-[1100px] border-separate border-spacing-y-2">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-center w-[11%]">Bill ID</TableHead>
-                  <TableHead className="text-center w-[10%]">Date</TableHead>
-                  <TableHead className="text-center w-[18%]">Customer</TableHead>
-                  <TableHead className="text-center w-[10%]">Plate Number</TableHead>
-                  <TableHead className="text-center w-[11%]">Ref SO</TableHead>
-                  <TableHead className="text-center w-[11%]">Ref JO</TableHead>
-                  <TableHead className="text-center w-[11%]">Total</TableHead>
-                  <TableHead className="text-center w-[11%]">Paid / Balance</TableHead>
-                  <TableHead className="text-center w-[10%]">Status</TableHead>
+                  <TableHead className="text-center w-[12%]">Bill ID</TableHead>
+                  <TableHead className="text-center w-[9%]">Date</TableHead>
+                  <TableHead className="text-center w-[16%]">Customer</TableHead>
+                  <TableHead className="text-center w-[9%]">Plate Number</TableHead>
+                  <TableHead className="text-center w-[12%]">Ref SO</TableHead>
+                  <TableHead className="text-center w-[9%]">Ref JO</TableHead>
+                  <TableHead className="text-center w-[10%]">Total</TableHead>
+                  <TableHead className="text-center w-[10%]">Paid / Balance</TableHead>
+                  <TableHead className="text-center w-[8%]">Status</TableHead>
+                  <TableHead className="w-[5%] text-right pr-4"></TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -292,12 +342,46 @@ const BillingList: React.FC = () => {
                         <TableCell className="text-center">
                           {getStatusBadge(s.status)}
                         </TableCell>
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button type="button" className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
+                                <MoreVertical size={16} />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 z-[100]">
+                              <DropdownMenuItem onClick={() => navigate(`/webapp/sales/billing/${s.id}`)} className="cursor-pointer">
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              {isArchivedView ? (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleRestore(s)} className="cursor-pointer">
+                                    <RotateCcw className="w-4 h-4 mr-2" />
+                                    Restore
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleForceDelete(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Permanently
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                (s.status === "Cancelled" || s.status === "Paid") && (
+                                  <DropdownMenuItem onClick={() => handleArchive(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    <Archive className="w-4 h-4 mr-2" />
+                                    Archive Bill
+                                  </DropdownMenuItem>
+                                )
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     );
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={10}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <Receipt className="h-8 w-8 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">No billing records found</p>

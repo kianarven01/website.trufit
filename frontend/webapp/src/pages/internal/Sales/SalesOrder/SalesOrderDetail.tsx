@@ -1102,53 +1102,40 @@ const SalesOrderDetails: React.FC = () => {
                     </Badge>
                   </div>
 
-                  {isReadyToBill && (
+                  {isReadyToBill && order.billing_statement && (
                     <div className={cn(
                       "p-3 rounded-lg flex flex-col gap-2 mt-2 border",
-                      order.billing_statement?.status === "Paid"
+                      order.billing_statement.status === "Paid"
                         ? "bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-900/40"
                         : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50"
                     )}>
                       <div className="flex justify-between items-center">
                         <span className={cn(
                           "font-semibold text-xs flex items-center gap-1",
-                          order.billing_statement?.status === "Paid" ? "text-blue-800 dark:text-blue-400" : "text-emerald-800 dark:text-emerald-400"
+                          order.billing_statement.status === "Paid" ? "text-blue-800 dark:text-blue-400" : "text-emerald-800 dark:text-emerald-400"
                         )}>
                           <CheckCircle2 className="size-3.5" />
-                          {order.billing_statement?.status === "Paid" ? "Sales Paid" : "Ready for Invoicing"}
+                          {order.billing_statement.status === "Paid" ? "Sales Paid" : "Ready for Invoicing"}
                         </span>
                         <Badge className={cn(
                           "text-white border-0 text-[10px] px-1.5 py-0.5",
-                          order.billing_statement?.status === "Paid" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                          order.billing_statement.status === "Paid" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
                         )}>
-                          {order.billing_statement?.status === "Paid" ? "Billed" : "For Billing"}
+                          {order.billing_statement.status === "Paid" ? "Billed" : "For Billing"}
                         </Badge>
                       </div>
                       <Button
                         size="sm"
                         onClick={() => {
-                          if (order.billing_statement) {
-                            navigate(`/webapp/sales/billing/${order.billing_statement.id}`);
-                          } else {
-                            navigate(`/webapp/sales/billing/create?import_so=${order.id}`);
-                          }
+                          navigate(`/webapp/sales/billing/${order.billing_statement!.id}`);
                         }}
                         className={cn(
                           "w-full text-white font-medium text-xs h-8 flex items-center justify-center gap-1 mt-1 border-0",
-                          order.billing_statement?.status === "Paid" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                          order.billing_statement.status === "Paid" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
                         )}
                       >
-                        {order.billing_statement ? (
-                          <>
-                            <FileText className="size-3.5 mr-1" />
-                            View Billing Statement
-                          </>
-                        ) : (
-                          <>
-                            <Import className="size-3.5 mr-1" />
-                            Create Billing Statement
-                          </>
-                        )}
+                        <FileText className="size-3.5 mr-1" />
+                        View Billing Statement
                       </Button>
                     </div>
                   )}

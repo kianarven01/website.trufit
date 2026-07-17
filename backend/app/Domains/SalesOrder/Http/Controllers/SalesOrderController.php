@@ -95,6 +95,7 @@ class SalesOrderController extends Controller
             'customer',
             'vehicle',
             'estimate',
+            'jobOrder',
             'items.product.manufacturer',
             'items.product.productSuppliers.inventory',
             'items.product.inventoryRows',
@@ -193,7 +194,7 @@ class SalesOrderController extends Controller
     public function approve(string $id, Request $request, ApproveSalesOrder $approveSalesOrder): JsonResponse
     {
         try {
-            $order = $approveSalesOrder->execute($id, $request->user()?->employeeID);
+            $order = $approveSalesOrder->execute($id, $request->user()?->id);
 
             return response()->json([
                 'message' => 'Sales Order approved and stock reserved successfully.',

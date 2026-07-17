@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
@@ -15,6 +15,9 @@ import { ScrollArea } from "@/components/ui/scrollArea";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { Receipt } from "lucide-react";
+import api from "@/api/axios";
+import { toast } from "sonner";
+import TableSkeleton from "@/components/ui/TableSkeleton";
 
 /* TYPES */
 export interface BillingItem {
@@ -37,6 +40,7 @@ export interface PaymentEntry {
 
 export interface BillingStatement {
   id: string;
+  billNumber?: string;
   customerId: string;
   customerName: string;
   customerEmail: string;
@@ -57,7 +61,7 @@ export interface BillingStatement {
   vehicleDealer?: string;
   vehicleMileage?: number;
   date: string;
-  status: "Draft" | "Pending" | "Partially Paid" | "Paid" | "Cancelled";
+  status: "Draft" | "Unpaid" | "Partially Paid" | "Paid" | "Cancelled";
   soid?: string;
   joid?: string;
   poid?: string;
@@ -69,127 +73,7 @@ export interface BillingStatement {
   notes?: string;
 }
 
-const STORAGE_KEY = "billing_statements";
 
-/* Mock Generator if empty */
-const generateMockBillingStatements = (): BillingStatement[] => {
-  return [
-    {
-      id: "BILL-1001",
-      customerId: "cust-1",
-      customerName: "Juan Dela Cruz",
-      customerEmail: "juan.delacruz@gmail.com",
-      customerMobile: "09171234567",
-      customerLandline: "—",
-      customerBusiness: "—",
-      customerAddress: "123 Mabini St, Manila",
-      vehiclePlate: "ABC-1234",
-      vehicleInfo: "2021 Toyota Vios 1.5G",
-      vehicleYear: "2021",
-      vehicleMake: "Toyota",
-      vehicleModel: "Vios",
-      vehicleVariant: "1.5G",
-      vehicleColor: "Red",
-      vehicleEngine: "1NZ-FE12345",
-      vehicleVIN: "MRH53BT818728",
-      vehicleRegistration: "REG-991823",
-      vehicleDealer: "Toyota Manila Bay",
-      vehicleMileage: 12000,
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-      status: "Paid",
-      soid: "SO-1001",
-      joid: "JO-1001",
-      poid: "—",
-      estimateNo: "EST-1001",
-      items: [
-        { id: "item-1", name: "Engine Oil Change Service", qty: 1, price: 800, amount: 800, type: "service" },
-        { id: "item-2", name: "Fully Synthetic Engine Oil 4L", qty: 1, price: 2500, amount: 2500, type: "part" },
-        { id: "item-3", name: "Oil Filter", qty: 1, price: 450, amount: 450, type: "part" }
-      ],
-      tax: 450,
-      total: 4200,
-      payments: [
-        { id: "pay-1", date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), amount: 4200, method: "GCash", referenceNumber: "REF9928172", type: "full" }
-      ],
-      notes: "Routine PMS done. Client paid via GCash."
-    },
-    {
-      id: "BILL-1002",
-      customerId: "cust-2",
-      customerName: "Maria Santos",
-      customerEmail: "maria.santos@yahoo.com",
-      customerMobile: "09189876543",
-      customerLandline: "—",
-      customerBusiness: "—",
-      customerAddress: "456 Rizal Ave, Pasay",
-      vehiclePlate: "XYZ-9876",
-      vehicleInfo: "2019 Mitsubishi Montero Sport",
-      vehicleYear: "2019",
-      vehicleMake: "Mitsubishi",
-      vehicleModel: "Montero Sport",
-      vehicleVariant: "GLS 2WD",
-      vehicleColor: "Gray",
-      vehicleEngine: "4N15-A1828",
-      vehicleVIN: "MNT88A92819B",
-      vehicleRegistration: "REG-18239A",
-      vehicleDealer: "Mitsubishi Pasay",
-      vehicleMileage: 28000,
-      date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      status: "Partially Paid",
-      soid: "SO-1002",
-      joid: "JO-1002",
-      poid: "PO-1002",
-      estimateNo: "EST-1002",
-      items: [
-        { id: "item-4", name: "Brake Pad Replacement Service", qty: 2, price: 1200, amount: 2400, type: "service" },
-        { id: "item-5", name: "Front Brake Pads (Set)", qty: 1, price: 3800, amount: 3800, type: "part" },
-        { id: "item-6", name: "Brake Fluid", qty: 2, price: 350, amount: 700, type: "supply" }
-      ],
-      tax: 828,
-      total: 7728,
-      payments: [
-        { id: "pay-2", date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), amount: 4000, method: "Cash", type: "partial" }
-      ],
-      notes: "Partially paid downpayment. Rest will be paid upon pickup."
-    },
-    {
-      id: "BILL-1003",
-      customerId: "cust-3",
-      customerName: "Robert Lim",
-      customerEmail: "rlim@corporation.com",
-      customerMobile: "09223334444",
-      customerLandline: "—",
-      customerBusiness: "—",
-      customerAddress: "789 Shaw Blvd, Mandaluyong",
-      vehiclePlate: "NQR-5544",
-      vehicleInfo: "2022 Honda Civic RS",
-      vehicleYear: "2022",
-      vehicleMake: "Honda",
-      vehicleModel: "Civic",
-      vehicleVariant: "RS Turbo",
-      vehicleColor: "Blue",
-      vehicleEngine: "L15B7-8827A",
-      vehicleVIN: "HND77S928131",
-      vehicleRegistration: "REG-91823A",
-      vehicleDealer: "Honda Shaw",
-      vehicleMileage: 5000,
-      date: new Date().toISOString(),
-      status: "Pending",
-      soid: "SO-1003",
-      joid: "JO-1003",
-      poid: "—",
-      estimateNo: "EST-1003",
-      items: [
-        { id: "item-7", name: "Wheel Alignment & Balancing", qty: 1, price: 1500, amount: 1500, type: "service" },
-        { id: "item-8", name: "Wheel Weights", qty: 4, price: 100, amount: 400, type: "supply" }
-      ],
-      tax: 228,
-      total: 2128,
-      payments: [],
-      notes: "Alignment done. Bill issued. Waiting for payment."
-    }
-  ];
-};
 
 const statusFilterOptions: FilterOption[] = [
   {
@@ -197,7 +81,7 @@ const statusFilterOptions: FilterOption[] = [
     label: "Status",
     options: [
       { label: "Draft", value: "Draft" },
-      { label: "Pending", value: "Pending" },
+      { label: "Unpaid", value: "Unpaid" },
       { label: "Partially Paid", value: "Partially Paid" },
       { label: "Paid", value: "Paid" },
       { label: "Cancelled", value: "Cancelled" },
@@ -205,54 +89,96 @@ const statusFilterOptions: FilterOption[] = [
   },
 ];
 
+const mapBillingStatement = (b: any): BillingStatement => {
+  const customer = b.customer || {};
+  const vehicle = b.vehicle || {};
+  const salesOrder = b.salesOrder || {};
+  const payments = Array.isArray(b.payments) ? b.payments : [];
+
+  return {
+    id: b.id,
+    billNumber: b.bill_number || "",
+    customerId: String(customer.customer_id || ""),
+    customerName: `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "—",
+    customerEmail: customer.email || "—",
+    customerMobile: customer.mobile_number || "—",
+    customerLandline: customer.landline || "—",
+    customerBusiness: customer.business || "—",
+    customerAddress: customer.address || "—",
+    vehiclePlate: vehicle.plate_number || "—",
+    vehicleInfo: `${vehicle.year_model || ""} ${vehicle.make || ""} ${vehicle.model || ""} ${vehicle.variant || ""}`.trim() || "—",
+    vehicleYear: vehicle.year_model || "—",
+    vehicleMake: vehicle.make || "—",
+    vehicleModel: vehicle.model || "—",
+    vehicleVariant: vehicle.variant || "—",
+    vehicleColor: vehicle.color || "—",
+    vehicleEngine: vehicle.engine_number || "—",
+    vehicleVIN: vehicle.VIN || "—",
+    vehicleRegistration: vehicle.registration_number || "—",
+    vehicleMileage: Number(vehicle.mileage) || 0,
+    date: b.Date || new Date().toISOString(),
+    status: b.status || "Unpaid",
+    soid: salesOrder.so_number || b.SOID || "—",
+    joid: b.jobOrder?.jo_number || b.JOID || "—",
+    items: [],
+    tax: Number(b.tax) || 0,
+    total: Number(b.Total) || 0,
+    payments: payments.map((p: any) => ({
+      id: p.id,
+      date: p.Date || new Date().toISOString(),
+      amount: Number(p.Amount) || 0,
+      method: p.PaymentMethod || "Cash",
+      referenceNumber: p.ReferenceNumber || undefined,
+      type: p.Type || "partial"
+    })),
+    notes: b.notes || ""
+  };
+};
+
 const BillingList: React.FC = () => {
   const [statements, setStatements] = useState<BillingStatement[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({
     status: "all",
   });
   const navigate = useNavigate();
 
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
+  const { page, setPage, pageSize, setPageSize } = usePagination(25);
 
-  /* LOAD */
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (!parsed.length) {
-        const mock = generateMockBillingStatements();
-        setStatements(mock);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(mock));
-      } else {
-        setStatements(parsed);
-      }
-    } else {
-      const mock = generateMockBillingStatements();
-      setStatements(mock);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(mock));
+  const fetchStatements = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const params = {
+        search: search || undefined,
+        status: filters.status === "all" ? undefined : filters.status,
+        page,
+        per_page: pageSize
+      };
+      const res = await api.get("/billing-statements", { params });
+      const data = res.data;
+      const itemsList = Array.isArray(data.data) ? data.data : [];
+      setStatements(itemsList.map(mapBillingStatement));
+      setTotalItems(data.total || 0);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load billing statements");
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [search, filters.status, page, pageSize]);
 
-  /* FILTER & SEARCH */
-  const filtered = useMemo(() => {
-    return statements.filter((s) => {
-      const customerMatch = `${s.id} ${s.customerName} ${s.vehiclePlate} ${s.status} ${s.soid || ""}`
-        .toLowerCase()
-        .includes(search.toLowerCase());
-
-      const statusMatch =
-        filters.status === "all" || s.status === filters.status;
-
-      return customerMatch && statusMatch;
-    });
-  }, [statements, search, filters]);
-
-  const paginated = paginate(filtered);
+  useEffect(() => {
+    fetchStatements();
+  }, [fetchStatements]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, filters]);
+  }, [search, filters.status, setPage]);
+
+  const filtered = statements;
+  const paginated = statements;
 
   const getStatusBadge = (status: BillingStatement["status"]) => {
     switch (status) {
@@ -260,8 +186,8 @@ const BillingList: React.FC = () => {
         return <Badge variant="approved">Paid</Badge>;
       case "Partially Paid":
         return <Badge variant="received">Partially Paid</Badge>;
-      case "Pending":
-        return <Badge variant="for-approval">Pending</Badge>;
+      case "Unpaid":
+        return <Badge variant="for-approval">Unpaid</Badge>;
       case "Cancelled":
         return <Badge variant="cancelled">Cancelled</Badge>;
       default:
@@ -283,19 +209,27 @@ const BillingList: React.FC = () => {
         addLabel="Create Bill"
       />
 
-      {statements.length > 0 ? (
+      {isLoading ? (
+        <div className="flex-1 flex flex-col justify-start py-4">
+          <TableSkeleton
+            columns={9}
+            rows={8}
+          />
+        </div>
+      ) : statements.length > 0 ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
           <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full min-w-[1000px] border-separate border-spacing-y-2">
+            <Table className="table-fixed w-full min-w-[1100px] border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-center w-[12%]">Bill ID</TableHead>
-                  <TableHead className="text-center w-[12%]">Date</TableHead>
-                  <TableHead className="text-center w-[20%]">Customer</TableHead>
-                  <TableHead className="text-center w-[12%]">Plate Number</TableHead>
-                  <TableHead className="text-center w-[12%]">Ref SO</TableHead>
-                  <TableHead className="text-center w-[12%]">Total</TableHead>
-                  <TableHead className="text-center w-[12%]">Paid / Balance</TableHead>
+                  <TableHead className="text-center w-[11%]">Bill ID</TableHead>
+                  <TableHead className="text-center w-[10%]">Date</TableHead>
+                  <TableHead className="text-center w-[18%]">Customer</TableHead>
+                  <TableHead className="text-center w-[10%]">Plate Number</TableHead>
+                  <TableHead className="text-center w-[11%]">Ref SO</TableHead>
+                  <TableHead className="text-center w-[11%]">Ref JO</TableHead>
+                  <TableHead className="text-center w-[11%]">Total</TableHead>
+                  <TableHead className="text-center w-[11%]">Paid / Balance</TableHead>
                   <TableHead className="text-center w-[10%]">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -315,7 +249,7 @@ const BillingList: React.FC = () => {
                         )}
                       >
                         <TableCell className="font-mono font-bold text-center text-primary">
-                          {s.id}
+                          {s.billNumber || s.id.substring(0, 8).toUpperCase()}
                         </TableCell>
                         <TableCell className="text-center text-muted-foreground">
                           {new Date(s.date).toLocaleDateString()}
@@ -334,6 +268,13 @@ const BillingList: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-center font-semibold text-muted-foreground">
                           {s.soid || "—"}
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          {s.joid && s.joid !== "—" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                              {s.joid}
+                            </span>
+                          ) : "—"}
                         </TableCell>
                         <TableCell className="text-center font-bold">
                           ₱ {s.total.toLocaleString()}
@@ -356,7 +297,7 @@ const BillingList: React.FC = () => {
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={9}>
                       <div className="py-16 flex flex-col items-center text-center">
                         <Receipt className="h-8 w-8 mb-2 text-muted-foreground" />
                         <p className="text-sm font-medium">No billing records found</p>
@@ -371,10 +312,10 @@ const BillingList: React.FC = () => {
             </Table>
           </ScrollArea>
 
-          {filtered.length > 25 && (
+          {totalItems > pageSize && (
             <div className="border-t mx-3">
               <Pagination
-                totalItems={filtered.length}
+                totalItems={totalItems}
                 page={page}
                 pageSize={pageSize}
                 onPageChange={setPage}

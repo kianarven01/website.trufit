@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import { ArrowLeft, Plus, Trash2, Import } from "lucide-react";
 import { toast } from "sonner";
 import { BillingStatement, BillingItem } from "./BillingList";
 import api from "@/api/axios";
+import Combobox from "@/components/ui/combobox";
 
 interface ImportedSalesOrder {
   id: string;
@@ -58,8 +59,14 @@ interface ImportedSalesOrder {
 
 const BillingForm: React.FC = () => {
   const navigate = useNavigate();
+  const importedSOIdRef = useRef<string>("");
+  const isImportingRef = useRef<boolean>(false);
   const [salesOrders, setSalesOrders] = useState<ImportedSalesOrder[]>([]);
   const [selectedSOId, setSelectedSOId] = useState<string>("");
+  const [customerId, setCustomerId] = useState<string>("");
+  const [vehicleId, setVehicleId] = useState<string>("");
+  const [dbCustomers, setDbCustomers] = useState<any[]>([]);
+  const [dbVehicles, setDbVehicles] = useState<any[]>([]);
 
   // Customer Fields
   const [customerName, setCustomerName] = useState("");
@@ -90,7 +97,7 @@ const BillingForm: React.FC = () => {
 
   // Form Utilities
   const [notes, setNotes] = useState("");
-  const [status, setStatus] = useState<BillingStatement["status"]>("Pending");
+  const [status, setStatus] = useState<BillingStatement["status"]>("Unpaid");
   const [items, setItems] = useState<BillingItem[]>([]);
   const [taxRate, setTaxRate] = useState(12);
 
@@ -103,7 +110,10 @@ const BillingForm: React.FC = () => {
   // Handle importing a Sales Order
   const handleImportSalesOrder = async (soId: string) => {
     if (!soId) return;
+    if (importedSOIdRef.current === soId || isImportingRef.current) return;
     try {
+      isImportingRef.current = true;
+      importedSOIdRef.current = soId;
       toast.info("Loading Sales Order items...");
       const res = await api.get(`/sales-orders/${soId}`);
       const so = res.data.data;
@@ -135,6 +145,9 @@ const BillingForm: React.FC = () => {
       setVehicleDealer("—");
       setVehicleMileage(Number(so.vehicle?.mileage) || 0);
 
+      setCustomerId(so.customer ? String(so.customer.customer_id) : "");
+      setVehicleId(so.vehicle ? String(so.vehicle.id) : "");
+
       const itemsList = Array.isArray(so.items) ? so.items : [];
       const billingItems: BillingItem[] = itemsList.map((p: any, idx: number) => ({
         id: p.id || `so-item-${idx}`,
@@ -149,6 +162,8 @@ const BillingForm: React.FC = () => {
     } catch (err) {
       console.error("Failed to import Sales Order details", err);
       toast.error("Failed to import Sales Order details");
+    } finally {
+      isImportingRef.current = false;
     }
   };
 
@@ -178,6 +193,11 @@ const BillingForm: React.FC = () => {
             // Find if the SO ID exists in the fetched list to verify validity
             const exists = normalized.some((so) => so.id === importSoId);
             if (exists) {
+              // Remove query parameter from URL immediately to prevent duplicate triggers
+              const url = new URL(window.location.href);
+              url.searchParams.delete("import_so");
+              window.history.replaceState({}, document.title, url.pathname + url.search);
+
               handleImportSalesOrder(importSoId);
             }
           }
@@ -186,7 +206,41 @@ const BillingForm: React.FC = () => {
         console.error("Failed to load Sales Orders for Billing", err);
       }
     };
+    const fetchCustomers = async () => {
+      try {
+        const res = await api.get("/customers");
+        const dbCusts = res.data.data || [];
+        setDbCustomers(dbCusts);
+
+        const allVehs: any[] = [];
+        dbCusts.forEach((c: any) => {
+          if (Array.isArray(c.vehicles)) {
+            c.vehicles.forEach((v: any) => {
+              allVehs.push({
+                id: String(v.id),
+                customerId: String(c.customer_id),
+                plateNo: v.plate_number || "",
+                year: v.year_model || "",
+                make: v.make || "",
+                model: v.model || "",
+                variant: v.variant || "",
+                color: v.color || "",
+                engineNo: v.engine_number || "",
+                vin: v.VIN || "",
+                registrationNo: v.registration_number || "",
+                mileage: v.mileage ?? 0,
+              });
+            });
+          }
+        });
+        setDbVehicles(allVehs);
+      } catch (err) {
+        console.error("Failed to load customers for Billing", err);
+      }
+    };
+
     fetchSOList();
+    fetchCustomers();
 
     sessionStorage.setItem("breadcrumb-/webapp/sales/billing/create", "Create Billing Statement");
     window.dispatchEvent(new Event("breadcrumb-update"));
@@ -238,14 +292,12 @@ const BillingForm: React.FC = () => {
   const tax = Math.round(subtotal * (taxRate / 100));
   const total = subtotal + tax;
 
+  const [isSaving, setIsSaving] = useState(false);
+
   // Handle Save
-  const handleSave = () => {
-    if (!customerName.trim()) {
-      toast.error("Customer Name is required");
-      return;
-    }
-    if (!vehiclePlate.trim()) {
-      toast.error("Vehicle Plate Number is required");
+  const handleSave = async () => {
+    if (!customerId) {
+      toast.error("Please select a customer");
       return;
     }
     if (items.length === 0) {
@@ -253,52 +305,35 @@ const BillingForm: React.FC = () => {
       return;
     }
 
-    const storedBills = JSON.parse(localStorage.getItem("billing_statements") || "[]");
-    
-    // Generate new Bill ID
-    const nextNum = storedBills.length ? Math.max(...storedBills.map((b: any) => {
-      const match = b.id.match(/\d+/);
-      return match ? parseInt(match[0], 10) : 1000;
-    })) + 1 : 1001;
-    
-    const newBill: BillingStatement = {
-      id: `BILL-${nextNum}`,
-      customerId: `cust-${nextNum}`,
-      customerName,
-      customerEmail,
-      customerMobile,
-      customerLandline: customerLandline || "—",
-      customerBusiness: customerBusiness || "—",
-      customerAddress,
-      vehiclePlate,
-      vehicleInfo: `${vehicleYear} ${vehicleMake} ${vehicleModel} ${vehicleVariant}`.trim() || "—",
-      vehicleYear,
-      vehicleMake,
-      vehicleModel,
-      vehicleVariant,
-      vehicleColor: vehicleColor || "—",
-      vehicleEngine: vehicleEngine || "—",
-      vehicleVIN: vehicleVIN || "—",
-      vehicleRegistration: vehicleRegistration || "—",
-      vehicleDealer: vehicleDealer || "—",
-      vehicleMileage,
-      date: new Date().toISOString(),
-      status,
-      soid: soid || undefined,
-      joid: joid || undefined,
-      poid: poid || undefined,
-      estimateNo: estimateNo || undefined,
-      items,
-      tax,
-      total,
-      payments: [],
-      notes
-    };
+    try {
+      setIsSaving(true);
+      const payload = {
+        customer_id: customerId,
+        vehicle_id: vehicleId || null,
+        so_id: selectedSOId || null,
+        date: new Date().toISOString(),
+        total: total,
+        tax: tax,
+        notes: notes,
+        items: items.map((item) => ({
+          name: item.name,
+          qty: item.qty,
+          price: item.price,
+          amount: item.amount,
+          type: item.type,
+        })),
+      };
 
-    storedBills.push(newBill);
-    localStorage.setItem("billing_statements", JSON.stringify(storedBills));
-    toast.success(`Billing Statement ${newBill.id} created successfully`);
-    navigate("/webapp/sales/billing");
+      const res = await api.post("/billing-statements", payload);
+      const bill = res.data.data;
+      toast.success(`Billing Statement ${bill.bill_number} created successfully`);
+      navigate("/webapp/sales/billing");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to create billing statement");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -316,8 +351,8 @@ const BillingForm: React.FC = () => {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
-            <Button size="sm" onClick={handleSave}>
-              Save Billing Statement
+            <Button size="sm" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Billing Statement"}
             </Button>
           </div>
         }
@@ -364,11 +399,75 @@ const BillingForm: React.FC = () => {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="cust-name">Full Name *</Label>
-                  <Input
-                    id="cust-name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="Enter customer's name"
+                  <Combobox
+                    value={customerId}
+                    onChange={(val) => {
+                      setCustomerId(val);
+                      const customer = dbCustomers.find((c) => String(c.customer_id) === val);
+                      if (customer) {
+                        const name = `${customer.first_name || ""} ${customer.last_name || ""}`.trim();
+                        setCustomerName(name);
+                        setCustomerEmail(customer.email || "");
+                        setCustomerMobile(customer.mobile_number || "");
+                        setCustomerAddress(customer.address || "");
+                        setCustomerLandline(customer.landline || "");
+                        setCustomerBusiness(customer.business || "");
+
+                        // Auto select vehicle if customer has exactly 1 vehicle
+                        const relatedVehs = dbVehicles.filter((v) => v.customerId === val);
+                        if (relatedVehs.length === 1) {
+                          const v = relatedVehs[0];
+                          setVehicleId(v.id);
+                          setVehiclePlate(v.plateNo);
+                          setVehicleYear(v.year);
+                          setVehicleMake(v.make);
+                          setVehicleModel(v.model);
+                          setVehicleVariant(v.variant);
+                          setVehicleColor(v.color);
+                          setVehicleEngine(v.engineNo);
+                          setVehicleVIN(v.vin);
+                          setVehicleRegistration(v.registrationNo);
+                          setVehicleMileage(v.mileage);
+                        } else {
+                          setVehicleId("");
+                          setVehiclePlate("");
+                          setVehicleYear("");
+                          setVehicleMake("");
+                          setVehicleModel("");
+                          setVehicleVariant("");
+                          setVehicleColor("");
+                          setVehicleEngine("");
+                          setVehicleVIN("");
+                          setVehicleRegistration("");
+                          setVehicleMileage(0);
+                        }
+                      } else {
+                        setCustomerId("");
+                        setCustomerName("");
+                        setCustomerEmail("");
+                        setCustomerMobile("");
+                        setCustomerAddress("");
+                        setCustomerLandline("");
+                        setCustomerBusiness("");
+
+                        setVehicleId("");
+                        setVehiclePlate("");
+                        setVehicleYear("");
+                        setVehicleMake("");
+                        setVehicleModel("");
+                        setVehicleVariant("");
+                        setVehicleColor("");
+                        setVehicleEngine("");
+                        setVehicleVIN("");
+                        setVehicleRegistration("");
+                        setVehicleMileage(0);
+                      }
+                    }}
+                    items={dbCustomers.map((c) => ({
+                      label: `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+                      value: String(c.customer_id),
+                    }))}
+                    placeholder="Select customer"
                   />
                 </div>
                 <div>
@@ -475,12 +574,54 @@ const BillingForm: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="veh-plate">Plate Number *</Label>
-                  <Input
-                    id="veh-plate"
-                    value={vehiclePlate}
-                    onChange={(e) => setVehiclePlate(e.target.value)}
-                    placeholder="ABC-1234"
-                  />
+                  {!customerId ? (
+                    <Input
+                      value=""
+                      placeholder="Select customer first"
+                      disabled
+                    />
+                  ) : (
+                    <Combobox
+                      value={vehicleId}
+                      onChange={(val) => {
+                        setVehicleId(val);
+                        const v = dbVehicles.find((v) => v.id === val);
+                        if (v) {
+                          setVehiclePlate(v.plateNo);
+                          setVehicleYear(v.year);
+                          setVehicleMake(v.make);
+                          setVehicleModel(v.model);
+                          setVehicleVariant(v.variant);
+                          setVehicleColor(v.color);
+                          setVehicleEngine(v.engineNo);
+                          setVehicleVIN(v.vin);
+                          setVehicleRegistration(v.registrationNo);
+                          setVehicleMileage(v.mileage);
+                        } else {
+                          setVehiclePlate("");
+                          setVehicleYear("");
+                          setVehicleMake("");
+                          setVehicleModel("");
+                          setVehicleVariant("");
+                          setVehicleColor("");
+                          setVehicleEngine("");
+                          setVehicleVIN("");
+                          setVehicleRegistration("");
+                          setVehicleMileage(0);
+                        }
+                      }}
+                      items={[
+                        { label: "No Vehicle (Optional)", value: "" },
+                        ...dbVehicles
+                          .filter((v) => v.customerId === customerId)
+                          .map((v) => ({
+                            label: `${v.year || ""} ${v.make || ""} ${v.model || ""} (${v.plateNo})`,
+                            value: v.id,
+                          })),
+                      ]}
+                      placeholder="Select vehicle"
+                    />
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="veh-engine">Engine Number</Label>

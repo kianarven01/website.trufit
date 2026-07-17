@@ -19,7 +19,6 @@ class Estimate extends Model
     protected $fillable = [
         'customer_id',
         'vehicle_id',
-        'vehicle_id_old',
         'status',
         'total_amount',
         'mileage',

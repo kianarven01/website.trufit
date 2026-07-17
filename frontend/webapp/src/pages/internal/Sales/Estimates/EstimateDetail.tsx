@@ -300,8 +300,16 @@ const EstimateDetail: React.FC = () => {
         status,
         downpayment_amount: downpayment
       });
-      setEstimate(response.data.data);
-      toast.success(`Estimate approved successfully!`);
+      const data = response.data.data;
+      setEstimate(data);
+
+      const parts = [];
+      if (data.sales_order?.so_number) parts.push(`SO: ${data.sales_order.so_number}`);
+      if (data.job_order?.jo_number) parts.push(`JO: ${data.job_order.jo_number}`);
+      const msg = parts.length > 0
+        ? `Estimate approved — ${parts.join(" | ")} created`
+        : `Estimate approved successfully!`;
+      toast.success(msg);
     } catch (err) {
       console.error("Failed to approve estimate", err);
       toast.error("Failed to approve estimate.");

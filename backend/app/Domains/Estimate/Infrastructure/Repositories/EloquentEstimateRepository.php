@@ -5,7 +5,6 @@ namespace App\Domains\Estimate\Infrastructure\Repositories;
 use App\Domains\Estimate\Domain\Models\Estimate;
 use App\Domains\Estimate\Domain\Models\EstimateItem;
 use App\Domains\Estimate\Domain\Repositories\EstimateRepositoryInterface;
-use App\Domains\Customer\Domain\Models\CustomerVehicle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -35,9 +34,6 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
     public function create(array $data): Estimate
     {
         return DB::transaction(function () use ($data) {
-            $vehicle = CustomerVehicle::find($data['vehicle_id']);
-            $vehicleOld = $vehicle ? $vehicle->plate_number : '';
-
             // Generate estimate number like EST-YYMMDD-XXX
             $today = now();
             $dateStr = $today->format('ymd');
@@ -60,7 +56,6 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'id' => (string) Str::uuid(),
                 'customer_id' => $data['customer_id'],
                 'vehicle_id' => $data['vehicle_id'],
-                'vehicle_id_old' => $vehicleOld,
                 'status' => $data['status'] ?? 'DRAFT',
                 'total_amount' => $data['total_amount'] ?? 0.00,
                 'mileage' => $data['mileage'] ?? null,
@@ -99,15 +94,11 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         return DB::transaction(function () use ($id, $data) {
             $estimate = Estimate::findOrFail($id);
 
-            $vehicle = CustomerVehicle::find($data['vehicle_id'] ?? $estimate->vehicle_id);
-            $vehicleOld = $vehicle ? $vehicle->plate_number : $estimate->vehicle_id_old;
-
             $employeeId = auth()->user() ? auth()->user()->employeeID : null;
 
             $updateData = [
                 'customer_id' => $data['customer_id'] ?? $estimate->customer_id,
                 'vehicle_id' => $data['vehicle_id'] ?? $estimate->vehicle_id,
-                'vehicle_id_old' => $vehicleOld,
                 'status' => $data['status'] ?? $estimate->status,
                 'total_amount' => $data['total_amount'] ?? $estimate->total_amount,
                 'mileage' => $data['mileage'] ?? $estimate->mileage,

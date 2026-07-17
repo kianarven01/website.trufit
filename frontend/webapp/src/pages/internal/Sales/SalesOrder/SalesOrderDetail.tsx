@@ -98,6 +98,7 @@ interface Product {
   needsOrdering: boolean;
   quantityOnHand: number | null;
   isIssued: boolean;
+  quantityReturned: number;
 }
 
 interface SalesOrder {
@@ -125,6 +126,7 @@ interface SalesOrder {
   archived?: boolean;
   estimate_id?: string;
   estimate?: { id: string; estimate_number?: string };
+  job_order?: { id: string; jo_number: string; status: string } | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
@@ -505,7 +507,7 @@ const SalesOrderDetails: React.FC = () => {
   const isCounter = order.type === "COUNTER";
   const hasIssuedItems = order.products.some((p) => p.isIssued);
   const allItemsIssued = order.products.length > 0 && order.products.every((p) => p.isIssued);
-  const isReadyToBill = (isCounter && order.status === "APPROVED" && allItemsIssued) || (!isCounter && order.status === "COMPLETED");
+  const isReadyToBill = (isCounter && order.status === "APPROVED") || (!isCounter && order.status === "COMPLETED");
 
   const ACTION_CONFIRMATIONS: Record<string, { action: string; label: string; description: string; className?: string }> = {
     submit: { action: "submit", label: "Submit", description: "Are you sure you want to submit this Sales Order for approval?" },
@@ -938,6 +940,19 @@ const SalesOrderDetails: React.FC = () => {
                       <span className="text-muted-foreground">Estimate Ref.</span>
                       <span className="font-mono text-xs font-medium text-foreground">
                         {order.estimate.estimate_number || order.estimate.id?.substring(0, 8).toUpperCase() || "—"}
+                      </span>
+                    </div>
+                  )}
+
+                  {order.job_order && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Job Order</span>
+                      <span
+                        className="font-mono text-xs font-medium text-primary cursor-pointer hover:underline"
+                        onClick={() => navigate(`/webapp/services/job-orders/${order.job_order!.id}`)}
+                      >
+                        {order.job_order.jo_number}
+                        <span className="ml-1.5 text-muted-foreground">({order.job_order.status})</span>
                       </span>
                     </div>
                   )}

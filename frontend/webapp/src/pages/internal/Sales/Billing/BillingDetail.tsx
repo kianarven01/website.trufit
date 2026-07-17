@@ -45,13 +45,76 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BillingStatement, PaymentEntry, BillingItem } from "./BillingList";
+import api from "@/api/axios";
 
 const STORAGE_KEY = "billing_statements";
+
+const mapBillingStatement = (b: any): BillingStatement => {
+  const customer = b.customer || {};
+  const vehicle = b.vehicle || {};
+  const salesOrder = b.salesOrder || {};
+  const payments = Array.isArray(b.payments) ? b.payments : [];
+
+  // Prefer billing items from BillingStatementItems table, fallback to SO items for backward compatibility
+  const billingItems = Array.isArray(b.items) && b.items.length > 0
+    ? b.items
+    : Array.isArray(salesOrder.items)
+      ? salesOrder.items
+      : [];
+
+  const items: BillingItem[] = billingItems.map((i: any) => ({
+    id: i.id,
+    name: i.product?.name || i.name || "Unknown Product",
+    qty: Number(i.quantity ?? i.Quantity) || 1,
+    price: Number(i.UnitPrice ?? i.price) || 0,
+    amount: Number(i.SubTotal ?? i.amount) || 0,
+    type: (i.type || "part") as "service" | "part" | "supply"
+  }));
+
+  return {
+    id: b.id,
+    billNumber: b.bill_number || "",
+    customerId: String(customer.customer_id || ""),
+    customerName: `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "—",
+    customerEmail: customer.email || "—",
+    customerMobile: customer.mobile_number || "—",
+    customerLandline: customer.landline || "—",
+    customerBusiness: customer.business || "—",
+    customerAddress: customer.address || "—",
+    vehiclePlate: vehicle.plate_number || "—",
+    vehicleInfo: `${vehicle.year_model || ""} ${vehicle.make || ""} ${vehicle.model || ""} ${vehicle.variant || ""}`.trim() || "—",
+    vehicleYear: vehicle.year_model || "—",
+    vehicleMake: vehicle.make || "—",
+    vehicleModel: vehicle.model || "—",
+    vehicleVariant: vehicle.variant || "—",
+    vehicleColor: vehicle.color || "—",
+    vehicleEngine: vehicle.engine_number || "—",
+    vehicleVIN: vehicle.VIN || "—",
+    vehicleRegistration: vehicle.registration_number || "—",
+    date: b.Date || new Date().toISOString(),
+    status: b.status || "Unpaid",
+    soid: salesOrder.so_number || b.SOID || "—",
+    joid: b.JOID || "—",
+    items,
+    tax: Number(b.tax) || 0,
+    total: Number(b.Total) || 0,
+    payments: payments.map((p: any) => ({
+      id: p.id,
+      date: p.Date || new Date().toISOString(),
+      amount: Number(p.Amount) || 0,
+      method: p.PaymentMethod || "Cash",
+      referenceNumber: p.ReferenceNumber || undefined,
+      type: p.Type || "partial"
+    })),
+    notes: b.notes || ""
+  };
+};
 
 const BillingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [statement, setStatement] = useState<BillingStatement | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Payment Dialog States
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -62,17 +125,42 @@ const BillingDetail: React.FC = () => {
   // Invoice Print Dialog State
   const [isPrintOpen, setIsPrintOpen] = useState(false);
 
+  const fetchStatement = async () => {
+    try {
+      setIsLoading(true);
+      const res = await api.get(`/billing-statements/${id}`);
+      const b = res.data.data;
+      if (b) {
+        const mapped = mapBillingStatement(b);
+        setStatement(mapped);
+        const paid = mapped.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
+        setPayAmount((mapped.total - paid).toString());
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load billing statement");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Load statement
   useEffect(() => {
-    const stored: BillingStatement[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const found = stored.find((s: BillingStatement) => s.id === id);
-    if (found) {
-      setStatement(found);
-      // Pre-fill payment amount with remaining balance
-      const paid = found.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
-      setPayAmount((found.total - paid).toString());
-    }
+    fetchStatement();
   }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-medium text-muted-foreground animate-pulse">
+            Loading billing statement...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!statement) {
     return (
@@ -102,7 +190,7 @@ const BillingDetail: React.FC = () => {
   const peso = (amount: number) => `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   // Handle Recording Payment
-  const handleRecordPayment = () => {
+  const handleRecordPayment = async () => {
     const parsedAmount = parseFloat(payAmount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       toast.error("Please enter a valid payment amount");
@@ -113,70 +201,38 @@ const BillingDetail: React.FC = () => {
       return;
     }
 
-    const stored: BillingStatement[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const updated: BillingStatement[] = stored.map((s: BillingStatement) => {
-      if (s.id === statement.id) {
-        const newPayment: PaymentEntry = {
-          id: `pay-${Date.now()}`,
-          date: new Date().toISOString(),
-          amount: parsedAmount,
-          method: payMethod,
-          referenceNumber: payRef || undefined,
-          type: parsedAmount === balance ? "full" : "partial"
-        };
-        
-        const newPayments = [...s.payments, newPayment];
-        const newPaidTotal = newPayments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
-        let newStatus: BillingStatement["status"] = s.status;
-
-        if (newPaidTotal >= s.total) {
-          newStatus = "Paid";
-        } else if (newPaidTotal > 0) {
-          newStatus = "Partially Paid";
-        }
-
-        return {
-          ...s,
-          payments: newPayments,
-          status: newStatus
-        };
-      }
-      return s;
-    });
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    const newlyUpdated = updated.find((s: BillingStatement) => s.id === statement.id);
-    if (newlyUpdated) {
-      setStatement(newlyUpdated);
-      const nextBalance = newlyUpdated.total - newlyUpdated.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
-      setPayAmount(nextBalance.toString());
+    try {
+      await api.post(`/billing-statements/${id}/payments`, {
+        amount: parsedAmount,
+        method: payMethod,
+        reference_number: payRef || null,
+        type: parsedAmount === balance ? "full" : "partial"
+      });
+      setPayRef("");
+      setIsPaymentOpen(false);
+      toast.success("Payment recorded successfully!");
+      fetchStatement();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to record payment");
     }
-    setPayRef("");
-    setIsPaymentOpen(false);
-    toast.success("Payment recorded successfully!");
   };
 
   // Cancel Billing Statement
-  const handleCancelBilling = () => {
+  const handleCancelBilling = async () => {
     if (statement.status === "Paid") {
       toast.error("Cannot cancel a fully paid bill");
       return;
     }
 
-    const stored: BillingStatement[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const updated: BillingStatement[] = stored.map((s: BillingStatement) => {
-      if (s.id === statement.id) {
-        return { ...s, status: "Cancelled" as const };
-      }
-      return s;
-    });
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    const newlyUpdated = updated.find((s: BillingStatement) => s.id === statement.id);
-    if (newlyUpdated) {
-      setStatement(newlyUpdated);
+    try {
+      await api.post(`/billing-statements/${id}/cancel`);
+      toast.success("Billing statement cancelled successfully");
+      fetchStatement();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to cancel billing statement");
     }
-    toast.success("Billing statement cancelled");
   };
 
   const getStatusBadge = (status: BillingStatement["status"]) => {
@@ -185,8 +241,8 @@ const BillingDetail: React.FC = () => {
         return <Badge variant="approved">Paid</Badge>;
       case "Partially Paid":
         return <Badge variant="received">Partially Paid</Badge>;
-      case "Pending":
-        return <Badge variant="for-approval">Pending</Badge>;
+      case "Unpaid":
+        return <Badge variant="for-approval">Unpaid</Badge>;
       case "Cancelled":
         return <Badge variant="cancelled">Cancelled</Badge>;
       default:
@@ -643,7 +699,7 @@ const BillingDetail: React.FC = () => {
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
             <DialogDescription>
-              Record a payment received for statement {statement.id}. Remaining balance is {peso(balance)}.
+              Record a payment received for statement {statement.billNumber || statement.id.substring(0, 8).toUpperCase()}. Remaining balance is {peso(balance)}.
             </DialogDescription>
           </DialogHeader>
 
@@ -704,7 +760,7 @@ const BillingDetail: React.FC = () => {
           <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-lg font-bold">
-                Invoice Preview — {statement.id}
+                Invoice Preview — {statement.billNumber || statement.id.substring(0, 8).toUpperCase()}
               </DialogTitle>
               <Button
                 size="sm"
@@ -731,7 +787,7 @@ const BillingDetail: React.FC = () => {
               </div>
               <div className="text-right">
                 <h2 className="text-xl font-bold text-zinc-800">OFFICIAL INVOICE</h2>
-                <p className="text-sm font-mono mt-1 text-primary font-bold">{statement.id}</p>
+                <p className="text-sm font-mono mt-1 text-primary font-bold">{statement.billNumber || statement.id.substring(0, 8).toUpperCase()}</p>
                 <p className="text-xs text-zinc-500 mt-1">Date Issued: {new Date(statement.date).toLocaleDateString()}</p>
                 <div className="mt-2">
                   <span className="inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-zinc-100 border border-zinc-200">

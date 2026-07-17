@@ -31,6 +31,7 @@ class SalesOrder extends Model
         'remarks',
         'estimate_id',
         'vehicle_id',
+        'job_order_id',
         'mileage',
         'approved_by',
         'approved_at',
@@ -84,6 +85,11 @@ class SalesOrder extends Model
     public function estimate()
     {
         return $this->belongsTo(Estimate::class, 'estimate_id', 'id');
+    }
+
+    public function jobOrder()
+    {
+        return $this->belongsTo(\App\Domains\JobOrder\Domain\Models\JobOrder::class, 'job_order_id', 'id');
     }
 
     public function items()

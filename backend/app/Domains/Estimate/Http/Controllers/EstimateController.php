@@ -153,6 +153,21 @@ class EstimateController extends Controller
 
             $estimate = $this->estimateRepo->update($id, $validated);
 
+            // Auto-create SO + JO when estimate is approved
+            if (isset($validated['status']) && in_array(strtoupper($validated['status']), ['APPROVED', 'APPROVED WITH DOWNPAYMENT', 'APPROVED_WITH_DOWNPAYMENT'])) {
+                $employeeId = auth()->user() ? auth()->user()->employeeID : null;
+                $result = app(\App\Domains\Estimate\Application\UseCases\ApproveEstimate::class)
+                    ->execute($id, $employeeId);
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $result['estimate'],
+                    'sales_order' => $result['salesOrder'],
+                    'job_order' => $result['jobOrder'],
+                    'message' => 'Estimate approved. SO ' . $result['salesOrder']->so_number . ' and JO ' . $result['jobOrder']->jo_number . ' created.',
+                ]);
+            }
+
             return response()->json([
                 'status' => 'success',
                 'data' => $estimate,

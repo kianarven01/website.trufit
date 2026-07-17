@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Domains\Billing\Domain\Models\BillingStatement;
 use App\Domains\Billing\Application\UseCases\CreateBillingStatement;
 use App\Domains\Billing\Application\UseCases\AddPaymentToBillingStatement;
-use App\Domains\Billing\Application\UseCases\CancelBillingStatement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -120,13 +119,53 @@ class BillingController extends Controller
         ]);
     }
 
-    public function cancel(string $id, CancelBillingStatement $useCase): JsonResponse
+    public function updateDiscount(string $id, Request $request): JsonResponse
     {
-        $statement = $useCase->execute($id);
+        $validated = $request->validate([
+            'discount_type' => 'nullable|string|in:fixed,percent',
+            'discount_value' => 'nullable|numeric|min:0',
+        ]);
+
+        $statement = BillingStatement::findOrFail($id);
+
+        if (in_array($statement->status, ['Paid', 'Cancelled'])) {
+            return response()->json([
+                'message' => 'Cannot modify discount on a paid or cancelled billing statement.',
+            ], 422);
+        }
+
+        $discountType = $validated['discount_type'] ?? null;
+        $discountValue = $validated['discount_value'] ?? 0;
+
+        if ($discountType === 'percent' && $discountValue > 100) {
+            return response()->json([
+                'message' => 'Percentage discount cannot exceed 100%.',
+            ], 422);
+        }
+
+        $statement->update([
+            'discount_type' => $discountType,
+            'discount_value' => $discountValue,
+        ]);
 
         return response()->json([
-            'message' => 'Billing statement cancelled successfully',
-            'data' => $statement
+            'message' => 'Discount updated successfully.',
+            'data' => $statement->fresh(),
+        ]);
+    }
+
+    public function updateNotes(string $id, Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        $statement = BillingStatement::findOrFail($id);
+        $statement->update(['notes' => $validated['notes'] ?? null]);
+
+        return response()->json([
+            'message' => 'Notes updated successfully.',
+            'data' => $statement->fresh(),
         ]);
     }
 
@@ -134,9 +173,9 @@ class BillingController extends Controller
     {
         $statement = BillingStatement::findOrFail($id);
 
-        if (!in_array($statement->status, ['Cancelled', 'Paid'], true)) {
+        if ($statement->status !== 'Cancelled') {
             return response()->json([
-                'message' => 'Only cancelled or paid billing statements can be archived.',
+                'message' => 'Only cancelled billing statements can be archived.',
             ], 422);
         }
 
@@ -161,13 +200,15 @@ class BillingController extends Controller
     {
         $statement = BillingStatement::onlyTrashed()->findOrFail($id);
 
+        if ($statement->status === 'Paid') {
+            return response()->json([
+                'message' => 'Paid billing statements cannot be permanently deleted.',
+            ], 422);
+        }
+
         DB::transaction(function () use ($statement) {
-            // Delete associated payments
             $statement->payments()->delete();
-
-            // Delete associated billing items
             $statement->items()->delete();
-
             $statement->forceDelete();
         });
 

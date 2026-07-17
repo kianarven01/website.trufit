@@ -30,11 +30,14 @@ class BillingStatement extends Model
         'vehicle_id',
         'tax',
         'notes',
+        'discount_type',
+        'discount_value',
     ];
 
     protected $casts = [
         'Total' => 'decimal:2',
         'tax' => 'decimal:2',
+        'discount_value' => 'decimal:2',
         'Date' => 'datetime',
     ];
 
@@ -66,5 +69,22 @@ class BillingStatement extends Model
     public function items()
     {
         return $this->hasMany(BillingStatementItem::class, 'BillingStatementID', 'id');
+    }
+
+    public function getDiscountAmountAttribute(): float
+    {
+        $total = (float) $this->Total;
+        if ($this->discount_type === 'fixed') {
+            return (float) $this->discount_value;
+        }
+        if ($this->discount_type === 'percent') {
+            return round($total * ((float) $this->discount_value / 100), 2);
+        }
+        return 0;
+    }
+
+    public function getEffectiveTotalAttribute(): float
+    {
+        return (float) $this->Total - $this->discount_amount;
     }
 }

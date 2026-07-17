@@ -38,8 +38,6 @@ class CompleteSalesOrder
 
             if (!$billExists) {
                 $grandTotal = (float)$salesOrder->Total;
-                $subtotal = $grandTotal / 1.12;
-                $tax = $grandTotal - $subtotal;
 
                 // Load items with product, category, and linked JO with services
                 $salesOrder->load([
@@ -91,7 +89,7 @@ class CompleteSalesOrder
                     'jo_id' => $salesOrder->job_order_id,
                     'date' => now(),
                     'total' => $grandTotal,
-                    'tax' => round($tax, 2),
+                    'tax' => 0,
                     'vehicle_id' => $salesOrder->vehicle_id,
                     'notes' => 'Automatically generated billing statement from Completed Sales Order ' . ($salesOrder->so_number ?? $salesOrder->id),
                     'items' => $billingItems,

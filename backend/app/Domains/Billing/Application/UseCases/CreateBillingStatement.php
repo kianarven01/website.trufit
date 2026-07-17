@@ -25,6 +25,8 @@ class CreateBillingStatement
                 'vehicle_id' => $data['vehicle_id'] ?? null,
                 'tax' => $data['tax'] ?? 0,
                 'notes' => $data['notes'] ?? null,
+                'discount_type' => $data['discount_type'] ?? null,
+                'discount_value' => $data['discount_value'] ?? 0,
             ]);
 
             // Persist line items
@@ -60,7 +62,9 @@ class CreateBillingStatement
                         'Type' => $pay['type'] ?? 'partial',
                     ]);
 
-                    if ($amount >= (float)$billingStatement->Total) {
+                    $effectiveTotal = $billingStatement->effective_total;
+
+                    if ($amount >= $effectiveTotal) {
                         $billingStatement->update(['status' => 'Paid']);
                         if ($billingStatement->SOID) {
                             DB::connection('pgsql')

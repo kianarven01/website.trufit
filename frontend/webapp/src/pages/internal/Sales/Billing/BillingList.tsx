@@ -75,6 +75,8 @@ export interface BillingStatement {
   items: BillingItem[];
   tax: number;
   total: number;
+  discountType?: string | null;
+  discountValue?: number;
   payments: PaymentEntry[];
   notes?: string;
 }
@@ -137,6 +139,8 @@ const mapBillingStatement = (b: any): BillingStatement => {
     items: [],
     tax: Number(b.tax) || 0,
     total: Number(b.Total) || 0,
+    discountType: b.discount_type || null,
+    discountValue: Number(b.discount_value) || 0,
     payments: payments.map((p: any) => ({
       id: p.id,
       date: p.Date || new Date().toISOString(),
@@ -193,8 +197,6 @@ const BillingList: React.FC = () => {
     setPage(1);
   }, [search, filters.status, filters.archived, setPage]);
 
-  const filtered = statements;
-  const paginated = statements;
   const isArchivedView = filters.archived === "true";
 
   // Archive
@@ -285,10 +287,15 @@ const BillingList: React.FC = () => {
               </TableHeader>
 
               <TableBody>
-                {filtered.length > 0 ? (
-                  paginated.map((s) => {
+                {statements.length > 0 ? (
+                  statements.map((s) => {
                     const paidAmount = s.payments.reduce((sum, p) => sum + p.amount, 0);
-                    const balance = s.total - paidAmount;
+                    const discountAmount = s.discountType === 'fixed'
+                      ? s.discountValue
+                      : s.discountType === 'percent'
+                        ? (s.total * s.discountValue / 100)
+                        : 0;
+                    const balance = s.total - discountAmount - paidAmount;
 
                     return (
                       <TableRow
@@ -360,13 +367,15 @@ const BillingList: React.FC = () => {
                                     <RotateCcw className="w-4 h-4 mr-2" />
                                     Restore
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleForceDelete(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete Permanently
-                                  </DropdownMenuItem>
+                                  {s.status === "Cancelled" && (
+                                    <DropdownMenuItem onClick={() => handleForceDelete(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Permanently
+                                    </DropdownMenuItem>
+                                  )}
                                 </>
                               ) : (
-                                (s.status === "Cancelled" || s.status === "Paid") && (
+                                s.status === "Cancelled" && (
                                   <DropdownMenuItem onClick={() => handleArchive(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                                     <Archive className="w-4 h-4 mr-2" />
                                     Archive Bill

@@ -264,6 +264,9 @@ const SalesOrderDetails: React.FC = () => {
         approvedAt: o.approved_at,
         cancelledAt: o.cancelled_at,
         completedAt: o.completed_at,
+        estimate_id: o.estimate_id || null,
+        estimate: o.estimate || null,
+        job_order: o.job_order || null,
         billing_statement: o.billing_statement ? {
           id: o.billing_statement.id,
           bill_number: o.billing_statement.bill_number,

@@ -60,8 +60,6 @@ class ApproveSalesOrder
 
                 if (!$billExists) {
                     $grandTotal = (float)$salesOrder->Total;
-                    $subtotal = $grandTotal / 1.12;
-                    $tax = $grandTotal - $subtotal;
 
                     // Load items with product and category for name/type/spol checks
                     $salesOrder->load('items.product.category');
@@ -91,7 +89,7 @@ class ApproveSalesOrder
                         'so_id' => $salesOrder->id,
                         'date' => now(),
                         'total' => $grandTotal,
-                        'tax' => round($tax, 2),
+                        'tax' => 0,
                         'vehicle_id' => $salesOrder->vehicle_id,
                         'notes' => 'Automatically generated billing statement from Counter Sales Order ' . ($salesOrder->so_number ?? $salesOrder->id),
                         'items' => $billingItems,

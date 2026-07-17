@@ -33,7 +33,6 @@ import DataToolbar from "@/components/DataToolbar";
 import {
   ArrowLeft,
   CreditCard,
-  XCircle,
   Printer,
   User,
   Car,
@@ -50,8 +49,6 @@ import {
 import { toast } from "sonner";
 import { BillingStatement, PaymentEntry, BillingItem } from "./BillingList";
 import api from "@/api/axios";
-
-const STORAGE_KEY = "billing_statements";
 
 const mapBillingStatement = (b: any): BillingStatement => {
   const customer = b.customer || {};
@@ -86,23 +83,29 @@ const mapBillingStatement = (b: any): BillingStatement => {
     customerLandline: customer.landline || "—",
     customerBusiness: customer.business || "—",
     customerAddress: customer.address || "—",
-    vehiclePlate: vehicle.plate_number || "—",
-    vehicleInfo: `${vehicle.year_model || ""} ${vehicle.make || ""} ${vehicle.model || ""} ${vehicle.variant || ""}`.trim() || "—",
-    vehicleYear: vehicle.year_model || "—",
-    vehicleMake: vehicle.make || "—",
-    vehicleModel: vehicle.model || "—",
-    vehicleVariant: vehicle.variant || "—",
-    vehicleColor: vehicle.color || "—",
-    vehicleEngine: vehicle.engine_number || "—",
-    vehicleVIN: vehicle.VIN || "—",
-    vehicleRegistration: vehicle.registration_number || "—",
+    vehiclePlate: vehicle.plate_number || "",
+    vehicleInfo: `${vehicle.year_model || ""} ${vehicle.make || ""} ${vehicle.model || ""} ${vehicle.variant || ""}`.trim() || "",
+    vehicleYear: vehicle.year_model || "",
+    vehicleMake: vehicle.make || "",
+    vehicleModel: vehicle.model || "",
+    vehicleVariant: vehicle.variant || "",
+    vehicleColor: vehicle.color || "",
+    vehicleEngine: vehicle.engine_number || "",
+    vehicleVIN: vehicle.VIN || "",
+    vehicleRegistration: vehicle.registration_number || "",
+    vehicleDealer: vehicle.selling_dealer || "",
+    vehicleMileage: Number(vehicle.mileage) || 0,
     date: b.Date || new Date().toISOString(),
     status: b.status || "Unpaid",
     soid: salesOrder.so_number || b.SOID || "—",
     joid: jobOrder.jo_number || b.JOID || "—",
+    estimateNo: salesOrder.estimate?.estimate_number || null,
+    poid: salesOrder.po_number || null,
     items,
     tax: Number(b.tax) || 0,
     total: Number(b.Total) || 0,
+    discountType: b.discount_type || null,
+    discountValue: Number(b.discount_value) || 0,
     payments: payments.map((p: any) => ({
       id: p.id,
       date: p.Date || new Date().toISOString(),
@@ -125,8 +128,15 @@ const BillingDetail: React.FC = () => {
   // Payment Dialog States
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [payAmount, setPayAmount] = useState<string>("");
-  const [payMethod, setPayMethod] = useState<string>("GCash");
+  const [payMethod, setPayMethod] = useState<string>("Cash");
   const [payRef, setPayRef] = useState<string>("");
+
+  // Discount Edit States
+  const [editDiscountType, setEditDiscountType] = useState<string>("");
+  const [editDiscountValue, setEditDiscountValue] = useState<string>("");
+
+  // Notes Edit State
+  const [editNotes, setEditNotes] = useState<string>("");
 
   // Invoice Print Dialog State
   const [isPrintOpen, setIsPrintOpen] = useState(false);
@@ -140,6 +150,9 @@ const BillingDetail: React.FC = () => {
         const mapped = mapBillingStatement(b);
         setStatement(mapped);
         setIsArchived(!!b.deleted_at);
+        setEditDiscountType(mapped.discountType || "");
+        setEditDiscountValue(mapped.discountValue ? String(mapped.discountValue) : "");
+        setEditNotes(mapped.notes || "");
         const paid = mapped.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
         setPayAmount((mapped.total - paid).toString());
 
@@ -202,7 +215,17 @@ const BillingDetail: React.FC = () => {
 
   const subtotal = statement.items.reduce((sum: number, item: BillingItem) => sum + item.amount, 0);
   const paidAmount = statement.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
-  const balance = statement.total - paidAmount;
+
+  // Compute discount amount (uses live edit state, not saved API state)
+  const activeDiscountType = editDiscountType || statement.discountType;
+  const activeDiscountValue = editDiscountValue ? parseFloat(editDiscountValue) : (statement.discountValue || 0);
+  const discountAmount = activeDiscountType === 'fixed'
+    ? activeDiscountValue
+    : activeDiscountType === 'percent'
+      ? Math.round(subtotal * (activeDiscountValue / 100) * 100) / 100
+      : 0;
+  const grandTotal = Math.max(0, subtotal - discountAmount);
+  const balance = grandTotal - paidAmount;
 
   const peso = (amount: number) => `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -219,11 +242,21 @@ const BillingDetail: React.FC = () => {
     }
 
     try {
+      // Save discount first if changed
+      const discountType = editDiscountType || null;
+      const discountValue = parseFloat(editDiscountValue) || 0;
+      if (discountType !== statement.discountType || discountValue !== (statement.discountValue || 0)) {
+        await api.patch(`/billing-statements/${id}/discount`, {
+          discount_type: discountType,
+          discount_value: discountValue,
+        });
+      }
+
       await api.post(`/billing-statements/${id}/payments`, {
         amount: parsedAmount,
         method: payMethod,
         reference_number: payRef || null,
-        type: parsedAmount === balance ? "full" : "partial"
+        type: parsedAmount >= balance ? "full" : "partial"
       });
       setPayRef("");
       setIsPaymentOpen(false);
@@ -235,20 +268,15 @@ const BillingDetail: React.FC = () => {
     }
   };
 
-  // Cancel Billing Statement
-  const handleCancelBilling = async () => {
-    if (statement.status === "Paid") {
-      toast.error("Cannot cancel a fully paid bill");
-      return;
-    }
-
+  // Handle Saving Notes (on blur)
+  const handleSaveNotes = async () => {
+    if (editNotes === (statement.notes || "")) return;
     try {
-      await api.post(`/billing-statements/${id}/cancel`);
-      toast.success("Billing statement cancelled successfully");
-      fetchStatement();
+      await api.patch(`/billing-statements/${id}/notes`, { notes: editNotes || null });
+      setStatement({ ...statement, notes: editNotes || undefined });
     } catch (err: any) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to cancel billing statement");
+      toast.error(err.response?.data?.message || "Failed to update notes");
     }
   };
 
@@ -334,28 +362,20 @@ const BillingDetail: React.FC = () => {
                     <RotateCcw className="w-4 h-4 mr-1.5" />
                     Restore
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleForceDelete}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1.5" />
-                    Delete Permanently
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {statement.status !== "Paid" && statement.status !== "Cancelled" && (
+                  {statement.status === "Cancelled" && (
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={handleCancelBilling}
+                      onClick={handleForceDelete}
                     >
-                      <XCircle className="w-4 h-4 mr-1.5" />
-                      Cancel Bill
+                      <Trash2 className="w-4 h-4 mr-1.5" />
+                      Delete Permanently
                     </Button>
                   )}
-                  {(statement.status === "Cancelled" || statement.status === "Paid") && (
+                </>
+              ) : (
+                <>
+                  {statement.status === "Cancelled" && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -442,44 +462,44 @@ const BillingDetail: React.FC = () => {
                         value={
                           statement.vehicleYear || statement.vehicleMake || statement.vehicleModel
                             ? [statement.vehicleYear, statement.vehicleMake, statement.vehicleModel].filter(Boolean).join(" ")
-                            : statement.vehicleInfo || "—"
+                            : ""
                         }
                         readOnly
                       />
                     </div>
                     <div>
                       <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
-                      <Input value={statement.vehicleVariant || "—"} readOnly />
+                      <Input value={statement.vehicleVariant || ""} readOnly />
                     </div>
                     <div>
                       <Label className="text-muted-foreground font-normal text-xs">Color</Label>
-                      <Input value={statement.vehicleColor || "—"} readOnly />
+                      <Input value={statement.vehicleColor || ""} readOnly />
                     </div>
                   </div>
 
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Plate No.</Label>
-                    <Input value={statement.vehiclePlate || "—"} readOnly />
+                    <Input value={statement.vehiclePlate || ""} readOnly />
                   </div>
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Engine No.</Label>
-                    <Input value={statement.vehicleEngine || "—"} readOnly />
+                    <Input value={statement.vehicleEngine || ""} readOnly />
                   </div>
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Chassis No. (VIN)</Label>
-                    <Input value={statement.vehicleVIN || "—"} readOnly />
+                    <Input value={statement.vehicleVIN || ""} readOnly />
                   </div>
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Registration No.</Label>
-                    <Input value={statement.vehicleRegistration || "—"} readOnly />
+                    <Input value={statement.vehicleRegistration || ""} readOnly />
                   </div>
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Selling Dealer</Label>
-                    <Input value={statement.vehicleDealer || "—"} readOnly />
+                    <Input value={statement.vehicleDealer || ""} readOnly />
                   </div>
                   <div>
                     <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
-                    <Input value={statement.vehicleMileage !== undefined ? `${statement.vehicleMileage}` : "0"} readOnly />
+                    <Input value={statement.vehicleMileage ? `${statement.vehicleMileage}` : ""} readOnly />
                   </div>
                 </div>
               </CardContent>
@@ -730,16 +750,48 @@ const BillingDetail: React.FC = () => {
                       <span>Supplies Subtotal</span>
                       <span>{peso(totalSupplies)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>VAT (12%)</span>
-                      <span>{peso(statement.tax)}</span>
-                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount {activeDiscountType === 'percent' ? `(${activeDiscountValue}%)` : ''}</span>
+                        <span>-{peso(discountAmount)}</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Discount Input */}
+                  {statement.status !== "Paid" && statement.status !== "Cancelled" && (
+                    <div className="border-t pt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Apply Discount</Label>
+                      </div>
+                      <div className="flex gap-2">
+                        <Select value={editDiscountType} onValueChange={setEditDiscountType}>
+                          <SelectTrigger className="w-[100px] h-9 text-xs">
+                            <SelectValue placeholder="None" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[150]">
+                            <SelectItem value="fixed">₱ Fixed</SelectItem>
+                            <SelectItem value="percent">% Percent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="number"
+                          className="h-9 text-xs flex-1"
+                          placeholder="0"
+                          min={0}
+                          max={editDiscountType === 'percent' ? 100 : undefined}
+                          value={editDiscountValue}
+                          onChange={(e) => setEditDiscountValue(e.target.value)}
+                          disabled={!editDiscountType}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="bg-primary/10 p-3 rounded-lg border border-primary/20 space-y-2 text-sm">
                     <div className="flex justify-between items-end text-primary">
                       <span className="text-xs font-bold uppercase">Grand Total</span>
-                      <span className="text-xl font-bold tracking-wide">{peso(statement.total)}</span>
+                      <span className="text-xl font-bold tracking-wide">{peso(grandTotal)}</span>
                     </div>
                     <Separator className="bg-primary/20" />
                     <div className="flex justify-between items-end text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -753,14 +805,17 @@ const BillingDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  {statement.notes && (
-                    <div className="space-y-2 pt-2 text-xs">
-                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Billing Notes</Label>
-                      <p className="p-3 bg-background border rounded-md whitespace-pre-line text-muted-foreground text-xs leading-relaxed">
-                        {statement.notes}
-                      </p>
-                    </div>
-                  )}
+                  <div className="space-y-2 pt-2 text-xs">
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Billing Notes</Label>
+                    <textarea
+                      className="w-full p-3 bg-background border rounded-md text-muted-foreground text-xs leading-relaxed resize-none"
+                      rows={3}
+                      placeholder="Add repair recommendations, notes, or remarks..."
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      onBlur={handleSaveNotes}
+                    />
+                  </div>
 
                   <div className="space-y-2.5 pt-2 text-xs text-muted-foreground border-t">
                     <div className="flex justify-between items-center">
@@ -838,8 +893,8 @@ const BillingDetail: React.FC = () => {
                   <SelectValue placeholder="Select Method..." />
                 </SelectTrigger>
                 <SelectContent className="z-[150]">
-                  <SelectItem value="GCash">GCash</SelectItem>
                   <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="GCash">GCash</SelectItem>
                   <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
                   <SelectItem value="Check">Check</SelectItem>
                 </SelectContent>
@@ -969,13 +1024,15 @@ const BillingDetail: React.FC = () => {
                   <span className="text-zinc-500">Subtotal:</span>
                   <span className="font-medium">₱{subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">VAT (12%):</span>
-                  <span className="font-medium">₱{statement.tax.toLocaleString()}</span>
-                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="text-zinc-500">Discount{statement.discountType === 'percent' ? ` (${statement.discountValue}%)` : ''}:</span>
+                    <span className="font-medium">-₱{discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-lg text-primary border-t pt-2 mt-1">
                   <span>Grand Total:</span>
-                  <span>₱{statement.total.toLocaleString()}</span>
+                  <span>₱{grandTotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-emerald-600">
                   <span>Amount Paid:</span>

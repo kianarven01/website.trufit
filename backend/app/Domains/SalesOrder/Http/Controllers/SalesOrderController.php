@@ -50,6 +50,7 @@ class SalesOrderController extends Controller
             'submittedByUser.employee',
             'cancelledByUser.employee',
             'startedByUser.employee',
+            'billingStatement',
         ]);
 
         if ($archived) {
@@ -96,7 +97,9 @@ class SalesOrderController extends Controller
             'vehicle',
             'estimate',
             'jobOrder',
+            'billingStatement',
             'items.product.manufacturer',
+            'items.product.category',
             'items.product.productSuppliers.inventory',
             'items.product.inventoryRows',
             'creator',
@@ -433,6 +436,32 @@ class SalesOrderController extends Controller
         }
 
         DB::transaction(function () use ($order) {
+            // Find all billing statements associated with this SO ID
+            $billingStatements = DB::connection('pgsql')
+                ->table('Main.BillingStatement')
+                ->where('SOID', $order->id)
+                ->get();
+
+            foreach ($billingStatements as $statement) {
+                // Delete associated payments
+                DB::connection('pgsql')
+                    ->table('Main.Payment')
+                    ->where('BillingID', $statement->id)
+                    ->delete();
+
+                // Delete associated billing items
+                DB::connection('pgsql')
+                    ->table('Main.BillingStatementItems')
+                    ->where('BillingStatementID', $statement->id)
+                    ->delete();
+            }
+
+            // Delete billing statements
+            DB::connection('pgsql')
+                ->table('Main.BillingStatement')
+                ->where('SOID', $order->id)
+                ->delete();
+
             $order->items()->delete();
             $order->forceDelete();
         });

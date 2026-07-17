@@ -27,6 +27,16 @@ class AddPaymentToBillingStatement
 
             if ($totalPaid >= $totalCost) {
                 $statement->update(['status' => 'Paid']);
+                if ($statement->SOID) {
+                    DB::connection('pgsql')
+                        ->table('Main.SalesOrder')
+                        ->where('id', $statement->SOID)
+                        ->whereNotIn('Status', ['COMPLETED', 'CANCELLED'])
+                        ->update([
+                            'Status' => 'COMPLETED',
+                            'completed_at' => now(),
+                        ]);
+                }
             } elseif ($totalPaid > 0) {
                 $statement->update(['status' => 'Partially Paid']);
             } else {

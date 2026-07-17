@@ -67,6 +67,13 @@ class VoidSalesOrder
                 'cancelled_at' => now(),
             ]);
 
+            // Cancel any associated active billing statement
+            DB::connection('pgsql')
+                ->table('Main.BillingStatement')
+                ->where('SOID', $salesOrder->id)
+                ->where('status', '!=', 'Cancelled')
+                ->update(['status' => 'Cancelled']);
+
             return $salesOrder->fresh();
         });
     }

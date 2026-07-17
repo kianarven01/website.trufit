@@ -92,6 +92,12 @@ class SalesOrder extends Model
         return $this->belongsTo(\App\Domains\JobOrder\Domain\Models\JobOrder::class, 'job_order_id', 'id');
     }
 
+    public function billingStatement()
+    {
+        return $this->hasOne(\App\Domains\Billing\Domain\Models\BillingStatement::class, 'SOID', 'id')
+                    ->where('status', '!=', 'Cancelled');
+    }
+
     public function items()
     {
         return $this->hasMany(SalesOrderItem::class, 'SalesOrderID', 'id');

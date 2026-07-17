@@ -58,6 +58,7 @@ interface SalesOrder {
   total: number;
   createdAt: string;
   deletedAt?: string | null;
+  billing_statement?: { id: string; bill_number?: string; status?: string } | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
@@ -169,6 +170,11 @@ const SalesOrderList: React.FC = () => {
         total: Number(o.Total) || 0,
         createdAt: o.created_at,
         deletedAt: o.deleted_at,
+        billing_statement: o.billing_statement ? {
+          id: o.billing_statement.id,
+          bill_number: o.billing_statement.bill_number,
+          status: o.billing_statement.status,
+        } : null,
       }));
 
       setOrders(normalized);
@@ -419,9 +425,21 @@ const SalesOrderList: React.FC = () => {
                       <TableCell className="font-semibold">{o.itemCount}</TableCell>
                       <TableCell className="font-semibold">₱{o.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell>
-                        <Badge variant={config.variant} className="whitespace-nowrap px-3 justify-center">
-                          {config.label}
-                        </Badge>
+                        <div className="flex flex-col items-center gap-1 justify-center">
+                          <Badge variant={config.variant} className="whitespace-nowrap px-3 justify-center">
+                            {config.label}
+                          </Badge>
+                          {((isCounter && o.status === "APPROVED") || (!isCounter && o.status === "COMPLETED")) && (!o.billing_statement || o.billing_statement.status !== "Paid") && (
+                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50 leading-none">
+                              For Billing
+                            </span>
+                          )}
+                          {o.billing_statement?.status === "Paid" && (
+                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/50 leading-none">
+                              Paid
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}

@@ -62,6 +62,16 @@ class CreateBillingStatement
 
                     if ($amount >= (float)$billingStatement->Total) {
                         $billingStatement->update(['status' => 'Paid']);
+                        if ($billingStatement->SOID) {
+                            DB::connection('pgsql')
+                                ->table('Main.SalesOrder')
+                                ->where('id', $billingStatement->SOID)
+                                ->whereNotIn('Status', ['COMPLETED', 'CANCELLED'])
+                                ->update([
+                                    'Status' => 'COMPLETED',
+                                    'completed_at' => now(),
+                                ]);
+                        }
                     } else {
                         $billingStatement->update(['status' => 'Partially Paid']);
                     }

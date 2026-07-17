@@ -41,21 +41,30 @@ class CompleteSalesOrder
                 $subtotal = $grandTotal / 1.12;
                 $tax = $grandTotal - $subtotal;
 
-                // Load items with product, and linked JO with services
+                // Load items with product, category, and linked JO with services
                 $salesOrder->load([
-                    'items.product',
+                    'items.product.category',
                     'jobOrder.services.serviceType',
                 ]);
 
                 // Build billing items from SO items (parts/supplies)
                 $billingItems = [];
                 foreach ($salesOrder->items as $item) {
+                    $type = 'part';
+                    if ($item->product) {
+                        if ($item->product->category && $item->product->category->is_spol) {
+                            $type = 'supply';
+                        } elseif ($item->product->item_type) {
+                            $type = $item->product->item_type === 'spol' ? 'supply' : $item->product->item_type;
+                        }
+                    }
+
                     $billingItems[] = [
                         'name' => $item->product->name ?? 'Unknown',
                         'qty' => $item->quantity,
                         'price' => $item->UnitPrice,
                         'amount' => $item->quantity * $item->UnitPrice,
-                        'type' => $item->product->item_type ?? 'part',
+                        'type' => $type,
                     ];
                 }
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import {
   User,
   Car,
   Box,
+  Fuel,
   Calculator,
   MoreHorizontal,
   Pencil,
@@ -99,6 +101,7 @@ interface Product {
   quantityOnHand: number | null;
   isIssued: boolean;
   quantityReturned: number;
+  isSpol: boolean;
 }
 
 interface SalesOrder {
@@ -127,6 +130,7 @@ interface SalesOrder {
   estimate_id?: string;
   estimate?: { id: string; estimate_number?: string };
   job_order?: { id: string; jo_number: string; status: string } | null;
+  billing_statement?: { id: string; bill_number?: string; status?: string } | null;
 }
 
 const statusConfig: Record<string, { label: string; variant: any }> = {
@@ -208,33 +212,34 @@ const SalesOrderDetails: React.FC = () => {
           quantityOnHand,
           isIssued: Boolean(i.is_issued),
           quantityReturned: Number(i.quantity_returned) || 0,
+          isSpol: Boolean(product?.category?.is_spol),
         };
       });
 
       const customer = o.customer
         ? {
-            name: `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() || "—",
-            email: o.customer.email || "—",
-            mobile: o.customer.mobile_number || "—",
-            landline: o.customer.landline || "—",
-            business: o.customer.business || "—",
-            address: o.customer.address || "—",
-          }
+          name: `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() || "—",
+          email: o.customer.email || "—",
+          mobile: o.customer.mobile_number || "—",
+          landline: o.customer.landline || "—",
+          business: o.customer.business || "—",
+          address: o.customer.address || "—",
+        }
         : { name: "—", email: "—", mobile: "—", landline: "—", business: "—", address: "—" };
 
       const vehicle = o.vehicle
         ? {
-            year: o.vehicle.year_model || "",
-            make: o.vehicle.make || "",
-            model: o.vehicle.model || "",
-            variant: o.vehicle.variant || "—",
-            color: o.vehicle.color || "—",
-            plateNo: o.vehicle.plate_number || "—",
-            engineNo: o.vehicle.engine_number || "—",
-            vin: o.vehicle.VIN || "—",
-            registrationNo: o.vehicle.registration_number || "—",
-            mileage: Number(o.vehicle.mileage) || 0,
-          }
+          year: o.vehicle.year_model || "",
+          make: o.vehicle.make || "",
+          model: o.vehicle.model || "",
+          variant: o.vehicle.variant || "—",
+          color: o.vehicle.color || "—",
+          plateNo: o.vehicle.plate_number || "—",
+          engineNo: o.vehicle.engine_number || "—",
+          vin: o.vehicle.VIN || "—",
+          registrationNo: o.vehicle.registration_number || "—",
+          mileage: Number(o.vehicle.mileage) || 0,
+        }
         : null;
 
       setOrder({
@@ -259,6 +264,11 @@ const SalesOrderDetails: React.FC = () => {
         approvedAt: o.approved_at,
         cancelledAt: o.cancelled_at,
         completedAt: o.completed_at,
+        billing_statement: o.billing_statement ? {
+          id: o.billing_statement.id,
+          bill_number: o.billing_statement.bill_number,
+          status: o.billing_statement.status,
+        } : null,
       });
     } catch (err) {
       console.error("Failed to load Sales Order details", err);
@@ -752,7 +762,7 @@ const SalesOrderDetails: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Box className="size-5 text-orange-500" />
                   <h2 className="text-sm font-semibold text-foreground">
-                    Reserved Parts & Products
+                    Parts
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -793,8 +803,23 @@ const SalesOrderDetails: React.FC = () => {
                             <input
                               type="checkbox"
                               className="rounded"
-                              checked={order.products.filter(p => !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 && selectedItems.size === order.products.filter(p => !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length}
-                              onChange={toggleAllItems}
+                              checked={
+                                order.products.filter(p => !p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 &&
+                                order.products.filter(p => !p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).every(p => selectedItems.has(p.id))
+                              }
+                              onChange={() => {
+                                const selectables = order.products.filter(p => !p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0);
+                                const allSelected = selectables.length > 0 && selectables.every(p => selectedItems.has(p.id));
+                                setSelectedItems(prev => {
+                                  const next = new Set(prev);
+                                  if (allSelected) {
+                                    selectables.forEach(p => next.delete(p.id));
+                                  } else {
+                                    selectables.forEach(p => next.add(p.id));
+                                  }
+                                  return next;
+                                });
+                              }}
                             />
                           </TableHead>
                         )}
@@ -808,71 +833,235 @@ const SalesOrderDetails: React.FC = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {items.map((p) => {
-                        const stockLabel =
-                          p.quantityOnHand === null
-                            ? null
-                            : p.quantityOnHand <= 0
-                            ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
-                            : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
-                        const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
-                        const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued && (p.qty > p.quantityReturned);
-                        return (
-                        <TableRow key={p.id} className="hover:bg-transparent">
-                          {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
-                            <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                className="rounded"
-                                checked={selectedItems.has(p.id)}
-                                disabled={!canSelect && !canSelectReturn}
-                                onChange={() => toggleItemSelection(p.id)}
-                              />
-                            </TableCell>
-                          )}
-                          <TableCell className="text-left px-4">
-                            <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
-                          </TableCell>
-                          <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
-                            {p.sku}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stockLabel ? (
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${stockLabel.cls}`}>
-                                {stockLabel.text}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center font-medium">{peso(p.price)}</TableCell>
-                          <TableCell className="text-center">
-                            <div className="font-semibold">{p.qty}</div>
-                            {p.quantityReturned > 0 && (
-                              <div className="text-[10px] text-rose-600 font-medium">Returned: {p.quantityReturned}</div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
-                          <TableCell className="text-center">
-                            {p.isIssued ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                Issued
-                              </span>
-                            ) : p.quantityReturned > 0 && p.quantityReturned === p.qty ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                                Returned
-                              </span>
-                            ) : p.needsOrdering ? (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                To Order
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
+                      {items.filter(p => !p.isSpol).length > 0 ? (
+                        items.filter(p => !p.isSpol).map((p) => {
+                          const stockLabel =
+                            p.quantityOnHand === null
+                              ? null
+                              : p.quantityOnHand <= 0
+                                ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
+                                : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
+                          const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
+                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued && (p.qty > p.quantityReturned);
+                          return (
+                            <TableRow key={p.id} className="hover:bg-transparent">
+                              {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded"
+                                    checked={selectedItems.has(p.id)}
+                                    disabled={!canSelect && !canSelectReturn}
+                                    onChange={() => toggleItemSelection(p.id)}
+                                  />
+                                </TableCell>
+                              )}
+                              <TableCell className="text-left px-4">
+                                <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
+                              </TableCell>
+                              <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
+                                {p.sku}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {stockLabel ? (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${stockLabel.cls}`}>
+                                    {stockLabel.text}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-medium">{peso(p.price)}</TableCell>
+                              <TableCell className="text-center">
+                                <div className="font-semibold">{p.qty}</div>
+                                {p.quantityReturned > 0 && (
+                                  <div className="text-[10px] text-rose-600 font-medium">Returned: {p.quantityReturned}</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
+                              <TableCell className="text-center">
+                                {p.isIssued ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    Issued
+                                  </span>
+                                ) : p.quantityReturned > 0 && p.quantityReturned === p.qty ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                    Returned
+                                  </span>
+                                ) : p.needsOrdering ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                    To Order
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                            No parts added.
                           </TableCell>
                         </TableRow>
-                        );
-                      })}
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+
+            {/* SPOL TABLE */}
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3 mt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Fuel className="size-5 text-green-600" />
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Supplies, Petrol, Oils, and Lubricants
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                    <>
+                      {order.status !== "COMPLETED" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          onClick={handleIssueItems}
+                          disabled={isSubmitting || selectedItems.size === 0}
+                        >
+                          <PackageCheck className="h-3 w-3" /> Issue Selected
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={openReturnModal}
+                        disabled={isSubmitting || selectedItems.size === 0}
+                      >
+                        <PackageX className="h-3 w-3" /> Return Selected
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-[420px] overflow-y-auto">
+                  <Table className="[&_tr]:hover:!bg-transparent">
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow className="bg-muted/50 text-center">
+                        {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                          <TableHead className="text-xs text-center w-[4%]">
+                            <input
+                              type="checkbox"
+                              className="rounded"
+                              checked={
+                                order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 &&
+                                order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).every(p => selectedItems.has(p.id))
+                              }
+                              onChange={() => {
+                                const selectables = order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0);
+                                const allSelected = selectables.length > 0 && selectables.every(p => selectedItems.has(p.id));
+                                setSelectedItems(prev => {
+                                  const next = new Set(prev);
+                                  if (allSelected) {
+                                    selectables.forEach(p => next.delete(p.id));
+                                  } else {
+                                    selectables.forEach(p => next.add(p.id));
+                                  }
+                                  return next;
+                                });
+                              }}
+                            />
+                          </TableHead>
+                        )}
+                        <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[13%]">Part Number</TableHead>
+                        <TableHead className="text-xs text-center w-[13%]">Stock Status</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Unit Price</TableHead>
+                        <TableHead className="text-xs text-center w-[8%]">Quantity</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Amount</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.filter(p => p.isSpol).length > 0 ? (
+                        items.filter(p => p.isSpol).map((p) => {
+                          const stockLabel =
+                            p.quantityOnHand === null
+                              ? null
+                              : p.quantityOnHand <= 0
+                                ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
+                                : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
+                          const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
+                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued && (p.qty > p.quantityReturned);
+                          return (
+                            <TableRow key={p.id} className="hover:bg-transparent">
+                              {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                                <TableCell className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded"
+                                    checked={selectedItems.has(p.id)}
+                                    disabled={!canSelect && !canSelectReturn}
+                                    onChange={() => toggleItemSelection(p.id)}
+                                  />
+                                </TableCell>
+                              )}
+                              <TableCell className="text-left px-4">
+                                <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
+                              </TableCell>
+                              <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
+                                {p.sku}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {stockLabel ? (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${stockLabel.cls}`}>
+                                    {stockLabel.text}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-medium">{peso(p.price)}</TableCell>
+                              <TableCell className="text-center">
+                                <div className="font-semibold">{p.qty}</div>
+                                {p.quantityReturned > 0 && (
+                                  <div className="text-[10px] text-rose-600 font-medium">Returned: {p.quantityReturned}</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
+                              <TableCell className="text-center">
+                                {p.isIssued ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                    Issued
+                                  </span>
+                                ) : p.quantityReturned > 0 && p.quantityReturned === p.qty ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                    Returned
+                                  </span>
+                                ) : p.needsOrdering ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                    To Order
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                            No supplies added.
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -914,23 +1103,52 @@ const SalesOrderDetails: React.FC = () => {
                   </div>
 
                   {isReadyToBill && (
-                    <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 p-3 rounded-lg flex flex-col gap-2 mt-2">
+                    <div className={cn(
+                      "p-3 rounded-lg flex flex-col gap-2 mt-2 border",
+                      order.billing_statement?.status === "Paid"
+                        ? "bg-blue-50/50 dark:bg-blue-950/10 border-blue-200 dark:border-blue-900/40"
+                        : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50"
+                    )}>
                       <div className="flex justify-between items-center">
-                        <span className="text-emerald-800 dark:text-emerald-400 font-semibold text-xs flex items-center gap-1">
+                        <span className={cn(
+                          "font-semibold text-xs flex items-center gap-1",
+                          order.billing_statement?.status === "Paid" ? "text-blue-800 dark:text-blue-400" : "text-emerald-800 dark:text-emerald-400"
+                        )}>
                           <CheckCircle2 className="size-3.5" />
-                          Ready for Invoicing
+                          {order.billing_statement?.status === "Paid" ? "Sales Paid" : "Ready for Invoicing"}
                         </span>
-                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 text-[10px] px-1.5 py-0.5">
-                          To Bill
+                        <Badge className={cn(
+                          "text-white border-0 text-[10px] px-1.5 py-0.5",
+                          order.billing_statement?.status === "Paid" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        )}>
+                          {order.billing_statement?.status === "Paid" ? "Billed" : "For Billing"}
                         </Badge>
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => navigate(`/webapp/sales/billing/create?import_so=${order.id}`)}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-8 flex items-center justify-center gap-1 mt-1"
+                        onClick={() => {
+                          if (order.billing_statement) {
+                            navigate(`/webapp/sales/billing/${order.billing_statement.id}`);
+                          } else {
+                            navigate(`/webapp/sales/billing/create?import_so=${order.id}`);
+                          }
+                        }}
+                        className={cn(
+                          "w-full text-white font-medium text-xs h-8 flex items-center justify-center gap-1 mt-1 border-0",
+                          order.billing_statement?.status === "Paid" ? "bg-blue-600 hover:bg-blue-700" : "bg-emerald-600 hover:bg-emerald-700"
+                        )}
                       >
-                        <Import className="size-3.5 mr-1" />
-                        Create Billing Statement
+                        {order.billing_statement ? (
+                          <>
+                            <FileText className="size-3.5 mr-1" />
+                            View Billing Statement
+                          </>
+                        ) : (
+                          <>
+                            <Import className="size-3.5 mr-1" />
+                            Create Billing Statement
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}

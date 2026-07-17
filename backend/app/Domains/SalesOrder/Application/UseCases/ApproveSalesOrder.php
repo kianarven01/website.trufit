@@ -63,17 +63,26 @@ class ApproveSalesOrder
                     $subtotal = $grandTotal / 1.12;
                     $tax = $grandTotal - $subtotal;
 
-                    // Load items with product for name/type
-                    $salesOrder->load('items.product');
+                    // Load items with product and category for name/type/spol checks
+                    $salesOrder->load('items.product.category');
 
                     $billingItems = [];
                     foreach ($salesOrder->items as $item) {
+                        $type = 'part';
+                        if ($item->product) {
+                            if ($item->product->category && $item->product->category->is_spol) {
+                                $type = 'supply';
+                            } elseif ($item->product->item_type) {
+                                $type = $item->product->item_type === 'spol' ? 'supply' : $item->product->item_type;
+                            }
+                        }
+
                         $billingItems[] = [
                             'name' => $item->product->name ?? 'Unknown',
                             'qty' => $item->quantity,
                             'price' => $item->UnitPrice,
                             'amount' => $item->quantity * $item->UnitPrice,
-                            'type' => $item->product->item_type ?? 'part',
+                            'type' => $type,
                         ];
                     }
 

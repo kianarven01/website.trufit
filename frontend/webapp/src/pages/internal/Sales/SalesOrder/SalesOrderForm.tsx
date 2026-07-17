@@ -24,6 +24,7 @@ import {
   User,
   Car,
   Box,
+  Fuel,
   ArrowLeft,
   CheckCircle2,
   Calculator,
@@ -68,6 +69,7 @@ interface Product {
   unit: string;
   quantityOnHand: number | null;
   reorderLevel: number | null;
+  categoryIsSpol?: boolean;
 }
 
 interface SalesOrderLine {
@@ -77,6 +79,7 @@ interface SalesOrderLine {
   unitPrice: number;
   amount: number;
   needsOrdering: boolean;
+  isSpol?: boolean;
 }
 
 interface SalesOrderFormProps {
@@ -85,13 +88,14 @@ interface SalesOrderFormProps {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-const emptyLine = (): SalesOrderLine => ({
+const emptyLine = (isSpol = false): SalesOrderLine => ({
   id: generateId(),
   ProductId: "",
   quantity: 1,
   unitPrice: 0,
   amount: 0,
   needsOrdering: false,
+  isSpol,
 });
 
 const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
@@ -226,6 +230,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
             unit: product.unit?.name || "pc",
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
+            categoryIsSpol: Boolean(product.category_is_spol || product.category?.is_spol || row.category_is_spol),
           };
         });
 
@@ -299,6 +304,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                   unitPrice: Number(i.UnitPrice) || 0,
                   amount: Number(i.SubTotal) || 0,
                   needsOrdering: Boolean(i.needs_ordering),
+                  isSpol: matchPart ? Boolean(matchPart.categoryIsSpol) : false,
                 };
               }),
             );
@@ -334,24 +340,25 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
     };
   }, [mode, id]);
 
-  const addLine = () => setLines((prev) => [...prev, emptyLine()]);
+  const addPartLine = () => setLines((prev) => [...prev, emptyLine(false)]);
+  const addSpolLine = () => setLines((prev) => [...prev, emptyLine(true)]);
 
-  const removeLine = (idx: number) => {
-    if (lines.length === 1) {
-      setLines([emptyLine()]);
-    } else {
-      setLines((prev) => prev.filter((_, i) => i !== idx));
-    }
+  const removeLine = (lineId: string, isSpol = false) => {
+    setLines((prev) => {
+      const next = prev.filter((l) => l.id !== lineId);
+      return next.length > 0 ? next : [emptyLine(isSpol)];
+    });
   };
 
-  const updateLine = (idx: number, field: keyof SalesOrderLine, value: any) => {
+  const updateLine = (lineId: string, field: keyof SalesOrderLine, value: any) => {
     if (field === "ProductId" && value) {
-      const duplicateIdx = lines.findIndex((l, i) => i !== idx && l.ProductId === value);
+      const duplicateIdx = lines.findIndex((l) => l.id !== lineId && l.ProductId === value);
       if (duplicateIdx !== -1) {
-        const currentQty = lines[idx].quantity;
+        const lineToMerge = lines.find((l) => l.id === lineId);
+        const currentQty = lineToMerge ? lineToMerge.quantity : 1;
         setLines((prev) => {
-          const next = prev.map((l, i) => {
-            if (i !== duplicateIdx) return l;
+          const next = prev.map((l) => {
+            if (l.ProductId !== value) return l;
             const updatedQty = l.quantity + currentQty;
             const product = partsMap[l.ProductId];
             const unitPrice = product ? product.price : 0;
@@ -362,8 +369,8 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
               needsOrdering: product ? updatedQty > (product.quantityOnHand ?? 0) : false,
             };
           });
-          const filtered = next.filter((_, i) => i !== idx);
-          return filtered.length > 0 ? filtered : [emptyLine()];
+          const filtered = next.filter((l) => l.id !== lineId);
+          return filtered.length > 0 ? filtered : [emptyLine(lineToMerge?.isSpol ?? false)];
         });
         toast.info("Product is already in the list. Added quantity to existing line.");
         return;
@@ -371,8 +378,8 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
     }
 
     setLines((prev) =>
-      prev.map((l, i) => {
-        if (i !== idx) return l;
+      prev.map((l) => {
+        if (l.id !== lineId) return l;
 
         const updated = { ...l, [field]: value };
 
@@ -755,18 +762,19 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
         {/* BOTTOM ROW: PARTS CATALOG TABLE & SUMMARY */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* PARTS TABLE (lg:col-span-2) */}
-          <div className="lg:col-span-2 space-y-4">     
+          <div className="lg:col-span-2 space-y-6">
+            {/* PARTS TABLE */}
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Box className="size-5 text-orange-500" />
                   <h2 className="text-sm font-semibold text-foreground">
-                    Parts / Supplies (Sales Order)
+                    Parts
                   </h2>
                 </div>
                 <Button
                   size="sm"
-                  onClick={addLine}
+                  onClick={addPartLine}
                   className="h-7 gap-1 text-xs"
                 >
                   <Plus className="h-3 w-3" /> Add Part
@@ -778,7 +786,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
-                        <TableHead className="text-xs text-center w-[25%]">
+                        <TableHead className="text-xs text-center w-[30%]">
                           Item Name
                         </TableHead>
                         <TableHead className="text-xs text-center w-[12%]">
@@ -803,95 +811,254 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {lines.map((l, idx) => {
-                        const product = partsMap[l.ProductId];
-                        const stockStatus = getStockStatus(product);
+                      {lines.filter(l => !l.isSpol).length > 0 ? (
+                        lines.filter(l => !l.isSpol).map((l) => {
+                          const product = partsMap[l.ProductId];
+                          const stockStatus = getStockStatus(product);
 
-                        return (
-                          <TableRow key={l.id} className="hover:bg-transparent">
-                            <TableCell>
-                              <Combobox
-                                value={l.ProductId}
-                                onChange={(val) =>
-                                  updateLine(idx, "ProductId", val)
-                                }
-                                items={partsCatalog.map((p) => ({
-                                  label: p.manufacturer
-                                    ? `${p.manufacturer} ${p.name} - Part No: ${p.partNumber || p.sku || "—"}`
-                                    : `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
-                                  value: p.id,
-                                  description: `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
-                                }))}
-                                placeholder="Select part"
-                              />
-                            </TableCell>
-                            <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
-                              {product?.partNumber || product?.sku || "—"}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {stockStatus ? (
-                                <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${stockStatus.bg} ${stockStatus.color}`}
+                          return (
+                            <TableRow key={l.id} className="hover:bg-transparent">
+                              <TableCell>
+                                <Combobox
+                                  value={l.ProductId}
+                                  onChange={(val) =>
+                                    updateLine(l.id, "ProductId", val)
+                                  }
+                                  items={partsCatalog.filter(p => !p.categoryIsSpol).map((p) => ({
+                                    label: p.manufacturer
+                                      ? `${p.manufacturer} ${p.name} - Part No: ${p.partNumber || p.sku || "—"}`
+                                      : `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
+                                    value: p.id,
+                                    description: `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
+                                  }))}
+                                  placeholder="Select part"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
+                                {product?.partNumber || product?.sku || "—"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {stockStatus ? (
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${stockStatus.bg} ${stockStatus.color}`}
+                                  >
+                                    {stockStatus.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">
+                                    —
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-semibold">
+                                {peso(product?.price || 0)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Input
+                                  type="number"
+                                  value={
+                                    l.quantity === 0 ? "" : String(l.quantity)
+                                  }
+                                  onChange={(e) =>
+                                    updateLine(
+                                      l.id,
+                                      "quantity",
+                                      Number(e.target.value),
+                                    )
+                                  }
+                                  min={1}
+                                  className="text-center"
+                                  placeholder="0"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center font-bold">
+                                {peso(l.amount)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={l.needsOrdering}
+                                  onChange={(e) =>
+                                    updateLine(
+                                      l.id,
+                                      "needsOrdering",
+                                      e.target.checked,
+                                    )
+                                  }
+                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeLine(l.id, false)}
+                                  className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
                                 >
-                                  {stockStatus.label}
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">
-                                  —
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center font-semibold">
-                              {peso(product?.price || 0)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Input
-                                type="number"
-                                value={
-                                  l.quantity === 0 ? "" : String(l.quantity)
-                                }
-                                onChange={(e) =>
-                                  updateLine(
-                                    idx,
-                                    "quantity",
-                                    Number(e.target.value),
-                                  )
-                                }
-                                min={1}
-                                className="text-center"
-                                placeholder="0"
-                              />
-                            </TableCell>
-                            <TableCell className="text-center font-bold">
-                              {peso(l.amount)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={l.needsOrdering}
-                                onChange={(e) =>
-                                  updateLine(
-                                    idx,
-                                    "needsOrdering",
-                                    e.target.checked,
-                                  )
-                                }
-                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeLine(idx)}
-                                className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                            No parts added.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+
+            {/* SPOL TABLE */}
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Fuel className="size-5 text-green-600" />
+                  <h2 className="text-sm font-semibold text-foreground">
+                    Supplies, Petrol, Oils, and Lubricants
+                  </h2>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={addSpolLine}
+                  className="h-7 gap-1 text-xs"
+                >
+                  <Plus className="h-3 w-3" /> Add Supply
+                </Button>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <div className="max-h-[420px] overflow-y-auto">
+                  <Table className="[&_tr]:hover:!bg-transparent">
+                    <TableHeader className="sticky top-0 z-10 bg-background">
+                      <TableRow className="bg-muted/50 text-center">
+                        <TableHead className="text-xs text-center w-[30%]">
+                          Item Name
+                        </TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">
+                          Part Number
+                        </TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">
+                          Stock Status
+                        </TableHead>
+                        <TableHead className="text-xs w-[13%] text-center">
+                          Unit Price
+                        </TableHead>
+                        <TableHead className="text-xs w-[8%] text-center">
+                          Quantity
+                        </TableHead>
+                        <TableHead className="text-xs w-[10%] text-center">
+                          Amount
+                        </TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">
+                          Needs Order
+                        </TableHead>
+                        <TableHead className="text-xs w-[4%]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lines.filter(l => l.isSpol).length > 0 ? (
+                        lines.filter(l => l.isSpol).map((l) => {
+                          const product = partsMap[l.ProductId];
+                          const stockStatus = getStockStatus(product);
+
+                          return (
+                            <TableRow key={l.id} className="hover:bg-transparent">
+                              <TableCell>
+                                <Combobox
+                                  value={l.ProductId}
+                                  onChange={(val) =>
+                                    updateLine(l.id, "ProductId", val)
+                                  }
+                                  items={partsCatalog.filter(p => p.categoryIsSpol).map((p) => ({
+                                    label: p.manufacturer
+                                      ? `${p.manufacturer} ${p.name} - Part No: ${p.partNumber || p.sku || "—"}`
+                                      : `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
+                                    value: p.id,
+                                    description: `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
+                                  }))}
+                                  placeholder="Select supply/lubricant"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
+                                {product?.partNumber || product?.sku || "—"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {stockStatus ? (
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${stockStatus.bg} ${stockStatus.color}`}
+                                  >
+                                    {stockStatus.label}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">
+                                    —
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center font-semibold">
+                                {peso(product?.price || 0)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Input
+                                  type="number"
+                                  value={
+                                    l.quantity === 0 ? "" : String(l.quantity)
+                                  }
+                                  onChange={(e) =>
+                                    updateLine(
+                                      l.id,
+                                      "quantity",
+                                      Number(e.target.value),
+                                    )
+                                  }
+                                  min={1}
+                                  className="text-center"
+                                  placeholder="0"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center font-bold">
+                                {peso(l.amount)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={l.needsOrdering}
+                                  onChange={(e) =>
+                                    updateLine(
+                                      l.id,
+                                      "needsOrdering",
+                                      e.target.checked,
+                                    )
+                                  }
+                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeLine(l.id, true)}
+                                  className="text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                            No supplies added.
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </div>

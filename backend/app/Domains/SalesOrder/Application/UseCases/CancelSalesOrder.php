@@ -39,6 +39,13 @@ class CancelSalesOrder
                 'cancelled_at' => now(),
             ]);
 
+            // Cancel any associated active billing statement
+            DB::connection('pgsql')
+                ->table('Main.BillingStatement')
+                ->where('SOID', $salesOrder->id)
+                ->where('status', '!=', 'Cancelled')
+                ->update(['status' => 'Cancelled']);
+
             if (in_array($oldStatus, ['APPROVED', 'IN_PROGRESS'], true)) {
                 $this->reserveInventoryService->unreserve($salesOrder);
             }

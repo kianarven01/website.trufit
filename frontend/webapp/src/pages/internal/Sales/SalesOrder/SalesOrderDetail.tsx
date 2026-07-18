@@ -94,6 +94,7 @@ interface Product {
   name: string;
   manufacturer: string;
   sku: string;
+  taxCode: string | null;
   qty: number;
   price: number;
   amount: number;
@@ -207,6 +208,9 @@ const SalesOrderDetails: React.FC = () => {
           name: product?.name || "Unknown Product",
           manufacturer: product?.manufacturer?.name || "",
           sku: product?.part_number || product?.SKU || "—",
+          taxCode: i.TaxAtSale
+            ? (i.TaxAtSale === 'NON_VAT' ? 'Non-VAT' : 'VAT')
+            : (product?.product_suppliers?.[0]?.is_vat ? 'VAT' : 'Non-VAT'),
           qty: Number(i.quantity) || 0,
           price: Number(i.UnitPrice) || 0,
           amount: Number(i.SubTotal) || 0,
@@ -818,9 +822,10 @@ const SalesOrderDetails: React.FC = () => {
                             />
                           </TableHead>
                         )}
-                        <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
-                        <TableHead className="text-xs text-center w-[13%]">Part Number</TableHead>
-                        <TableHead className="text-xs text-center w-[13%]">Stock Status</TableHead>
+                        <TableHead className="text-xs text-center w-[22%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Part Number</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Tax Code</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
                         <TableHead className="text-xs text-center w-[10%]">Unit Price</TableHead>
                         <TableHead className="text-xs text-center w-[8%]">Quantity</TableHead>
                         <TableHead className="text-xs text-center w-[12%]">Amount</TableHead>
@@ -856,6 +861,15 @@ const SalesOrderDetails: React.FC = () => {
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
                                 {p.sku}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {p.taxCode ? (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${p.taxCode === 'VAT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+                                    {p.taxCode}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 {stockLabel ? (
@@ -896,7 +910,7 @@ const SalesOrderDetails: React.FC = () => {
                         })
                       ) : (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                          <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
                             No parts added.
                           </TableCell>
                         </TableRow>
@@ -974,9 +988,10 @@ const SalesOrderDetails: React.FC = () => {
                             />
                           </TableHead>
                         )}
-                        <TableHead className="text-xs text-center w-[25%]">Item Name</TableHead>
-                        <TableHead className="text-xs text-center w-[13%]">Part Number</TableHead>
-                        <TableHead className="text-xs text-center w-[13%]">Stock Status</TableHead>
+                        <TableHead className="text-xs text-center w-[22%]">Item Name</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Part Number</TableHead>
+                        <TableHead className="text-xs text-center w-[10%]">Tax Code</TableHead>
+                        <TableHead className="text-xs text-center w-[12%]">Stock Status</TableHead>
                         <TableHead className="text-xs text-center w-[10%]">Unit Price</TableHead>
                         <TableHead className="text-xs text-center w-[8%]">Quantity</TableHead>
                         <TableHead className="text-xs text-center w-[12%]">Amount</TableHead>
@@ -1012,6 +1027,15 @@ const SalesOrderDetails: React.FC = () => {
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
                                 {p.sku}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {p.taxCode ? (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${p.taxCode === 'VAT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+                                    {p.taxCode}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 {stockLabel ? (
@@ -1052,7 +1076,7 @@ const SalesOrderDetails: React.FC = () => {
                         })
                       ) : (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                          <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
                             No supplies added.
                           </TableCell>
                         </TableRow>

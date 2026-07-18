@@ -69,6 +69,12 @@ class UpdateSalesOrder
                         ]);
                     } else {
                         // Create new item
+                        $taxAtSale = $item['tax_at_sale'] ?? null;
+                        if (!$taxAtSale) {
+                            $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
+                            $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+                        }
+
                         SalesOrderItem::create([
                             'id' => \Illuminate\Support\Str::uuid(),
                             'SalesOrderID' => $salesOrder->id,
@@ -77,7 +83,7 @@ class UpdateSalesOrder
                             'UnitPrice' => $unitPrice,
                             'SubTotal' => $subtotal,
                             'CostAtSale' => $item['cost_at_sale'] ?? 0.00,
-                            'TaxAtSale' => $item['tax_at_sale'] ?? null,
+                            'TaxAtSale' => $taxAtSale,
                             'needs_ordering' => $item['needs_ordering'] ?? false,
                         ]);
                     }

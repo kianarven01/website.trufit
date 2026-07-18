@@ -51,4 +51,21 @@ class SalesOrderItem extends Model
     {
         return $this->belongsTo(Product::class, 'ProductID', 'id');
     }
+
+    public function productSupplier()
+    {
+        return $this->hasOne(\App\Domains\Supplier\Domain\Models\ProductSupplier::class, 'product_id', 'ProductID');
+    }
+
+    public function getTaxCodeAttribute(): ?string
+    {
+        if ($this->TaxAtSale) {
+            return $this->TaxAtSale === 'NON_VAT' ? 'Non-VAT' : 'VAT';
+        }
+        $ps = $this->productSupplier;
+        if ($ps) {
+            return $ps->is_vat ? 'VAT' : 'Non-VAT';
+        }
+        return null;
+    }
 }

@@ -115,7 +115,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
             // If the status is being set to APPROVED or APPROVED WITH DOWNPAYMENT, track approved_by
             if (isset($data['status']) && (strtoupper($data['status']) === 'APPROVED' || strtoupper($data['status']) === 'APPROVED WITH DOWNPAYMENT' || strtoupper($data['status']) === 'APPROVED_WITH_DOWNPAYMENT')) {
-                $updateData['approved_by'] = $employeeId;
+                $updateData['approved_by'] = auth()->user()?->id;
             }
 
             $estimate->update($updateData);

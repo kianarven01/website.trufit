@@ -46,7 +46,7 @@ class SalesOrderController extends Controller
             'vehicle',
             'items.product.productSuppliers.inventory',
             'creator',
-            'approvedByEmployee',
+            'approvedByUser',
             'submittedByUser.employee',
             'cancelledByUser.employee',
             'startedByUser.employee',
@@ -103,7 +103,7 @@ class SalesOrderController extends Controller
             'items.product.productSuppliers.inventory',
             'items.product.inventoryRows',
             'creator',
-            'approvedByEmployee',
+            'approvedByUser',
             'submittedByUser.employee',
             'cancelledByUser.employee',
             'startedByUser.employee',
@@ -497,8 +497,9 @@ class SalesOrderController extends Controller
             'customer',
             'vehicle',
             'items.product.manufacturer',
+            'items.product.productSuppliers',
             'creator',
-            'approvedByEmployee',
+            'approvedByUser',
             'submittedByUser.employee',
         ])->findOrFail($id);
 

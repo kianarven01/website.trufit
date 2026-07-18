@@ -183,15 +183,21 @@
             <tr>
                 <th width="4%">#</th>
                 <th width="4%" class="chk" style="text-align: center;"></th>
-                <th width="34%">Product Name</th>
-                <th width="16%" class="cnt" style="text-align: center;">Part Number</th>
-                <th width="12%" class="cnt" style="text-align: center;">Quantity</th>
+                <th width="28%">Product Name</th>
+                <th width="14%" class="cnt" style="text-align: center;">Part Number</th>
+                <th width="10%" class="cnt" style="text-align: center;">Tax Code</th>
+                <th width="10%" class="cnt" style="text-align: center;">Quantity</th>
                 <th width="14%" class="num" style="text-align: right;">Unit Price</th>
                 <th width="14%" class="num" style="text-align: right;">Amount</th>
             </tr>
         </thead>
         <tbody>
             @foreach($salesOrder->items as $index => $item)
+            @php
+                $taxCode = $item->TaxAtSale
+                    ? ($item->TaxAtSale === 'NON_VAT' ? 'Non-VAT' : 'VAT')
+                    : ($item->product->productSuppliers->first()->is_vat ?? false ? 'VAT' : 'Non-VAT');
+            @endphp
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td class="chk">☐</td>
@@ -199,16 +205,17 @@
                     {{ $item->product->name ?? 'Unknown Product' }}@if($item->product->manufacturer) <span style="color:#888;"> — {{ $item->product->manufacturer->name }}</span>@endif
                 </td>
                 <td class="cnt" style="text-align: center;">{{ $item->product->part_number ?? $item->product->SKU ?? '—' }}</td>
+                <td class="cnt" style="text-align: center;">{{ $taxCode }}</td>
                 <td class="cnt" style="text-align: center;">{{ $item->quantity }}</td>
                 <td class="num" style="text-align: right;">₱{{ number_format($item->UnitPrice, 2) }}</td>
                 <td class="num" style="text-align: right;">₱{{ number_format($item->SubTotal, 2) }}</td>
             </tr>
             @endforeach
             @if($salesOrder->items->count() === 0)
-            <tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">No items</td></tr>
+            <tr><td colspan="8" style="text-align:center; color:#999; padding:20px;">No items</td></tr>
             @endif
             @for($i = 0; $i < max(5 - $salesOrder->items->count(), 0); $i++)
-            <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
             @endfor
         </tbody>
     </table>

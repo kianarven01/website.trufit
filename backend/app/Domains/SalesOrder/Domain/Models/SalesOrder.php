@@ -108,9 +108,9 @@ class SalesOrder extends Model
         return $this->belongsTo(Employee::class, 'employee', 'id');
     }
 
-    public function approvedByEmployee()
+    public function approvedByUser()
     {
-        return $this->belongsTo(Employee::class, 'approved_by', 'id');
+        return $this->belongsTo(User::class, 'approved_by', 'id');
     }
 
     public function submittedByUser()
@@ -137,8 +137,8 @@ class SalesOrder extends Model
 
     public function getApprovedByNameAttribute(): ?string
     {
-        return $this->approvedByEmployee
-            ? trim($this->approvedByEmployee->first_name . ' ' . $this->approvedByEmployee->last_name)
+        return $this->approvedByUser?->employee
+            ? trim($this->approvedByUser->employee->first_name . ' ' . $this->approvedByUser->employee->last_name)
             : null;
     }
 

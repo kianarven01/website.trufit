@@ -66,6 +66,6 @@ class Estimate extends Model
 
     public function approver()
     {
-        return $this->belongsTo(\App\Domains\Employee\Domain\Models\Employee::class, 'approved_by', 'id');
+        return $this->belongsTo(\App\Domains\Auth\Domain\Models\User::class, 'approved_by', 'id');
     }
 }

@@ -70,6 +70,7 @@ interface Product {
   quantityOnHand: number | null;
   reorderLevel: number | null;
   categoryIsSpol?: boolean;
+  taxCode?: string;
 }
 
 interface SalesOrderLine {
@@ -80,6 +81,7 @@ interface SalesOrderLine {
   amount: number;
   needsOrdering: boolean;
   isSpol?: boolean;
+  taxCode?: string;
 }
 
 interface SalesOrderFormProps {
@@ -96,6 +98,7 @@ const emptyLine = (isSpol = false): SalesOrderLine => ({
   amount: 0,
   needsOrdering: false,
   isSpol,
+  taxCode: undefined,
 });
 
 const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
@@ -219,6 +222,9 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
 
         const normalizedParts: Product[] = dbProducts.map((row: any) => {
           const product = row.product || {};
+          const productSuppliers = product.product_suppliers || product.productSuppliers || [];
+          const firstSupplier = productSuppliers[0];
+          const taxCode = firstSupplier?.is_vat ? 'VAT' : 'Non-VAT';
           return {
             id: String(row.id),
             productId: String(product.id || ""),
@@ -231,6 +237,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             categoryIsSpol: Boolean(product.category_is_spol || product.category?.is_spol || row.category_is_spol),
+            taxCode,
           };
         });
 
@@ -297,6 +304,9 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                 const matchPart = normalizedParts.find(
                   (np) => np.productId === i.ProductID,
                 );
+                const taxCode = i.TaxAtSale
+                  ? (i.TaxAtSale === 'NON_VAT' ? 'Non-VAT' : 'VAT')
+                  : (matchPart?.taxCode ?? undefined);
                 return {
                   id: i.id,
                   ProductId: matchPart ? matchPart.id : "",
@@ -305,6 +315,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                   amount: Number(i.SubTotal) || 0,
                   needsOrdering: Boolean(i.needs_ordering),
                   isSpol: matchPart ? Boolean(matchPart.categoryIsSpol) : false,
+                  taxCode,
                 };
               }),
             );
@@ -387,6 +398,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
           const product = partsMap[value];
           updated.unitPrice = product ? product.price : 0;
           updated.amount = (Number(updated.quantity) || 0) * updated.unitPrice;
+          updated.taxCode = product ? product.taxCode : undefined;
           if (product) {
             const qoh = product.quantityOnHand ?? 0;
             updated.needsOrdering = updated.quantity > qoh;
@@ -767,9 +779,9 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
             <div className="rounded-lg border border-border bg-card p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Box className="size-5 text-orange-500" />
+                  <Box className="size-5 text-blue-600" />
                   <h2 className="text-sm font-semibold text-foreground">
-                    Parts
+                    Parts Catalog
                   </h2>
                 </div>
                 <Button
@@ -786,19 +798,22 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
-                        <TableHead className="text-xs text-center w-[30%]">
+                        <TableHead className="text-xs text-center w-[24%]">
                           Item Name
                         </TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">
+                        <TableHead className="text-xs text-center w-[10%]">
                           Part Number
                         </TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">
+                        <TableHead className="text-xs text-center w-[8%]">
+                          Tax Code
+                        </TableHead>
+                        <TableHead className="text-xs text-center w-[11%]">
                           Stock Status
                         </TableHead>
-                        <TableHead className="text-xs w-[13%] text-center">
+                        <TableHead className="text-xs w-[12%] text-center">
                           Unit Price
                         </TableHead>
-                        <TableHead className="text-xs w-[8%] text-center">
+                        <TableHead className="text-xs w-[7%] text-center">
                           Quantity
                         </TableHead>
                         <TableHead className="text-xs w-[10%] text-center">
@@ -836,6 +851,15 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
                                 {product?.partNumber || product?.sku || "—"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {l.taxCode ? (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${l.taxCode === 'VAT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+                                    {l.taxCode}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 {stockStatus ? (
@@ -903,7 +927,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                         })
                       ) : (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                          <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
                             No parts added.
                           </TableCell>
                         </TableRow>
@@ -937,19 +961,22 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
-                        <TableHead className="text-xs text-center w-[30%]">
+                        <TableHead className="text-xs text-center w-[24%]">
                           Item Name
                         </TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">
+                        <TableHead className="text-xs text-center w-[10%]">
                           Part Number
                         </TableHead>
-                        <TableHead className="text-xs text-center w-[12%]">
+                        <TableHead className="text-xs text-center w-[8%]">
+                          Tax Code
+                        </TableHead>
+                        <TableHead className="text-xs text-center w-[11%]">
                           Stock Status
                         </TableHead>
-                        <TableHead className="text-xs w-[13%] text-center">
+                        <TableHead className="text-xs w-[12%] text-center">
                           Unit Price
                         </TableHead>
-                        <TableHead className="text-xs w-[8%] text-center">
+                        <TableHead className="text-xs w-[7%] text-center">
                           Quantity
                         </TableHead>
                         <TableHead className="text-xs w-[10%] text-center">
@@ -987,6 +1014,15 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
                                 {product?.partNumber || product?.sku || "—"}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {l.taxCode ? (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${l.taxCode === 'VAT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+                                    {l.taxCode}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 {stockStatus ? (
@@ -1054,7 +1090,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                         })
                       ) : (
                         <TableRow className="hover:bg-transparent">
-                          <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">
+                          <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">
                             No supplies added.
                           </TableCell>
                         </TableRow>

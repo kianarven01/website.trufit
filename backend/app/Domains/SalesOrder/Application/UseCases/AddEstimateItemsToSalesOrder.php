@@ -53,12 +53,16 @@ class AddEstimateItemsToSalesOrder
                 $unitPrice = round((float) $estItem->unit_price, 2);
                 $subTotal = round($quantity * $unitPrice, 2);
 
+                $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
+                $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+
                 $newItem = SalesOrderItem::create([
                     'SalesOrderID' => $salesOrder->id,
                     'ProductID' => $estItem->product_id,
                     'quantity' => $quantity,
                     'UnitPrice' => $unitPrice,
                     'SubTotal' => $subTotal,
+                    'TaxAtSale' => $taxAtSale,
                     'needs_ordering' => $estItem->needs_ordering ?? false,
                 ]);
 
@@ -91,7 +95,7 @@ class AddEstimateItemsToSalesOrder
                 'items.product.productSuppliers.inventory',
                 'items.product.inventoryRows',
                 'creator',
-                'approvedByEmployee',
+                'approvedByUser',
                 'submittedByUser.employee',
                 'cancelledByUser.employee',
                 'startedByUser.employee',

@@ -27,20 +27,9 @@ class ApproveSalesOrder
                 throw new RuntimeException('Only submitted sales orders can be approved.', 422);
             }
 
-            // Resolve employeeID for approved_by (FK → Employees.id)
-            $employeeId = null;
-            if ($userId) {
-                $user = \App\Domains\Auth\Domain\Models\User::find($userId);
-                $employeeId = $user?->employeeID;
-            }
-            if (!$employeeId) {
-                $firstEmployee = DB::table('Main.Employees')->first();
-                $employeeId = $firstEmployee?->id;
-            }
-
             $salesOrder->update([
                 'Status' => 'APPROVED',
-                'approved_by' => $employeeId,
+                'approved_by' => $userId,
                 'approved_at' => now(),
             ]);
 

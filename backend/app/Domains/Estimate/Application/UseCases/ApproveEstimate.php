@@ -18,13 +18,14 @@ class ApproveEstimate
         return DB::transaction(function () use ($estimateId, $userId) {
             $estimate = Estimate::with('items')->lockForUpdate()->findOrFail($estimateId);
 
-            $employeeId = $userId ?? (auth()->user() ? auth()->user()->employeeID : null);
+            $authUserId = auth()->user()?->id ?? $userId;
+
+            // Resolve employeeID for the SO creator field (FK → Employees.id)
+            $employeeId = $authUserId ? (auth()->user() ? auth()->user()->employeeID : null) : null;
             if (!$employeeId) {
                 $firstEmployee = DB::table('Main.Employees')->first();
                 $employeeId = $firstEmployee?->id;
             }
-
-            $authUserId = auth()->user()?->id ?? $employeeId;
 
             // ── 1. Create Sales Order (parts + supplies) ──────────────
 

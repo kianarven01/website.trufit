@@ -122,9 +122,11 @@ interface SalesOrder {
   submittedByName?: string;
   approvedByName?: string;
   cancelledByName?: string;
+  startedByName?: string;
   submittedAt?: string;
   approvedAt?: string;
   cancelledAt?: string;
+  startedAt?: string;
   completedAt?: string;
   archived?: boolean;
   estimate_id?: string;
@@ -260,9 +262,11 @@ const SalesOrderDetails: React.FC = () => {
         submittedByName: o.submittedByName,
         approvedByName: o.approvedByName,
         cancelledByName: o.cancelledByName,
+        startedByName: o.startedByName,
         submittedAt: o.submitted_at,
         approvedAt: o.approved_at,
         cancelledAt: o.cancelled_at,
+        startedAt: o.started_at,
         completedAt: o.completed_at,
         estimate_id: o.estimate_id || null,
         estimate: o.estimate || null,
@@ -391,18 +395,6 @@ const SalesOrderDetails: React.FC = () => {
     });
   };
 
-  const toggleAllItems = () => {
-    if (!order) return;
-    const selectableItems = order.products.filter(
-      (p) => !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0
-    );
-    if (selectedItems.size === selectableItems.length) {
-      setSelectedItems(new Set());
-    } else {
-      setSelectedItems(new Set(selectableItems.map((p) => p.id)));
-    }
-  };
-
   const openEstimateItemsModal = async () => {
     if (!order) return;
     setEstimateItemsModalOpen(true);
@@ -438,9 +430,9 @@ const SalesOrderDetails: React.FC = () => {
       const res = await api.post(`/sales-orders/${order.id}/add-items`, {
         estimate_item_ids: Array.from(selectedEstimateItems),
       });
-      setOrder(res.data.data);
       setEstimateItemsModalOpen(false);
       toast.success(`${selectedEstimateItems.size} item(s) added from estimate.`);
+      fetchOrderDetails();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to add items");
     } finally {
@@ -769,7 +761,7 @@ const SalesOrderDetails: React.FC = () => {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                  {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                     <>
                       {order.status !== "COMPLETED" && (
                         <Button
@@ -801,7 +793,7 @@ const SalesOrderDetails: React.FC = () => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
-                        {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                        {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                           <TableHead className="text-xs text-center w-[4%]">
                             <input
                               type="checkbox"
@@ -844,11 +836,11 @@ const SalesOrderDetails: React.FC = () => {
                               : p.quantityOnHand <= 0
                                 ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
                                 : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
-                          const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
-                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued && (p.qty > p.quantityReturned);
+                          const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
+                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && p.isIssued && (p.qty > p.quantityReturned);
                           return (
                             <TableRow key={p.id} className="hover:bg-transparent">
-                              {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                              {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
@@ -925,7 +917,7 @@ const SalesOrderDetails: React.FC = () => {
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                  {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                     <>
                       {order.status !== "COMPLETED" && (
                         <Button
@@ -957,7 +949,7 @@ const SalesOrderDetails: React.FC = () => {
                   <Table className="[&_tr]:hover:!bg-transparent">
                     <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow className="bg-muted/50 text-center">
-                        {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                        {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                           <TableHead className="text-xs text-center w-[4%]">
                             <input
                               type="checkbox"
@@ -1000,11 +992,11 @@ const SalesOrderDetails: React.FC = () => {
                               : p.quantityOnHand <= 0
                                 ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
                                 : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
-                          const canSelect = (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
-                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && p.isIssued && (p.qty > p.quantityReturned);
+                          const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
+                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && p.isIssued && (p.qty > p.quantityReturned);
                           return (
                             <TableRow key={p.id} className="hover:bg-transparent">
-                              {(order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
+                              {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                                 <TableCell className="text-center">
                                   <input
                                     type="checkbox"
@@ -1235,6 +1227,27 @@ const SalesOrderDetails: React.FC = () => {
                       {order.approvedAt && (
                         <p className="text-xs text-muted-foreground">
                           {new Date(order.approvedAt).toLocaleDateString("en-PH", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {order.startedByName && (
+                  <div className="flex items-start gap-3">
+                    <Play className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Started</p>
+                      <p className="font-medium">{order.startedByName}</p>
+                      {order.startedAt && (
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(order.startedAt).toLocaleDateString("en-PH", {
                             month: "short",
                             day: "numeric",
                             year: "numeric",

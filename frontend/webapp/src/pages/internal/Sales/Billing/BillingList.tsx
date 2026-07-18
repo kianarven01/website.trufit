@@ -24,6 +24,16 @@ import { Receipt, MoreVertical, Eye, Archive, RotateCcw, Trash2 } from "lucide-r
 import api from "@/api/axios";
 import { toast } from "sonner";
 import TableSkeleton from "@/components/ui/TableSkeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /* TYPES */
 export interface BillingItem {
@@ -70,7 +80,6 @@ export interface BillingStatement {
   status: "Draft" | "Unpaid" | "Partially Paid" | "Paid" | "Cancelled";
   soid?: string;
   joid?: string;
-  poid?: string;
   estimateNo?: string;
   items: BillingItem[];
   tax: number;
@@ -163,6 +172,7 @@ const BillingList: React.FC = () => {
     archived: "all",
   });
   const navigate = useNavigate();
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<BillingStatement | null>(null);
 
   const { page, setPage, pageSize, setPageSize } = usePagination(25);
 
@@ -223,13 +233,12 @@ const BillingList: React.FC = () => {
 
   // Force Delete
   const handleForceDelete = async (s: BillingStatement) => {
-    if (!window.confirm("Permanently delete this billing statement? This cannot be undone.")) return;
     try {
       await api.delete(`/billing-statements/${s.id}/force`);
       toast.success("Billing statement permanently deleted");
       fetchStatements();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to delete");
+    } catch (err) {
+      toast.error("Failed to delete");
     }
   };
 
@@ -249,6 +258,7 @@ const BillingList: React.FC = () => {
   };
 
   return (
+    <>
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
       <DataToolbar
         searchPlaceholder="Search bills, customers, plate number..."
@@ -287,15 +297,15 @@ const BillingList: React.FC = () => {
               </TableHeader>
 
               <TableBody>
-                {statements.length > 0 ? (
-                  statements.map((s) => {
+                {statements.map((s) => {
                     const paidAmount = s.payments.reduce((sum, p) => sum + p.amount, 0);
                     const discountAmount = s.discountType === 'fixed'
-                      ? s.discountValue
+                      ? (s.discountValue ?? 0)
                       : s.discountType === 'percent'
-                        ? (s.total * s.discountValue / 100)
+                        ? Math.round(s.total * (s.discountValue ?? 0) / 100 * 100) / 100
                         : 0;
-                    const balance = s.total - discountAmount - paidAmount;
+                    const effectiveTotal = s.total - discountAmount;
+                    const balance = effectiveTotal - paidAmount;
 
                     return (
                       <TableRow
@@ -334,7 +344,14 @@ const BillingList: React.FC = () => {
                           ) : "—"}
                         </TableCell>
                         <TableCell className="text-center font-bold">
-                          ₱ {s.total.toLocaleString()}
+                          {discountAmount > 0 ? (
+                            <div className="flex flex-col items-center">
+                              <span className="text-xs text-muted-foreground line-through">₱{s.total.toLocaleString()}</span>
+                              <span className="text-green-600">₱{effectiveTotal.toLocaleString()}</span>
+                            </div>
+                          ) : (
+                            `₱ ${s.total.toLocaleString()}`
+                          )}
                         </TableCell>
                         <TableCell className="text-center text-xs">
                           <div className="flex flex-col items-center">
@@ -368,7 +385,7 @@ const BillingList: React.FC = () => {
                                     Restore
                                   </DropdownMenuItem>
                                   {s.status === "Cancelled" && (
-                                    <DropdownMenuItem onClick={() => handleForceDelete(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                    <DropdownMenuItem onClick={() => setConfirmDeleteTarget(s)} className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive">
                                       <Trash2 className="w-4 h-4 mr-2" />
                                       Delete Permanently
                                     </DropdownMenuItem>
@@ -387,20 +404,7 @@ const BillingList: React.FC = () => {
                         </TableCell>
                       </TableRow>
                     );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={10}>
-                      <div className="py-16 flex flex-col items-center text-center">
-                        <Receipt className="h-8 w-8 mb-2 text-muted-foreground" />
-                        <p className="text-sm font-medium">No billing records found</p>
-                        <p className="text-xs text-muted-foreground">
-                          Try adjusting your search query or filters
-                        </p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
+                  })}
               </TableBody>
             </Table>
           </ScrollArea>
@@ -429,6 +433,25 @@ const BillingList: React.FC = () => {
         </Card>
       )}
     </div>
+
+      {/* CONFIRM PERMANENT DELETE */}
+      <AlertDialog open={!!confirmDeleteTarget} onOpenChange={(open) => !open && setConfirmDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Permanently</AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently delete this billing statement? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (confirmDeleteTarget) handleForceDelete(confirmDeleteTarget); setConfirmDeleteTarget(null); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

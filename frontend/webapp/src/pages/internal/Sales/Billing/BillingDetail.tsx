@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectTrigger,
@@ -58,7 +68,7 @@ const mapBillingStatement = (b: any): BillingStatement => {
   const payments = Array.isArray(b.payments) ? b.payments : [];
 
   // Prefer billing items from BillingStatementItems table, fallback to SO items for backward compatibility
-  const billingItems = Array.isArray(b.items) && b.items.length > 0
+  const billingItems = Array.isArray(b.items)
     ? b.items
     : Array.isArray(salesOrder.items)
       ? salesOrder.items
@@ -100,7 +110,6 @@ const mapBillingStatement = (b: any): BillingStatement => {
     soid: salesOrder.so_number || b.SOID || "—",
     joid: jobOrder.jo_number || b.JOID || "—",
     estimateNo: salesOrder.estimate?.estimate_number || null,
-    poid: salesOrder.po_number || null,
     items,
     tax: Number(b.tax) || 0,
     total: Number(b.Total) || 0,
@@ -138,8 +147,11 @@ const BillingDetail: React.FC = () => {
   // Notes Edit State
   const [editNotes, setEditNotes] = useState<string>("");
 
-  // Invoice Print Dialog State
-  const [isPrintOpen, setIsPrintOpen] = useState(false);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+  const pdfBlobUrlRef = useRef<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const fetchStatement = async () => {
     try {
@@ -154,7 +166,12 @@ const BillingDetail: React.FC = () => {
         setEditDiscountValue(mapped.discountValue ? String(mapped.discountValue) : "");
         setEditNotes(mapped.notes || "");
         const paid = mapped.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
-        setPayAmount((mapped.total - paid).toString());
+        const discAmt = mapped.discountType === 'fixed'
+          ? (mapped.discountValue ?? 0)
+          : mapped.discountType === 'percent'
+            ? Math.round(mapped.total * ((mapped.discountValue ?? 0) / 100) * 100) / 100
+            : 0;
+        setPayAmount(String(Math.max(0, mapped.total - discAmt - paid)));
 
         const billNumber = mapped.billNumber || b.id.substring(0, 8).toUpperCase();
         sessionStorage.setItem(`breadcrumb-/webapp/sales/billing/${id}`, billNumber);
@@ -217,14 +234,14 @@ const BillingDetail: React.FC = () => {
   const paidAmount = statement.payments.reduce((sum: number, p: PaymentEntry) => sum + p.amount, 0);
 
   // Compute discount amount (uses live edit state, not saved API state)
-  const activeDiscountType = editDiscountType || statement.discountType;
+  const activeDiscountType = editDiscountType === 'none' ? null : (editDiscountType || statement.discountType);
   const activeDiscountValue = editDiscountValue ? parseFloat(editDiscountValue) : (statement.discountValue || 0);
   const discountAmount = activeDiscountType === 'fixed'
-    ? activeDiscountValue
+    ? Math.min(activeDiscountValue, statement.total)
     : activeDiscountType === 'percent'
-      ? Math.round(subtotal * (activeDiscountValue / 100) * 100) / 100
+      ? Math.round(statement.total * (activeDiscountValue / 100) * 100) / 100
       : 0;
-  const grandTotal = Math.max(0, subtotal - discountAmount);
+  const grandTotal = Math.max(0, statement.total - discountAmount);
   const balance = grandTotal - paidAmount;
 
   const peso = (amount: number) => `₱${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -242,8 +259,15 @@ const BillingDetail: React.FC = () => {
     }
 
     try {
-      // Save discount first if changed
-      const discountType = editDiscountType || null;
+      await api.post(`/billing-statements/${id}/payments`, {
+        amount: parsedAmount,
+        method: payMethod,
+        reference_number: payRef || null,
+        type: parsedAmount >= balance ? "full" : "partial"
+      });
+
+      // Save discount after payment succeeds
+      const discountType = editDiscountType === 'none' ? null : (editDiscountType || null);
       const discountValue = parseFloat(editDiscountValue) || 0;
       if (discountType !== statement.discountType || discountValue !== (statement.discountValue || 0)) {
         await api.patch(`/billing-statements/${id}/discount`, {
@@ -252,12 +276,6 @@ const BillingDetail: React.FC = () => {
         });
       }
 
-      await api.post(`/billing-statements/${id}/payments`, {
-        amount: parsedAmount,
-        method: payMethod,
-        reference_number: payRef || null,
-        type: parsedAmount >= balance ? "full" : "partial"
-      });
       setPayRef("");
       setIsPaymentOpen(false);
       toast.success("Payment recorded successfully!");
@@ -306,9 +324,6 @@ const BillingDetail: React.FC = () => {
 
   // Permanently Delete Billing Statement
   const handleForceDelete = async () => {
-    if (!window.confirm("This will permanently delete this billing statement and all associated payments. This action cannot be undone. Continue?")) {
-      return;
-    }
     try {
       await api.delete(`/billing-statements/${id}/force`);
       toast.success("Billing statement permanently deleted");
@@ -316,6 +331,36 @@ const BillingDetail: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to delete billing statement");
+    }
+  };
+
+  const handlePrint = async () => {
+    setPdfDialogOpen(true);
+    setIsLoadingPdf(true);
+    try {
+      const res = await api.get(`/billing-statements/${id}/pdf`, { responseType: "blob" });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      if (pdfBlobUrlRef.current) {
+        URL.revokeObjectURL(pdfBlobUrlRef.current);
+      }
+      const url = URL.createObjectURL(blob);
+      pdfBlobUrlRef.current = url;
+      setPdfBlobUrl(url);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Failed to generate PDF");
+      setPdfDialogOpen(false);
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  };
+
+  const handleClosePdf = () => {
+    setPdfDialogOpen(false);
+    setPdfBlobUrl(null);
+    if (pdfBlobUrlRef.current) {
+      URL.revokeObjectURL(pdfBlobUrlRef.current);
+      pdfBlobUrlRef.current = null;
     }
   };
 
@@ -366,7 +411,7 @@ const BillingDetail: React.FC = () => {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={handleForceDelete}
+                      onClick={() => setConfirmDeleteOpen(true)}
                     >
                       <Trash2 className="w-4 h-4 mr-1.5" />
                       Delete Permanently
@@ -682,8 +727,7 @@ const BillingDetail: React.FC = () => {
               {/* DOCUMENT REFERENCES CARD */}
               {((statement.estimateNo && statement.estimateNo !== "—") ||
                 (statement.soid && statement.soid !== "—") ||
-                (statement.joid && statement.joid !== "—") ||
-                (statement.poid && statement.poid !== "—")) && (
+                (statement.joid && statement.joid !== "—")) && (
                 <Card className="shadow-lg border-muted">
                   <CardHeader className="bg-muted/10 py-4 rounded-t-lg">
                     <div className="flex items-center gap-2 text-primary">
@@ -713,14 +757,6 @@ const BillingDetail: React.FC = () => {
                         <span className="text-muted-foreground font-medium">Job Order (JO)</span>
                         <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
                           {statement.joid}
-                        </span>
-                      </div>
-                    )}
-                    {statement.poid && statement.poid !== "—" && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Purchase Order (PO)</span>
-                        <span className="font-mono font-bold text-primary bg-primary/5 px-2.5 py-1 rounded border border-primary/10">
-                          {statement.poid}
                         </span>
                       </div>
                     )}
@@ -770,6 +806,7 @@ const BillingDetail: React.FC = () => {
                             <SelectValue placeholder="None" />
                           </SelectTrigger>
                           <SelectContent className="z-[150]">
+                            <SelectItem value="none">None</SelectItem>
                             <SelectItem value="fixed">₱ Fixed</SelectItem>
                             <SelectItem value="percent">% Percent</SelectItem>
                           </SelectContent>
@@ -779,7 +816,7 @@ const BillingDetail: React.FC = () => {
                           className="h-9 text-xs flex-1"
                           placeholder="0"
                           min={0}
-                          max={editDiscountType === 'percent' ? 100 : undefined}
+                          max={editDiscountType === 'percent' ? 100 : (editDiscountType === 'fixed' ? statement.total : undefined)}
                           value={editDiscountValue}
                           onChange={(e) => setEditDiscountValue(e.target.value)}
                           disabled={!editDiscountType}
@@ -843,7 +880,7 @@ const BillingDetail: React.FC = () => {
                       className="w-full shadow-md"
                       size="lg"
                       variant="outline"
-                      onClick={() => setIsPrintOpen(true)}
+                      onClick={handlePrint}
                     >
                       <Printer className="w-4 h-4 mr-2" />
                       Preview Invoice
@@ -923,142 +960,56 @@ const BillingDetail: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* INVOICE PRINT / PREVIEW DIALOG */}
-      <Dialog open={isPrintOpen} onOpenChange={setIsPrintOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden z-[120]">
+      {/* INVOICE PDF DIALOG */}
+      <Dialog open={pdfDialogOpen} onOpenChange={handleClosePdf}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden z-[120]">
           <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-lg font-bold">
-                Invoice Preview — {statement.billNumber || statement.id.substring(0, 8).toUpperCase()}
+                Invoice — {statement.billNumber || statement.id.substring(0, 8).toUpperCase()}
               </DialogTitle>
-              <Button
-                size="sm"
-                className="mr-8 flex items-center gap-1.5"
-                onClick={() => window.print()}
-              >
-                <Printer className="h-4 w-4" />
-                Print Invoice
-              </Button>
             </div>
           </DialogHeader>
-
-          {/* PRINT BODY */}
-          <div className="flex-1 overflow-y-auto p-8 bg-white text-zinc-900 printable-area">
-            {/* Header */}
-            <div className="flex justify-between items-start border-b pb-6">
-              <div>
-                <h1 className="text-2xl font-black tracking-wide text-primary">TRUFIT AUTO CENTER</h1>
-                <p className="text-xs text-zinc-500 mt-1">
-                  123 Auto Service Drive, Metro Manila<br />
-                  Phone: (02) 8123-4567 | Mobile: 0917-888-9999<br />
-                  Email: billing@trufitautocenter.com
-                </p>
-              </div>
-              <div className="text-right">
-                <h2 className="text-xl font-bold text-zinc-800">OFFICIAL INVOICE</h2>
-                <p className="text-sm font-mono mt-1 text-primary font-bold">{statement.billNumber || statement.id.substring(0, 8).toUpperCase()}</p>
-                <p className="text-xs text-zinc-500 mt-1">Date Issued: {new Date(statement.date).toLocaleDateString()}</p>
-                <div className="mt-2">
-                  <span className="inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-zinc-100 border border-zinc-200">
-                    Status: {statement.status}
-                  </span>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
                 </div>
               </div>
-            </div>
-
-            {/* Billed To / Vehicle Details */}
-            <div className="grid grid-cols-2 gap-8 py-6">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">BILLED TO:</h3>
-                <div className="font-bold text-sm mt-1">{statement.customerName}</div>
-                <div className="text-xs text-zinc-600 mt-0.5">{statement.customerEmail || "—"}</div>
-                <div className="text-xs text-zinc-600">{statement.customerMobile || "—"}</div>
-                <div className="text-xs text-zinc-600">{statement.customerAddress || "—"}</div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Invoice PDF"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
               </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">VEHICLE DETAILS:</h3>
-                <div className="font-semibold text-sm mt-1">{statement.vehicleInfo || "—"}</div>
-                <div className="text-xs text-zinc-600 mt-0.5">Plate Number: <span className="font-bold">{statement.vehiclePlate || "—"}</span></div>
-                {statement.soid && statement.soid !== "—" && (
-                  <div className="text-xs text-zinc-600 mt-0.5">Sales Order: <span className="font-mono">{statement.soid}</span></div>
-                )}
-              </div>
-            </div>
-
-            {/* Items Table */}
-            <table className="w-full border-collapse mt-4 text-sm">
-              <thead>
-                <tr className="border-b-2 border-zinc-200 bg-zinc-50 text-zinc-600">
-                  <th className="py-2 text-left font-bold">Item Description</th>
-                  <th className="py-2 text-center font-bold w-[12%]">Type</th>
-                  <th className="py-2 text-right font-bold w-[18%]">Unit Price</th>
-                  <th className="py-2 text-center font-bold w-[10%]">Qty</th>
-                  <th className="py-2 text-right font-bold w-[20%]">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {statement.items.map((item) => (
-                  <tr key={item.id} className="border-b border-zinc-100">
-                    <td className="py-3 font-medium text-zinc-800">{item.name}</td>
-                    <td className="py-3 text-center capitalize text-xs text-zinc-500">{item.type}</td>
-                    <td className="py-3 text-right text-zinc-600">₱{item.price.toLocaleString()}</td>
-                    <td className="py-3 text-center text-zinc-600">{item.qty}</td>
-                    <td className="py-3 text-right font-bold text-zinc-900">₱{item.amount.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Total Block */}
-            <div className="flex justify-between items-start mt-8 pt-4 border-t">
-              <div className="w-[50%]">
-                {statement.notes && (
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">Notes & Payment Instructions:</h4>
-                    <p className="text-xs text-zinc-600 mt-1 whitespace-pre-line bg-zinc-50 p-3 rounded-lg border border-zinc-100">{statement.notes}</p>
-                  </div>
-                )}
-              </div>
-              <div className="w-[40%] space-y-2 text-sm text-right">
-                <div className="flex justify-between">
-                  <span className="text-zinc-500">Subtotal:</span>
-                  <span className="font-medium">₱{subtotal.toLocaleString()}</span>
-                </div>
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span className="text-zinc-500">Discount{statement.discountType === 'percent' ? ` (${statement.discountValue}%)` : ''}:</span>
-                    <span className="font-medium">-₱{discountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold text-lg text-primary border-t pt-2 mt-1">
-                  <span>Grand Total:</span>
-                  <span>₱{grandTotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-emerald-600">
-                  <span>Amount Paid:</span>
-                  <span>₱{paidAmount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-extrabold text-xl text-primary border-t pt-2">
-                  <span>Balance Due:</span>
-                  <span>₱{Math.max(0, balance).toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Signature Area */}
-            <div className="grid grid-cols-2 gap-12 mt-16 text-center text-xs text-zinc-500">
-              <div>
-                <div className="border-b w-48 mx-auto pb-8"></div>
-                <p className="mt-2 font-medium">Prepared By</p>
-              </div>
-              <div>
-                <div className="border-b w-48 mx-auto pb-8"></div>
-                <p className="mt-2 font-medium">Customer's Signature</p>
-              </div>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* CONFIRM PERMANENT DELETE */}
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Permanently</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this billing statement and all associated payments. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForceDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

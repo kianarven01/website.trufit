@@ -9,6 +9,7 @@ use App\Domains\Billing\Application\UseCases\AddPaymentToBillingStatement;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Spatie\LaravelPdf\Facades\Pdf;
 
 class BillingController extends Controller
 {
@@ -111,7 +112,14 @@ class BillingController extends Controller
             'type' => 'nullable|string',
         ]);
 
-        $statement = $useCase->execute($id, $validated);
+        try {
+            $validated['recorded_by'] = $request->user()?->id;
+            $statement = $useCase->execute($id, $validated);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'Payment recorded successfully',
@@ -140,6 +148,12 @@ class BillingController extends Controller
         if ($discountType === 'percent' && $discountValue > 100) {
             return response()->json([
                 'message' => 'Percentage discount cannot exceed 100%.',
+            ], 422);
+        }
+
+        if ($discountType === 'fixed' && $discountValue > $statement->Total) {
+            return response()->json([
+                'message' => 'Fixed discount cannot exceed the bill total of ' . number_format($statement->Total, 2) . '.',
             ], 422);
         }
 
@@ -215,5 +229,24 @@ class BillingController extends Controller
         return response()->json([
             'message' => 'Billing statement permanently deleted.',
         ]);
+    }
+
+    public function downloadPdf(string $id)
+    {
+        $statement = BillingStatement::withTrashed()->with([
+            'customer',
+            'vehicle',
+            'salesOrder',
+            'jobOrder',
+            'payments',
+            'items',
+            'createdByUser',
+        ])->findOrFail($id);
+
+        $filename = 'BILL-' . ($statement->bill_number ?? str_pad(substr($statement->id, 0, 8), 8, '0', STR_PAD_LEFT)) . '.pdf';
+
+        return Pdf::view('pdfs.billing-statement', [
+            'billing' => $statement,
+        ])->format('a4')->inline($filename);
     }
 }

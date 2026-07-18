@@ -41,6 +41,7 @@ class AddPaymentToBillingStatement
                 'PaymentMethod' => $paymentData['method'],
                 'ReferenceNumber' => $paymentData['reference_number'] ?? null,
                 'Type' => $paymentData['type'] ?? 'partial',
+                'recorded_by' => $paymentData['recorded_by'] ?? null,
             ]);
 
             $totalPaid += $amount;

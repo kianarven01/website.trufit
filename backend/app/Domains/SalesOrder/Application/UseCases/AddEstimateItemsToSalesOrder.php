@@ -74,6 +74,13 @@ class AddEstimateItemsToSalesOrder
             // Auto-reserve the newly added items
             $this->reserveInventoryService->reserveItems($newItems);
 
+            // Recalculate SO Total and Balance from all items
+            $totalAmount = $salesOrder->items()->sum('SubTotal');
+            $salesOrder->update([
+                'Total' => $totalAmount,
+                'Balance' => $totalAmount,
+            ]);
+
             $salesOrder->touch();
 
             return $salesOrder->fresh([

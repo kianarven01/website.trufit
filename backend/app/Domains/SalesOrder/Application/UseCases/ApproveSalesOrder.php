@@ -93,6 +93,7 @@ class ApproveSalesOrder
                         'vehicle_id' => $salesOrder->vehicle_id,
                         'notes' => 'Automatically generated billing statement from Counter Sales Order ' . ($salesOrder->so_number ?? $salesOrder->id),
                         'items' => $billingItems,
+                        'created_by' => $userId,
                     ]);
                 }
             }

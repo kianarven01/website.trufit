@@ -6,6 +6,7 @@ use App\Domains\Billing\Http\Controllers\BillingController;
 Route::prefix('billing-statements')->group(function () {
     Route::get('/', [BillingController::class, 'index']);
     Route::post('/', [BillingController::class, 'store']);
+    Route::get('/{id}/pdf', [BillingController::class, 'downloadPdf']);
     Route::get('/{id}', [BillingController::class, 'show']);
     Route::post('/{id}/payments', [BillingController::class, 'addPayment']);
     Route::patch('/{id}/discount', [BillingController::class, 'updateDiscount']);

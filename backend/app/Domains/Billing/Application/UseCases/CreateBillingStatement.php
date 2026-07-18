@@ -27,6 +27,7 @@ class CreateBillingStatement
                 'notes' => $data['notes'] ?? null,
                 'discount_type' => $data['discount_type'] ?? null,
                 'discount_value' => $data['discount_value'] ?? 0,
+                'created_by' => $data['created_by'] ?? null,
             ]);
 
             // Persist line items

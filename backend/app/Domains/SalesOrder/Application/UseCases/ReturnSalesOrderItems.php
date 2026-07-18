@@ -65,6 +65,7 @@ class ReturnSalesOrderItems
 
                 $inventory->update([
                     'quantity_on_hand' => $inventory->quantity_on_hand + $qtyToReturn,
+                    'reserved_quantity' => max(0, $inventory->reserved_quantity - $qtyToReturn),
                 ]);
 
                 // Update item's quantity_returned and is_issued state

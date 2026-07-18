@@ -4,11 +4,16 @@ namespace App\Domains\SalesOrder\Application\UseCases;
 
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
 use App\Domains\SalesOrder\Domain\Models\SalesOrderItem;
+use App\Domains\SalesOrder\Application\Services\ReserveInventoryService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class UpdateSalesOrder
 {
+    public function __construct(
+        private readonly ReserveInventoryService $reserveInventoryService
+    ) {}
+
     public function execute(string $id, array $data): SalesOrder
     {
         return DB::transaction(function () use ($id, $data) {
@@ -26,7 +31,21 @@ class UpdateSalesOrder
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {
-                $salesOrder->items()->delete();
+                $existingItems = $salesOrder->items()->get()->keyBy('ProductID');
+
+                $submittedProductIds = [];
+                foreach ($data['items'] as $item) {
+                    if (!empty($item['product_id'])) {
+                        $submittedProductIds[] = $item['product_id'];
+                    }
+                }
+
+                // Remove items no longer in the submission
+                foreach ($existingItems as $productId => $existingItem) {
+                    if (!in_array($productId, $submittedProductIds)) {
+                        $existingItem->delete();
+                    }
+                }
 
                 $totalAmount = 0;
 
@@ -39,17 +58,29 @@ class UpdateSalesOrder
                     $unitPrice = (float) ($item['unit_price'] ?? 0);
                     $subtotal = round($quantity * $unitPrice, 2);
 
-                    SalesOrderItem::create([
-                        'id' => \Illuminate\Support\Str::uuid(),
-                        'SalesOrderID' => $salesOrder->id,
-                        'ProductID' => $item['product_id'],
-                        'quantity' => $quantity,
-                        'UnitPrice' => $unitPrice,
-                        'SubTotal' => $subtotal,
-                        'CostAtSale' => $item['cost_at_sale'] ?? 0.00,
-                        'TaxAtSale' => $item['tax_at_sale'] ?? null,
-                        'needs_ordering' => $item['needs_ordering'] ?? false,
-                    ]);
+                    if (isset($existingItems[$item['product_id']])) {
+                        // Update existing item
+                        $existingItem = $existingItems[$item['product_id']];
+                        $existingItem->update([
+                            'quantity' => $quantity,
+                            'UnitPrice' => $unitPrice,
+                            'SubTotal' => $subtotal,
+                            'needs_ordering' => $item['needs_ordering'] ?? $existingItem->needs_ordering,
+                        ]);
+                    } else {
+                        // Create new item
+                        SalesOrderItem::create([
+                            'id' => \Illuminate\Support\Str::uuid(),
+                            'SalesOrderID' => $salesOrder->id,
+                            'ProductID' => $item['product_id'],
+                            'quantity' => $quantity,
+                            'UnitPrice' => $unitPrice,
+                            'SubTotal' => $subtotal,
+                            'CostAtSale' => $item['cost_at_sale'] ?? 0.00,
+                            'TaxAtSale' => $item['tax_at_sale'] ?? null,
+                            'needs_ordering' => $item['needs_ordering'] ?? false,
+                        ]);
+                    }
 
                     $totalAmount += $subtotal;
                 }

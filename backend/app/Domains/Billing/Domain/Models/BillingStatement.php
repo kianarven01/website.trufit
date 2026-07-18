@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Domains\Customer\Domain\Models\Customer;
 use App\Domains\Customer\Domain\Models\CustomerVehicle;
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
+use App\Domains\Auth\Domain\Models\User;
 
 class BillingStatement extends Model
 {
@@ -32,6 +33,7 @@ class BillingStatement extends Model
         'notes',
         'discount_type',
         'discount_value',
+        'created_by',
     ];
 
     protected $casts = [
@@ -69,6 +71,19 @@ class BillingStatement extends Model
     public function items()
     {
         return $this->hasMany(BillingStatementItem::class, 'BillingStatementID', 'id');
+    }
+
+    public function createdByUser()
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+
+    public function getCreatedByNameAttribute(): ?string
+    {
+        if ($this->createdByUser?->employee) {
+            return trim($this->createdByUser->employee->first_name . ' ' . $this->createdByUser->employee->last_name);
+        }
+        return $this->createdByUser?->username;
     }
 
     public function getDiscountAmountAttribute(): float

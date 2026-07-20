@@ -70,6 +70,7 @@ interface Product {
   quantityOnHand: number | null;
   reorderLevel: number | null;
   categoryIsSpol?: boolean;
+  categoryName?: string;
   taxCode?: string;
 }
 
@@ -82,6 +83,7 @@ interface SalesOrderLine {
   needsOrdering: boolean;
   isSpol?: boolean;
   taxCode?: string;
+  categoryName?: string;
 }
 
 interface SalesOrderFormProps {
@@ -89,6 +91,8 @@ interface SalesOrderFormProps {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+const SUNDRIES_CATEGORY_NAME = "Sundries";
 
 const emptyLine = (isSpol = false): SalesOrderLine => ({
   id: generateId(),
@@ -99,6 +103,7 @@ const emptyLine = (isSpol = false): SalesOrderLine => ({
   needsOrdering: false,
   isSpol,
   taxCode: undefined,
+  categoryName: undefined,
 });
 
 const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
@@ -170,7 +175,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
       try {
         setIsLoading(true);
 
-        const promises = [api.get("/customers"), api.get("/inventory")];
+        const promises = [api.get("/customers"), api.get("/inventory"), api.get("/products")];
 
         if (mode === "edit" && id) {
           promises.push(api.get(`/sales-orders/${id}`));
@@ -180,7 +185,8 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
 
         const customersRes = results[0];
         const productsRes = results[1];
-        const orderRes = mode === "edit" && id ? results[2] : null;
+        const allProductsRes = results[2];
+        const orderRes = mode === "edit" && id ? results[3] : null;
 
         const dbCustomers = customersRes.data.data || [];
         const dbProducts = Array.isArray(productsRes.data)
@@ -237,9 +243,39 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             categoryIsSpol: Boolean(product.category_is_spol || product.category?.is_spol || row.category_is_spol),
+            categoryName: product.category_name || product.category?.name || null,
             taxCode,
           };
         });
+
+        const dbAllProducts = Array.isArray(allProductsRes.data)
+          ? allProductsRes.data
+          : allProductsRes.data?.data || [];
+        const inventoryProductIds = new Set(normalizedParts.map(p => p.productId));
+        const sundriesProducts: Product[] = dbAllProducts
+          .filter((p: any) => p.category_is_spol && !inventoryProductIds.has(String(p.id)))
+          .map((p: any) => {
+            const suppliers = p.suppliers || [];
+            const firstSupplier = suppliers[0];
+            const taxCode = firstSupplier?.is_vat ? 'VAT' : 'Non-VAT';
+            const price = Number(p.preferred_selling_price || firstSupplier?.active_price?.Price || 0);
+            return {
+              id: String(p.id),
+              productId: String(p.id),
+              name: p.name || "",
+              sku: p.sku || p.SKU || "",
+              partNumber: p.part_number || "",
+              manufacturer: p.manufacturer_name || "",
+              price,
+              unit: p.unit_name || "pc",
+              quantityOnHand: null,
+              reorderLevel: null,
+              categoryIsSpol: true,
+              categoryName: p.category_name || null,
+              taxCode,
+            };
+          });
+        normalizedParts.push(...sundriesProducts);
 
         setCustomers(normalizedCustomers);
         setVehicles(allVehicles);
@@ -316,6 +352,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                   needsOrdering: Boolean(i.needs_ordering),
                   isSpol: matchPart ? Boolean(matchPart.categoryIsSpol) : false,
                   taxCode,
+                  categoryName: matchPart?.categoryName ?? undefined,
                 };
               }),
             );
@@ -365,25 +402,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
     if (field === "ProductId" && value) {
       const duplicateIdx = lines.findIndex((l) => l.id !== lineId && l.ProductId === value);
       if (duplicateIdx !== -1) {
-        const lineToMerge = lines.find((l) => l.id === lineId);
-        const currentQty = lineToMerge ? lineToMerge.quantity : 1;
-        setLines((prev) => {
-          const next = prev.map((l) => {
-            if (l.ProductId !== value) return l;
-            const updatedQty = l.quantity + currentQty;
-            const product = partsMap[l.ProductId];
-            const unitPrice = product ? product.price : 0;
-            return {
-              ...l,
-              quantity: updatedQty,
-              amount: updatedQty * unitPrice,
-              needsOrdering: product ? updatedQty > (product.quantityOnHand ?? 0) : false,
-            };
-          });
-          const filtered = next.filter((l) => l.id !== lineId);
-          return filtered.length > 0 ? filtered : [emptyLine(lineToMerge?.isSpol ?? false)];
-        });
-        toast.info("Product is already in the list. Added quantity to existing line.");
+        toast.warning("This product is already in the list.");
         return;
       }
     }
@@ -396,10 +415,13 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
 
         if (field === "ProductId") {
           const product = partsMap[value];
+          const isSundries = product?.categoryName === SUNDRIES_CATEGORY_NAME;
           updated.unitPrice = product ? product.price : 0;
+          updated.quantity = isSundries ? 1 : updated.quantity;
           updated.amount = (Number(updated.quantity) || 0) * updated.unitPrice;
-          updated.taxCode = product ? product.taxCode : undefined;
-          if (product) {
+          updated.taxCode = isSundries ? 'VAT' : (product ? product.taxCode : undefined);
+          updated.categoryName = product ? product.categoryName : undefined;
+          if (product && !isSundries) {
             const qoh = product.quantityOnHand ?? 0;
             updated.needsOrdering = updated.quantity > qoh;
           }
@@ -415,6 +437,12 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
             const qoh = product.quantityOnHand ?? 0;
             updated.needsOrdering = qty > qoh;
           }
+        }
+
+        if (field === "unitPrice") {
+          const price = Number(value) || 0;
+          updated.unitPrice = price;
+          updated.amount = (Number(updated.quantity) || 0) * price;
         }
 
         return updated;
@@ -497,6 +525,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
           quantity: l.quantity,
           unit_price: l.unitPrice,
           needs_ordering: l.needsOrdering,
+          tax_at_sale: l.taxCode === 'VAT' ? 'VAT' : 'NON_VAT',
         };
       }),
     };
@@ -993,6 +1022,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                         lines.filter(l => l.isSpol).map((l) => {
                           const product = partsMap[l.ProductId];
                           const stockStatus = getStockStatus(product);
+                          const isSundries = l.categoryName === SUNDRIES_CATEGORY_NAME;
 
                           return (
                             <TableRow key={l.id} className="hover:bg-transparent">
@@ -1016,7 +1046,18 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                 {product?.partNumber || product?.sku || "—"}
                               </TableCell>
                               <TableCell className="text-center">
-                                {l.taxCode ? (
+                                {isSundries ? (
+                                  <select
+                                    value={l.taxCode === 'Non-VAT' ? 'NON_VAT' : 'VAT'}
+                                    onChange={(e) =>
+                                      updateLine(l.id, "taxCode", e.target.value === 'NON_VAT' ? 'Non-VAT' : 'VAT')
+                                    }
+                                    className="text-[11px] border border-border rounded px-1.5 py-0.5 bg-background text-foreground cursor-pointer"
+                                  >
+                                    <option value="VAT">VAT</option>
+                                    <option value="NON_VAT">Non-VAT</option>
+                                  </select>
+                                ) : l.taxCode ? (
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${l.taxCode === 'VAT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
                                     {l.taxCode}
                                   </span>
@@ -1025,7 +1066,11 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
-                                {stockStatus ? (
+                                {isSundries ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400">
+                                    Sundries
+                                  </span>
+                                ) : stockStatus ? (
                                   <span
                                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${stockStatus.bg} ${stockStatus.color}`}
                                   >
@@ -1037,43 +1082,64 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                   </span>
                                 )}
                               </TableCell>
-                              <TableCell className="text-center font-semibold">
-                                {peso(product?.price || 0)}
+                              <TableCell className="text-center">
+                                {isSundries ? (
+                                  <Input
+                                    type="number"
+                                    value={l.unitPrice === 0 ? "" : String(l.unitPrice)}
+                                    onChange={(e) =>
+                                      updateLine(l.id, "unitPrice", Number(e.target.value))
+                                    }
+                                    min={0}
+                                    className="text-center font-semibold"
+                                    placeholder="0"
+                                  />
+                                ) : (
+                                  <span className="font-semibold">{peso(product?.price || 0)}</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
-                                <Input
-                                  type="number"
-                                  value={
-                                    l.quantity === 0 ? "" : String(l.quantity)
-                                  }
-                                  onChange={(e) =>
-                                    updateLine(
-                                      l.id,
-                                      "quantity",
-                                      Number(e.target.value),
-                                    )
-                                  }
-                                  min={1}
-                                  className="text-center"
-                                  placeholder="0"
-                                />
+                                {isSundries ? (
+                                  <span className="text-sm text-muted-foreground font-medium px-2">—</span>
+                                ) : (
+                                  <Input
+                                    type="number"
+                                    value={
+                                      l.quantity === 0 ? "" : String(l.quantity)
+                                    }
+                                    onChange={(e) =>
+                                      updateLine(
+                                        l.id,
+                                        "quantity",
+                                        Number(e.target.value),
+                                      )
+                                    }
+                                    min={1}
+                                    className="text-center"
+                                    placeholder="0"
+                                  />
+                                )}
                               </TableCell>
                               <TableCell className="text-center font-bold">
                                 {peso(l.amount)}
                               </TableCell>
                               <TableCell className="text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={l.needsOrdering}
-                                  onChange={(e) =>
-                                    updateLine(
-                                      l.id,
-                                      "needsOrdering",
-                                      e.target.checked,
-                                    )
-                                  }
-                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                                />
+                                {isSundries ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : (
+                                  <input
+                                    type="checkbox"
+                                    checked={l.needsOrdering}
+                                    onChange={(e) =>
+                                      updateLine(
+                                        l.id,
+                                        "needsOrdering",
+                                        e.target.checked,
+                                      )
+                                    }
+                                    className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                  />
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Button

@@ -66,6 +66,7 @@ class UpdateSalesOrder
                             'UnitPrice' => $unitPrice,
                             'SubTotal' => $subtotal,
                             'needs_ordering' => $item['needs_ordering'] ?? $existingItem->needs_ordering,
+                            'TaxAtSale' => $item['tax_at_sale'] ?? $existingItem->TaxAtSale,
                         ]);
                     } else {
                         // Create new item

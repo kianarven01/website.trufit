@@ -103,6 +103,7 @@ interface Product {
   isIssued: boolean;
   quantityReturned: number;
   isSpol: boolean;
+  categoryName?: string | null;
 }
 
 interface SalesOrder {
@@ -189,19 +190,22 @@ const SalesOrderDetails: React.FC = () => {
       const items = Array.isArray(o.items) ? o.items : [];
       const products = items.map((i: any) => {
         const product = i.product;
+        const isSundries = product?.category?.name === 'Sundries';
         let quantityOnHand: number | null = null;
-        if (product?.inventory_rows?.length) {
-          const total = product.inventory_rows.reduce(
-            (sum: number, row: any) => sum + Number(row.quantity_on_hand ?? 0),
-            0
-          );
-          quantityOnHand = total;
-        } else if (product?.product_suppliers?.length) {
-          const total = product.product_suppliers.reduce(
-            (sum: number, ps: any) => sum + Number(ps.inventory?.quantity_on_hand ?? 0),
-            0
-          );
-          quantityOnHand = total;
+        if (!isSundries) {
+          if (product?.inventory_rows?.length) {
+            const total = product.inventory_rows.reduce(
+              (sum: number, row: any) => sum + Number(row.quantity_on_hand ?? 0),
+              0
+            );
+            quantityOnHand = total;
+          } else if (product?.product_suppliers?.length) {
+            const total = product.product_suppliers.reduce(
+              (sum: number, ps: any) => sum + Number(ps.inventory?.quantity_on_hand ?? 0),
+              0
+            );
+            quantityOnHand = total;
+          }
         }
         return {
           id: i.id,
@@ -219,6 +223,7 @@ const SalesOrderDetails: React.FC = () => {
           isIssued: Boolean(i.is_issued),
           quantityReturned: Number(i.quantity_returned) || 0,
           isSpol: Boolean(product?.category?.is_spol),
+          categoryName: product?.category?.name || null,
         };
       });
 
@@ -1001,8 +1006,10 @@ const SalesOrderDetails: React.FC = () => {
                     <TableBody>
                       {items.filter(p => p.isSpol).length > 0 ? (
                         items.filter(p => p.isSpol).map((p) => {
-                          const stockLabel =
-                            p.quantityOnHand === null
+                          const isSundriesItem = p.categoryName === 'Sundries';
+                          const stockLabel = isSundriesItem
+                            ? { text: "Sundries", cls: "bg-purple-50 text-purple-600 border-purple-200" }
+                            : p.quantityOnHand === null
                               ? null
                               : p.quantityOnHand <= 0
                                 ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }

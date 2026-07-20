@@ -131,6 +131,7 @@ class SalesOrderController extends Controller
                 'items.*.quantity' => 'required|numeric|min:1',
                 'items.*.unit_price' => 'required|numeric|min:0',
                 'items.*.needs_ordering' => 'nullable|boolean',
+                'items.*.tax_at_sale' => 'nullable|in:VAT,NON_VAT',
             ]);
 
             $order = $createSalesOrder->execute($validated, $request->user()?->id);
@@ -162,6 +163,7 @@ class SalesOrderController extends Controller
                 'items.*.quantity' => 'required_with:items|numeric|min:1',
                 'items.*.unit_price' => 'required_with:items|numeric|min:0',
                 'items.*.needs_ordering' => 'nullable|boolean',
+                'items.*.tax_at_sale' => 'nullable|in:VAT,NON_VAT',
             ]);
 
             $order = $this->updateSalesOrder->execute($id, $validated);

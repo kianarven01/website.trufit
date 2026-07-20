@@ -65,6 +65,7 @@ interface Product {
   sku: string;
   partNumber?: string;
   manufacturer?: string;
+  description?: string;
   price: number;
   unit: string;
   quantityOnHand: number | null;
@@ -266,6 +267,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
               sku: p.sku || p.SKU || "",
               partNumber: p.part_number || "",
               manufacturer: p.manufacturer_name || "",
+              description: p.description || "",
               price,
               unit: p.unit_name || "pc",
               quantityOnHand: null,
@@ -404,6 +406,20 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
       if (duplicateIdx !== -1) {
         toast.warning("This product is already in the list.");
         return;
+      }
+
+      // Block multiple Sundries items (only 1 allowed)
+      const product = partsMap[value];
+      const isSundries = product?.categoryName === SUNDRIES_CATEGORY_NAME;
+      if (isSundries) {
+        const hasSundries = lines.some(
+          (l) => l.id !== lineId && l.ProductId &&
+            partsMap[l.ProductId]?.categoryName === SUNDRIES_CATEGORY_NAME
+        );
+        if (hasSundries) {
+          toast.warning("Only one Sundries item is allowed.");
+          return;
+        }
       }
     }
 
@@ -1037,7 +1053,9 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                       ? `${p.manufacturer} ${p.name} - Part No: ${p.partNumber || p.sku || "—"}`
                                       : `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
                                     value: p.id,
-                                    description: `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
+                                    description: p.categoryName === SUNDRIES_CATEGORY_NAME && p.description
+                                      ? p.description
+                                      : `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
                                   }))}
                                   placeholder="Select supply/lubricant"
                                 />

@@ -12,7 +12,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 {
     public function getAll()
     {
-        return Estimate::with(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver'])
+        return Estimate::with(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
@@ -20,13 +20,13 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
     public function findById(string $id): ?Estimate
     {
         if (\Illuminate\Support\Str::isUuid($id)) {
-            $estimate = Estimate::with(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver'])->find($id);
+            $estimate = Estimate::with(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee'])->find($id);
             if ($estimate) {
                 return $estimate;
             }
         }
 
-        return Estimate::with(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver'])
+        return Estimate::with(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee'])
             ->where('estimate_number', $id)
             ->first();
     }
@@ -50,7 +50,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
             $estimateNumber = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
 
-            $employeeId = auth()->user() ? auth()->user()->employeeID : null;
+            $userId = auth()->user()?->id;
 
             $estimate = Estimate::create([
                 'id' => (string) Str::uuid(),
@@ -63,7 +63,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 'downpayment_amount' => $data['downpayment_amount'] ?? 0.00,
                 'payment_method' => $data['payment_method'] ?? null,
                 'payment_reference' => $data['payment_reference'] ?? null,
-                'created_by' => $employeeId,
+                'created_by' => $userId,
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -85,7 +85,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 }
             }
 
-            return $estimate->load(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver']);
+            return $estimate->load(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee']);
         });
     }
 
@@ -94,7 +94,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         return DB::transaction(function () use ($id, $data) {
             $estimate = Estimate::findOrFail($id);
 
-            $employeeId = auth()->user() ? auth()->user()->employeeID : null;
+            $userId = auth()->user()?->id;
 
             $updateData = [
                 'customer_id' => $data['customer_id'] ?? $estimate->customer_id,
@@ -110,7 +110,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
             // If it's a general edit (items update, mileage change, total_amount change, downpayment update, or notes update), track edited_by
             if (isset($data['items']) || isset($data['mileage']) || isset($data['total_amount']) || isset($data['downpayment_amount']) || isset($data['notes'])) {
-                $updateData['edited_by'] = $employeeId;
+                $updateData['edited_by'] = $userId;
             }
 
             // If the status is being set to APPROVED or APPROVED WITH DOWNPAYMENT, track approved_by
@@ -142,7 +142,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 }
             }
 
-            return $estimate->load(['customer', 'vehicle', 'items', 'creator', 'editor', 'approver']);
+            return $estimate->load(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee']);
         });
     }
 

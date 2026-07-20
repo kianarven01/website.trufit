@@ -292,7 +292,7 @@ const JobOrderDetail: React.FC = () => {
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back
               </Button>
-              {currentStatus === "Pending" && (
+              {currentStatus === "Pending" && (!jobOrder?.salesOrder || jobOrder.salesOrder.Status === "APPROVED") && (
                 <Button size="sm" onClick={() => setConfirmAction("start-job")} className="bg-blue-600 hover:bg-blue-700">
                   <Play className="w-4 h-4 mr-1.5" />
                   Start Job

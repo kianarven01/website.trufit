@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use App\Domains\Customer\Domain\Models\Customer;
 use App\Domains\Customer\Domain\Models\CustomerVehicle;
+use App\Domains\Auth\Domain\Models\User;
 
 class Estimate extends Model
 {
@@ -56,16 +57,37 @@ class Estimate extends Model
 
     public function creator()
     {
-        return $this->belongsTo(\App\Domains\Employee\Domain\Models\Employee::class, 'created_by', 'id');
+        return $this->belongsTo(User::class, 'created_by', 'id');
     }
 
     public function editor()
     {
-        return $this->belongsTo(\App\Domains\Employee\Domain\Models\Employee::class, 'edited_by', 'id');
+        return $this->belongsTo(User::class, 'edited_by', 'id');
     }
 
     public function approver()
     {
-        return $this->belongsTo(\App\Domains\Auth\Domain\Models\User::class, 'approved_by', 'id');
+        return $this->belongsTo(User::class, 'approved_by', 'id');
+    }
+
+    public function getCreatedByNameAttribute(): ?string
+    {
+        return $this->creator?->employee
+            ? trim($this->creator->employee->first_name . ' ' . $this->creator->employee->last_name)
+            : null;
+    }
+
+    public function getEditedByNameAttribute(): ?string
+    {
+        return $this->editor?->employee
+            ? trim($this->editor->employee->first_name . ' ' . $this->editor->employee->last_name)
+            : null;
+    }
+
+    public function getApprovedByNameAttribute(): ?string
+    {
+        return $this->approver?->employee
+            ? trim($this->approver->employee->first_name . ' ' . $this->approver->employee->last_name)
+            : null;
     }
 }

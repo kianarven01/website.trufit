@@ -79,6 +79,8 @@ interface Product {
   name: string;
   sku: string;
   partNumber?: string;
+  manufacturer?: string;
+  description?: string;
   price: number;
   unit: string;
   quantityOnHand: number | null;
@@ -95,6 +97,7 @@ interface JOServiceLine {
   ServiceTypeId: string;
   pricingId?: string; // Tracks the selected pricing row ID!
   manualRate?: number;
+  customName?: string;
   amount: number;
   isTentative: boolean;
 }
@@ -143,6 +146,16 @@ const emptyJOLine = (): JOServiceLine => ({
   ServiceTypeId: "",
   pricingId: "",
   manualRate: undefined,
+  amount: 0,
+  isTentative: false,
+});
+
+const emptyCustomJOLine = (): JOServiceLine => ({
+  id: genLineId(),
+  ServiceTypeId: "",
+  pricingId: "",
+  manualRate: 0,
+  customName: "",
   amount: 0,
   isTentative: false,
 });
@@ -248,6 +261,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   };
 
   const addJOLine = () => setJoLines((p) => [...p, emptyJOLine()]);
+  const addCustomJOLine = () => setJoLines((p) => [...p, emptyCustomJOLine()]);
   const removeJOLine = (i: number) => setJoLines((p) => p.filter((_, idx) => idx !== i));
 
   const addSOLine = () => setSoLines((p) => [...p, emptySOLine()]);
@@ -394,6 +408,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         const promises: Promise<any>[] = [
           api.get('/customers'),
           api.get('/inventory'),
+          api.get('/products'),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
         ];
@@ -406,9 +421,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
         const customersRes = results[0];
         const productsRes = results[1];
-        const serviceTypesRes = results[2];
-        const serviceCategoriesRes = results[3];
-        const estimateRes = mode === "edit" && estimateId ? results[4] : null;
+        const allProductsRes = results[2];
+        const serviceTypesRes = results[3];
+        const serviceCategoriesRes = results[4];
+        const estimateRes = mode === "edit" && estimateId ? results[5] : null;
 
         const dbCustomers = customersRes.data.data || [];
         const dbProducts = Array.isArray(productsRes.data)
@@ -468,7 +484,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         const normalizedParts: Product[] = dbProducts.map((row: any) => {
           const product = row.product || {};
           const supplierPrice = row.active_price?.Price;
-          const price = Number(row.price || supplierPrice || 0);
+          const price = Number(row.selling_price || supplierPrice || 0);
           const supplierName = row.supplier?.CompanyName || row.supplier?.name || row.supplier_name || "";
           return {
             id: String(row.id),
@@ -476,6 +492,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             name: product.name || "",
             sku: product.SKU || "",
             partNumber: product.part_number || product.partNumber || "",
+            manufacturer: product.manufacturer_name || "",
             price,
             unit: product.unit_name || product.unit?.name || "pc",
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
@@ -491,6 +508,35 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           id: c.id,
           name: c.name,
         }));
+
+        // Merge Sundries products not already in inventory (system-seeded category)
+        const dbAllProducts = Array.isArray(allProductsRes.data)
+          ? allProductsRes.data
+          : allProductsRes.data?.data || [];
+        const inventoryProductIds = new Set(normalizedParts.map(p => p.productId));
+        const sundriesProducts: Product[] = dbAllProducts
+          .filter((p: any) => p.category_is_spol && !inventoryProductIds.has(String(p.id)))
+          .map((p: any) => {
+            const suppliers = p.suppliers || [];
+            const firstSupplier = suppliers[0];
+            const price = Number(p.preferred_selling_price || firstSupplier?.active_price?.Price || 0);
+            return {
+              id: String(p.id),
+              productId: String(p.id),
+              name: p.name || "",
+              sku: p.sku || p.SKU || "",
+              partNumber: p.part_number || "",
+              manufacturer: p.manufacturer_name || "",
+              description: p.description || "",
+              price,
+              unit: p.unit_name || "pc",
+              quantityOnHand: null,
+              reorderLevel: null,
+              categoryIsSpol: true,
+              categoryName: p.category_name || null,
+            };
+          });
+        normalizedParts.push(...sundriesProducts);
 
         setCustomers(normalizedCustomers);
         setVehicles(allVehicles);
@@ -705,7 +751,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         const rate = manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
 
         const amount = !service
-          ? 0
+          ? (manualRate ?? 0)
           : service.pricingType === "fixed"
             ? rate
             : rate * ((service.duration || 0) / 60);
@@ -723,15 +769,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       if (existingIdx !== -1) {
         const product = partsMap[value];
         const productName = product?.name ?? "Part";
-        setSoLines((prev) => {
-          const next = prev.filter((_, i) => i !== idx);
-          return next.map((l, i) => {
-            if (i !== existingIdx - (idx < existingIdx ? 1 : 0)) return l;
-            const newQty = (Number(l.quantity) || 0) + 1;
-            return { ...l, quantity: newQty, amount: newQty * (product?.price ?? 0) };
-          });
-        });
-        toast.info(`"${productName}" is already added. Quantity increased.`);
+        toast.warning(`"${productName}" is already in the list.`);
         return;
       }
     }
@@ -791,22 +829,29 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
   const updateSPOL = (idx: number, field: keyof SPOLLine, value: any) => {
     if (field === "ProductId" && value) {
+      const product = partsMap[value];
+      const isSundries = product?.categoryName === SUNDRIES_CATEGORY_NAME;
+
+      // Block duplicate product
       const existingIdx = spolLines.findIndex(
         (l, i) => i !== idx && l.ProductId === value && l.customName === undefined
       );
       if (existingIdx !== -1) {
-        const product = partsMap[value];
         const productName = product?.name ?? "Supply";
-        setSpolLines((prev) => {
-          const next = prev.filter((_, i) => i !== idx);
-          return next.map((l, i) => {
-            if (i !== existingIdx - (idx < existingIdx ? 1 : 0)) return l;
-            const newQty = (Number(l.quantity) || 0) + 1;
-            return { ...l, quantity: newQty, amount: newQty * (product?.price ?? 0) };
-          });
-        });
-        toast.info(`"${productName}" is already added. Quantity increased.`);
+        toast.warning(`"${productName}" is already in the list.`);
         return;
+      }
+
+      // Block multiple Sundries items (only 1 allowed)
+      if (isSundries) {
+        const hasSundries = spolLines.some(
+          (l, i) => i !== idx && l.customName === undefined &&
+            partsMap[l.ProductId]?.categoryName === SUNDRIES_CATEGORY_NAME
+        );
+        if (hasSundries) {
+          toast.warning("Only one Sundries item is allowed.");
+          return;
+        }
       }
     }
 
@@ -818,13 +863,27 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
         if (field === "ProductId") {
           const found = partsMap[value];
-          updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
-          if (found) {
-            const qty = Number(updated.quantity) || 0;
-            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-            updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+          const isSundries = found?.categoryName === SUNDRIES_CATEGORY_NAME;
+          if (isSundries) {
+            updated.quantity = 1;
+            updated.manualPrice = found?.price || 0;
+            updated.amount = found?.price || 0;
+            updated.needsOrdering = false;
+          } else {
+            updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
+            if (found) {
+              const qty = Number(updated.quantity) || 0;
+              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+            }
           }
+        }
+
+        if (field === "manualPrice") {
+          const price = Number(value) || 0;
+          updated.manualPrice = price;
+          updated.amount = (Number(updated.quantity) || 0) * price;
         }
 
         if (field === "quantity") {
@@ -834,9 +893,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             updated.amount = qty * (updated.manualPrice || 0);
           } else {
             const found = partsMap[updated.ProductId];
-            updated.quantity = qty;
-            updated.amount = found ? qty * found.price : 0;
-            if (found) {
+            const isSundries = found?.categoryName === SUNDRIES_CATEGORY_NAME;
+            updated.quantity = isSundries ? 1 : qty;
+            updated.amount = found ? (isSundries ? 1 : qty) * (updated.manualPrice || found.price || 0) : 0;
+            if (!isSundries && found) {
               const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
               const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
               updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
@@ -844,18 +904,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           }
         }
 
-        if (field === "manualPrice") {
-          const price = value === "" ? 0 : Math.max(0, Number(value));
-          updated.manualPrice = price;
-          updated.amount = (Number(updated.quantity) || 0) * price;
-        }
-
-        if (field === "customName") {
-          updated.customName = value;
-        }
-
         if (field === "needsOrdering") {
           updated.needsOrdering = !!value;
+        }
+
+        if (field === "isTentative") {
+          updated.isTentative = !!value;
         }
 
         return updated;
@@ -864,7 +918,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   };
 
   const totals = useMemo(() => {
-    const validJO = joLines.filter((l) => l.ServiceTypeId);
+    const validJO = joLines.filter((l) => l.ServiceTypeId || (l.customName !== undefined && l.customName.trim() !== ""));
     const validSO = soLines.filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""));
     const validSPOL = spolLines.filter((l) => l.ProductId || (l.customName !== undefined && l.customName.trim() !== ""));
 
@@ -945,8 +999,21 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
     const payloadItems = [
       ...joLines
-        .filter((l) => l.ServiceTypeId)
+        .filter((l) => l.ServiceTypeId || (l.customName !== undefined && l.customName.trim() !== ""))
         .map((l) => {
+          if (l.customName !== undefined) {
+            return {
+              item_type: "service",
+              service_id: null,
+              product_id: null,
+              quantity: 1,
+              unit_price: Number(l.manualRate || 0),
+              subtotal: l.amount,
+              needs_ordering: false,
+              custom_name: l.customName,
+              is_tentative: l.isTentative,
+            };
+          }
           const rate = l.manualRate ?? getServicePrice(l.ServiceTypeId, selectedVehicle);
           return {
             item_type: "service",
@@ -1007,15 +1074,16 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             };
           }
           const found = partsMap[l.ProductId];
-          const price = found?.price || 0;
+          const isSundries = found?.categoryName === SUNDRIES_CATEGORY_NAME;
+          const price = isSundries ? (l.manualPrice || found?.price || 0) : (found?.price || 0);
           return {
             item_type: "supply",
             service_id: null,
-            product_id: l.ProductId,
+            product_id: found?.productId || l.ProductId,
             quantity: Number(l.quantity),
             unit_price: price,
             subtotal: l.amount,
-            needs_ordering: l.needsOrdering,
+            needs_ordering: isSundries ? false : l.needsOrdering,
             custom_name: null,
             is_tentative: l.isTentative,
           };
@@ -1372,7 +1440,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                   <Wrench className="size-5 text-blue-500" />
                   <h2 className="text-sm font-semibold text-foreground">Services (Job Order)</h2>
                 </div>
-                <Button size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={addJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Service</Button>
+                  <Button size="sm" variant="outline" onClick={addCustomJOLine} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Add Custom Service</Button>
+                </div>
               </div>
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
@@ -1391,43 +1462,55 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                     <TableBody>
                       {joLines.map((l, idx) => {
+                        const isCustom = l.customName !== undefined;
                         const service = getService(l.ServiceTypeId);
                         const rate = getServicePrice(l.ServiceTypeId, selectedVehicle);
 
                         return (
                           <TableRow key={l.id} className="hover:bg-transparent">
                             <TableCell className="relative overflow-visible align-top">
-                              <Combobox
-                                showGroupSeparator
-                                value={l.ServiceTypeId}
-                                onChange={(val) => updateJO(idx, val)}
-                                placeholder="Select service"
-                                items={[...servicesCatalog]
-                                  .sort((a, b) => {
-                                    const categoryA =
-                                      categoryMap[a.serviceCategoryId]?.name || "Uncategorized";
-                                    const categoryB =
-                                      categoryMap[b.serviceCategoryId]?.name || "Uncategorized";
-                                    const categoryCompare = categoryA.localeCompare(categoryB);
-                                    if (categoryCompare !== 0) return categoryCompare;
-                                    return (a.name || "").localeCompare(b.name || "");
-                                  })
-                                  .map((s) => {
-                                    const category = categoryMap[s.serviceCategoryId];
-                                    return {
-                                      label: s.name,
-                                      value: s.id,
-                                      group: category?.name || "Uncategorized",
-                                      description: [
-                                        formatDuration(s.duration),
-                                        s.pricingType === "fixed" ? "Fixed" : "Hourly",
-                                      ]
-                                        .filter(Boolean)
-                                        .join(" • "),
-                                    };
-                                  })}
-                              />
-                              {service?.tasks && service.tasks.length > 0 && (
+                              {isCustom ? (
+                                <Input
+                                  value={l.customName || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setJoLines((prev) => prev.map((line, i) => i === idx ? { ...line, customName: val } : line));
+                                  }}
+                                  placeholder="Enter custom service name..."
+                                />
+                              ) : (
+                                <Combobox
+                                  showGroupSeparator
+                                  value={l.ServiceTypeId}
+                                  onChange={(val) => updateJO(idx, val)}
+                                  placeholder="Select service"
+                                  items={[...servicesCatalog]
+                                    .sort((a, b) => {
+                                      const categoryA =
+                                        categoryMap[a.serviceCategoryId]?.name || "Uncategorized";
+                                      const categoryB =
+                                        categoryMap[b.serviceCategoryId]?.name || "Uncategorized";
+                                      const categoryCompare = categoryA.localeCompare(categoryB);
+                                      if (categoryCompare !== 0) return categoryCompare;
+                                      return (a.name || "").localeCompare(b.name || "");
+                                    })
+                                    .map((s) => {
+                                      const category = categoryMap[s.serviceCategoryId];
+                                      return {
+                                        label: s.name,
+                                        value: s.id,
+                                        group: category?.name || "Uncategorized",
+                                        description: [
+                                          formatDuration(s.duration),
+                                          s.pricingType === "fixed" ? "Fixed" : "Hourly",
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" • "),
+                                      };
+                                    })}
+                                />
+                              )}
+                              {!isCustom && service?.tasks && service.tasks.length > 0 && (
                                 <button
                                   type="button"
                                   onClick={() => setExpandedTaskRows(prev => {
@@ -1443,7 +1526,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                   {service.tasks.length} task{service.tasks.length !== 1 ? 's' : ''}
                                 </button>
                               )}
-                              {expandedTaskRows.has(l.id) && service?.tasks && service.tasks.length > 0 && (
+                              {!isCustom && expandedTaskRows.has(l.id) && service?.tasks && service.tasks.length > 0 && (
                                 <ul className="mt-1.5 list-disc pl-4 space-y-0.5 text-[10px] text-muted-foreground">
                                   {service.tasks.map((task, i) => (
                                     <li key={i}>{task}</li>
@@ -1453,40 +1536,48 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             </TableCell>
 
                             <TableCell className="align-top text-center">
-                              <select
-                                className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-40 disabled:pointer-events-none"
-                                value={l.pricingId || ""}
-                                disabled={!service}
-                                onChange={(e) => {
-                                  const selectedPricingId = e.target.value;
-                                  updateJOPricing(idx, selectedPricingId);
-                                }}
-                              >
-                                <option value="" disabled={!!service?.pricings?.length}>
-                                  {!service ? "Select service first" : service.pricings?.length ? "Select vehicle pricing" : "Default Rate"}
-                                </option>
-                                {service?.pricings
-                                  ?.filter((p: any) => p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed'))
-                                  .map((p: any) => {
-                                    const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
-                                    return (
-                                      <option key={p.id} value={p.id}>
-                                        {label}
-                                      </option>
-                                    );
-                                  })}
-                              </select>
+                              {isCustom ? (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              ) : (
+                                <select
+                                  className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-40 disabled:pointer-events-none"
+                                  value={l.pricingId || ""}
+                                  disabled={!service}
+                                  onChange={(e) => {
+                                    const selectedPricingId = e.target.value;
+                                    updateJOPricing(idx, selectedPricingId);
+                                  }}
+                                >
+                                  <option value="" disabled={!!service?.pricings?.length}>
+                                    {!service ? "Select service first" : service.pricings?.length ? "Select vehicle pricing" : "Default Rate"}
+                                  </option>
+                                  {service?.pricings
+                                    ?.filter((p: any) => p.pricing_type === service.pricingType || (!p.pricing_type && service.pricingType === 'fixed'))
+                                    .map((p: any) => {
+                                      const label = `${p.vehicle_size_name} - ₱${Number(p.price).toFixed(2)}`;
+                                      return (
+                                        <option key={p.id} value={p.id}>
+                                          {label}
+                                        </option>
+                                      );
+                                    })}
+                                </select>
+                              )}
                             </TableCell>
 
                             <TableCell className="align-top text-center">
-                              {service?.duration ? formatDuration(service.duration) : "No Duration"}
+                              {isCustom ? (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              ) : (
+                                service?.duration ? formatDuration(service.duration) : "No Duration"
+                              )}
                             </TableCell>
 
                             <TableCell className="align-top">
                               <CurrencyInput
                                 value={l.manualRate !== undefined ? l.manualRate : (service ? rate : 0)}
                                 onChange={(newRate) => updateJORate(idx, String(newRate))}
-                                className={!service ? "opacity-40 pointer-events-none" : ""}
+                                className={!service && !isCustom ? "opacity-40 pointer-events-none" : ""}
                               />
                             </TableCell>
 
@@ -1572,9 +1663,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                   value={l.ProductId}
                                   onChange={(val) => updateSO(idx, "ProductId", val)}
                                   items={partsOnly.map((p) => ({
-                                    label: `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
+                                    label: p.manufacturer
+                                      ? `${p.manufacturer} ${p.name} - Part No: ${p.partNumber || p.sku || "—"}`
+                                      : `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
                                     value: p.id,
-                                    description: `Price: ₱${Number(p.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                                    description: `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
                                   }))}
                                   placeholder="Select part"
                                 />
@@ -1738,10 +1831,18 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 <Combobox
                                   value={l.ProductId}
                                   onChange={(val) => updateSPOL(idx, "ProductId", val)}
-                                  items={spolOnly.map((p) => ({
-                                    label: `${p.name} - SKU: ${p.sku}`,
-                                    value: p.id,
-                                  }))}
+                                  items={spolOnly.map((p) => {
+                                    const isSundries = p.categoryName === SUNDRIES_CATEGORY_NAME;
+                                    return {
+                                      label: p.manufacturer
+                                        ? `${p.manufacturer} ${p.name} - Part No: ${p.partNumber || p.sku || "—"}`
+                                        : `${p.name} - Part No: ${p.partNumber || p.sku || "—"}`,
+                                      value: p.id,
+                                      description: isSundries && p.description
+                                        ? p.description
+                                        : `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
+                                    };
+                                  })}
                                   placeholder="Select supply / oil / lubricant"
                                 />
                               )}
@@ -1767,6 +1868,11 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                             <TableCell className="text-center">
                               {isCustom ? (
+                                <CurrencyInput
+                                  value={l.manualPrice || 0}
+                                  onChange={(val) => updateSPOL(idx, "manualPrice", val)}
+                                />
+                              ) : isSundries ? (
                                 <CurrencyInput
                                   value={l.manualPrice || 0}
                                   onChange={(val) => updateSPOL(idx, "manualPrice", val)}
@@ -1801,44 +1907,52 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             </TableCell>
 
                             <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={l.needsOrdering}
-                                disabled={l.isTentative}
-                                onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
-                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
-                              />
+                              {isSundries ? (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={l.needsOrdering}
+                                  disabled={l.isTentative}
+                                  onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
+                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                                />
+                              )}
                             </TableCell>
 
                             <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={l.isTentative}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  setSpolLines(prev => prev.map((line, i) => {
-                                    if (i !== idx) return line;
-                                    let needsOrdering = line.needsOrdering;
-                                    if (checked) {
-                                      needsOrdering = false;
-                                    } else {
-                                      if (line.customName !== undefined) {
-                                        needsOrdering = true;
+                              {isSundries ? (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={l.isTentative}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+                                    setSpolLines(prev => prev.map((line, i) => {
+                                      if (i !== idx) return line;
+                                      let needsOrdering = line.needsOrdering;
+                                      if (checked) {
+                                        needsOrdering = false;
                                       } else {
-                                        const found = partsMap[line.ProductId];
-                                        if (found) {
-                                          const qty = Number(line.quantity || 0);
-                                          const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-                                          const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-                                          needsOrdering = isOutOfStock || isShortage;
+                                        if (line.customName !== undefined) {
+                                          needsOrdering = true;
+                                        } else {
+                                          const found = partsMap[line.ProductId];
+                                          if (found) {
+                                            const qty = Number(line.quantity || 0);
+                                            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
+                                            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
+                                            needsOrdering = isOutOfStock || isShortage;
+                                          }
                                         }
                                       }
-                                    }
-                                    return { ...line, isTentative: checked, needsOrdering };
-                                  }));
-                                }}
-                                className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
-                              />
+                                      return { ...line, isTentative: checked, needsOrdering };
+                                    }));
+                                  }}
+                                  className="rounded border-input text-amber-500 focus:ring-amber-500 h-4 w-4 cursor-pointer"
+                                />
+                              )}
                             </TableCell>
 
                             <TableCell>

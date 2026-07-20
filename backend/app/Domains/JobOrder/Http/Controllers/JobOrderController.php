@@ -191,7 +191,22 @@ class JobOrderController extends Controller
         $newStatusId = $this->getStatusId($validated['status']);
         $jobOrder->update(['status' => $newStatusId]);
 
+        // When JO starts, sync SO to IN_PROGRESS
+        $soStarted = false;
+        if ($validated['status'] === 'In Progress') {
+            $jobOrder->load('salesOrder');
+            if ($jobOrder->salesOrder && $jobOrder->salesOrder->Status === 'APPROVED') {
+                $jobOrder->salesOrder->update([
+                    'Status' => 'IN_PROGRESS',
+                    'started_by' => $request->user()?->id,
+                    'started_at' => now(),
+                ]);
+                $soStarted = true;
+            }
+        }
+
         // When JO completes, trigger SO completion (which auto-creates billing)
+        // Or create billing directly if no SO exists (services-only estimate)
         $soCompleted = false;
         if ($validated['status'] === 'Completed') {
             $jobOrder->load('salesOrder');
@@ -199,6 +214,10 @@ class JobOrderController extends Controller
                 app(\App\Domains\SalesOrder\Application\UseCases\CompleteSalesOrder::class)
                     ->execute($jobOrder->salesOrder->id, $request->user()?->id);
                 $soCompleted = true;
+            } elseif (!$jobOrder->salesOrder) {
+                // JO-only (services from estimate, no parts) — create billing directly
+                app(\App\Domains\JobOrder\Application\UseCases\CompleteJobOrder::class)
+                    ->execute($jobOrder->id, $request->user()?->id);
             }
         }
 
@@ -206,6 +225,7 @@ class JobOrderController extends Controller
             'message' => 'Job order status updated successfully',
             'data' => $jobOrder->fresh(['technicians.employee', 'services.serviceType', 'vehicle', 'statusRecord', 'salesOrder']),
             'so_completed' => $soCompleted,
+            'so_started' => $soStarted,
         ]);
     }
 

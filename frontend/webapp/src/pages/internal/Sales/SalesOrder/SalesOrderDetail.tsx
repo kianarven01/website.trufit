@@ -318,7 +318,6 @@ const SalesOrderDetails: React.FC = () => {
         complete: "Sales Order completed.",
         reopen: "Sales Order reopened.",
         cancel: "Sales Order cancelled & stock released.",
-        "start-work": "Sales Order work started.",
         void: "Sales Order voided & stock returned to inventory.",
       };
       toast.success(messages[action] || "Action completed.");
@@ -533,7 +532,6 @@ const SalesOrderDetails: React.FC = () => {
         : "Are you sure you want to approve this Sales Order? This will reserve inventory stock.",
       className: "bg-green-600 text-white hover:bg-green-700",
     },
-    "start-work": { action: "start-work", label: "Start Work", description: "Are you sure you want to start work on this Sales Order?" },
     complete: { action: "complete", label: "Complete", description: "Are you sure you want to mark this Sales Order as completed?" },
     reopen: { action: "reopen", label: "Reopen", description: "Are you sure you want to reopen this Sales Order? It will return to In Progress." },
     cancel: { action: "cancel", label: "Cancel Order", description: "Are you sure you want to cancel this Sales Order? Reserved stock will be released.", className: "bg-destructive text-white hover:bg-destructive/90" },
@@ -568,12 +566,6 @@ const SalesOrderDetails: React.FC = () => {
 
               {order.status === "APPROVED" && (
                 <>
-                  {!isCounter && (
-                    <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS["start-work"])} disabled={isSubmitting}>
-                      <Play className="w-4 h-4 mr-1" />
-                      Start Work
-                    </Button>
-                  )}
                   {order.estimate_id && (
                     <Button variant="outline" size="sm" onClick={openEstimateItemsModal} disabled={isSubmitting}>
                       <Plus className="w-4 h-4 mr-1" />

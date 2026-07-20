@@ -28,6 +28,8 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   "for_approval": { label: "For Approval", variant: "for-approval" as const },
   "APPROVED WITH DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
   "APPROVED_WITH_DOWNPAYMENT": { label: "Approved With Downpayment", variant: "approved" as const },
+  CANCELLED: { label: "Cancelled", variant: "cancelled" as const },
+  cancelled: { label: "Cancelled", variant: "cancelled" as const },
 };
 
 import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download, Eye } from "lucide-react";
@@ -54,12 +56,14 @@ interface Product {
   name: string;
   sku: string;
   partNumber?: string;
+  manufacturer?: string;
   price: number;
   unit: string;
   quantityOnHand: number | null;
   reorderLevel: number | null;
   productId?: string;
-  supplierName?: string;
+  categoryIsSpol?: boolean;
+  categoryName?: string | null;
 }
 
 /* ================= HELPERS ================= */
@@ -101,10 +105,12 @@ const EstimateDetail: React.FC = () => {
   const isSupervisorOrAdmin = userRole === "supervisor" || userRole === "admin";
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [estimate, setEstimate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [downpayment, setDownpayment] = useState<number>(0);
   const [isApproving, setIsApproving] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
   const [includeTentative, setIncludeTentative] = useState(false);
@@ -138,11 +144,12 @@ const EstimateDetail: React.FC = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [estimateRes, serviceTypesRes, serviceCatsRes, productsRes] = await Promise.all([
+        const [estimateRes, serviceTypesRes, serviceCatsRes, productsRes, allProductsRes] = await Promise.all([
           api.get(`/estimates/${id}`),
           api.get('/products/service-types'),
           api.get('/products/service-categories'),
           api.get('/inventory'),
+          api.get('/products'),
         ]);
 
         const estData = estimateRes.data.data;
@@ -170,10 +177,10 @@ const EstimateDetail: React.FC = () => {
         const dbInventory = Array.isArray(productsRes.data)
           ? productsRes.data
           : productsRes.data.data || [];
-        setPartsCatalog(dbInventory.map((row: any) => {
+        const normalizedParts: Product[] = dbInventory.map((row: any) => {
           const product = row.product || {};
           const supplierPrice = row.active_price?.Price;
-          const price = Number(row.price || supplierPrice || 0);
+          const price = Number(row.selling_price || supplierPrice || 0);
           const supplierName = row.supplier?.CompanyName || row.supplier?.name || row.supplier_name || "";
           return {
             id: String(row.id),
@@ -181,13 +188,45 @@ const EstimateDetail: React.FC = () => {
             name: product.name || "",
             sku: product.SKU || "",
             partNumber: product.part_number || product.partNumber || "",
+            manufacturer: product.manufacturer_name || "",
             price,
             unit: product.unit_name || product.unit?.name || "pc",
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             supplierName,
+            categoryIsSpol: Boolean(row.product?.category_is_spol),
+            categoryName: row.product?.category_name ?? null,
           };
-        }));
+        });
+
+        // Merge Sundries products not already in inventory (system-seeded category)
+        const dbAllProducts = Array.isArray(allProductsRes.data)
+          ? allProductsRes.data
+          : allProductsRes.data?.data || [];
+        const inventoryProductIds = new Set(dbInventory.map((row: any) => String(row.product?.id || "")));
+        const sundriesProducts: Product[] = dbAllProducts
+          .filter((p: any) => p.category_is_spol && !inventoryProductIds.has(String(p.id)))
+          .map((p: any) => {
+            const suppliers = p.suppliers || [];
+            const firstSupplier = suppliers[0];
+            const price = Number(p.preferred_selling_price || firstSupplier?.active_price?.Price || 0);
+            return {
+              id: String(p.id),
+              productId: String(p.id),
+              name: p.name || "",
+              sku: p.sku || p.SKU || "",
+              partNumber: p.part_number || "",
+              manufacturer: p.manufacturer_name || "",
+              price,
+              unit: p.unit_name || "pc",
+              quantityOnHand: null,
+              reorderLevel: null,
+              categoryIsSpol: true,
+              categoryName: p.category_name || null,
+            };
+          });
+
+        setPartsCatalog([...normalizedParts, ...sundriesProducts]);
       } catch (err) {
         console.error("Failed to load estimate", err);
         setEstimate(null);
@@ -303,9 +342,11 @@ const EstimateDetail: React.FC = () => {
       const data = response.data.data;
       setEstimate(data);
 
+      const so = response.data.sales_order;
+      const jo = response.data.job_order;
       const parts = [];
-      if (data.sales_order?.so_number) parts.push(`SO: ${data.sales_order.so_number}`);
-      if (data.job_order?.jo_number) parts.push(`JO: ${data.job_order.jo_number}`);
+      if (so?.so_number) parts.push(`SO: ${so.so_number}`);
+      if (jo?.jo_number) parts.push(`JO: ${jo.jo_number}`);
       const msg = parts.length > 0
         ? `Estimate approved — ${parts.join(" | ")} created`
         : `Estimate approved successfully!`;
@@ -315,6 +356,22 @@ const EstimateDetail: React.FC = () => {
       toast.error("Failed to approve estimate.");
     } finally {
       setIsApproving(false);
+    }
+  };
+
+  const handleCancelEstimate = async () => {
+    setIsCancelling(true);
+    try {
+      await api.put(`/estimates/${estimate?.id}`, { status: "CANCELLED" });
+      toast.success("Estimate cancelled.");
+      const res = await api.get(`/estimates/${id}`);
+      setEstimate(res.data.data);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Failed to cancel estimate.";
+      toast.error(msg);
+    } finally {
+      setIsCancelling(false);
+      setCancelConfirmOpen(false);
     }
   };
 
@@ -429,7 +486,7 @@ const EstimateDetail: React.FC = () => {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
-            {isSupervisorOrAdmin && (
+            {isSupervisorOrAdmin && estimate?.status !== "CANCELLED" && (
               <>
                 <Button size="sm" onClick={handleEditEstimate}>
                   Edit Estimate
@@ -575,13 +632,14 @@ const EstimateDetail: React.FC = () => {
                   <TableBody>
                     {serviceItems.length > 0 ? (
                       serviceItems.map((item: any) => {
+                        const isCustom = !!item.custom_name;
                         const svc = servicesMap[item.service_id];
                         const cat = svc ? categoryMap[svc.serviceCategoryId] : null;
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
-                            <TableCell className="font-medium text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {svc?.name || item.service_id || "—"}
+                            <TableCell className="font-medium">
+                              <div className="flex items-center justify-start gap-1.5">
+                                {item.custom_name || svc?.name || "—"}
                                 {item.is_tentative && (
                                   <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
                                     Tentative
@@ -590,11 +648,11 @@ const EstimateDetail: React.FC = () => {
                               </div>
                             </TableCell>
                             <TableCell className="text-center text-muted-foreground text-sm">
-                              {svc?.pricingType === "fixed" ? "Fixed" : svc?.pricingType === "hourly rate" ? "Hourly" : "—"}
-                              {cat ? ` · ${cat.name}` : ""}
+                              {isCustom ? "—" : (svc?.pricingType === "fixed" ? "Fixed" : svc?.pricingType === "hourly rate" ? "Hourly" : "—")}
+                              {!isCustom && cat ? ` · ${cat.name}` : ""}
                             </TableCell>
                             <TableCell className="text-center">
-                              {svc?.duration ? formatDuration(svc.duration) : "No Duration"}
+                              {isCustom ? "—" : (svc?.duration ? formatDuration(svc.duration) : "No Duration")}
                             </TableCell>
                             <TableCell className="text-center">
                               {peso(Number(item.unit_price))}
@@ -646,9 +704,9 @@ const EstimateDetail: React.FC = () => {
                         const orderQty = shortage > 0 ? shortage : qty;
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
-                            <TableCell className="font-medium text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {item.custom_name || product?.name || item.product_id || "—"}
+                            <TableCell className="font-medium">
+                              <div className="flex items-center justify-start gap-1.5">
+                                {item.custom_name || (product?.manufacturer ? `${product.manufacturer} ${product.name}` : product?.name) || item.product_id || "—"}
                                 {item.is_tentative && (
                                   <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
                                     Tentative
@@ -732,9 +790,9 @@ const EstimateDetail: React.FC = () => {
                         const product = partsMap[item.product_id];
                         return (
                           <TableRow key={item.id} className="hover:bg-transparent text-center">
-                            <TableCell className="font-medium text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                {item.custom_name || product?.name || item.product_id || "—"}
+                            <TableCell className="font-medium">
+                              <div className="flex items-center justify-start gap-1.5">
+                                {item.custom_name || (product?.manufacturer ? `${product.manufacturer} ${product.name}` : product?.name) || item.product_id || "—"}
                                 {item.is_tentative && (
                                   <Badge variant="for-approval" className="whitespace-nowrap text-[10px] px-1.5 py-0">
                                     Tentative
@@ -888,25 +946,21 @@ const EstimateDetail: React.FC = () => {
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Created By</span>
                       <span>
-                        {estimate.creator
-                          ? `${estimate.creator.first_name} ${estimate.creator.last_name}`
-                          : "—"}
+                        {estimate.created_by_name || (estimate.creator?.employee
+                          ? `${estimate.creator.employee.first_name} ${estimate.creator.employee.last_name}`
+                          : "—")}
                       </span>
                     </div>
-                    {estimate.editor && (
+                    {estimate.edited_by_name && (
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Edited By</span>
-                        <span>
-                          {estimate.editor.first_name} {estimate.editor.last_name}
-                        </span>
+                        <span>{estimate.edited_by_name}</span>
                       </div>
                     )}
-                    {estimate.approver && (
+                    {estimate.approved_by_name && (
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Approved By</span>
-                        <span>
-                          {estimate.approver.first_name} {estimate.approver.last_name}
-                        </span>
+                        <span>{estimate.approved_by_name}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs text-muted-foreground">
@@ -926,6 +980,21 @@ const EstimateDetail: React.FC = () => {
                           disabled={isApproving || downpayment > totals.total}
                         >
                           {isApproving ? "Approving..." : "Approve Estimate"}
+                        </Button>
+                      )}
+                    {isSupervisorOrAdmin &&
+                      (estimate.status === "DRAFT" ||
+                        estimate.status?.toUpperCase() === "FOR APPROVAL" ||
+                        estimate.status?.toUpperCase() === "FOR_APPROVAL" ||
+                        estimate.status === "APPROVED") && (
+                        <Button
+                          className="w-full shadow-md"
+                          size="lg"
+                          variant="destructive"
+                          onClick={() => setCancelConfirmOpen(true)}
+                          disabled={isCancelling}
+                        >
+                          {isCancelling ? "Cancelling..." : "Cancel Estimate"}
                         </Button>
                       )}
                     <Button
@@ -967,6 +1036,34 @@ const EstimateDetail: React.FC = () => {
         cancelLabel="Cancel"
         destructive
         onConfirm={handleRemoveEstimate}
+      />
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        onOpenChange={setCancelConfirmOpen}
+        title="Cancel Estimate"
+        description={
+          <>
+            Are you sure you want to cancel this estimate?
+            {estimate?.status === "APPROVED" && (
+              <>
+                <br />
+                <br />
+                <span className="text-amber-600 font-medium">
+                  This will also cancel the linked Sales Order and Job Order.
+                </span>
+                <br />
+                <span className="text-muted-foreground text-xs">
+                  Items already issued or work in progress must be handled first.
+                </span>
+              </>
+            )}
+          </>
+        }
+        confirmLabel="Cancel Estimate"
+        cancelLabel="Go Back"
+        destructive
+        onConfirm={handleCancelEstimate}
       />
 
       {/* ========== PDF PREVIEW DIALOG ========== */}

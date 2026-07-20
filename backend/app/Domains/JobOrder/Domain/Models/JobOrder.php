@@ -26,6 +26,7 @@ class JobOrder extends Model
         'status',
         'vehicle_id_new',
         'jo_number',
+        'estimate_id',
         'timer_status',
         'timer_started_at',
         'timer_total_seconds',
@@ -44,6 +45,11 @@ class JobOrder extends Model
     public function salesOrder()
     {
         return $this->belongsTo(SalesOrder::class, 'SaleOrderID', 'id');
+    }
+
+    public function estimate()
+    {
+        return $this->belongsTo(\App\Domains\Estimate\Domain\Models\Estimate::class, 'estimate_id', 'id');
     }
 
     public function technician()

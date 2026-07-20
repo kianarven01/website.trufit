@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Domains\Estimate\Domain\Repositories\EstimateRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class EstimateController extends Controller
 {
@@ -71,7 +72,7 @@ class EstimateController extends Controller
             $validated = $request->validate([
                 'customer_id' => 'required|exists:App\Domains\Customer\Domain\Models\Customer,customer_id',
                 'vehicle_id' => 'required|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
-                'status' => 'nullable|string',
+                'status' => 'nullable|string|in:DRAFT,FOR APPROVAL,FOR_APPROVAL,APPROVED,APPROVED WITH DOWNPAYMENT,APPROVED_WITH_DOWNPAYMENT,ISSUED,CANCELLED',
                 'total_amount' => 'required|numeric',
                 'mileage' => 'required|numeric|min:0',
                 'downpayment_amount' => 'nullable|numeric|min:0',
@@ -104,6 +105,8 @@ class EstimateController extends Controller
                 'status' => 'success',
                 'data' => $estimate,
             ], 201);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to create estimate: ' . $e->getMessage());
             return response()->json([
@@ -122,7 +125,7 @@ class EstimateController extends Controller
             $validated = $request->validate([
                 'customer_id' => 'nullable|exists:App\Domains\Customer\Domain\Models\Customer,customer_id',
                 'vehicle_id' => 'nullable|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
-                'status' => 'nullable|string',
+                'status' => 'nullable|string|in:DRAFT,FOR APPROVAL,FOR_APPROVAL,APPROVED,APPROVED WITH DOWNPAYMENT,APPROVED_WITH_DOWNPAYMENT,ISSUED,CANCELLED',
                 'total_amount' => 'nullable|numeric',
                 'mileage' => 'nullable|numeric|min:0',
                 'downpayment_amount' => 'nullable|numeric|min:0',
@@ -151,6 +154,18 @@ class EstimateController extends Controller
                 }
             }
 
+            // Cancel estimate — cascade to linked SO/JO
+            if (isset($validated['status']) && strtoupper($validated['status']) === 'CANCELLED') {
+                $result = app(\App\Domains\Estimate\Application\UseCases\CancelEstimate::class)
+                    ->execute($id, $request->user()?->id);
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $result['estimate'],
+                    'message' => $result['message'],
+                ]);
+            }
+
             $estimate = $this->estimateRepo->update($id, $validated);
 
             // Auto-create SO + JO when estimate is approved
@@ -159,12 +174,28 @@ class EstimateController extends Controller
                 $result = app(\App\Domains\Estimate\Application\UseCases\ApproveEstimate::class)
                     ->execute($id, $employeeId);
 
+                $parts = [];
+                if ($result['salesOrder']) $parts[] = 'SO ' . $result['salesOrder']->so_number;
+                if ($result['jobOrder']) $parts[] = 'JO ' . $result['jobOrder']->jo_number;
+
                 return response()->json([
                     'status' => 'success',
                     'data' => $result['estimate'],
                     'sales_order' => $result['salesOrder'],
                     'job_order' => $result['jobOrder'],
-                    'message' => 'Estimate approved. SO ' . $result['salesOrder']->so_number . ' and JO ' . $result['jobOrder']->jo_number . ' created.',
+                    'message' => 'Estimate approved.' . (!empty($parts) ? ' ' . implode(' and ', $parts) . ' created.' : ''),
+                ]);
+            }
+
+            // Cancel estimate — cascade to linked SO/JO
+            if (isset($validated['status']) && strtoupper($validated['status']) === 'CANCELLED') {
+                $result = app(\App\Domains\Estimate\Application\UseCases\CancelEstimate::class)
+                    ->execute($id, $request->user()?->id);
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $result['estimate'],
+                    'message' => $result['message'],
                 ]);
             }
 
@@ -172,6 +203,8 @@ class EstimateController extends Controller
                 'status' => 'success',
                 'data' => $estimate,
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to update estimate: ' . $e->getMessage());
             return response()->json([
@@ -223,15 +256,10 @@ class EstimateController extends Controller
                 ], 404);
             }
 
-            // Load relations if not already loaded
-            if (!$estimate->relationLoaded('customer')) {
-                $estimate->load(['customer', 'vehicle', 'items', 'items.service', 'items.product', 'creator']);
-            } else {
-                $estimate->loadMissing(['creator']);
-            }
+            // Always load relations needed for PDF
+            $estimate->loadMissing(['customer', 'vehicle', 'items.service', 'items.product', 'creator.employee']);
 
-            $user = auth()->user() ?? auth('sanctum')->user();
-            $employee = $estimate->creator ?? ($user ? $user->employee : null);
+            $employee = $estimate->creator?->employee ?? auth()->user()?->employee;
             if ($employee) {
                 $employee->load('role');
             }

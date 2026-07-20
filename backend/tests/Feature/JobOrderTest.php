@@ -391,7 +391,7 @@ class JobOrderTest extends TestCase
             'status' => 'DRAFT',
             'total_amount' => 1800.00,
             'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
-            'created_by' => $this->employee->id,
+            'created_by' => $this->user->id,
         ]);
 
         // Part item

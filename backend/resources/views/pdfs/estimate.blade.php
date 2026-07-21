@@ -233,9 +233,9 @@
                         </td>
                         <td rowspan="2" class="cell" style="vertical-align:top;">
                             <span class="label">Year / Make / Model</span>
-                            <span class="value" style="font-weight:bold; display:block; text-align:center; margin-top:0;">
+                            <div style="margin-top: 6px; font-weight:bold; text-align:center; font-size:9.5px;">
                                 {{ strtoupper(($estimate->vehicle->year_model ?? '') . ' ' . ($estimate->vehicle->make ?? '') . ' ' . ($estimate->vehicle->model ?? '') . ' ' . ($estimate->vehicle->variant ?? '')) }}
-                            </span>
+                            </div>
                         </td>
                         <td class="cell">
                             <span class="label">Selling Dealer</span>
@@ -252,28 +252,7 @@
                         <td class="cell">
                             <span class="label">Mobile No.</span>
                             <span class="value" style="font-weight:bold; display:block; text-align:center; font-size:9.5px;">
-                                @php
-                                    $mobile = $estimate->customer->mobile_number ?? '';
-                                    $landline = $estimate->customer->landline ?? '';
-                                    $business = $estimate->customer->business ?? '';
-                                    $numbers = [];
-                                    if ($mobile && $mobile !== '—') {
-                                        foreach (preg_split('/[\/\\\,]+/', $mobile) as $num) {
-                                            $num = trim($num);
-                                            if ($num) $numbers[] = $num;
-                                        }
-                                    }
-                                    if (count($numbers) < 2 && $landline && $landline !== '—' && !in_array(trim($landline), $numbers)) {
-                                        $numbers[] = trim($landline);
-                                    }
-                                    if (count($numbers) < 2 && $business && $business !== '—' && !in_array(trim($business), $numbers)) {
-                                        $numbers[] = trim($business);
-                                    }
-                                @endphp
-                                @foreach($numbers as $index => $number)
-                                    @if($index > 0)<br>@endif
-                                    {{ $number }}
-                                @endforeach
+                                {{ $estimate->customer->mobile_number ?? '' }}
                             </span>
                         </td>
                         <!-- Year/Make/Model continues (rowspan) -->

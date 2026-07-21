@@ -8,6 +8,7 @@ use App\Domains\Customer\Domain\Models\CustomerVehicle;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
+use App\Domains\SalesOrder\Domain\Models\SalesOrderItem;
 use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Employee\Domain\Models\Employee;
 use App\Domains\Supplier\Domain\Models\Supplier;
@@ -415,5 +416,66 @@ class SalesOrderTest extends TestCase
 
         $order = SalesOrder::find($orderId);
         $this->assertEquals('PATCH notes test', $order->remarks);
+    }
+
+    public function test_void_and_reopen_restores_status()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO via API
+        $payload = [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'notes' => 'Void Reopen Test',
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => false,
+                ]
+            ]
+        ];
+
+        $response = $this->postJson('/api/sales-orders', $payload);
+        $response->assertStatus(201);
+        $soId = $response->json('data.id');
+
+        // Submit + Approve
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Verify reserved
+        $this->inventory->refresh();
+        $this->assertGreaterThan(0, $this->inventory->reserved_quantity);
+
+        // Issue items
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertOk();
+
+        // Verify issued
+        $item = SalesOrderItem::where('SalesOrderID', $soId)->first();
+        $this->assertTrue($item->is_issued);
+
+        // Void
+        $this->postJson("/api/sales-orders/{$soId}/void")->assertOk();
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('CANCELLED', $so->Status);
+
+        // Verify stock was returned
+        $item->refresh();
+        $this->assertFalse($item->is_issued);
+
+        // Reopen
+        $this->postJson("/api/sales-orders/{$soId}/reopen")->assertOk();
+        $so->refresh();
+        $this->assertEquals('APPROVED', $so->Status);
+
+        // Verify stock is re-reserved
+        $this->inventory->refresh();
+        $this->assertGreaterThan(0, $this->inventory->reserved_quantity);
     }
 }

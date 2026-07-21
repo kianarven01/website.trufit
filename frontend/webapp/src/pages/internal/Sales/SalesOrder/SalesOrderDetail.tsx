@@ -160,13 +160,15 @@ const SalesOrderDetails: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<{ action: string; label: string; description: string; className?: string } | null>(null);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const [confirmForceDelete, setConfirmForceDelete] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set());
+  const [selectedSpol, setSelectedSpol] = useState<Set<string>>(new Set());
   const [estimateItemsModalOpen, setEstimateItemsModalOpen] = useState(false);
   const [availableEstimateItems, setAvailableEstimateItems] = useState<any[]>([]);
   const [selectedEstimateItems, setSelectedEstimateItems] = useState<Set<string>>(new Set());
   const [isLoadingEstimateItems, setIsLoadingEstimateItems] = useState(false);
   const [isAddingItems, setIsAddingItems] = useState(false);
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [returnType, setReturnType] = useState<"parts" | "spol">("parts");
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
 
   const peso = (n: number) =>
@@ -340,15 +342,17 @@ const SalesOrderDetails: React.FC = () => {
     }
   };
 
-  const handleIssueItems = async () => {
-    if (!order || selectedItems.size === 0) return;
+  const handleIssueItems = async (type: "parts" | "spol") => {
+    const selected = type === "parts" ? selectedParts : selectedSpol;
+    if (!order || selected.size === 0) return;
     try {
       setIsSubmitting(true);
       await api.post(`/sales-orders/${order.id}/issue`, {
-        item_ids: Array.from(selectedItems),
+        item_ids: Array.from(selected),
       });
       toast.success("Items issued successfully. Stock has been deducted.");
-      setSelectedItems(new Set());
+      if (type === "parts") setSelectedParts(new Set());
+      else setSelectedSpol(new Set());
       fetchOrderDetails();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to issue items");
@@ -357,15 +361,17 @@ const SalesOrderDetails: React.FC = () => {
     }
   };
 
-  const openReturnModal = () => {
+  const openReturnModal = (type: "parts" | "spol") => {
     if (!order) return;
+    const selected = type === "parts" ? selectedParts : selectedSpol;
     const initialQtys: Record<string, number> = {};
     order.products.forEach((p) => {
-      if (selectedItems.has(p.id)) {
+      if (selected.has(p.id)) {
         initialQtys[p.id] = p.qty - p.quantityReturned;
       }
     });
     setReturnQuantities(initialQtys);
+    setReturnType(type);
     setReturnDialogOpen(true);
   };
 
@@ -381,7 +387,8 @@ const SalesOrderDetails: React.FC = () => {
         returns: payload,
       });
       toast.success("Items returned successfully. Stock has been restored.");
-      setSelectedItems(new Set());
+      if (returnType === "parts") setSelectedParts(new Set());
+      else setSelectedSpol(new Set());
       setReturnDialogOpen(false);
       fetchOrderDetails();
     } catch (err: any) {
@@ -389,18 +396,6 @@ const SalesOrderDetails: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const toggleItemSelection = (itemId: string) => {
-    setSelectedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) {
-        next.delete(itemId);
-      } else {
-        next.add(itemId);
-      }
-      return next;
-    });
   };
 
   const openEstimateItemsModal = async () => {
@@ -533,7 +528,7 @@ const SalesOrderDetails: React.FC = () => {
       className: "bg-green-600 text-white hover:bg-green-700",
     },
     complete: { action: "complete", label: "Complete", description: "Are you sure you want to mark this Sales Order as completed?" },
-    reopen: { action: "reopen", label: "Reopen", description: "Are you sure you want to reopen this Sales Order? It will return to In Progress." },
+    reopen: { action: "reopen", label: "Reopen", description: "Are you sure you want to reopen this Sales Order?" },
     cancel: { action: "cancel", label: "Cancel Order", description: "Are you sure you want to cancel this Sales Order? Reserved stock will be released.", className: "bg-destructive text-white hover:bg-destructive/90" },
     void: { action: "void", label: "Void Sale", description: "Are you sure you want to void this Sales Order? All issued items will be returned to inventory stock, and the order will be cancelled.", className: "bg-destructive text-white hover:bg-destructive/90" },
   };
@@ -590,7 +585,7 @@ const SalesOrderDetails: React.FC = () => {
                 </>
               )}
 
-              {order.status === "COMPLETED" && !isCounter && (
+              {(order.status === "COMPLETED" || order.status === "CANCELLED") && !isCounter && (
                 <Button variant="outline" size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.reopen)} disabled={isSubmitting}>
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reopen
@@ -769,8 +764,8 @@ const SalesOrderDetails: React.FC = () => {
                           size="sm"
                           variant="outline"
                           className="h-7 gap-1 text-xs"
-                          onClick={handleIssueItems}
-                          disabled={isSubmitting || selectedItems.size === 0}
+                          onClick={() => handleIssueItems("parts")}
+                          disabled={isSubmitting || selectedParts.size === 0}
                         >
                           <PackageCheck className="h-3 w-3" /> Issue Selected
                         </Button>
@@ -779,8 +774,8 @@ const SalesOrderDetails: React.FC = () => {
                         size="sm"
                         variant="outline"
                         className="h-7 gap-1 text-xs"
-                        onClick={openReturnModal}
-                        disabled={isSubmitting || selectedItems.size === 0}
+                        onClick={() => openReturnModal("parts")}
+                        disabled={isSubmitting || selectedParts.size === 0}
                       >
                         <PackageX className="h-3 w-3" /> Return Selected
                       </Button>
@@ -791,34 +786,24 @@ const SalesOrderDetails: React.FC = () => {
 
               <div className="border rounded-lg overflow-hidden">
                 <div className="max-h-[420px] overflow-y-auto">
-                  <Table className="[&_tr]:hover:!bg-transparent">
+                  <Table className="table-fixed w-full min-w-[800px]">
                     <TableHeader className="sticky top-0 z-10 bg-background">
-                      <TableRow className="bg-muted/50 text-center">
-                        {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
-                          <TableHead className="text-xs text-center w-[4%]">
-                            <input
-                              type="checkbox"
-                              className="rounded"
-                              checked={
-                                order.products.filter(p => !p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 &&
-                                order.products.filter(p => !p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).every(p => selectedItems.has(p.id))
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[4%] text-center">
+                          <input
+                            type="checkbox"
+                            className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                            checked={order.products.filter(p => !p.isSpol && !p.needsOrdering && (p.isIssued ? (p.qty > p.quantityReturned) : (p.quantityOnHand ?? 0) > 0)).length > 0 && order.products.filter(p => !p.isSpol && !p.needsOrdering && (p.isIssued ? (p.qty > p.quantityReturned) : (p.quantityOnHand ?? 0) > 0)).every(p => selectedParts.has(p.id))}
+                            onChange={(e) => {
+                              const selectable = order.products.filter(p => !p.isSpol && !p.needsOrdering && (p.isIssued ? (p.qty > p.quantityReturned) : (p.quantityOnHand ?? 0) > 0));
+                              if (e.target.checked) {
+                                setSelectedParts(new Set(selectable.map(p => p.id)));
+                              } else {
+                                setSelectedParts(new Set());
                               }
-                              onChange={() => {
-                                const selectables = order.products.filter(p => !p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0);
-                                const allSelected = selectables.length > 0 && selectables.every(p => selectedItems.has(p.id));
-                                setSelectedItems(prev => {
-                                  const next = new Set(prev);
-                                  if (allSelected) {
-                                    selectables.forEach(p => next.delete(p.id));
-                                  } else {
-                                    selectables.forEach(p => next.add(p.id));
-                                  }
-                                  return next;
-                                });
-                              }}
-                            />
-                          </TableHead>
-                        )}
+                            }}
+                          />
+                        </TableHead>
                         <TableHead className="text-xs text-center w-[22%]">Item Name</TableHead>
                         <TableHead className="text-xs text-center w-[12%]">Part Number</TableHead>
                         <TableHead className="text-xs text-center w-[10%]">Tax Code</TableHead>
@@ -847,9 +832,14 @@ const SalesOrderDetails: React.FC = () => {
                                   <input
                                     type="checkbox"
                                     className="rounded"
-                                    checked={selectedItems.has(p.id)}
+                                    checked={selectedParts.has(p.id)}
                                     disabled={!canSelect && !canSelectReturn}
-                                    onChange={() => toggleItemSelection(p.id)}
+                                    onChange={() => setSelectedParts(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(p.id)) next.delete(p.id);
+                                      else next.add(p.id);
+                                      return next;
+                                    })}
                                   />
                                 </TableCell>
                               )}
@@ -935,8 +925,8 @@ const SalesOrderDetails: React.FC = () => {
                           size="sm"
                           variant="outline"
                           className="h-7 gap-1 text-xs"
-                          onClick={handleIssueItems}
-                          disabled={isSubmitting || selectedItems.size === 0}
+                          onClick={() => handleIssueItems("spol")}
+                          disabled={isSubmitting || selectedSpol.size === 0}
                         >
                           <PackageCheck className="h-3 w-3" /> Issue Selected
                         </Button>
@@ -945,8 +935,8 @@ const SalesOrderDetails: React.FC = () => {
                         size="sm"
                         variant="outline"
                         className="h-7 gap-1 text-xs"
-                        onClick={openReturnModal}
-                        disabled={isSubmitting || selectedItems.size === 0}
+                        onClick={() => openReturnModal("spol")}
+                        disabled={isSubmitting || selectedSpol.size === 0}
                       >
                         <PackageX className="h-3 w-3" /> Return Selected
                       </Button>
@@ -967,12 +957,12 @@ const SalesOrderDetails: React.FC = () => {
                               className="rounded"
                               checked={
                                 order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 &&
-                                order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).every(p => selectedItems.has(p.id))
+                                order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).every(p => selectedSpol.has(p.id))
                               }
                               onChange={() => {
                                 const selectables = order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0);
-                                const allSelected = selectables.length > 0 && selectables.every(p => selectedItems.has(p.id));
-                                setSelectedItems(prev => {
+                                const allSelected = selectables.length > 0 && selectables.every(p => selectedSpol.has(p.id));
+                                setSelectedSpol(prev => {
                                   const next = new Set(prev);
                                   if (allSelected) {
                                     selectables.forEach(p => next.delete(p.id));
@@ -1015,9 +1005,14 @@ const SalesOrderDetails: React.FC = () => {
                                   <input
                                     type="checkbox"
                                     className="rounded"
-                                    checked={selectedItems.has(p.id)}
+                                    checked={selectedSpol.has(p.id)}
                                     disabled={!canSelect && !canSelectReturn}
-                                    onChange={() => toggleItemSelection(p.id)}
+                                    onChange={() => setSelectedSpol(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(p.id)) next.delete(p.id);
+                                      else next.add(p.id);
+                                      return next;
+                                    })}
                                   />
                                 </TableCell>
                               )}
@@ -1517,7 +1512,7 @@ const SalesOrderDetails: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {order.products
-                    .filter((p) => selectedItems.has(p.id))
+                    .filter((p) => (returnType === "parts" ? selectedParts : selectedSpol).has(p.id))
                     .map((p) => {
                       const maxQty = p.qty - p.quantityReturned;
                       const currentVal = returnQuantities[p.id] ?? maxQty;

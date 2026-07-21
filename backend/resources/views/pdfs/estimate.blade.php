@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <title>Job Estimate</title>
@@ -8,6 +9,7 @@
             size: A4;
             margin: 12mm 12mm 12mm 12mm;
         }
+
         body {
             font-family: Arial, Helvetica, sans-serif;
             font-size: 10px;
@@ -17,37 +19,46 @@
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
+
         .header-table {
             margin-bottom: 8px;
         }
+
         .header-table td {
             vertical-align: top;
         }
+
         .logo-container {
             width: 40%;
         }
+
         .logo-container img {
             height: 60px;
             width: auto;
         }
+
         .contact-info {
             width: 60%;
             text-align: right;
             font-size: 10px;
         }
+
         .contact-info p {
             margin: 2px 0;
             color: #cc0000;
             font-style: italic;
         }
+
         .contact-info a {
             color: #0033a0;
             text-decoration: underline;
         }
+
         .title {
             text-align: center;
             font-size: 18px;
@@ -63,10 +74,12 @@
             margin-bottom: 1px;
             color: #000;
         }
+
         .value {
             font-size: 9.5px;
             color: #000;
         }
+
         .cell {
             border: 0.5px solid #00008b;
             padding: 2px 5px;
@@ -77,6 +90,7 @@
         .items-table {
             margin-bottom: 12px;
         }
+
         .items-table th {
             text-align: center;
             font-weight: bold;
@@ -85,13 +99,20 @@
             border-bottom: none;
             font-size: 10px;
         }
+
         .items-table td {
             padding: 4px 5px;
             vertical-align: top;
             font-size: 9.5px;
         }
-        .text-right { text-align: right !important; }
-        .text-center { text-align: center !important; }
+
+        .text-right {
+            text-align: right !important;
+        }
+
+        .text-center {
+            text-align: center !important;
+        }
 
         .section-header {
             font-weight: bold;
@@ -106,20 +127,24 @@
             margin-left: auto;
             border-collapse: collapse;
         }
+
         .totals-table td {
             padding: 4px;
             font-size: 11px;
             vertical-align: middle;
         }
+
         .totals-table .total-label {
             font-weight: bold;
             text-align: right;
             padding-right: 15px;
         }
+
         .totals-table .total-value {
             text-align: right;
             width: 100px;
         }
+
         .totals-table .grand-total-value {
             border: 1.5px solid #000;
             padding: 3px 6px;
@@ -128,7 +153,10 @@
             font-weight: bold;
         }
 
-        .dash { text-align: right; color: #999; }
+        .dash {
+            text-align: right;
+            color: #999;
+        }
 
         .payment-box {
             display: inline-block;
@@ -138,12 +166,14 @@
             vertical-align: middle;
             margin-right: 4px;
         }
+
         .payment-item {
             margin-bottom: 4px;
             font-size: 8px;
         }
     </style>
 </head>
+
 <body>
 
     <!-- Header -->
@@ -151,19 +181,19 @@
         <tr>
             <td class="logo-container">
                 @php
-                    $logoPath = public_path('images/logo-white1.webp');
-                    $logoData = '';
-                    if (file_exists($logoPath)) {
-                        $logoData = 'data:image/webp;base64,' . base64_encode(file_get_contents($logoPath));
-                    }
+                $logoPath = public_path('images/logo-white1.webp');
+                $logoData = '';
+                if (file_exists($logoPath)) {
+                $logoData = 'data:image/webp;base64,' . base64_encode(file_get_contents($logoPath));
+                }
                 @endphp
                 @if($logoData)
-                    <img src="{{ $logoData }}" alt="Trufit Auto Center">
+                <img src="{{ $logoData }}" alt="Trufit Auto Center">
                 @else
-                    <div style="font-size:24px;font-weight:bold;">
-                        <span style="color:#0033a0;font-size:30px;">TRUFIT</span><br>
-                        <span style="font-weight:normal;font-size:14px;color:#000;">Auto Center</span>
-                    </div>
+                <div style="font-size:24px;font-weight:bold;">
+                    <span style="color:#0033a0;font-size:30px;">TRUFIT</span><br>
+                    <span style="font-weight:normal;font-size:14px;color:#000;">Auto Center</span>
+                </div>
                 @endif
             </td>
             <td class="contact-info">
@@ -328,24 +358,24 @@
 
     <!-- Labour / Services Section -->
     @php
-        $serviceItems = $estimate->items->where('item_type', 'service');
-        $partItems = $estimate->items->where('item_type', 'part');
-        $supplyItems = $estimate->items->where('item_type', 'supply');
+    $serviceItems = $estimate->items->where('item_type', 'service');
+    $partItems = $estimate->items->where('item_type', 'part');
+    $supplyItems = $estimate->items->where('item_type', 'supply');
 
-        $includeTentative = $includeTentative ?? false;
-        if (!$includeTentative) {
-            $serviceItems = $serviceItems->filter(fn($i) => !$i->is_tentative);
-            $partItems = $partItems->filter(fn($i) => !$i->is_tentative);
-            $supplyItems = $supplyItems->filter(fn($i) => !$i->is_tentative);
-        }
+    $includeTentative = $includeTentative ?? false;
+    if (!$includeTentative) {
+    $serviceItems = $serviceItems->filter(fn($i) => !$i->is_tentative);
+    $partItems = $partItems->filter(fn($i) => !$i->is_tentative);
+    $supplyItems = $supplyItems->filter(fn($i) => !$i->is_tentative);
+    }
 
-        $totalServices = $serviceItems->sum('subtotal');
-        $totalParts = $partItems->sum('subtotal');
-        $totalSupplies = $supplyItems->sum('subtotal');
+    $totalServices = $serviceItems->sum('subtotal');
+    $totalParts = $partItems->sum('subtotal');
+    $totalSupplies = $supplyItems->sum('subtotal');
 
-        $grandTotal = $totalServices + $totalParts + $totalSupplies;
-        $downpayment = (float)($estimate->downpayment_amount ?? 0);
-        $balance = max(0, $grandTotal - $downpayment);
+    $grandTotal = $totalServices + $totalParts + $totalSupplies;
+    $downpayment = (float)($estimate->downpayment_amount ?? 0);
+    $balance = max(0, $grandTotal - $downpayment);
     @endphp
 
     <table class="items-table" style="border:none;">
@@ -363,14 +393,14 @@
                 <td style="text-align: left; vertical-align: top;">
                     {{ $item->service->name ?? 'Unknown Service' }}
                     @if($item->is_tentative)
-                        <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
+                    <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
                     @endif
                 </td>
                 <td style="text-align: left; vertical-align: top;">
                     @if($item->service && $item->service->tasks)
-                        @foreach(is_string($item->service->tasks) ? json_decode($item->service->tasks, true) : $item->service->tasks as $task)
-                            <div style="margin-bottom: 2px;">{{ $task }}</div>
-                        @endforeach
+                    @foreach(is_string($item->service->tasks) ? json_decode($item->service->tasks, true) : $item->service->tasks as $task)
+                    <div style="margin-bottom: 2px;">{{ $task }}</div>
+                    @endforeach
                     @endif
                 </td>
                 <td class="text-right" style="vertical-align: top;">{{ number_format($item->unit_price, 2) }}</td>
@@ -378,8 +408,13 @@
             </tr>
             @endforeach
             @for($i = 0; $i < max(5 - $serviceItems->count(), 1); $i++)
-            <tr><td><br></td><td></td><td></td><td></td></tr>
-            @endfor
+                <tr>
+                    <td><br></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                @endfor
         </tbody>
     </table>
 
@@ -409,7 +444,7 @@
                 <td style="text-align: left;">
                     {{ $item->custom_name ?? $item->product->name ?? 'Unknown Part' }}
                     @if($item->is_tentative)
-                        <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
+                    <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
                     @endif
                 </td>
                 <td class="text-center">{{ intval($item->quantity) }}</td>
@@ -418,23 +453,23 @@
             </tr>
             @endforeach
             @for($i = 0; $i < max(5 - $partItems->count(), 1); $i++)
-            <tr>
-                @if(empty($hidePartNumber))
-                <td><br></td>
-                @else
-                <td><br></td>
-                @endif
-                <td><br></td>
-                <td></td>
-                <td></td>
-                <td></td>
-            </tr>
-            @endfor
+                <tr>
+                    @if(empty($hidePartNumber))
+                    <td><br></td>
+                    @else
+                    <td><br></td>
+                    @endif
+                    <td><br></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                @endfor
         </tbody>
     </table>
 
     <!-- Supplies Section -->
-    <div class="section-header">Supplies, Parts & Lubricants (SPOL)</div>
+    <div class="section-header">Supplies, Petrol, Oils and Lubricants</div>
     <table class="items-table" style="border:none;">
         <thead>
             <tr style="border-bottom: none;">
@@ -460,7 +495,7 @@
                 <td style="text-align: left;">
                     {{ $item->custom_name ?? $item->product->name ?? 'Unknown Supply' }}
                     @if($item->is_tentative)
-                        <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
+                    <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
                     @endif
                 </td>
                 <td width="10%" class="text-center">
@@ -471,18 +506,18 @@
             </tr>
             @endforeach
             @for($i = 0; $i < max(5 - $supplyItems->count(), 1); $i++)
-            <tr>
-                @if(empty($hidePartNumber))
-                <td width="20%"><br></td>
-                @else
-                <td width="20%"><br></td>
-                @endif
-                <td width="40%"></td>
-                <td width="10%"></td>
-                <td width="15%"></td>
-                <td width="15%"></td>
-            </tr>
-            @endfor
+                <tr>
+                    @if(empty($hidePartNumber))
+                    <td width="20%"><br></td>
+                    @else
+                    <td width="20%"><br></td>
+                    @endif
+                    <td width="40%"></td>
+                    <td width="10%"></td>
+                    <td width="15%"></td>
+                    <td width="15%"></td>
+                </tr>
+                @endfor
         </tbody>
     </table>
 
@@ -518,4 +553,5 @@
     </table>
 
 </body>
+
 </html>

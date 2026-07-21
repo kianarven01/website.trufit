@@ -5,6 +5,7 @@ namespace App\Domains\Estimate\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Domains\Estimate\Domain\Repositories\EstimateRepositoryInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -15,16 +16,23 @@ class EstimateController extends Controller
     ) {}
 
     /**
-     * List all estimates with customer, vehicle, and items.
+     * List estimates with server-side pagination, search, and status filter.
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $estimates = $this->estimateRepo->getAll();
+            $perPage = min((int) $request->query('per_page', 25), 100);
+            $page = (int) $request->query('page', 1);
+            $search = $request->query('search', '');
+            $status = $request->query('status', '');
+            $archived = $request->query('archived') === 'true' || $request->query('archived') == '1';
+
+            $result = $this->estimateRepo->getPaginated($perPage, $page, $search, $status, $archived);
 
             return response()->json([
                 'status' => 'success',
-                'data' => $estimates,
+                'data' => $result['data'],
+                'meta' => $result['meta'],
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to fetch estimates: ' . $e->getMessage());
@@ -154,7 +162,7 @@ class EstimateController extends Controller
                 }
             }
 
-            // Cancel estimate — cascade to linked SO/JO
+            // Cancel estimate — cascade to linked SO/JO (handled before repo update)
             if (isset($validated['status']) && strtoupper($validated['status']) === 'CANCELLED') {
                 $result = app(\App\Domains\Estimate\Application\UseCases\CancelEstimate::class)
                     ->execute($id, $request->user()?->id);
@@ -187,18 +195,6 @@ class EstimateController extends Controller
                 ]);
             }
 
-            // Cancel estimate — cascade to linked SO/JO
-            if (isset($validated['status']) && strtoupper($validated['status']) === 'CANCELLED') {
-                $result = app(\App\Domains\Estimate\Application\UseCases\CancelEstimate::class)
-                    ->execute($id, $request->user()?->id);
-
-                return response()->json([
-                    'status' => 'success',
-                    'data' => $result['estimate'],
-                    'message' => $result['message'],
-                ]);
-            }
-
             return response()->json([
                 'status' => 'success',
                 'data' => $estimate,
@@ -215,23 +211,83 @@ class EstimateController extends Controller
     }
 
     /**
-     * Delete an existing estimate.
+     * Soft-delete (archive) an estimate.
      */
-    public function destroy($id)
+    public function destroy(string $id)
     {
         try {
-            $deleted = $this->estimateRepo->delete($id);
+            $estimate = \App\Domains\Estimate\Domain\Models\Estimate::find($id);
 
-            if (!$deleted) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to delete estimate',
-                ], 400);
+            if (!$estimate) {
+                return response()->json(['message' => 'Estimate not found.'], 404);
             }
 
+            if (!in_array(strtoupper($estimate->status ?? ''), ['DRAFT', 'FOR APPROVAL', 'FOR_APPROVAL', 'CANCELLED'], true)) {
+                return response()->json([
+                    'message' => 'Only draft, for approval, or cancelled estimates can be archived.',
+                ], 422);
+            }
+
+            $estimate->delete();
+
             return response()->json([
-                'status' => 'success',
-                'message' => 'Estimate deleted successfully',
+                'message' => 'Estimate archived successfully.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to archive estimate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to archive estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Restore an archived estimate.
+     */
+    public function restore(string $id)
+    {
+        try {
+            $estimate = \App\Domains\Estimate\Domain\Models\Estimate::onlyTrashed()->find($id);
+
+            if (!$estimate) {
+                return response()->json(['message' => 'Archived estimate not found.'], 404);
+            }
+
+            $estimate->restore();
+
+            return response()->json([
+                'message' => 'Estimate restored successfully.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to restore estimate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to restore estimate: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Permanently delete an archived estimate.
+     */
+    public function forceDelete(string $id)
+    {
+        try {
+            $estimate = \App\Domains\Estimate\Domain\Models\Estimate::onlyTrashed()->find($id);
+
+            if (!$estimate) {
+                return response()->json(['message' => 'Estimate not found.'], 404);
+            }
+
+            DB::transaction(function () use ($estimate) {
+                // Delete estimate items
+                $estimate->items()->delete();
+                $estimate->forceDelete();
+            });
+
+            return response()->json([
+                'message' => 'Estimate permanently deleted.',
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to delete estimate: ' . $e->getMessage());
@@ -241,6 +297,7 @@ class EstimateController extends Controller
             ], 500);
         }
     }
+
     /**
      * Download Estimate as PDF.
      */
@@ -256,8 +313,7 @@ class EstimateController extends Controller
                 ], 404);
             }
 
-            // Always load relations needed for PDF
-            $estimate->loadMissing(['customer', 'vehicle', 'items.service', 'items.product', 'creator.employee']);
+            $estimate->loadMissing(['customer', 'vehicle', 'items.service', 'items.product.manufacturer', 'creator.employee']);
 
             $employee = $estimate->creator?->employee ?? auth()->user()?->employee;
             if ($employee) {
@@ -284,5 +340,4 @@ class EstimateController extends Controller
             ], 500);
         }
     }
-
 }

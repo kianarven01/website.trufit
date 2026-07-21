@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
-import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Download, Eye } from "lucide-react";
+import { Plus, Trash2, User, Car, Wrench, Box, Calculator, ChevronDown, ChevronUp, Fuel, Eye } from "lucide-react";
 import api from "@/api/axios";
 import ConfirmDialog from "@/components/popupModal/AlertDialog/ConfirmDialog";
 
@@ -214,7 +214,6 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState("");
 
   const [notes, setNotes] = useState("");
   const [downpayment, setDownpayment] = useState<number>(0);
@@ -224,7 +223,6 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [spolLines, setSpolLines] = useState<SPOLLine[]>([emptySPOLLine()]);
   const [expandedTaskRows, setExpandedTaskRows] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
   const [includeTentative, setIncludeTentative] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -350,7 +348,6 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   };
 
   const handleAddCustomer = (search: string) => {
-    setCustomerSearch(search);
     setCustomerModalOpen(true);
   };
 
@@ -642,15 +639,19 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
           if (spolItems.length > 0) {
             setSpolLines(
-              spolItems.map((p: any) => ({
-                id: p.id,
-                ProductId: p.product_id || "",
-                quantity: Number(p.quantity),
-                amount: Number(p.subtotal),
-                needsOrdering: p.needs_ordering ?? false,
-                customName: p.custom_name || undefined,
-                isTentative: p.is_tentative ?? false,
-              }))
+              spolItems.map((p: any) => {
+                const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
+                return {
+                  id: p.id,
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
+                  quantity: Number(p.quantity),
+                  amount: Number(p.subtotal),
+                  manualPrice: Number(p.unit_price) || 0,
+                  needsOrdering: p.needs_ordering ?? false,
+                  customName: p.custom_name || undefined,
+                  isTentative: p.is_tentative ?? false,
+                };
+              })
             );
           } else {
             setSpolLines([emptySPOLLine()]);

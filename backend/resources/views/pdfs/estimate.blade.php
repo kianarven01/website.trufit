@@ -410,10 +410,10 @@
             <tr style="border-bottom: none;">
                 @if(empty($hidePartNumber))
                 <th width="20%" style="text-align: left;">Parts Number</th>
-                <th width="40%" style="text-align: left;">Description</th>
                 @else
-                <th width="60%" style="text-align: left;">Description</th>
+                <th width="20%"></th>
                 @endif
+                <th width="40%" style="text-align: left;">Description</th>
                 <th width="10%" class="text-center">Qty</th>
                 <th width="15%" class="text-right">Unit Price</th>
                 <th width="15%" class="text-right">Amount</th>
@@ -423,7 +423,9 @@
             @foreach($partItems as $item)
             <tr>
                 @if(empty($hidePartNumber))
-                <td style="text-align: left;">{{ $item->custom_name ? '—' : ($item->product->part_number ?? $item->product->SKU ?? '—') }}</td>
+                <td style="text-align: left;">{{ $item->custom_name ? '—' : trim(($item->product->manufacturer->name ?? '') . ' ' . ($item->product->part_number ?? $item->product->SKU ?? '—')) }}</td>
+                @else
+                <td></td>
                 @endif
                 <td style="text-align: left;">
                     {{ $item->custom_name ?? $item->product->name ?? 'Unknown Part' }}
@@ -440,6 +442,8 @@
             <tr>
                 @if(empty($hidePartNumber))
                 <td><br></td>
+                @else
+                <td><br></td>
                 @endif
                 <td><br></td>
                 <td></td>
@@ -453,12 +457,29 @@
     <!-- Supplies Section -->
     <div class="section-header">Supplies, Parts & Lubricants (SPOL)</div>
     <table class="items-table" style="border:none;">
+        <thead>
+            <tr style="border-bottom: none;">
+                @if(empty($hidePartNumber))
+                <th width="20%" style="text-align: left;">Parts Number</th>
+                @else
+                <th width="20%"></th>
+                @endif
+                <th width="40%" style="text-align: left;">Description</th>
+                <th width="10%" class="text-center">Qty</th>
+                <th width="15%" class="text-right">Unit Price</th>
+                <th width="15%" class="text-right">Amount</th>
+            </tr>
+        </thead>
         <tbody>
             @foreach($supplyItems as $item)
             <tr>
-                <td width="20%"></td>
-                <td width="40%" style="text-align: left;">
-                    {{ $item->product->name ?? 'Unknown Supply' }}
+                @if(empty($hidePartNumber))
+                <td style="text-align: left;">{{ trim(($item->product->manufacturer->name ?? '') . ' ' . ($item->product->part_number ?? $item->product->SKU ?? '—')) }}</td>
+                @else
+                <td></td>
+                @endif
+                <td style="text-align: left;">
+                    {{ $item->custom_name ?? $item->product->name ?? 'Unknown Supply' }}
                     @if($item->is_tentative)
                         <span style="color:#d97706; font-size:8.5px; font-weight:bold;">(Tentative)</span>
                     @endif
@@ -471,7 +492,17 @@
             </tr>
             @endforeach
             @for($i = 0; $i < max(5 - $supplyItems->count(), 1); $i++)
-            <tr><td width="20%"><br></td><td width="40%"></td><td width="10%"></td><td width="15%"></td><td width="15%"></td></tr>
+            <tr>
+                @if(empty($hidePartNumber))
+                <td width="20%"><br></td>
+                @else
+                <td width="20%"><br></td>
+                @endif
+                <td width="40%"></td>
+                <td width="10%"></td>
+                <td width="15%"></td>
+                <td width="15%"></td>
+            </tr>
             @endfor
         </tbody>
     </table>

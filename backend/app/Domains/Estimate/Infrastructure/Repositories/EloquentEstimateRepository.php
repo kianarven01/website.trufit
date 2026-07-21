@@ -10,11 +10,40 @@ use Illuminate\Support\Str;
 
 class EloquentEstimateRepository implements EstimateRepositoryInterface
 {
-    public function getAll()
+    public function getPaginated(int $perPage, int $page, string $search, string $status, bool $archived): array
     {
-        return Estimate::with(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = Estimate::with(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee']);
+
+        if ($archived) {
+            $query->onlyTrashed();
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('estimate_number', 'ILIKE', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('first_name', 'ILIKE', "%{$search}%")
+                         ->orWhere('last_name', 'ILIKE', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($status && $status !== 'ALL') {
+            $statuses = array_map('strtoupper', array_map('trim', explode(',', $status)));
+            $query->whereIn(DB::raw("UPPER(status)"), $statuses);
+        }
+
+        $paginated = $query->orderByDesc('created_at')->paginate($perPage, ['*'], 'page', $page);
+
+        return [
+            'data' => $paginated->items(),
+            'meta' => [
+                'total' => $paginated->total(),
+                'per_page' => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+            ],
+        ];
     }
 
     public function findById(string $id): ?Estimate
@@ -148,10 +177,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
     public function delete(string $id): bool
     {
-        return DB::transaction(function () use ($id) {
-            $estimate = Estimate::findOrFail($id);
-            $estimate->items()->delete();
-            return $estimate->delete();
-        });
+        $estimate = Estimate::findOrFail($id);
+        return $estimate->delete();
     }
 }

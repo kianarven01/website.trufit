@@ -522,4 +522,99 @@ class EstimateTest extends TestCase
             ->value('name');
         $this->assertEquals('Cancelled', $joStatusName);
     }
+
+    public function test_archive_draft_estimate()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'DRAFT']);
+
+        $response = $this->deleteJson("/api/estimates/{$estimate->id}");
+        $response->assertOk();
+        $this->assertStringContainsString('archived', $response->json('message'));
+
+        // Should not appear in normal list
+        $this->assertNull(Estimate::find($estimate->id));
+
+        // Should appear in trashed list
+        $this->assertNotNull(Estimate::onlyTrashed()->find($estimate->id));
+    }
+
+    public function test_cannot_archive_approved_estimate()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'APPROVED']);
+
+        $response = $this->deleteJson("/api/estimates/{$estimate->id}");
+        $response->assertStatus(422);
+        $this->assertStringContainsString('archived', $response->json('message'));
+    }
+
+    public function test_restore_archived_estimate()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'DRAFT']);
+        $estimate->delete();
+
+        $this->assertNull(Estimate::find($estimate->id));
+        $this->assertNotNull(Estimate::onlyTrashed()->find($estimate->id));
+
+        $response = $this->patchJson("/api/estimates/{$estimate->id}/restore");
+        $response->assertOk();
+        $this->assertStringContainsString('restored', $response->json('message'));
+
+        $this->assertNotNull(Estimate::find($estimate->id));
+    }
+
+    public function test_force_delete_archived_estimate()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'DRAFT']);
+
+        // Add an item
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+        ]);
+
+        // Soft-delete first
+        $estimate->delete();
+        $this->assertNotNull(Estimate::onlyTrashed()->find($estimate->id));
+
+        // Force delete
+        $response = $this->deleteJson("/api/estimates/{$estimate->id}/force");
+        $response->assertOk();
+        $this->assertStringContainsString('permanently deleted', $response->json('message'));
+
+        // Should be completely gone
+        $this->assertNull(Estimate::withTrashed()->find($estimate->id));
+        $this->assertEquals(0, \App\Domains\Estimate\Domain\Models\EstimateItem::where('estimate_id', $estimate->id)->count());
+    }
+
+    public function test_paginated_list()
+    {
+        $this->actingAs($this->user);
+
+        $e1 = $this->createEstimate(['status' => 'DRAFT']);
+        $e2 = $this->createEstimate(['status' => 'FOR APPROVAL']);
+
+        $response = $this->getJson('/api/estimates?per_page=2&page=1');
+        $response->assertOk();
+        $this->assertCount(2, $response->json('data'));
+        $this->assertGreaterThanOrEqual(2, $response->json('meta.total'));
+        $this->assertGreaterThanOrEqual(1, $response->json('meta.last_page'));
+
+        // Verify our estimates are in the results
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains($e1->id, $ids);
+        $this->assertContains($e2->id, $ids);
+    }
 }

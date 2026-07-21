@@ -32,7 +32,7 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   cancelled: { label: "Cancelled", variant: "cancelled" as const },
 };
 
-import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Download, Eye } from "lucide-react";
+import { ArrowLeft, Car, User, Wrench, Box, Fuel, Calculator, Eye, RefreshCw } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -104,14 +104,15 @@ const EstimateDetail: React.FC = () => {
   const userRole = role?.toLowerCase() || "";
   const isSupervisorOrAdmin = userRole === "supervisor" || userRole === "admin";
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmForceDelete, setConfirmForceDelete] = useState(false);
   const [estimate, setEstimate] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [downpayment, setDownpayment] = useState<number>(0);
   const [isApproving, setIsApproving] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [includePartNumbers, setIncludePartNumbers] = useState(false);
   const [includeTentative, setIncludeTentative] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -292,39 +293,6 @@ const EstimateDetail: React.FC = () => {
     };
   }, [serviceItems, partItems, spolItems, servicesMap, estimate]);
 
-  const renderNeedsOrderBadge = (item: any, product: Product | undefined) => {
-    if (product && product.quantityOnHand !== null) {
-      const shortage = Number(item.quantity) - product.quantityOnHand;
-      const qtyToDisplay = shortage > 0 ? shortage : Number(item.quantity);
-
-      if (shortage > 0) {
-        if (item.needs_ordering) {
-          return (
-            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
-              Needs Order (Qty: {qtyToDisplay} | Stock: {product.quantityOnHand})
-            </span>
-          );
-        } else {
-          return (
-            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800">
-              Outsource (Qty: {qtyToDisplay} | Stock: {product.quantityOnHand})
-            </span>
-          );
-        }
-      }
-    }
-
-    if (item.needs_ordering) {
-      return (
-        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
-          Needs Order (Qty: {Number(item.quantity)})
-        </span>
-      );
-    }
-
-    return null;
-  };
-
   /* ================= ACTIONS ================= */
 
   const handleEditEstimate = () => {
@@ -375,15 +343,38 @@ const EstimateDetail: React.FC = () => {
     }
   };
 
-  const handleRemoveEstimate = async () => {
+  const handleArchiveEstimate = async () => {
     try {
       await api.delete(`/estimates/${estimate?.id}`);
-      toast.success("Estimate deleted");
+      toast.success("Estimate archived.");
       navigate("/webapp/sales/estimates");
-    } catch (err) {
-      console.error("Failed to delete estimate", err);
-      toast.error("Failed to delete estimate");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to archive estimate.");
     }
+    setConfirmArchive(false);
+  };
+
+  const handleRestoreEstimate = async () => {
+    try {
+      await api.patch(`/estimates/${estimate?.id}/restore`);
+      toast.success("Estimate restored.");
+      const res = await api.get(`/estimates/${id}`);
+      setEstimate(res.data.data);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to restore estimate.");
+    }
+    setConfirmRestore(false);
+  };
+
+  const handleForceDeleteEstimate = async () => {
+    try {
+      await api.delete(`/estimates/${estimate?.id}/force`);
+      toast.success("Estimate permanently deleted.");
+      navigate("/webapp/sales/estimates");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete estimate.");
+    }
+    setConfirmForceDelete(false);
   };
 
   const fetchPdfBlob = useCallback(async (hidePartNumber: boolean, incTentative: boolean) => {
@@ -486,19 +477,31 @@ const EstimateDetail: React.FC = () => {
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back
             </Button>
-            {isSupervisorOrAdmin && estimate?.status !== "CANCELLED" && (
-              <>
-                <Button size="sm" onClick={handleEditEstimate}>
-                  Edit Estimate
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setConfirmOpen(true)}
-                >
-                  Remove Estimate
-                </Button>
-              </>
+            {isSupervisorOrAdmin && (
+              estimate?.deleted_at ? (
+                <>
+                  <Button size="sm" variant="outline" onClick={() => setConfirmRestore(true)}>
+                    <RefreshCw className="w-4 h-4 mr-1" />
+                    Restore
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => setConfirmForceDelete(true)}>
+                    Delete Permanently
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {estimate?.status !== "CANCELLED" && (
+                    <Button size="sm" onClick={handleEditEstimate}>
+                      Edit Estimate
+                    </Button>
+                  )}
+                  {["DRAFT", "CANCELLED"].includes(estimate?.status?.toUpperCase()) && (
+                    <Button size="sm" variant="destructive" onClick={() => setConfirmArchive(true)}>
+                      Archive
+                    </Button>
+                  )}
+                </>
+              )
             )}
           </div>
         }
@@ -1019,26 +1022,6 @@ const EstimateDetail: React.FC = () => {
       </div>
 
       <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title="Delete Estimate"
-        description={
-          <>
-            Are you sure you want to delete this estimate?
-            <br />
-            <br />
-            <span className="text-muted-foreground">
-              This action cannot be undone.
-            </span>
-          </>
-        }
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={handleRemoveEstimate}
-      />
-
-      <ConfirmDialog
         open={cancelConfirmOpen}
         onOpenChange={setCancelConfirmOpen}
         title="Cancel Estimate"
@@ -1126,6 +1109,59 @@ const EstimateDetail: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Archive Confirm */}
+      <ConfirmDialog
+        open={confirmArchive}
+        onOpenChange={setConfirmArchive}
+        title="Archive Estimate"
+        description={
+          <>
+            Are you sure you want to archive {estimate?.estimate_number || "this estimate"}?
+            <br />
+            <br />
+            <span className="text-muted-foreground">
+              It will be hidden from the active list.
+            </span>
+          </>
+        }
+        confirmLabel="Archive"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={handleArchiveEstimate}
+      />
+
+      {/* Restore Confirm */}
+      <ConfirmDialog
+        open={confirmRestore}
+        onOpenChange={setConfirmRestore}
+        title="Restore Estimate"
+        description={`Are you sure you want to restore ${estimate?.estimate_number || "this estimate"}?`}
+        confirmLabel="Restore"
+        cancelLabel="Cancel"
+        onConfirm={handleRestoreEstimate}
+      />
+
+      {/* Force Delete Confirm */}
+      <ConfirmDialog
+        open={confirmForceDelete}
+        onOpenChange={setConfirmForceDelete}
+        title="Permanently Delete Estimate"
+        description={
+          <>
+            Are you sure you want to permanently delete {estimate?.estimate_number || "this estimate"}?
+            <br />
+            <br />
+            <span className="text-muted-foreground">
+              This action cannot be undone.
+            </span>
+          </>
+        }
+        confirmLabel="Delete Permanently"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={handleForceDeleteEstimate}
+      />
     </div>
   );
 };

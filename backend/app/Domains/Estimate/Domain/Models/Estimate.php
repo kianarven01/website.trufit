@@ -4,13 +4,14 @@ namespace App\Domains\Estimate\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Domains\Customer\Domain\Models\Customer;
 use App\Domains\Customer\Domain\Models\CustomerVehicle;
 use App\Domains\Auth\Domain\Models\User;
 
 class Estimate extends Model
 {
-    use HasUuids;
+    use HasUuids, SoftDeletes;
 
     protected $table = 'Estimates';
     protected $primaryKey = 'id';

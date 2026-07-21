@@ -27,6 +27,7 @@ class JobOrder extends Model
         'vehicle_id_new',
         'jo_number',
         'estimate_id',
+        'notes',
         'timer_status',
         'timer_started_at',
         'timer_total_seconds',
@@ -110,8 +111,8 @@ class JobOrder extends Model
         $total = $this->timer_total_seconds ?? 0;
 
         if ($this->timer_status === 'running' && $this->timer_started_at) {
-            $elapsed = now()->diffInSeconds($this->timer_started_at, false);
-            $total += max(0, (int) $elapsed);
+            $elapsed = (int) abs(now()->diffInSeconds($this->timer_started_at));
+            $total += $elapsed;
         }
 
         return $total;

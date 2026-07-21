@@ -51,7 +51,7 @@ class CompleteJobOrder
 
             if (!$billExists) {
                 $this->createBillingStatement->execute([
-                    'customer_id' => $jobOrder->estimate?->customer_id,
+                    'customer_id' => $jobOrder->estimate?->customer_id ?? $jobOrder->salesOrder?->customerID,
                     'jo_id' => $jobOrder->id,
                     'date' => now(),
                     'total' => $grandTotal,

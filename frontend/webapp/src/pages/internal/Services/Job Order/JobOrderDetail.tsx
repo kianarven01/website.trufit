@@ -33,6 +33,7 @@ import {
   Clock,
   UserPlus,
   Trash2,
+  Box,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";
@@ -83,6 +84,7 @@ interface SalesOrder {
   so_number: string;
   Status: string;
   Total: number;
+  items?: { id: string; ProductID: string; quantity: number; UnitPrice: number; SubTotal: number; product?: { name: string; SKU: string; part_number?: string } }[];
 }
 
 interface BillingStatement {
@@ -98,6 +100,7 @@ interface JobOrderDetail {
   joNumber: string;
   date: string;
   status: string;
+  notes: string | null;
   timer_status: string | null;
   timer_started_at: string | null;
   timer_total_seconds: number;
@@ -156,6 +159,19 @@ const JobOrderDetail: React.FC = () => {
     fetchJobOrder();
   }, [fetchJobOrder]);
 
+  useEffect(() => {
+    if (jobOrder?.jo_number) {
+      sessionStorage.setItem(`breadcrumb-/webapp/services/job-orders/${id}`, jobOrder.jo_number);
+      window.dispatchEvent(new Event('breadcrumb-update'));
+    }
+    return () => {
+      if (id) {
+        sessionStorage.removeItem(`breadcrumb-/webapp/services/job-orders/${id}`);
+        window.dispatchEvent(new Event('breadcrumb-update'));
+      }
+    };
+  }, [jobOrder?.jo_number, id]);
+
   /* TIMER LIVE UPDATE */
   useEffect(() => {
     if (jobOrder?.timer_status === "running" && jobOrder.timer_started_at) {
@@ -163,8 +179,8 @@ const JobOrderDetail: React.FC = () => {
       const startedAt = new Date(jobOrder.timer_started_at).getTime();
 
       const tick = () => {
-        const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-        setLiveSeconds(baseSeconds + Math.max(0, elapsed));
+        const elapsed = Math.abs(Math.floor((Date.now() - startedAt) / 1000));
+        setLiveSeconds(baseSeconds + elapsed);
       };
 
       tick();
@@ -186,7 +202,8 @@ const JobOrderDetail: React.FC = () => {
   }, []);
 
   /* STATUS */
-  const currentStatus = jobOrder?.statusRecord?.name ?? jobOrder?.status ?? "Pending";
+  const hasValidStatus = !!jobOrder?.statusRecord?.name;
+  const currentStatus = hasValidStatus ? jobOrder.statusRecord!.name : null;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -194,6 +211,9 @@ const JobOrderDetail: React.FC = () => {
       case "In Progress": return <Badge variant="received">In Progress</Badge>;
       case "Pending": return <Badge variant="for-approval">Pending</Badge>;
       case "Cancelled": return <Badge variant="cancelled">Cancelled</Badge>;
+      case "Paid": return <Badge variant="approved">Paid</Badge>;
+      case "Unpaid": return <Badge variant="for-approval">Unpaid</Badge>;
+      case "Partially Paid": return <Badge variant="received">Partially Paid</Badge>;
       default: return <Badge variant="default">{status}</Badge>;
     }
   };
@@ -212,7 +232,14 @@ const JobOrderDetail: React.FC = () => {
 
   const handleTimerAction = async (action: "start" | "pause" | "resume" | "stop") => {
     try {
-      await api.post(`/job-orders/${id}/timer/${action}`);
+      // Immediately stop interval if pausing/stopping to prevent stale ticking
+      if ((action === "pause" || action === "stop") && timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      const res = await api.post(`/job-orders/${id}/timer/${action}`);
+      // Optimistically update liveSeconds from response
+      setLiveSeconds(res.data.data.elapsed_seconds ?? 0);
       toast.success(`Timer ${action === "start" ? "started" : action === "pause" ? "paused" : action === "resume" ? "resumed" : "stopped"}`);
       fetchJobOrder();
     } catch (err: any) {
@@ -285,12 +312,14 @@ const JobOrderDetail: React.FC = () => {
         {/* HEADER */}
         <DataToolbar
           variant="detail"
-          title={jobOrder.jo_number || jobOrder.joNumber || "Job Order"}
           actions={
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => navigate("/webapp/services/job-orders")}>
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/webapp/services/job-orders/${id}/edit`)}>
+                Edit
               </Button>
               {currentStatus === "Pending" && (!jobOrder?.salesOrder || jobOrder.salesOrder.Status === "APPROVED") && (
                 <Button size="sm" onClick={() => setConfirmAction("start-job")} className="bg-blue-600 hover:bg-blue-700">
@@ -325,7 +354,7 @@ const JobOrderDetail: React.FC = () => {
                     <Clock className="size-5" />
                     <p className="font-semibold text-foreground">Timer</p>
                   </div>
-                  {getStatusBadge(currentStatus)}
+                  {currentStatus ? getStatusBadge(currentStatus) : <Badge variant="default">Unknown</Badge>}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -402,6 +431,12 @@ const JobOrderDetail: React.FC = () => {
                         </span>
                         <span className="ml-2 text-xs text-muted-foreground">({jobOrder.salesOrder.Status})</span>
                       </div>
+                    </div>
+                  )}
+                  {jobOrder.notes && (
+                    <div>
+                      <Label className="text-muted-foreground font-normal text-xs">Notes</Label>
+                      <p className="text-sm mt-1">{jobOrder.notes}</p>
                     </div>
                   )}
                 </CardContent>
@@ -524,7 +559,6 @@ const JobOrderDetail: React.FC = () => {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-xs text-center">Service</TableHead>
-                      <TableHead className="text-xs w-[25%] text-center">Price</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -534,12 +568,11 @@ const JobOrderDetail: React.FC = () => {
                           <TableCell className="font-medium text-center">
                             {svc.serviceType?.name || "Unknown Service"}
                           </TableCell>
-                          <TableCell className="text-center">{peso(Number(svc.PriceAtSale) || 0)}</TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={2} className="text-center text-sm text-muted-foreground py-8">
+                        <TableCell colSpan={1} className="text-center text-sm text-muted-foreground py-8">
                           No services added.
                         </TableCell>
                       </TableRow>
@@ -547,13 +580,46 @@ const JobOrderDetail: React.FC = () => {
                   </TableBody>
                 </Table>
               </div>
-              <Separator className="my-4" />
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Estimated Total</span>
-                <span className="font-bold text-primary">{peso(totalServices)}</span>
-              </div>
             </CardContent>
           </Card>
+
+          {/* SO PARTS */}
+          {jobOrder.salesOrder?.items && jobOrder.salesOrder.items.length > 0 && (
+            <Card>
+              <CardHeader className="py-4">
+                <div className="flex items-center gap-2">
+                  <Box className="size-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Parts (from Sales Order)</h2>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table className="[&_tr]:hover:!bg-transparent text-center">
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-xs text-center">Part Name</TableHead>
+                        <TableHead className="text-xs text-center">Part Number</TableHead>
+                        <TableHead className="text-xs text-center">Qty</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {jobOrder.salesOrder.items.map((item) => (
+                        <TableRow key={item.id} className="hover:bg-transparent text-center">
+                          <TableCell className="font-medium text-center">
+                            {item.product?.name || "Unknown Part"}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                            {item.product?.part_number || item.product?.SKU || "—"}
+                          </TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* LINKED BILLING */}
           {jobOrder.billingStatements && jobOrder.billingStatements.length > 0 && (

@@ -3,6 +3,7 @@
 namespace App\Domains\JobOrder\Application\UseCases;
 
 use App\Domains\JobOrder\Domain\Models\JobOrder;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -20,17 +21,21 @@ class PauseTimer
             // Calculate elapsed for this session and add to total
             $elapsed = 0;
             if ($jobOrder->timer_started_at) {
-                $elapsed = (int) now()->diffInSeconds($jobOrder->timer_started_at, false);
-                $elapsed = max(0, $elapsed);
+                $startedAt = Carbon::parse($jobOrder->timer_started_at);
+                $now = Carbon::now();
+                $elapsed = (int) abs($now->diffInSeconds($startedAt));
             }
 
+            $newTotal = ($jobOrder->timer_total_seconds ?? 0) + $elapsed;
             $jobOrder->update([
                 'timer_status' => 'paused',
-                'timer_total_seconds' => ($jobOrder->timer_total_seconds ?? 0) + $elapsed,
+                'timer_total_seconds' => $newTotal,
                 'timer_started_at' => null,
             ]);
 
-            return $jobOrder->fresh();
+            $fresh = $jobOrder->fresh();
+
+            return $fresh;
         });
     }
 }

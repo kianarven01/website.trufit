@@ -63,58 +63,71 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
     public function create(array $data): Estimate
     {
         return DB::transaction(function () use ($data) {
-            // Generate estimate number like EST-YYMMDD-XXX
+            // Generate estimate number like EST-YYMMDD-XXX with retry
             $today = now();
             $dateStr = $today->format('ymd');
             $prefix = 'EST-' . $dateStr . '-';
 
-            $lastEstimate = Estimate::where('estimate_number', 'like', $prefix . '%')
-                ->orderBy('estimate_number', 'desc')
-                ->first();
+            $maxRetries = 10;
+            for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
+                $lastEstimate = Estimate::where('estimate_number', 'like', $prefix . '%')
+                    ->orderBy('estimate_number', 'desc')
+                    ->lockForUpdate()
+                    ->first();
 
-            $nextSequence = 1;
-            if ($lastEstimate && preg_match('/-(\d+)$/', $lastEstimate->estimate_number, $matches)) {
-                $nextSequence = ((int) $matches[1]) + 1;
-            }
+                $nextSequence = 1;
+                if ($lastEstimate && preg_match('/-(\d+)$/', $lastEstimate->estimate_number, $matches)) {
+                    $nextSequence = ((int) $matches[1]) + 1;
+                }
 
-            $estimateNumber = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+                $estimateNumber = $prefix . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
 
-            $userId = auth()->user()?->id;
+                $userId = auth()->user()?->id;
 
-            $estimate = Estimate::create([
-                'id' => (string) Str::uuid(),
-                'customer_id' => $data['customer_id'],
-                'vehicle_id' => $data['vehicle_id'],
-                'status' => $data['status'] ?? 'DRAFT',
-                'total_amount' => $data['total_amount'] ?? 0.00,
-                'mileage' => $data['mileage'] ?? null,
-                'estimate_number' => $estimateNumber,
-                'downpayment_amount' => $data['downpayment_amount'] ?? 0.00,
-                'payment_method' => $data['payment_method'] ?? null,
-                'payment_reference' => $data['payment_reference'] ?? null,
-                'created_by' => $userId,
-                'notes' => $data['notes'] ?? null,
-            ]);
-
-            if (isset($data['items']) && is_array($data['items'])) {
-                foreach ($data['items'] as $item) {
-                    EstimateItem::create([
+                try {
+                    $estimate = Estimate::create([
                         'id' => (string) Str::uuid(),
-                        'estimate_id' => $estimate->id,
-                        'item_type' => $item['item_type'],
-                        'product_id' => $item['product_id'] ?? null,
-                        'service_id' => $item['service_id'] ?? null,
-                        'quantity' => $item['quantity'] ?? 1,
-                        'unit_price' => $item['unit_price'] ?? 0.00,
-                        'subtotal' => $item['subtotal'] ?? 0.00,
-                        'needs_ordering' => $item['needs_ordering'] ?? false,
-                        'custom_name' => $item['custom_name'] ?? null,
-                        'is_tentative' => $item['is_tentative'] ?? false,
+                        'customer_id' => $data['customer_id'],
+                        'vehicle_id' => $data['vehicle_id'],
+                        'status' => $data['status'] ?? 'DRAFT',
+                        'total_amount' => $data['total_amount'] ?? 0.00,
+                        'mileage' => $data['mileage'] ?? null,
+                        'estimate_number' => $estimateNumber,
+                        'downpayment_amount' => $data['downpayment_amount'] ?? 0.00,
+                        'payment_method' => $data['payment_method'] ?? null,
+                        'payment_reference' => $data['payment_reference'] ?? null,
+                        'created_by' => $userId,
+                        'notes' => $data['notes'] ?? null,
                     ]);
+
+                    if (isset($data['items']) && is_array($data['items'])) {
+                        foreach ($data['items'] as $item) {
+                            EstimateItem::create([
+                                'id' => (string) Str::uuid(),
+                                'estimate_id' => $estimate->id,
+                                'item_type' => $item['item_type'],
+                                'product_id' => $item['product_id'] ?? null,
+                                'service_id' => $item['service_id'] ?? null,
+                                'quantity' => $item['quantity'] ?? 1,
+                                'unit_price' => $item['unit_price'] ?? 0.00,
+                                'subtotal' => $item['subtotal'] ?? 0.00,
+                                'needs_ordering' => $item['needs_ordering'] ?? false,
+                                'custom_name' => $item['custom_name'] ?? null,
+                                'is_tentative' => $item['is_tentative'] ?? false,
+                            ]);
+                        }
+                    }
+
+                    return $estimate->load(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee']);
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ($e->errorInfo[1] == 23505) { // Unique constraint violation
+                        continue; // Retry with next sequence
+                    }
+                    throw $e;
                 }
             }
 
-            return $estimate->load(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee']);
+            throw new \RuntimeException('Failed to generate unique estimate number after ' . $maxRetries . ' attempts.');
         });
     }
 

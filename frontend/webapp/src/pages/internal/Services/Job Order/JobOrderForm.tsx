@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,8 +51,14 @@ interface Employee {
 }
 
 /* COMPONENT */
-const JobOrderForm: React.FC = () => {
+interface JobOrderFormProps {
+  mode?: "create" | "edit";
+}
+
+const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = mode === "edit" && !!id;
 
   // Data
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -77,21 +83,44 @@ const JobOrderForm: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [custRes, empRes, svcRes] = await Promise.all([
+        const promises: Promise<any>[] = [
           api.get("/customers"),
           api.get("/admin/employees"),
           api.get("/products/service-types"),
-        ]);
-        setCustomers(custRes.data.data || []);
-        setEmployees(empRes.data.data || []);
-        setServiceTypes(svcRes.data.data || []);
+        ];
+
+        if (isEdit && id) {
+          promises.push(api.get(`/job-orders/${id}`));
+        }
+
+        const results = await Promise.all(promises);
+
+        setCustomers(results[0].data.data || []);
+        setEmployees(results[1].data.data || []);
+        setServiceTypes(results[2].data.data || []);
+
+        // Hydrate existing JO in edit mode
+        if (isEdit && results[3]) {
+          const jo = results[3].data.data;
+          setCustomerId(jo.vehicle?.customerID ? String(jo.vehicle.customerID) : "");
+          setVehicleId(jo.vehicle_id_new ? String(jo.vehicle_id_new) : "");
+          setTechnicianId(jo.technicians?.[0]?.employee?.id ? String(jo.technicians[0].employee.id) : "");
+          setJobDate(jo.date ? new Date(jo.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+          setSelectedServices(
+            (jo.services || []).map((s: any) => ({
+              serviceId: s.ServiceID,
+              name: s.serviceType?.name || "Unknown Service",
+              price: Number(s.PriceAtSale) || 0,
+            }))
+          );
+        }
       } catch (err) {
         console.error("Failed to load form data", err);
         toast.error("Failed to load form data");
       }
     };
     fetchData();
-  }, []);
+  }, [isEdit, id]);
 
   /* COMPUTED */
   const customerList = customers.map((c) => ({
@@ -170,10 +199,12 @@ const JobOrderForm: React.FC = () => {
         })),
       };
 
-      const res = await api.post("/job-orders", payload);
+      const res = isEdit
+        ? await api.patch(`/job-orders/${id}`, payload)
+        : await api.post("/job-orders", payload);
       const jo = res.data.data;
-      toast.success(`Job Order ${jo.jo_number || jo.joNumber} created successfully`);
-      navigate("/webapp/services/job-orders");
+      toast.success(`Job Order ${jo.jo_number || jo.joNumber || id} ${isEdit ? "updated" : "created"} successfully`);
+      navigate(isEdit ? `/webapp/services/job-orders/${id}` : "/webapp/services/job-orders");
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.message || "Failed to create job order");
@@ -191,10 +222,10 @@ const JobOrderForm: React.FC = () => {
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back
           </Button>
-          <h1 className="text-lg font-semibold">New Job Order</h1>
+          <h1 className="text-lg font-semibold">{isEdit ? "Edit Job Order" : "New Job Order"}</h1>
         </div>
         <Button size="sm" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Create Job Order"}
+          {isSaving ? "Saving..." : isEdit ? "Update Job Order" : "Create Job Order"}
         </Button>
       </div>
 
@@ -371,7 +402,7 @@ const JobOrderForm: React.FC = () => {
 
               <div className="pt-2">
                 <Button className="w-full" onClick={handleSave}>
-                  Create Job Order
+                  {isEdit ? "Update Job Order" : "Create Job Order"}
                 </Button>
               </div>
             </CardContent>

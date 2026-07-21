@@ -32,6 +32,7 @@ interface JobOrderRow {
   joNumber: string;
   date: string;
   status: string;
+  statusRecord: { name: string } | null;
   timer_status: string | null;
   timer_total_seconds: number;
   technicianName: string;
@@ -128,7 +129,7 @@ const JobOrderList: React.FC = () => {
   };
 
   const renderActions = (jo: JobOrderRow) => {
-    const status = jo.status;
+    const status = jo.statusRecord?.name ?? "Pending";
 
     return (
       <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
@@ -241,7 +242,7 @@ const JobOrderList: React.FC = () => {
                         ? jo.services.map((s) => s.serviceType?.name).filter(Boolean).join(", ")
                         : "—"}
                     </TableCell>
-                    <TableCell>{getStatusBadge(jo.status)}</TableCell>
+                    <TableCell>{getStatusBadge(jo.statusRecord?.name ?? "Pending")}</TableCell>
                     <TableCell>{renderActions(jo)}</TableCell>
                   </TableRow>
                 ))}

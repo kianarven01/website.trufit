@@ -113,6 +113,7 @@ const App: React.FC = () => {
                   <Route path="job-orders">
                     <Route index element={<JobOrder />} />
                     <Route path="new" element={<JobOrderForm />} />
+                    <Route path=":id/edit" element={<JobOrderForm mode="edit" />} />
                     <Route path=":id" element={<JobOrderDetail />} />
                   </Route>
                 </Route>

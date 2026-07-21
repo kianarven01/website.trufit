@@ -5,7 +5,6 @@ namespace App\Domains\SalesOrder\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Domains\SalesOrder\Http\Controllers\Traits\HandlesUseCaseErrors;
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
-use App\Domains\SalesOrder\Application\Services\ReserveInventoryService;
 use App\Domains\SalesOrder\Application\UseCases\CreateSalesOrder;
 use App\Domains\SalesOrder\Application\UseCases\SubmitSalesOrder;
 use App\Domains\SalesOrder\Application\UseCases\ApproveSalesOrder;
@@ -29,7 +28,6 @@ class SalesOrderController extends Controller
     use HandlesUseCaseErrors;
 
     public function __construct(
-        protected ReserveInventoryService $reserveInventoryService,
         protected UpdateSalesOrder $updateSalesOrder
     ) {}
 

@@ -3,6 +3,7 @@
 namespace App\Domains\JobOrder\Application\UseCases;
 
 use App\Domains\JobOrder\Domain\Models\JobOrder;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -20,8 +21,8 @@ class StopTimer
             // Calculate elapsed for current session if running
             $elapsed = 0;
             if ($jobOrder->timer_status === 'running' && $jobOrder->timer_started_at) {
-                $elapsed = (int) now()->diffInSeconds($jobOrder->timer_started_at, false);
-                $elapsed = max(0, $elapsed);
+                $startedAt = Carbon::parse($jobOrder->timer_started_at);
+                $elapsed = (int) abs(Carbon::now()->diffInSeconds($startedAt));
             }
 
             $jobOrder->update([

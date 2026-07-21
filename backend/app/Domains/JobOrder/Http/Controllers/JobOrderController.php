@@ -29,6 +29,7 @@ class JobOrderController extends Controller
             'services.serviceType',
             'salesOrder',
             'vehicle',
+            'statusRecord',
         ]);
 
         if ($status && $status !== 'all') {
@@ -52,6 +53,19 @@ class JobOrderController extends Controller
 
         $results = $query->orderBy('date', 'desc')->paginate($perPage);
 
+        // Compute technicianName and statusRecord from eager-loaded data (avoids N+1)
+        $results->getCollection()->transform(function ($jo) {
+            $jo->technicianName = $jo->technicians
+                ->filter(fn($t) => is_null($t->removed_at) && $t->employee)
+                ->map(fn($t) => trim($t->employee->first_name . ' ' . $t->employee->last_name))
+                ->values()
+                ->implode(', ') ?: null;
+            $jo->statusRecord = $jo->statusRecord
+                ? $jo->statusRecord->only(['id', 'name', 'category'])
+                : null;
+            return $jo;
+        });
+
         return response()->json($results);
     }
 
@@ -66,9 +80,17 @@ class JobOrderController extends Controller
             'statusRecord',
         ])->findOrFail($id);
 
-        // Add computed elapsed seconds
+        // Add computed elapsed seconds, technicianName, and statusRecord
         $data = $jobOrder->toArray();
         $data['elapsed_seconds'] = $jobOrder->elapsed_seconds;
+        $data['technicianName'] = $jobOrder->technicians
+            ->filter(fn($t) => is_null($t->removed_at) && $t->employee)
+            ->map(fn($t) => trim($t->employee->first_name . ' ' . $t->employee->last_name))
+            ->values()
+            ->implode(', ') ?: null;
+        $data['statusRecord'] = $jobOrder->statusRecord
+            ? $jobOrder->statusRecord->only(['id', 'name', 'category'])
+            : null;
 
         return response()->json(['data' => $data]);
     }
@@ -109,6 +131,16 @@ class JobOrderController extends Controller
                 }
             }
 
+            // Create JobOrderTechnician record if technician_id provided
+            if (!empty($validated['technician_id'])) {
+                JobOrderTechnician::create([
+                    'JobOrderID' => $jobOrder->id,
+                    'employee_id' => $validated['technician_id'],
+                    'role' => 'PRIMARY',
+                    'assigned_at' => now(),
+                ]);
+            }
+
             if (!empty($validated['sale_order_id'])) {
                 DB::connection('pgsql')
                     ->table('Main.SalesOrder')
@@ -129,6 +161,7 @@ class JobOrderController extends Controller
 
         $validated = $request->validate([
             'vehicle_id' => 'sometimes|required|exists:CustomerVehicles,id',
+            'notes' => 'nullable|string',
             'services' => 'nullable|array',
             'services.*.service_id' => 'required_with:services|exists:ServiceType,id',
             'services.*.price' => 'nullable|numeric|min:0',
@@ -138,6 +171,9 @@ class JobOrderController extends Controller
             $updateData = [];
             if (isset($validated['vehicle_id'])) {
                 $updateData['vehicle_id_new'] = $validated['vehicle_id'];
+            }
+            if (array_key_exists('notes', $validated)) {
+                $updateData['notes'] = $validated['notes'];
             }
 
             if (!empty($updateData)) {
@@ -221,9 +257,14 @@ class JobOrderController extends Controller
             }
         }
 
+        $freshData = $jobOrder->fresh(['technicians.employee', 'services.serviceType', 'vehicle', 'statusRecord', 'salesOrder'])->toArray();
+        $freshData['statusRecord'] = $jobOrder->fresh()->statusRecord
+            ? $jobOrder->fresh()->statusRecord->only(['id', 'name', 'category'])
+            : null;
+
         return response()->json([
             'message' => 'Job order status updated successfully',
-            'data' => $jobOrder->fresh(['technicians.employee', 'services.serviceType', 'vehicle', 'statusRecord', 'salesOrder']),
+            'data' => $freshData,
             'so_completed' => $soCompleted,
             'so_started' => $soStarted,
         ]);

@@ -62,6 +62,7 @@ class AddEstimateItemsToSalesOrder
                     'quantity' => $quantity,
                     'UnitPrice' => $unitPrice,
                     'SubTotal' => $subTotal,
+                    'CostAtSale' => 0.00,
                     'TaxAtSale' => $taxAtSale,
                     'needs_ordering' => $estItem->needs_ordering ?? false,
                 ]);

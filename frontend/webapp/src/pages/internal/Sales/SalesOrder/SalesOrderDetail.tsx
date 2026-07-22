@@ -570,7 +570,7 @@ const SalesOrderDetails: React.FC = () => {
                 </>
               )}
 
-              {order.status === "IN_PROGRESS" && !isCounter && (
+              {order.status === "IN_PROGRESS" && !isCounter && !order.job_order && (
                 <>
                   <Button size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.complete)} disabled={isSubmitting}>
                     <CircleCheck className="w-4 h-4 mr-1" />

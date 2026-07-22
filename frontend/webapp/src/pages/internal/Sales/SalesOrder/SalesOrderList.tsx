@@ -58,6 +58,7 @@ interface SalesOrder {
   total: number;
   createdAt: string;
   deletedAt?: string | null;
+  hasUnissuedItems?: boolean;
   billing_statement?: { id: string; bill_number?: string; status?: string } | null;
 }
 
@@ -157,25 +158,31 @@ const SalesOrderList: React.FC = () => {
       const data = res.data.data || [];
       const pagination = res.data.pagination;
 
-      const normalized: SalesOrder[] = data.map((o: any) => ({
-        id: o.id,
-        so_number: o.so_number || o.id.substring(0, 8).toUpperCase(),
-        status: o.Status || "DRAFT",
-        type: o.type || "COUNTER",
-        customerName: o.customer
-          ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() || "—"
-          : "—",
-        plateNo: o.vehicle?.plate_number || "—",
-        itemCount: Array.isArray(o.items) ? o.items.length : 0,
-        total: Number(o.Total) || 0,
-        createdAt: o.created_at,
-        deletedAt: o.deleted_at,
-        billing_statement: o.billing_statement ? {
-          id: o.billing_statement.id,
-          bill_number: o.billing_statement.bill_number,
-          status: o.billing_statement.status,
-        } : null,
-      }));
+      const normalized: SalesOrder[] = data.map((o: any) => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const hasUnissuedItems = o.Status === "IN_PROGRESS" && items.some((i: any) => !i.is_issued && !i.needs_ordering);
+
+        return {
+          id: o.id,
+          so_number: o.so_number || o.id.substring(0, 8).toUpperCase(),
+          status: o.Status || "DRAFT",
+          type: o.type || "COUNTER",
+          customerName: o.customer
+            ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() || "—"
+            : "—",
+          plateNo: o.vehicle?.plate_number || "—",
+          itemCount: items.length,
+          total: Number(o.Total) || 0,
+          createdAt: o.created_at,
+          deletedAt: o.deleted_at,
+          hasUnissuedItems,
+          billing_statement: o.billing_statement ? {
+            id: o.billing_statement.id,
+            bill_number: o.billing_statement.bill_number,
+            status: o.billing_statement.status,
+          } : null,
+        };
+      });
 
       setOrders(normalized);
       if (pagination) {
@@ -437,6 +444,11 @@ const SalesOrderList: React.FC = () => {
                           {o.billing_statement?.status === "Paid" && (
                             <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/50 leading-none">
                               Paid
+                            </span>
+                          )}
+                          {o.hasUnissuedItems && (
+                            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/50 leading-none animate-pulse">
+                              Items Need Attention
                             </span>
                           )}
                         </div>

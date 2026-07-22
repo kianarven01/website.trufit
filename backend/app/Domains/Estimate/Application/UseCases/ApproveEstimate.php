@@ -43,13 +43,13 @@ class ApproveEstimate
 
             // ── Classify estimate items ──────────────────────────────
             // Tentative items are NOT copied to SO/JO — they stay on the estimate
-            // until confirmed by the user via "Add Item from Estimate" on the SO detail page.
+            // until the customer confirms them via "Add Item from Estimate" on the SO.
             $partSupplyItems = [];
             $serviceItems = [];
             $totalParts = 0.0;
 
             foreach ($estimate->items as $estItem) {
-                // Skip tentative items — they are not yet confirmed
+                // Skip tentative items — customer hasn't confirmed them yet
                 if (!empty($estItem->is_tentative)) {
                     continue;
                 }

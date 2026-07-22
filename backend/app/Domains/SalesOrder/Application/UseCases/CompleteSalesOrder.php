@@ -77,15 +77,13 @@ class CompleteSalesOrder
                     foreach ($joServices as $joService) {
                         $serviceName = $joService->serviceType->name ?? 'Service';
                         $price = (float) ($joService->PriceAtSale ?? 0);
-                        if ($price > 0) {
-                            $billingItems[] = [
-                                'name' => $serviceName,
-                                'qty' => 1,
-                                'price' => $price,
-                                'amount' => $price,
-                                'type' => 'service',
-                            ];
-                        }
+                        $billingItems[] = [
+                            'name' => $serviceName,
+                            'qty' => 1,
+                            'price' => $price,
+                            'amount' => $price,
+                            'type' => 'service',
+                        ];
                     }
                 }
 

@@ -231,7 +231,7 @@ const JobOrderList: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className={`inline-block w-2 h-2 rounded-full ${jo.timer_status === "running" ? "bg-green-500 animate-pulse" : jo.timer_status === "paused" ? "bg-amber-500" : "bg-gray-300"}`} />
                         <span className={`text-xs font-mono ${jo.timer_status === "running" ? "text-green-600 font-bold" : jo.timer_status === "paused" ? "text-amber-600" : "text-muted-foreground"}`}>
                           {formatTimerShort(jo.timer_total_seconds || 0)}
                         </span>

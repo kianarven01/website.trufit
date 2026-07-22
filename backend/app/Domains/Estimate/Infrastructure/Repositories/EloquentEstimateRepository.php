@@ -182,6 +182,9 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                         'is_tentative' => $item['is_tentative'] ?? false,
                     ]);
                 }
+
+                // Auto-sync newly-confirmed items to linked SO
+                $this->syncConfirmedItemsToSO($estimate);
             }
 
             return $estimate->load(['customer', 'vehicle', 'items', 'creator.employee', 'editor.employee', 'approver.employee']);
@@ -192,5 +195,84 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
     {
         $estimate = Estimate::findOrFail($id);
         return $estimate->delete();
+    }
+
+    /**
+     * Sync newly-confirmed (non-tentative) items from estimate to linked SO.
+     * Only adds items that are on the estimate but NOT yet on the SO.
+     */
+    private function syncConfirmedItemsToSO(Estimate $estimate): void
+    {
+        $salesOrder = \App\Domains\SalesOrder\Domain\Models\SalesOrder::where('estimate_id', $estimate->id)->first();
+        if (!$salesOrder || !in_array($salesOrder->Status, ['APPROVED', 'IN_PROGRESS'])) {
+            return;
+        }
+
+        $existingProductIds = $salesOrder->items->pluck('ProductID')->toArray();
+        $newItems = [];
+
+        foreach ($estimate->items as $estItem) {
+            // Only sync non-tentative part/supply items with a product_id
+            if (!empty($estItem->is_tentative)) {
+                continue;
+            }
+            if (!in_array($estItem->item_type, ['part', 'supply'], true) || !$estItem->product_id) {
+                continue;
+            }
+            // Skip if already on SO
+            if (in_array($estItem->product_id, $existingProductIds)) {
+                continue;
+            }
+
+            $quantity = (int) ($estItem->quantity ?? 1);
+            $unitPrice = round((float) ($estItem->unit_price ?? 0), 2);
+            $subTotal = round($quantity * $unitPrice, 2);
+
+            $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
+            $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+
+            $newItem = \App\Domains\SalesOrder\Domain\Models\SalesOrderItem::create([
+                'SalesOrderID' => $salesOrder->id,
+                'ProductID' => $estItem->product_id,
+                'quantity' => $quantity,
+                'UnitPrice' => $unitPrice,
+                'SubTotal' => $subTotal,
+                'CostAtSale' => 0.00,
+                'TaxAtSale' => $taxAtSale,
+                'needs_ordering' => $estItem->needs_ordering ?? false,
+            ]);
+
+            $newItems[] = $newItem;
+            $existingProductIds[] = $estItem->product_id;
+        }
+
+        // Sync needs_ordering flag and remove items now tentative on estimate
+        foreach ($salesOrder->items as $soItem) {
+            $estItem = $estimate->items->where('product_id', $soItem->ProductID)->first();
+            if ($estItem) {
+                // Sync needs_ordering flag
+                if ($soItem->needs_ordering !== (bool) ($estItem->needs_ordering ?? false)) {
+                    $soItem->update(['needs_ordering' => $estItem->needs_ordering ?? false]);
+                }
+
+                // Remove items that are now tentative on estimate (if not yet issued)
+                if (!empty($estItem->is_tentative) && !$soItem->is_issued) {
+                    $soItem->delete();
+                }
+            }
+        }
+
+        if (!empty($newItems)) {
+            // Auto-reserve newly added items
+            $reserveService = app(\App\Domains\SalesOrder\Application\Services\ReserveInventoryService::class);
+            $reserveService->reserveItems($newItems);
+
+            // Recalculate SO Total
+            $totalAmount = $salesOrder->items()->sum('SubTotal');
+            $salesOrder->update([
+                'Total' => $totalAmount,
+                'Balance' => $totalAmount,
+            ]);
+        }
     }
 }

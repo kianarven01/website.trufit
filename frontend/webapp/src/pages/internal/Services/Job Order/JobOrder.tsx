@@ -40,7 +40,7 @@ interface JobOrderRow {
   technician: { id: number; first_name: string; last_name: string } | null;
   vehicle: { id: number; plate_number: string; year_model: string; make: string; model: string; variant: string } | null;
   salesOrder: { id: string; so_number: string } | null;
-  services: { id: number; serviceType: { name: string } | null; PriceAtSale: number }[];
+  services: { id: number; service_type: { name: string } | null; PriceAtSale: number }[];
 }
 
 const statusFilterOptions: FilterOption[] = [
@@ -239,7 +239,7 @@ const JobOrderList: React.FC = () => {
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {jo.services?.length > 0
-                        ? jo.services.map((s) => s.serviceType?.name).filter(Boolean).join(", ")
+                        ? jo.services.map((s) => s.service_type?.name).filter(Boolean).join(", ")
                         : "—"}
                     </TableCell>
                     <TableCell>{getStatusBadge(jo.statusRecord?.name ?? "Pending")}</TableCell>

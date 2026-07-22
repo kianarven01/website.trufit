@@ -18,8 +18,16 @@ class CompleteJobOrder
         return DB::transaction(function () use ($id, $userId) {
             $jobOrder = JobOrder::lockForUpdate()->findOrFail($id);
 
-            // Load services with service type names
-            $jobOrder->load('services.serviceType', 'estimate');
+            // Load services with service type names directly
+            $services = \App\Domains\JobOrder\Domain\Models\JobOrderService::where('JobOrderID', $id)
+                ->with('serviceType')
+                ->get();
+            $jobOrder->setRelation('services', $services);
+
+            // Load estimate for customer_id
+            if ($jobOrder->estimate_id) {
+                $jobOrder->load('estimate');
+            }
 
             // Build billing items from JO services
             $billingItems = [];

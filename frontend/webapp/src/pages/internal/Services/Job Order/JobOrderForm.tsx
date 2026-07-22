@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { ArrowLeft, Plus, Trash2, Wrench } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Wrench, FileText } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";
 import Combobox from "@/components/ui/combobox";
@@ -71,6 +71,7 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
   const [technicianId, setTechnicianId] = useState<string>("");
   const [jobDate, setJobDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
+  const [notes, setNotes] = useState<string>("");
 
   // Add service form
   const [addServiceId, setAddServiceId] = useState<string>("");
@@ -78,6 +79,19 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
 
   // Loading
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isEdit && id) {
+      sessionStorage.setItem(`breadcrumb-/webapp/services/job-orders/${id}`, id);
+      window.dispatchEvent(new Event('breadcrumb-update'));
+    }
+    return () => {
+      if (isEdit && id) {
+        sessionStorage.removeItem(`breadcrumb-/webapp/services/job-orders/${id}`);
+        window.dispatchEvent(new Event('breadcrumb-update'));
+      }
+    };
+  }, [isEdit, id]);
 
   /* FETCH DATA */
   useEffect(() => {
@@ -109,10 +123,16 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
           setSelectedServices(
             (jo.services || []).map((s: any) => ({
               serviceId: s.ServiceID,
-              name: s.serviceType?.name || "Unknown Service",
+              name: s.service_type?.name || "Unknown Service",
               price: Number(s.PriceAtSale) || 0,
             }))
           );
+          setNotes(jo.notes || "");
+          // Update breadcrumb with JO number
+          if (jo.jo_number || jo.joNumber) {
+            sessionStorage.setItem(`breadcrumb-/webapp/services/job-orders/${id}`, jo.jo_number || jo.joNumber);
+            window.dispatchEvent(new Event('breadcrumb-update'));
+          }
         }
       } catch (err) {
         console.error("Failed to load form data", err);
@@ -141,7 +161,7 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
   }));
 
   const serviceList = serviceTypes.map((s) => ({
-    label: `${s.name} — ₱${Number(s.price).toLocaleString()}`,
+    label: s.name,
     value: s.id,
   }));
 
@@ -193,6 +213,7 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
         vehicle_id: parseInt(vehicleId),
         technician_id: parseInt(technicianId),
         date: jobDate,
+        notes: notes || null,
         services: selectedServices.map((s) => ({
           service_id: s.serviceId,
           price: s.price,
@@ -222,16 +243,15 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back
           </Button>
-          <h1 className="text-lg font-semibold">{isEdit ? "Edit Job Order" : "New Job Order"}</h1>
         </div>
         <Button size="sm" onClick={handleSave} disabled={isSaving}>
           {isSaving ? "Saving..." : isEdit ? "Update Job Order" : "Create Job Order"}
         </Button>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4">
         {/* LEFT COLUMN */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* CUSTOMER & VEHICLE */}
           <Card>
             <CardHeader>
@@ -293,6 +313,24 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* NOTES */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                <h2 className="text-sm font-semibold">Notes / Recommendations</h2>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add notes, recommendations, or special instructions..."
+                className="w-full min-h-[80px] bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              />
             </CardContent>
           </Card>
 

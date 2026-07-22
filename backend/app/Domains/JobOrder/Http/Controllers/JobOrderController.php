@@ -80,7 +80,7 @@ class JobOrderController extends Controller
             'statusRecord',
         ])->findOrFail($id);
 
-        // Add computed elapsed seconds, technicianName, and statusRecord
+        // Add computed elapsed seconds, technicianName, statusRecord, and salesOrder
         $data = $jobOrder->toArray();
         $data['elapsed_seconds'] = $jobOrder->elapsed_seconds;
         $data['technicianName'] = $jobOrder->technicians
@@ -91,6 +91,34 @@ class JobOrderController extends Controller
         $data['statusRecord'] = $jobOrder->statusRecord
             ? $jobOrder->statusRecord->only(['id', 'name', 'category'])
             : null;
+        // Include salesOrder with items (belongsTo not in toArray)
+        if ($jobOrder->salesOrder) {
+            $so = $jobOrder->salesOrder;
+            $data['salesOrder'] = [
+                'id' => $so->id,
+                'so_number' => $so->so_number,
+                'Status' => $so->Status,
+                'Total' => $so->Total,
+                'items' => $so->items->map(fn($item) => [
+                    'id' => $item->id,
+                    'ProductID' => $item->ProductID,
+                    'quantity' => $item->quantity,
+                    'UnitPrice' => $item->UnitPrice,
+                    'SubTotal' => $item->SubTotal,
+                    'is_issued' => (bool) $item->is_issued,
+                    'product' => $item->product ? [
+                        'name' => $item->product->name,
+                        'SKU' => $item->product->SKU,
+                        'part_number' => $item->product->part_number,
+                        'manufacturer_name' => $item->product->manufacturer_name,
+                        'category_is_spol' => $item->product->category_is_spol,
+                        'category_name' => $item->product->category_name,
+                    ] : null,
+                ])->toArray(),
+            ];
+        } else {
+            $data['salesOrder'] = null;
+        }
 
         return response()->json(['data' => $data]);
     }
@@ -161,6 +189,7 @@ class JobOrderController extends Controller
 
         $validated = $request->validate([
             'vehicle_id' => 'sometimes|required|exists:CustomerVehicles,id',
+            'technician_id' => 'nullable|exists:Employees,id',
             'notes' => 'nullable|string',
             'services' => 'nullable|array',
             'services.*.service_id' => 'required_with:services|exists:ServiceType,id',
@@ -187,6 +216,21 @@ class JobOrderController extends Controller
                         'JobOrderID' => $jobOrder->id,
                         'ServiceID' => $svc['service_id'],
                         'PriceAtSale' => $svc['price'] ?? 0,
+                    ]);
+                }
+            }
+
+            // Handle technician assignment
+            if (array_key_exists('technician_id', $validated)) {
+                // Remove existing active technicians
+                $jobOrder->technicians()->whereNull('removed_at')->update(['removed_at' => now()]);
+                // Add new technician if provided
+                if (!empty($validated['technician_id'])) {
+                    JobOrderTechnician::create([
+                        'JobOrderID' => $jobOrder->id,
+                        'employee_id' => $validated['technician_id'],
+                        'role' => 'PRIMARY',
+                        'assigned_at' => now(),
                     ]);
                 }
             }

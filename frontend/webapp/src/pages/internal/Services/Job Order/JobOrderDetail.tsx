@@ -34,6 +34,7 @@ import {
   UserPlus,
   Trash2,
   Box,
+  Fuel,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";
@@ -61,11 +62,13 @@ interface ServiceType {
   id: string;
   name: string;
   price: number;
+  tasks?: string[];
 }
 
 interface JOService {
   id: number;
-  serviceType: ServiceType | null;
+  ServiceID: string;
+  service_type: ServiceType | null;
   PriceAtSale: number;
 }
 
@@ -84,7 +87,7 @@ interface SalesOrder {
   so_number: string;
   Status: string;
   Total: number;
-  items?: { id: string; ProductID: string; quantity: number; UnitPrice: number; SubTotal: number; product?: { name: string; SKU: string; part_number?: string } }[];
+  items?: { id: string; ProductID: string; quantity: number; UnitPrice: number; SubTotal: number; is_issued?: boolean; product?: { name: string; SKU: string; part_number?: string; manufacturer_name?: string; category_is_spol?: boolean; category_name?: string } }[];
 }
 
 interface BillingStatement {
@@ -141,12 +144,17 @@ const JobOrderDetail: React.FC = () => {
   const [assignRole, setAssignRole] = useState("PRIMARY");
   const [employees, setEmployees] = useState<Technician[]>([]);
 
+  // Notes
+  const [notes, setNotes] = useState<string>("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
   /* FETCH */
   const fetchJobOrder = useCallback(async () => {
     try {
       setIsLoading(true);
       const res = await api.get(`/job-orders/${id}`);
       setJobOrder(res.data.data);
+      setNotes(res.data.data?.notes || "");
     } catch (err) {
       console.error(err);
       toast.error("Failed to load job order");
@@ -196,10 +204,19 @@ const JobOrderDetail: React.FC = () => {
 
   /* EMPLOYEES FETCH */
   useEffect(() => {
-    api.get("/admin/employees").then((res) => {
-      setEmployees(res.data.data || []);
-    });
-  }, []);
+    const fetchEmployees = async () => {
+      try {
+        const res = await api.get("/admin/employees");
+        const rawData = res.data;
+        const data = rawData?.data || rawData || [];
+        const list = Array.isArray(data) ? data : [];
+        setEmployees(list);
+      } catch (err) {
+        console.error("Failed to load employees", err);
+      }
+    };
+    fetchEmployees();
+  }, [id]);
 
   /* STATUS */
   const hasValidStatus = !!jobOrder?.statusRecord?.name;
@@ -211,9 +228,6 @@ const JobOrderDetail: React.FC = () => {
       case "In Progress": return <Badge variant="received">In Progress</Badge>;
       case "Pending": return <Badge variant="for-approval">Pending</Badge>;
       case "Cancelled": return <Badge variant="cancelled">Cancelled</Badge>;
-      case "Paid": return <Badge variant="approved">Paid</Badge>;
-      case "Unpaid": return <Badge variant="for-approval">Unpaid</Badge>;
-      case "Partially Paid": return <Badge variant="received">Partially Paid</Badge>;
       default: return <Badge variant="default">{status}</Badge>;
     }
   };
@@ -244,6 +258,20 @@ const JobOrderDetail: React.FC = () => {
       fetchJobOrder();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to update timer");
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!id) return;
+    try {
+      setIsSavingNotes(true);
+      await api.patch(`/job-orders/${id}`, { notes: notes || null });
+      toast.success("Notes saved");
+      setJobOrder((prev) => prev ? { ...prev, notes } : null);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to save notes");
+    } finally {
+      setIsSavingNotes(false);
     }
   };
 
@@ -300,7 +328,6 @@ const JobOrderDetail: React.FC = () => {
 
   const activeTechs = (jobOrder.technicians || []).filter((t) => !t.removed_at);
   const pastTechs = (jobOrder.technicians || []).filter((t) => t.removed_at);
-  const totalServices = jobOrder.services.reduce((sum, s) => sum + (Number(s.PriceAtSale) || 0), 0);
   const employeeList = employees.map((e) => ({
     label: `${e.first_name || ""} ${e.last_name || ""}`.trim(),
     value: String(e.id),
@@ -321,7 +348,7 @@ const JobOrderDetail: React.FC = () => {
               <Button variant="outline" size="sm" onClick={() => navigate(`/webapp/services/job-orders/${id}/edit`)}>
                 Edit
               </Button>
-              {currentStatus === "Pending" && (!jobOrder?.salesOrder || jobOrder.salesOrder.Status === "APPROVED") && (
+              {currentStatus === "Pending" && activeTechs.length > 0 && (!jobOrder?.salesOrder || ["APPROVED", "IN_PROGRESS"].includes(jobOrder.salesOrder.Status)) && (
                 <Button size="sm" onClick={() => setConfirmAction("start-job")} className="bg-blue-600 hover:bg-blue-700">
                   <Play className="w-4 h-4 mr-1.5" />
                   Start Job
@@ -433,12 +460,6 @@ const JobOrderDetail: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  {jobOrder.notes && (
-                    <div>
-                      <Label className="text-muted-foreground font-normal text-xs">Notes</Label>
-                      <p className="text-sm mt-1">{jobOrder.notes}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -472,124 +493,118 @@ const JobOrderDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* TECHNICIANS */}
-          <Card>
-            <CardHeader className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="size-5 text-orange-500" />
-                  <h2 className="text-sm font-semibold text-foreground">Assigned Technicians</h2>
+          {/* TECHNICIANS + NOTES */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* TECHNICIANS */}
+            <Card>
+              <CardHeader className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <User className="size-5 text-orange-500" />
+                    <h2 className="text-sm font-semibold text-foreground">Assigned Technicians</h2>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setIsAssignTechOpen(true)}>
+                    <UserPlus className="w-4 h-4 mr-1" />
+                    Assign Tech
+                  </Button>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setIsAssignTechOpen(true)}>
-                  <UserPlus className="w-4 h-4 mr-1" />
-                  Assign Tech
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {activeTechs.length > 0 || pastTechs.length > 0 ? (
-                <div className="space-y-2">
-                  {activeTechs.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">Active</p>
-                      {activeTechs.map((ta) => (
-                        <div key={ta.id} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-sm font-bold text-green-700 dark:text-green-300">
-                              {ta.employee?.first_name?.[0]}{ta.employee?.last_name?.[0]}
+              </CardHeader>
+              <CardContent>
+                {activeTechs.length > 0 || pastTechs.length > 0 ? (
+                  <div className="space-y-2">
+                    {activeTechs.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase">Active</p>
+                        {activeTechs.map((ta) => (
+                          <div key={ta.id} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-sm font-bold text-green-700 dark:text-green-300">
+                                {ta.employee?.first_name?.[0]}{ta.employee?.last_name?.[0]}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{ta.employee?.first_name} {ta.employee?.last_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ta.role} · Since {new Date(ta.assigned_at).toLocaleString()}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{ta.employee?.first_name} {ta.employee?.last_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {ta.role} · Since {new Date(ta.assigned_at).toLocaleString()}
-                              </p>
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveTech(ta.employee_id)}
+                              className="text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveTech(ta.employee_id)}
-                            className="text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {pastTechs.length > 0 && (
-                    <div className="space-y-2 mt-4">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">Previous Stints</p>
-                      {pastTechs.map((ta) => (
-                        <div key={ta.id} className="flex items-center justify-between p-3 bg-muted/30 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
-                              {ta.employee?.first_name?.[0]}{ta.employee?.last_name?.[0]}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{ta.employee?.first_name} {ta.employee?.last_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {ta.role} · {formatTimer(ta.accumulated_seconds)} accumulated
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-center text-sm text-muted-foreground py-6">No technicians assigned yet.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* SERVICES */}
-          <Card>
-            <CardHeader className="py-4">
-              <div className="flex items-center gap-2">
-                <Wrench className="size-5 text-orange-500" />
-                <h2 className="text-sm font-semibold text-foreground">Services</h2>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg overflow-hidden">
-                <Table className="[&_tr]:hover:!bg-transparent text-center">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="text-xs text-center">Service</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {jobOrder.services.length > 0 ? (
-                      jobOrder.services.map((svc) => (
-                        <TableRow key={svc.id} className="hover:bg-transparent text-center">
-                          <TableCell className="font-medium text-center">
-                            {svc.serviceType?.name || "Unknown Service"}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={1} className="text-center text-sm text-muted-foreground py-8">
-                          No services added.
-                        </TableCell>
-                      </TableRow>
+                        ))}
+                      </div>
                     )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* SO PARTS */}
-          {jobOrder.salesOrder?.items && jobOrder.salesOrder.items.length > 0 && (
+                    {pastTechs.length > 0 && (
+                      <div className="space-y-2 mt-4">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase">Previous Stints</p>
+                        {pastTechs.map((ta) => (
+                          <div key={ta.id} className="flex items-center justify-between p-3 bg-muted/30 border rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
+                                {ta.employee?.first_name?.[0]}{ta.employee?.last_name?.[0]}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{ta.employee?.first_name} {ta.employee?.last_name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ta.role} · {formatTimer(ta.accumulated_seconds)} accumulated
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground py-6">No technicians assigned yet.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* NOTES */}
+            <Card>
+              <CardHeader className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="size-5 text-blue-500" />
+                    <h2 className="text-sm font-semibold text-foreground">Notes / Recommendations</h2>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleSaveNotes}
+                    disabled={isSavingNotes}
+                  >
+                    {isSavingNotes ? "Saving..." : "Save Notes"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add notes, recommendations, or special instructions..."
+                  className="w-full min-h-[120px] bg-background border border-input rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* SERVICES + PARTS/SUPPLIES ROW */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            {/* SERVICES */}
             <Card>
               <CardHeader className="py-4">
                 <div className="flex items-center gap-2">
-                  <Box className="size-5 text-orange-500" />
-                  <h2 className="text-sm font-semibold text-foreground">Parts (from Sales Order)</h2>
+                  <Wrench className="size-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Services</h2>
                 </div>
               </CardHeader>
               <CardContent>
@@ -597,35 +612,105 @@ const JobOrderDetail: React.FC = () => {
                   <Table className="[&_tr]:hover:!bg-transparent text-center">
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs text-center">Part Name</TableHead>
-                        <TableHead className="text-xs text-center">Part Number</TableHead>
-                        <TableHead className="text-xs text-center">Qty</TableHead>
+                        <TableHead className="text-xs text-center">Service</TableHead>
+                        <TableHead className="text-xs text-center">Tasks</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {jobOrder.salesOrder.items.map((item) => (
-                        <TableRow key={item.id} className="hover:bg-transparent text-center">
-                          <TableCell className="font-medium text-center">
-                            {item.product?.name || "Unknown Part"}
+                      {jobOrder.services.length > 0 ? (
+                        jobOrder.services.map((svc) => (
+                          <TableRow key={svc.id} className="hover:bg-transparent text-center">
+                            <TableCell className="font-medium text-center">
+                              {svc.service_type?.name || `Service (${svc.ServiceID || "?"})`}
+                            </TableCell>
+                            <TableCell className="text-left text-xs text-muted-foreground">
+                            {svc.service_type?.tasks && svc.service_type.tasks.length > 0 ? (
+                              <ul className="list-disc pl-4 space-y-0.5">
+                                {svc.service_type.tasks.map((task, i) => (
+                                    <li key={i}>{task}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={2} className="text-center text-sm text-muted-foreground py-8">
+                            No services added.
                           </TableCell>
-                          <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                            {item.product?.part_number || item.product?.SKU || "—"}
-                          </TableCell>
-                          <TableCell className="text-center">{item.quantity}</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>
               </CardContent>
             </Card>
-          )}
+
+            {/* SO PARTS & SUPPLIES */}
+            <Card>
+              <CardHeader className="py-4">
+                <div className="flex items-center gap-2">
+                  <Box className="size-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Parts & Supplies (from Sales Order)</h2>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {jobOrder.salesOrder?.items && jobOrder.salesOrder.items.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table className="[&_tr]:hover:!bg-transparent text-center">
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="text-xs text-center">Item Name</TableHead>
+                          <TableHead className="text-xs text-center">Part Number</TableHead>
+                          <TableHead className="text-xs text-center">Qty</TableHead>
+                          <TableHead className="text-xs text-center">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {jobOrder.salesOrder.items.map((item) => {
+                          const isSundries = item.product?.category_is_spol && item.product?.category_name?.toLowerCase() === "sundries";
+                          return (
+                            <TableRow key={item.id} className="hover:bg-transparent text-center">
+                              <TableCell className="font-medium text-center">
+                                {item.product?.manufacturer_name ? `${item.product.manufacturer_name} — ` : ""}{item.product?.name || "Unknown Item"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                                {item.product?.part_number || item.product?.SKU || "—"}
+                              </TableCell>
+                              <TableCell className="text-center">{item.quantity}</TableCell>
+                              <TableCell className="text-center">
+                                {!isSundries && item.is_issued ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200">
+                                    Issued
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground py-6">No parts or supplies from Sales Order.</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* LINKED BILLING */}
           {jobOrder.billingStatements && jobOrder.billingStatements.length > 0 && (
             <Card>
               <CardHeader className="py-4">
-                <h2 className="text-sm font-semibold text-foreground">Linked Billing Statements</h2>
+                <div className="flex items-center gap-2">
+                  <FileText className="size-5 text-blue-500" />
+                  <h2 className="text-sm font-semibold text-foreground">Linked Billing Statements</h2>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="border rounded-lg overflow-hidden">
@@ -662,7 +747,7 @@ const JobOrderDetail: React.FC = () => {
 
       {/* ASSIGN TECH DIALOG */}
       <AlertDialog open={isAssignTechOpen} onOpenChange={setIsAssignTechOpen}>
-        <AlertDialogContent className="z-[120]">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Assign Technician</AlertDialogTitle>
             <AlertDialogDescription>

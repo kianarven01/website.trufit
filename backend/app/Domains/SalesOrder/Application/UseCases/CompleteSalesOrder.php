@@ -39,11 +39,13 @@ class CompleteSalesOrder
             if (!$billExists) {
                 $grandTotal = (float)$salesOrder->Total;
 
-                // Load items with product, category, and linked JO with services
+                // Load items with product, category
                 $salesOrder->load([
                     'items.product.category',
-                    'jobOrder.services.serviceType',
                 ]);
+
+                // Load JO directly from relationship
+                $jobOrder = $salesOrder->jobOrder;
 
                 // Build billing items from SO items (parts/supplies)
                 $billingItems = [];
@@ -67,8 +69,12 @@ class CompleteSalesOrder
                 }
 
                 // Add JO services (labor) to billing items
-                if ($salesOrder->job_order) {
-                    foreach ($salesOrder->job_order->services as $joService) {
+                if ($jobOrder) {
+                    $joServices = \App\Domains\JobOrder\Domain\Models\JobOrderService::where('JobOrderID', $jobOrder->id)
+                        ->with('serviceType')
+                        ->get();
+
+                    foreach ($joServices as $joService) {
                         $serviceName = $joService->serviceType->name ?? 'Service';
                         $price = (float) ($joService->PriceAtSale ?? 0);
                         if ($price > 0) {
@@ -86,7 +92,7 @@ class CompleteSalesOrder
                 $this->createBillingStatement->execute([
                     'customer_id' => $salesOrder->customerID,
                     'so_id' => $salesOrder->id,
-                    'jo_id' => $salesOrder->job_order_id,
+                    'jo_id' => $jobOrder?->id,
                     'date' => now(),
                     'total' => $grandTotal,
                     'tax' => 0,

@@ -40,6 +40,10 @@ class CreateSalesOrder
 
                     if (empty($items)) {
                         foreach ($estimate->items as $estItem) {
+                            // Skip tentative items — they stay on the estimate
+                            if (!empty($estItem->is_tentative)) {
+                                continue;
+                            }
                             if (in_array($estItem->item_type, ['part', 'supply'], true)) {
                                 $items[] = [
                                     'product_id' => $estItem->product_id,

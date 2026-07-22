@@ -198,8 +198,9 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
     }
 
     /**
-     * Sync newly-confirmed (non-tentative) items from estimate to linked SO.
-     * Only adds items that are on the estimate but NOT yet on the SO.
+     * Sync confirmed items from estimate to linked SO and JO.
+     * Adds new parts/supplies to SO and new services to JO.
+     * Removes items now tentative on estimate (if not yet issued).
      */
     private function syncConfirmedItemsToSO(Estimate $estimate): void
     {
@@ -208,21 +209,14 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             return;
         }
 
+        // ── Sync parts/supplies to SO ──
         $existingProductIds = $salesOrder->items->pluck('ProductID')->toArray();
         $newItems = [];
 
         foreach ($estimate->items as $estItem) {
-            // Only sync non-tentative part/supply items with a product_id
-            if (!empty($estItem->is_tentative)) {
-                continue;
-            }
-            if (!in_array($estItem->item_type, ['part', 'supply'], true) || !$estItem->product_id) {
-                continue;
-            }
-            // Skip if already on SO
-            if (in_array($estItem->product_id, $existingProductIds)) {
-                continue;
-            }
+            if (!empty($estItem->is_tentative)) continue;
+            if (!in_array($estItem->item_type, ['part', 'supply'], true) || !$estItem->product_id) continue;
+            if (in_array($estItem->product_id, $existingProductIds)) continue;
 
             $quantity = (int) ($estItem->quantity ?? 1);
             $unitPrice = round((float) ($estItem->unit_price ?? 0), 2);
@@ -250,29 +244,85 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         foreach ($salesOrder->items as $soItem) {
             $estItem = $estimate->items->where('product_id', $soItem->ProductID)->first();
             if ($estItem) {
-                // Sync needs_ordering flag
                 if ($soItem->needs_ordering !== (bool) ($estItem->needs_ordering ?? false)) {
                     $soItem->update(['needs_ordering' => $estItem->needs_ordering ?? false]);
                 }
-
-                // Remove items that are now tentative on estimate (if not yet issued)
                 if (!empty($estItem->is_tentative) && !$soItem->is_issued) {
                     $soItem->delete();
                 }
             }
         }
 
+        // Auto-reserve newly added items and recalculate SO Total
         if (!empty($newItems)) {
-            // Auto-reserve newly added items
             $reserveService = app(\App\Domains\SalesOrder\Application\Services\ReserveInventoryService::class);
             $reserveService->reserveItems($newItems);
 
-            // Recalculate SO Total
             $totalAmount = $salesOrder->items()->sum('SubTotal');
             $salesOrder->update([
                 'Total' => $totalAmount,
                 'Balance' => $totalAmount,
             ]);
         }
+
+        // ── Sync services to JO ──
+        $jobOrder = $salesOrder->jobOrder;
+        if (!$jobOrder) {
+            // No JO exists — create one if there are services
+            $hasServices = $estimate->items->where('item_type', 'service')
+                ->where('is_tentative', false)
+                ->whereNotNull('service_id')
+                ->isNotEmpty();
+
+            if ($hasServices) {
+                $jobOrder = $this->createJobOrderForSO($salesOrder, $estimate);
+            }
+        }
+
+        if ($jobOrder) {
+            $existingServiceIds = $jobOrder->services->pluck('ServiceID')->toArray();
+
+            foreach ($estimate->items as $estItem) {
+                if (!empty($estItem->is_tentative)) continue;
+                if ($estItem->item_type !== 'service' || !$estItem->service_id) continue;
+                if (in_array($estItem->service_id, $existingServiceIds)) continue;
+
+                \App\Domains\JobOrder\Domain\Models\JobOrderService::create([
+                    'JobOrderID' => $jobOrder->id,
+                    'ServiceID' => $estItem->service_id,
+                    'PriceAtSale' => (float) ($estItem->unit_price ?? 0),
+                ]);
+                $existingServiceIds[] = $estItem->service_id;
+            }
+        }
+    }
+
+    /**
+     * Create a Job Order for a Sales Order that doesn't have one yet.
+     */
+    private function createJobOrderForSO(\App\Domains\SalesOrder\Domain\Models\SalesOrder $salesOrder, Estimate $estimate): \App\Domains\JobOrder\Domain\Models\JobOrder
+    {
+        $pendingStatusId = DB::connection('pgsql')
+            ->table('Main.Status')
+            ->where('name', 'Pending')
+            ->where('category', 'JOB_ORDER')
+            ->value('id');
+
+        $joNumber = \App\Domains\JobOrder\Domain\Models\JobOrder::generateJoNumber();
+
+        $jobOrder = \App\Domains\JobOrder\Domain\Models\JobOrder::create([
+            'jo_number' => $joNumber,
+            'SaleOrderID' => $salesOrder->id,
+            'estimate_id' => $estimate->id,
+            'VehicleID' => '',
+            'TechnicianID' => null,
+            'date' => now(),
+            'status' => $pendingStatusId,
+            'vehicle_id_new' => $estimate->vehicle_id,
+        ]);
+
+        $salesOrder->update(['job_order_id' => $jobOrder->id]);
+
+        return $jobOrder;
     }
 }

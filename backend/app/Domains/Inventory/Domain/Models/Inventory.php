@@ -3,12 +3,20 @@
 namespace App\Domains\Inventory\Domain\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasEvents;
 use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
 use App\Domains\Inventory\Domain\Models\StockLocation;
 
 class Inventory extends Model
 {
+    use HasEvents;
+
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::observe(\App\Domains\Inventory\Observers\InventoryObserver::class);
+    }
     public $timestamps = false;
 
     protected $table = 'Inventory';

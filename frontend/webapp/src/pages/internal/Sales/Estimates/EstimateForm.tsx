@@ -84,6 +84,7 @@ interface Product {
   price: number;
   unit: string;
   quantityOnHand: number | null;
+  reservedQuantity: number | null;
   reorderLevel: number | null;
   productId?: string;
   supplierName?: string;
@@ -493,6 +494,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             price,
             unit: product.unit_name || product.unit?.name || "pc",
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reservedQuantity: Number(row.reserved_quantity ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             supplierName,
             categoryIsSpol: Boolean(row.product?.category_is_spol),
@@ -528,6 +530,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
               price,
               unit: p.unit_name || "pc",
               quantityOnHand: null,
+              reservedQuantity: null,
               reorderLevel: null,
               categoryIsSpol: true,
               categoryName: p.category_name || null,
@@ -592,7 +595,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           setSelectedVehicle(normalizedVeh);
           setMileage(found.mileage ?? 0);
           setNotes(found.notes ?? "");
-          setDownpayment(Number(found.downpayment_amount) ?? 0);
+          setDownpayment(Number(found.downpayment_amount) || 0);
 
           const dbItems = found.items || [];
           const serviceItems = dbItems.filter((i: any) => i.item_type === "service");
@@ -786,9 +789,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
           if (found) {
             const qty = Number(updated.quantity) || 0;
-            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-            updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+            const availableStock = (found.quantityOnHand ?? 0) - (found.reservedQuantity ?? 0);
+            updated.needsOrdering = updated.isTentative ? false : (availableStock <= 0 || qty > availableStock);
           }
         }
 
@@ -802,9 +804,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             updated.quantity = qty;
             updated.amount = found ? qty * found.price : 0;
             if (found) {
-              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+              const availableStock = (found.quantityOnHand ?? 0) - (found.reservedQuantity ?? 0);
+              updated.needsOrdering = updated.isTentative ? false : (availableStock <= 0 || qty > availableStock);
             }
           }
         }
@@ -874,9 +875,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             updated.amount = found ? (Number(updated.quantity) || 0) * found.price : 0;
             if (found) {
               const qty = Number(updated.quantity) || 0;
-              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+              const availableStock = (found.quantityOnHand ?? 0) - (found.reservedQuantity ?? 0);
+              updated.needsOrdering = updated.isTentative ? false : (availableStock <= 0 || qty > availableStock);
             }
           }
         }
@@ -898,9 +898,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             updated.quantity = isSundries ? 1 : qty;
             updated.amount = found ? (isSundries ? 1 : qty) * (updated.manualPrice || found.price || 0) : 0;
             if (!isSundries && found) {
-              const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-              const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-              updated.needsOrdering = updated.isTentative ? false : (isOutOfStock || isShortage);
+              const availableStock = (found.quantityOnHand ?? 0) - (found.reservedQuantity ?? 0);
+              updated.needsOrdering = updated.isTentative ? false : (availableStock <= 0 || qty > availableStock);
             }
           }
         }
@@ -1728,7 +1727,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               <input
                                 type="checkbox"
                                 checked={l.needsOrdering}
-                                disabled={l.isTentative}
+                                disabled={l.isTentative || (() => {
+                                  const p = partsMap[l.ProductId];
+                                  if (!p) return false;
+                                  const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                  return avail >= Number(l.quantity);
+                                })()}
                                 onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
                                 className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
                               />
@@ -1752,9 +1756,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                         const found = partsMap[line.ProductId];
                                         if (found) {
                                           const qty = Number(line.quantity || 0);
-                                          const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-                                          const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-                                          needsOrdering = isOutOfStock || isShortage;
+                                          const availableStock = (found.quantityOnHand ?? 0) - (found.reservedQuantity ?? 0);
+                                          needsOrdering = availableStock <= 0 || qty > availableStock;
                                         }
                                       }
                                     }
@@ -1914,7 +1917,12 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                 <input
                                   type="checkbox"
                                   checked={l.needsOrdering}
-                                  disabled={l.isTentative}
+                                  disabled={l.isTentative || (() => {
+                                    const p = partsMap[l.ProductId];
+                                    if (!p) return false;
+                                    const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                    return avail >= Number(l.quantity);
+                                  })()}
                                   onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
                                   className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
                                 />
@@ -1942,9 +1950,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                           const found = partsMap[line.ProductId];
                                           if (found) {
                                             const qty = Number(line.quantity || 0);
-                                            const isOutOfStock = found.quantityOnHand === null || found.quantityOnHand <= 0;
-                                            const isShortage = found.quantityOnHand !== null && qty > found.quantityOnHand;
-                                            needsOrdering = isOutOfStock || isShortage;
+                                            const availableStock = (found.quantityOnHand ?? 0) - (found.reservedQuantity ?? 0);
+                                            needsOrdering = availableStock <= 0 || qty > availableStock;
                                           }
                                         }
                                       }

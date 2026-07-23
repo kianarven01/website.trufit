@@ -103,6 +103,9 @@ class ApproveEstimate
                 foreach ($partSupplyItems as $item) {
                     if (empty($item['product_id'])) continue;
 
+                    $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
+                    $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+
                     SalesOrderItem::create([
                         'id' => (string) Str::uuid(),
                         'SalesOrderID' => $salesOrder->id,
@@ -111,6 +114,7 @@ class ApproveEstimate
                         'UnitPrice' => $item['unit_price'],
                         'SubTotal' => $item['subtotal'],
                         'CostAtSale' => 0.00,
+                        'TaxAtSale' => $taxAtSale,
                         'needs_ordering' => $item['needs_ordering'],
                     ]);
                 }

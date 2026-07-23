@@ -478,4 +478,80 @@ class SalesOrderTest extends TestCase
         $this->inventory->refresh();
         $this->assertGreaterThan(0, $this->inventory->reserved_quantity);
     }
+
+    public function test_needs_ordering_auto_clears_on_restock()
+    {
+        $this->actingAs($this->user);
+
+        // Start with zero stock so item is flagged needs_ordering
+        $this->inventory->update(['quantity_on_hand' => 0]);
+
+        // Create SO via API
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => true,
+                ]
+            ]
+        ]);
+        $response->assertStatus(201);
+        $soId = $response->json('data.id');
+
+        // Submit + Approve
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Verify item needs ordering
+        $item = SalesOrderItem::where('SalesOrderID', $soId)->first();
+        $this->assertTrue($item->needs_ordering);
+
+        // Restock inventory (increase quantity_on_hand from 0 to 10)
+        $this->inventory->update(['quantity_on_hand' => 10]);
+
+        // Verify needs_ordering was auto-cleared by InventoryObserver
+        $item->refresh();
+        $this->assertFalse($item->needs_ordering);
+    }
+
+    public function test_needs_ordering_not_cleared_when_stock_insufficient()
+    {
+        $this->actingAs($this->user);
+
+        // Start with zero stock
+        $this->inventory->update(['quantity_on_hand' => 0]);
+
+        // Create SO via API
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 10,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => true,
+                ]
+            ]
+        ]);
+        $response->assertStatus(201);
+        $soId = $response->json('data.id');
+
+        // Submit + Approve
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Restock but not enough for the order (need 10, have 5)
+        $this->inventory->update(['quantity_on_hand' => 5]);
+
+        // Verify needs_ordering is NOT cleared (stock still insufficient)
+        $item = SalesOrderItem::where('SalesOrderID', $soId)->first();
+        $this->assertTrue($item->needs_ordering);
+    }
 }

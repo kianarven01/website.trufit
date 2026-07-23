@@ -204,6 +204,9 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
      */
     private function syncConfirmedItemsToSO(Estimate $estimate): void
     {
+        // Reload items to get fresh data after delete+recreate in update()
+        $estimate->load('items');
+
         $salesOrder = \App\Domains\SalesOrder\Domain\Models\SalesOrder::where('estimate_id', $estimate->id)->first();
         if (!$salesOrder || !in_array($salesOrder->Status, ['APPROVED', 'IN_PROGRESS'])) {
             return;
@@ -261,7 +264,6 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             $totalAmount = $salesOrder->items()->sum('SubTotal');
             $salesOrder->update([
                 'Total' => $totalAmount,
-                'Balance' => $totalAmount,
             ]);
         }
 

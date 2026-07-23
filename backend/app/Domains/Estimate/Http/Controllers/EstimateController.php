@@ -91,7 +91,7 @@ class EstimateController extends Controller
                 'items.*.item_type' => 'required|string|in:service,part,supply',
                 'items.*.product_id' => 'nullable|uuid',
                 'items.*.service_id' => 'nullable|uuid',
-                'items.*.quantity' => 'required|numeric',
+                'items.*.quantity' => 'required|numeric|min:1',
                 'items.*.unit_price' => 'required|numeric',
                 'items.*.subtotal' => 'required|numeric',
                 'items.*.needs_ordering' => 'nullable|boolean',
@@ -144,7 +144,7 @@ class EstimateController extends Controller
                 'items.*.item_type' => 'required|string|in:service,part,supply',
                 'items.*.product_id' => 'nullable|uuid',
                 'items.*.service_id' => 'nullable|uuid',
-                'items.*.quantity' => 'required|numeric',
+                'items.*.quantity' => 'required|numeric|min:1',
                 'items.*.unit_price' => 'required|numeric',
                 'items.*.subtotal' => 'required|numeric',
                 'items.*.needs_ordering' => 'nullable|boolean',
@@ -222,9 +222,9 @@ class EstimateController extends Controller
                 return response()->json(['message' => 'Estimate not found.'], 404);
             }
 
-            if (!in_array(strtoupper($estimate->status ?? ''), ['DRAFT', 'FOR APPROVAL', 'FOR_APPROVAL', 'CANCELLED'], true)) {
+            if (!in_array(strtoupper($estimate->status ?? ''), ['DRAFT', 'CANCELLED'], true)) {
                 return response()->json([
-                    'message' => 'Only draft, for approval, or cancelled estimates can be archived.',
+                    'message' => 'Only draft or cancelled estimates can be archived.',
                 ], 422);
             }
 

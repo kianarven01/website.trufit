@@ -69,6 +69,7 @@ interface Product {
   price: number;
   unit: string;
   quantityOnHand: number | null;
+  reservedQuantity: number | null;
   reorderLevel: number | null;
   categoryIsSpol?: boolean;
   categoryName?: string;
@@ -242,6 +243,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
             price: Number(row.selling_price || 0),
             unit: product.unit?.name || "pc",
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reservedQuantity: Number(row.reserved_quantity ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             categoryIsSpol: Boolean(product.category_is_spol || product.category?.is_spol || row.category_is_spol),
             categoryName: product.category_name || product.category?.name || null,
@@ -271,6 +273,7 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
               price,
               unit: p.unit_name || "pc",
               quantityOnHand: null,
+              reservedQuantity: null,
               reorderLevel: null,
               categoryIsSpol: true,
               categoryName: p.category_name || null,
@@ -438,8 +441,8 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
           updated.taxCode = isSundries ? 'VAT' : (product ? product.taxCode : undefined);
           updated.categoryName = product ? product.categoryName : undefined;
           if (product && !isSundries) {
-            const qoh = product.quantityOnHand ?? 0;
-            updated.needsOrdering = updated.quantity > qoh;
+            const availableStock = (product.quantityOnHand ?? 0) - (product.reservedQuantity ?? 0);
+            updated.needsOrdering = updated.quantity > availableStock;
           }
         }
 
@@ -450,8 +453,8 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
 
           const product = partsMap[updated.ProductId];
           if (product) {
-            const qoh = product.quantityOnHand ?? 0;
-            updated.needsOrdering = qty > qoh;
+            const availableStock = (product.quantityOnHand ?? 0) - (product.reservedQuantity ?? 0);
+            updated.needsOrdering = qty > availableStock;
           }
         }
 
@@ -947,6 +950,12 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                 <input
                                   type="checkbox"
                                   checked={l.needsOrdering}
+                                  disabled={(() => {
+                                    const p = partsMap[l.ProductId];
+                                    if (!p) return false;
+                                    const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                    return avail >= l.quantity;
+                                  })()}
                                   onChange={(e) =>
                                     updateLine(
                                       l.id,
@@ -1148,6 +1157,12 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                   <input
                                     type="checkbox"
                                     checked={l.needsOrdering}
+                                    disabled={(() => {
+                                      const p = partsMap[l.ProductId];
+                                      if (!p) return false;
+                                      const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                      return avail >= l.quantity;
+                                    })()}
                                     onChange={(e) =>
                                       updateLine(
                                         l.id,

@@ -76,6 +76,12 @@ class ApproveEstimate
             $salesOrder = null;
             $jobOrder = null;
 
+            // Set estimate status to APPROVED
+            $estimate->update([
+                'status' => 'APPROVED',
+                'approved_by' => $authUserId,
+            ]);
+
             // ── 1. Create Sales Order (only if parts/supplies exist) ──
             if (!empty($partSupplyItems)) {
                 do {

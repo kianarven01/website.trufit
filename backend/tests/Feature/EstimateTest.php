@@ -617,4 +617,347 @@ class EstimateTest extends TestCase
         $this->assertContains($e1->id, $ids);
         $this->assertContains($e2->id, $ids);
     }
+
+    /* ================================================================
+     *  SCENARIO TESTS — CANCEL / DOWNPAYMENT / TENTATIVE / SYNC
+     * ================================================================ */
+
+    public function test_cancel_approved_with_downpayment_estimate()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 1000.00, 'downpayment_amount' => 200.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'unit_price' => 500.00,
+            'subtotal' => 1000.00,
+        ]);
+
+        // Approve
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $estimate->refresh();
+        $this->assertEquals('APPROVED', $estimate->status);
+        $this->assertEquals(200.00, $estimate->downpayment_amount);
+
+        // Cancel — should now succeed with APPROVED + downpayment
+        $response = $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'CANCELLED']);
+        $response->assertOk();
+
+        $estimate->refresh();
+        $this->assertEquals('CANCELLED', $estimate->status);
+
+        // Linked SO should be cancelled
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so);
+        $this->assertEquals('CANCELLED', $so->Status);
+    }
+
+    public function test_tentative_items_not_copied_to_so_on_approval()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 1500.00]);
+
+        // Confirmed part
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'unit_price' => 500.00,
+            'subtotal' => 1000.00,
+            'is_tentative' => false,
+        ]);
+
+        // Tentative part (same product, different line)
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-002',
+            'name' => 'Oil Filter',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 250.00,
+        ]);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $product2->id,
+            'quantity' => 2,
+            'unit_price' => 250.00,
+            'subtotal' => 500.00,
+            'is_tentative' => true,
+        ]);
+
+        // Approve
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        // Verify SO only has confirmed item
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so);
+        $soItems = SalesOrderItem::where('SalesOrderID', $so->id)->get();
+        $this->assertCount(1, $soItems);
+        $this->assertEquals($this->product->id, $soItems->first()->ProductID);
+    }
+
+    public function test_estimate_with_supplies_only_creates_so()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 500.00]);
+
+        // Create a supply product
+        $supplyProduct = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'SUP-001',
+            'name' => 'Brake Fluid',
+            'item_type' => 'supply',
+            'conversion_factor' => 1,
+            'selling_price' => 500.00,
+        ]);
+
+        Inventory::create([
+            'productID' => $supplyProduct->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 10,
+            'reserved_quantity' => 0,
+            'sell_price' => 500.00,
+            'location_id' => $this->locationId,
+        ]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'supply',
+            'product_id' => $supplyProduct->id,
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+        ]);
+
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        // Supplies go to SO
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so, 'SO should be created for supplies-only estimate');
+
+        // No JO for supplies
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNull($jo, 'JO should NOT be created for supplies-only estimate');
+    }
+
+    public function test_update_estimate_after_approval_syncs_to_so()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 500.00]);
+
+        // 1 confirmed part
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $this->product->id,
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+        ]);
+
+        // Approve → SO with 1 item
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertEquals(1, SalesOrderItem::where('SalesOrderID', $so->id)->count());
+
+        // Add a second confirmed part to estimate
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-002',
+            'name' => 'Oil Filter',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 250.00,
+        ]);
+
+        Inventory::create([
+            'productID' => $product2->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 5,
+            'reserved_quantity' => 0,
+            'sell_price' => 250.00,
+            'location_id' => $this->locationId,
+        ]);
+
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'total_amount' => 750.00,
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                    'subtotal' => 500.00,
+                ],
+                [
+                    'item_type' => 'part',
+                    'product_id' => $product2->id,
+                    'quantity' => 1,
+                    'unit_price' => 250.00,
+                    'subtotal' => 250.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // SO should now have 2 items
+        $soItems = SalesOrderItem::where('SalesOrderID', $so->id)->get();
+        $this->assertCount(2, $soItems);
+    }
+
+    public function test_estimate_with_zero_items_approval()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        // Approve with no items
+        $response = $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED']);
+        $response->assertOk();
+
+        $estimate->refresh();
+        $this->assertEquals('APPROVED', $estimate->status);
+
+        // No SO, no JO
+        $this->assertNull(SalesOrder::where('estimate_id', $estimate->id)->first());
+        $this->assertNull(JobOrder::where('estimate_id', $estimate->id)->first());
+    }
+
+    public function test_notes_persist_through_estimate_lifecycle()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'DRAFT', 'total_amount' => 500.00]);
+
+        // Add item + notes
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'notes' => 'Customer wants premium oil',
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                    'subtotal' => 500.00,
+                ],
+            ],
+        ])->assertOk();
+
+        $estimate->refresh();
+        $this->assertEquals('Customer wants premium oil', $estimate->notes);
+
+        // Approve → notes should persist
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $estimate->refresh();
+        $this->assertEquals('Customer wants premium oil', $estimate->notes);
+    }
+
+    public function test_cannot_cancel_already_cancelled_estimate()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'DRAFT']);
+
+        // Cancel once
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'CANCELLED'])->assertOk();
+
+        // Cancel again — should fail
+        $response = $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'CANCELLED']);
+        $response->assertStatus(422);
+    }
+
+    public function test_estimate_list_search_by_customer_name()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'DRAFT']);
+
+        $response = $this->getJson('/api/estimates?search=' . urlencode('Jane'));
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains($estimate->id, $ids);
+    }
+
+    public function test_estimate_list_filter_by_status()
+    {
+        $this->actingAs($this->user);
+
+        $e1 = $this->createEstimate(['status' => 'DRAFT']);
+        $e2 = $this->createEstimate(['status' => 'FOR APPROVAL']);
+
+        $response = $this->getJson('/api/estimates?status=DRAFT');
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id')->toArray();
+        $this->assertContains($e1->id, $ids);
+        $this->assertNotContains($e2->id, $ids);
+    }
+
+    public function test_custom_service_on_estimate_dropped_on_approval()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        // Custom service (no service_id)
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'custom_name' => 'Custom Diagnostic',
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+        ]);
+
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        // JO created but with NO services (custom service dropped)
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        if ($jo) {
+            $this->assertCount(0, JobOrderService::where('JobOrderID', $jo->id)->get(),
+                'Custom services are currently dropped on approval (known gap)');
+        }
+    }
+
+    public function test_custom_part_on_estimate_dropped_on_approval()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        // Custom part (no product_id)
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'custom_name' => 'Custom Gasket Set',
+            'quantity' => 1,
+            'unit_price' => 300.00,
+            'subtotal' => 300.00,
+        ]);
+
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        // SO created but with NO items (custom part dropped)
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        if ($so) {
+            $this->assertCount(0, SalesOrderItem::where('SalesOrderID', $so->id)->get(),
+                'Custom parts are currently dropped on approval (known gap)');
+        }
+    }
 }

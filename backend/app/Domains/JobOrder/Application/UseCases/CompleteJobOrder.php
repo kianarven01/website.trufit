@@ -36,20 +36,14 @@ class CompleteJobOrder
             foreach ($jobOrder->services as $joService) {
                 $serviceName = $joService->serviceType->name ?? 'Service';
                 $price = (float) ($joService->PriceAtSale ?? 0);
-                if ($price > 0) {
-                    $billingItems[] = [
-                        'name' => $serviceName,
-                        'qty' => 1,
-                        'price' => $price,
-                        'amount' => $price,
-                        'type' => 'service',
-                    ];
-                    $grandTotal += $price;
-                }
-            }
-
-            if (empty($billingItems)) {
-                return $jobOrder;
+                $billingItems[] = [
+                    'name' => $serviceName,
+                    'qty' => 1,
+                    'price' => $price,
+                    'amount' => $price,
+                    'type' => 'service',
+                ];
+                $grandTotal += $price;
             }
 
             // Check if billing statement already exists
@@ -58,17 +52,20 @@ class CompleteJobOrder
                 ->exists();
 
             if (!$billExists) {
-                $this->createBillingStatement->execute([
-                    'customer_id' => $jobOrder->estimate?->customer_id ?? $jobOrder->salesOrder?->customerID,
-                    'jo_id' => $jobOrder->id,
-                    'date' => now(),
-                    'total' => $grandTotal,
-                    'tax' => 0,
-                    'vehicle_id' => $jobOrder->vehicle_id_new,
-                    'notes' => 'Automatically generated billing statement from Completed Job Order ' . ($jobOrder->jo_number ?? $jobOrder->id),
-                    'items' => $billingItems,
-                    'created_by' => $userId,
-                ]);
+                $customerId = $jobOrder->estimate?->customer_id ?? $jobOrder->salesOrder?->customerID;
+                if ($customerId) {
+                    $this->createBillingStatement->execute([
+                        'customer_id' => $customerId,
+                        'jo_id' => $jobOrder->id,
+                        'date' => now(),
+                        'total' => $grandTotal,
+                        'tax' => 0,
+                        'vehicle_id' => $jobOrder->vehicle_id_new,
+                        'notes' => 'Automatically generated billing statement from Completed Job Order ' . ($jobOrder->jo_number ?? $jobOrder->id),
+                        'items' => $billingItems,
+                        'created_by' => $userId,
+                    ]);
+                }
             }
 
             return $jobOrder->fresh();

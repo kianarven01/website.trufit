@@ -174,10 +174,16 @@ class EstimateController extends Controller
                 ]);
             }
 
-            $estimate = $this->estimateRepo->update($id, $validated);
-
             // Auto-create SO + JO when estimate is approved
+            // Don't set status via repo — ApproveEstimate handles it atomically
             if (isset($validated['status']) && in_array(strtoupper($validated['status']), ['APPROVED', 'APPROVED WITH DOWNPAYMENT', 'APPROVED_WITH_DOWNPAYMENT'])) {
+                // Save non-status fields first (downpayment, notes, etc.)
+                $statusPayload = ['status' => $validated['status']];
+                $otherFields = array_diff_key($validated, $statusPayload);
+                if (!empty($otherFields)) {
+                    $this->estimateRepo->update($id, $otherFields);
+                }
+
                 $employeeId = auth()->user() ? auth()->user()->employeeID : null;
                 $result = app(\App\Domains\Estimate\Application\UseCases\ApproveEstimate::class)
                     ->execute($id, $employeeId);
@@ -195,12 +201,19 @@ class EstimateController extends Controller
                 ]);
             }
 
+            $estimate = $this->estimateRepo->update($id, $validated);
+
             return response()->json([
                 'status' => 'success',
                 'data' => $estimate,
             ]);
         } catch (ValidationException $e) {
             throw $e;
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], $e->getCode() >= 400 ? $e->getCode() : 422);
         } catch (\Exception $e) {
             Log::error('Failed to update estimate: ' . $e->getMessage());
             return response()->json([

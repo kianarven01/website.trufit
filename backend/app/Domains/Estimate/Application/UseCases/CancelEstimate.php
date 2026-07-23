@@ -24,13 +24,13 @@ class CancelEstimate
             $estimate = Estimate::lockForUpdate()->findOrFail($estimateId);
             $upperStatus = strtoupper($estimate->status ?? '');
 
-            // Guard: only DRAFT, FOR APPROVAL, or APPROVED can be cancelled
-            if (!in_array($upperStatus, ['DRAFT', 'FOR APPROVAL', 'FOR_APPROVAL', 'APPROVED'])) {
+            // Guard: only DRAFT, FOR APPROVAL, or APPROVED (with or without downpayment) can be cancelled
+            if (!in_array($upperStatus, ['DRAFT', 'FOR APPROVAL', 'FOR_APPROVAL', 'APPROVED', 'APPROVED WITH DOWNPAYMENT', 'APPROVED_WITH_DOWNPAYMENT'])) {
                 throw new RuntimeException('This estimate cannot be cancelled.', 422);
             }
 
             // For APPROVED estimates, check conditions before cascading
-            if (in_array($upperStatus, ['APPROVED'])) {
+            if (in_array($upperStatus, ['APPROVED', 'APPROVED WITH DOWNPAYMENT', 'APPROVED_WITH_DOWNPAYMENT'])) {
                 $this->checkApprovalConditions($estimateId);
             }
 

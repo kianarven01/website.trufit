@@ -47,6 +47,7 @@ class SalesOrderController extends Controller
             'approvedByUser',
             'submittedByUser.employee',
             'cancelledByUser.employee',
+            'completedByUser.employee',
             'startedByUser.employee',
             'billingStatement',
         ]);
@@ -104,6 +105,7 @@ class SalesOrderController extends Controller
             'approvedByUser',
             'submittedByUser.employee',
             'cancelledByUser.employee',
+            'completedByUser.employee',
             'startedByUser.employee',
         ])->find($id);
 

@@ -39,6 +39,7 @@ class SalesOrder extends Model
         'submitted_at',
         'cancelled_by',
         'cancelled_at',
+        'completed_by',
         'completed_at',
         'started_by',
         'started_at',
@@ -61,6 +62,7 @@ class SalesOrder extends Model
         'approved_by',
         'submitted_by',
         'cancelled_by',
+        'completed_by',
         'started_by',
     ];
 
@@ -69,6 +71,7 @@ class SalesOrder extends Model
         'submittedByName',
         'approvedByName',
         'cancelledByName',
+        'completedByName',
         'startedByName',
     ];
 
@@ -123,6 +126,11 @@ class SalesOrder extends Model
         return $this->belongsTo(User::class, 'cancelled_by', 'id');
     }
 
+    public function completedByUser()
+    {
+        return $this->belongsTo(User::class, 'completed_by', 'id');
+    }
+
     public function startedByUser()
     {
         return $this->belongsTo(User::class, 'started_by', 'id');
@@ -153,6 +161,13 @@ class SalesOrder extends Model
     {
         return $this->cancelledByUser?->employee
             ? trim($this->cancelledByUser->employee->first_name . ' ' . $this->cancelledByUser->employee->last_name)
+            : null;
+    }
+
+    public function getCompletedByNameAttribute(): ?string
+    {
+        return $this->completedByUser?->employee
+            ? trim($this->completedByUser->employee->first_name . ' ' . $this->completedByUser->employee->last_name)
             : null;
     }
 

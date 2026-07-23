@@ -28,6 +28,7 @@ class CompleteSalesOrder
 
             $salesOrder->update([
                 'Status' => 'COMPLETED',
+                'completed_by' => $userId,
                 'completed_at' => now(),
             ]);
 
@@ -60,7 +61,7 @@ class CompleteSalesOrder
                     }
 
                     $billingItems[] = [
-                        'name' => $item->product->name ?? 'Unknown',
+                        'name' => $item->product?->name ?? 'Unknown',
                         'qty' => $item->quantity,
                         'price' => $item->UnitPrice,
                         'amount' => $item->quantity * $item->UnitPrice,

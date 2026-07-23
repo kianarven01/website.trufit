@@ -9,6 +9,8 @@ use App\Domains\Product\Domain\Models\Product;
 use App\Domains\Inventory\Domain\Models\Inventory;
 use App\Domains\SalesOrder\Domain\Models\SalesOrder;
 use App\Domains\SalesOrder\Domain\Models\SalesOrderItem;
+use App\Domains\Billing\Domain\Models\BillingStatement;
+use App\Domains\Billing\Domain\Models\BillingStatementItem;
 use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Employee\Domain\Models\Employee;
 use App\Domains\Supplier\Domain\Models\Supplier;
@@ -553,5 +555,658 @@ class SalesOrderTest extends TestCase
         // Verify needs_ordering is NOT cleared (stock still insufficient)
         $item = SalesOrderItem::where('SalesOrderID', $soId)->first();
         $this->assertTrue($item->needs_ordering);
+    }
+
+    /* ================================================================
+     *  SCENARIO TESTS — COUNTER / ISSUE / RETURN / VOID / COMPLETE
+     * ================================================================ */
+
+    public function test_counter_sale_full_flow()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'COUNTER',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => false,
+                ],
+            ],
+        ]);
+        $response->assertStatus(201);
+        $soId = $response->json('data.id');
+
+        // Submit
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+
+        // Approve → counter auto-issues + creates billing
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('APPROVED', $so->Status);
+
+        // Verify stock was deducted
+        $this->inventory->refresh();
+        $this->assertEquals(8, $this->inventory->quantity_on_hand);
+
+        // Verify billing was created
+        $bill = BillingStatement::where('SOID', $soId)->where('status', '!=', 'Cancelled')->first();
+        $this->assertNotNull($bill, 'Counter sale should auto-create billing');
+        $this->assertEquals(1000.00, $bill->Total);
+    }
+
+    public function test_issue_items_reduces_inventory()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 3,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => false,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(3, $this->inventory->reserved_quantity);
+
+        // Issue
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(7, $this->inventory->quantity_on_hand);
+        $this->assertEquals(0, $this->inventory->reserved_quantity);
+    }
+
+    public function test_issue_items_transitions_to_in_progress()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('IN_PROGRESS', $so->Status);
+    }
+
+    public function test_return_items_restores_inventory()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(8, $this->inventory->quantity_on_hand);
+
+        // Return
+        $this->postJson("/api/sales-orders/{$soId}/return", [
+            'returns' => [
+                ['id' => $itemId, 'quantity' => 2],
+            ],
+        ])->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(10, $this->inventory->quantity_on_hand);
+    }
+
+    public function test_cannot_return_more_than_issued()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertOk();
+
+        // Try to return 2 when only 1 was issued
+        $response = $this->postJson("/api/sales-orders/{$soId}/return", [
+            'returns' => [
+                ['id' => $itemId, 'quantity' => 2],
+            ],
+        ]);
+        $response->assertStatus(422);
+    }
+
+    public function test_start_work_transitions_to_in_progress()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('IN_PROGRESS', $so->Status);
+        $this->assertNotNull($so->started_by);
+    }
+
+    public function test_complete_so_creates_billing()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('COMPLETED', $so->Status);
+
+        // Billing created
+        $bill = BillingStatement::where('SOID', $soId)->where('status', '!=', 'Cancelled')->first();
+        $this->assertNotNull($bill);
+        $this->assertEquals(1000.00, $bill->Total);
+
+        // Billing items
+        $billItems = BillingStatementItem::where('BillingStatementID', $bill->id)->get();
+        $this->assertGreaterThanOrEqual(1, $billItems->count());
+    }
+
+    public function test_void_returns_correct_stock_quantity()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 5,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        // Issue all 5
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(5, $this->inventory->quantity_on_hand);
+
+        // Item was partially returned (1 unit) before void
+        $this->postJson("/api/sales-orders/{$soId}/return", [
+            'returns' => [
+                ['id' => $itemId, 'quantity' => 1],
+            ],
+        ])->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(6, $this->inventory->quantity_on_hand);
+
+        // Void → should return 4 (5 issued - 1 returned), not 5 (full qty)
+        $this->postJson("/api/sales-orders/{$soId}/void")->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(10, $this->inventory->quantity_on_hand);
+    }
+
+    public function test_reopen_cancelled_so_re_reserves_stock()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => false,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $this->inventory->refresh();
+        $this->assertEquals(2, $this->inventory->reserved_quantity);
+
+        // Cancel
+        $this->postJson("/api/sales-orders/{$soId}/cancel")->assertOk();
+        $this->inventory->refresh();
+        $this->assertEquals(0, $this->inventory->reserved_quantity);
+
+        // Reopen
+        $this->postJson("/api/sales-orders/{$soId}/reopen")->assertOk();
+        $this->inventory->refresh();
+        $this->assertEquals(2, $this->inventory->reserved_quantity);
+    }
+
+    public function test_reopen_completed_so_to_in_progress()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('COMPLETED', $so->Status);
+
+        // Reopen
+        $this->postJson("/api/sales-orders/{$soId}/reopen")->assertOk();
+        $so->refresh();
+        $this->assertEquals('IN_PROGRESS', $so->Status);
+    }
+
+    public function test_cannot_issue_needs_ordering_items()
+    {
+        $this->actingAs($this->user);
+
+        $this->inventory->update(['quantity_on_hand' => 0]);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $response = $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ]);
+        $response->assertStatus(422);
+    }
+
+    public function test_cannot_issue_more_than_available_stock()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO for 10 items (all available stock)
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 10,
+                    'unit_price' => 500.00,
+                    'needs_ordering' => false,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Reduce available stock (simulating another order consuming it)
+        $this->inventory->update(['quantity_on_hand' => 3]);
+
+        // Try to issue → should fail (only 3 available, need 10)
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $response = $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ]);
+        $response->assertStatus(422);
+    }
+
+    public function test_add_estimate_items_to_so()
+    {
+        $this->actingAs($this->user);
+
+        // Create second product
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-002',
+            'name' => 'Oil Filter',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 250.00,
+        ]);
+
+        Inventory::create([
+            'productID' => $product2->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 5,
+            'reserved_quantity' => 0,
+            'sell_price' => 250.00,
+            'location_id' => $this->inventory->location_id,
+        ]);
+
+        // Create estimate + items directly
+        $estimate = \App\Domains\Estimate\Domain\Models\Estimate::create([
+            'id' => (string) Str::uuid(),
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'status' => 'FOR APPROVAL',
+            'total_amount' => 500.00,
+            'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
+            'created_by' => $this->user->id,
+        ]);
+
+        $estItem1 = \App\Domains\Estimate\Domain\Models\EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $this->product->id,
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+        ]);
+
+        $estItem2 = \App\Domains\Estimate\Domain\Models\EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $product2->id,
+            'quantity' => 2,
+            'unit_price' => 250.00,
+            'subtotal' => 500.00,
+        ]);
+
+        // Approve estimate → creates SO with both parts
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so);
+        $initialCount = SalesOrderItem::where('SalesOrderID', $so->id)->count();
+        $this->assertEquals(2, $initialCount, 'SO should have both estimate items after approval');
+
+        // Add a THIRD estimate item AFTER approval (this one won't be on SO yet)
+        $product3 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-003',
+            'name' => 'Air Filter',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 150.00,
+        ]);
+        Inventory::create([
+            'productID' => $product3->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 5,
+            'reserved_quantity' => 0,
+            'sell_price' => 150.00,
+            'location_id' => $this->inventory->location_id,
+        ]);
+
+        $estItem3 = \App\Domains\Estimate\Domain\Models\EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $product3->id,
+            'quantity' => 1,
+            'unit_price' => 150.00,
+            'subtotal' => 150.00,
+        ]);
+
+        // Add third item from estimate
+        $response = $this->postJson("/api/sales-orders/{$so->id}/add-items", [
+            'estimate_item_ids' => [$estItem3->id],
+        ]);
+        $response->assertOk();
+
+        $newCount = SalesOrderItem::where('SalesOrderID', $so->id)->count();
+        $this->assertEquals(3, $newCount);
+    }
+
+    public function test_cannot_update_non_draft_so()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+
+        $this->putJson("/api/sales-orders/{$soId}", [
+            'notes' => 'Should fail',
+        ])->assertStatus(422);
+    }
+
+    public function test_counter_sale_no_start_work()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'COUNTER',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Start work should fail for COUNTER
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertStatus(422);
+    }
+
+    public function test_complete_sales_order_records_completed_by()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertNotNull($so->completed_by, 'completed_by should be set');
+        $this->assertEquals($this->user->id, $so->completed_by);
+    }
+
+    public function test_cannot_void_non_approved_so()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        // DRAFT → void should fail
+        $this->postJson("/api/sales-orders/{$soId}/void")->assertStatus(422);
+    }
+
+    public function test_cannot_issue_on_completed_so()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
+
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$itemId],
+        ])->assertStatus(422);
     }
 }

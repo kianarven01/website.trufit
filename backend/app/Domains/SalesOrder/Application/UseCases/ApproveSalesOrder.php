@@ -65,7 +65,7 @@ class ApproveSalesOrder
                         }
 
                         $billingItems[] = [
-                            'name' => $item->product->name ?? 'Unknown',
+                            'name' => $item->product?->name ?? 'Unknown',
                             'qty' => $item->quantity,
                             'price' => $item->UnitPrice,
                             'amount' => $item->quantity * $item->UnitPrice,

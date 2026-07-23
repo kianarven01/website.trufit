@@ -126,6 +126,7 @@ interface SalesOrder {
   submittedByName?: string;
   approvedByName?: string;
   cancelledByName?: string;
+  completedByName?: string;
   startedByName?: string;
   submittedAt?: string;
   approvedAt?: string;
@@ -279,12 +280,14 @@ const SalesOrderDetails: React.FC = () => {
         balance: Number(o.Balance) || 0,
         remarks: o.remarks || "",
         mileage: Number(o.mileage) || 0,
+        archived: !!o.deleted_at,
         createdAt: o.created_at,
         updatedAt: o.updated_at,
         createdByName: o.createdByName,
         submittedByName: o.submittedByName,
         approvedByName: o.approvedByName,
         cancelledByName: o.cancelledByName,
+        completedByName: o.completedByName,
         startedByName: o.startedByName,
         submittedAt: o.submitted_at,
         approvedAt: o.approved_at,
@@ -1338,7 +1341,7 @@ const SalesOrderDetails: React.FC = () => {
                   <div className="flex items-start gap-3">
                     <CircleCheck className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Completed</p>
+                      <p className="text-xs text-muted-foreground">Completed{order.completedByName ? ` by ${order.completedByName}` : ""}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(order.completedAt).toLocaleDateString("en-PH", {
                           month: "short",

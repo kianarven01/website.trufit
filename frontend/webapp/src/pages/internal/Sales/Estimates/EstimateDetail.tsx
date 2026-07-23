@@ -1007,7 +1007,9 @@ const EstimateDetail: React.FC = () => {
                       (estimate.status === "DRAFT" ||
                         estimate.status?.toUpperCase() === "FOR APPROVAL" ||
                         estimate.status?.toUpperCase() === "FOR_APPROVAL" ||
-                        estimate.status === "APPROVED") && (
+                        estimate.status === "APPROVED" ||
+                        estimate.status?.toUpperCase() === "APPROVED WITH DOWNPAYMENT" ||
+                        estimate.status?.toUpperCase() === "APPROVED_WITH_DOWNPAYMENT") && (
                         <Button
                           className="w-full shadow-md"
                           size="lg"

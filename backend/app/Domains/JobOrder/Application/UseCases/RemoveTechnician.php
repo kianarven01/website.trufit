@@ -26,9 +26,9 @@ class RemoveTechnician
             // Calculate accumulated time if JO timer was running during this assignment
             $accumulated = $assignment->accumulated_seconds ?? 0;
 
-            if ($jobOrder->timer_status === 'running' && $assignment->assigned_at) {
+            if (strtolower($jobOrder->timer_status ?? '') === 'running' && $assignment->assigned_at) {
                 // Add time from assignment to now (if timer was running during this period)
-                $elapsed = (int) now()->diffInSeconds($assignment->assigned_at, false);
+                $elapsed = (int) abs(now()->diffInSeconds($assignment->assigned_at));
                 $accumulated += max(0, $elapsed);
             }
 

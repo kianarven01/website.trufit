@@ -46,7 +46,7 @@ class VoidSalesOrder
                     }
 
                     $inventory->update([
-                        'quantity_on_hand' => $inventory->quantity_on_hand + $item->quantity,
+                        'quantity_on_hand' => $inventory->quantity_on_hand + ($item->quantity - $item->quantity_returned),
                     ]);
 
                     $item->update([

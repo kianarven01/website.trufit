@@ -14,6 +14,7 @@ class JobOrderService extends Model
     protected $fillable = [
         'JobOrderID',
         'ServiceID',
+        'custom_name',
         'PriceAtSale',
     ];
 

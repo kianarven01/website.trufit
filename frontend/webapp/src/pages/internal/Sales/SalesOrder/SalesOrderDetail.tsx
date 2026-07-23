@@ -93,6 +93,7 @@ interface Vehicle {
 interface Product {
   id: string;
   name: string;
+  customName?: string | null;
   manufacturer: string;
   sku: string;
   taxCode: string | null;
@@ -166,6 +167,10 @@ const SalesOrderDetails: React.FC = () => {
   const [selectedParts, setSelectedParts] = useState<Set<string>>(new Set());
   const [selectedSpol, setSelectedSpol] = useState<Set<string>>(new Set());
   const [estimateItemsModalOpen, setEstimateItemsModalOpen] = useState(false);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
+  const [linkSearchQuery, setLinkSearchQuery] = useState("");
+  const [linkProducts, setLinkProducts] = useState<any[]>([]);
   const [availableEstimateItems, setAvailableEstimateItems] = useState<any[]>([]);
   const [selectedEstimateItems, setSelectedEstimateItems] = useState<Set<string>>(new Set());
   const [isLoadingEstimateItems, setIsLoadingEstimateItems] = useState(false);
@@ -223,7 +228,8 @@ const SalesOrderDetails: React.FC = () => {
         }
         return {
           id: i.id,
-          name: product?.name || "Unknown Product",
+          name: i.custom_name || product?.name || "Unknown Product",
+          customName: i.custom_name || null,
           manufacturer: product?.manufacturer?.name || "",
           sku: product?.part_number || product?.SKU || "—",
           taxCode: i.TaxAtSale
@@ -464,6 +470,43 @@ const SalesOrderDetails: React.FC = () => {
       toast.error(err.response?.data?.message || "Failed to add items");
     } finally {
       setIsAddingItems(false);
+    }
+  };
+
+  const openLinkModal = (itemId: string) => {
+    setLinkingItemId(itemId);
+    setLinkSearchQuery("");
+    setLinkProducts([]);
+    setLinkModalOpen(true);
+  };
+
+  const searchProductsForLink = async (query: string) => {
+    setLinkSearchQuery(query);
+    if (query.length < 2) {
+      setLinkProducts([]);
+      return;
+    }
+    try {
+      const res = await api.get(`/products?search=${encodeURIComponent(query)}`);
+      const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setLinkProducts(data.slice(0, 10));
+    } catch {
+      setLinkProducts([]);
+    }
+  };
+
+  const handleLinkItem = async (productId: string) => {
+    if (!order || !linkingItemId) return;
+    try {
+      await api.post(`/sales-orders/${order.id}/items/${linkingItemId}/link`, {
+        product_id: productId,
+      });
+      toast.success("Item linked to inventory product.");
+      setLinkModalOpen(false);
+      setLinkingItemId(null);
+      fetchOrderDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to link item");
     }
   };
 
@@ -869,6 +912,16 @@ const SalesOrderDetails: React.FC = () => {
                               )}
                               <TableCell className="text-left px-4">
                                 <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
+                                {p.customName && !p.isIssued && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                                  <Button
+                                    variant="link"
+                                    size="sm"
+                                    className="h-5 p-0 ml-2 text-[10px]"
+                                    onClick={() => openLinkModal(p.id)}
+                                  >
+                                    Link to Inventory
+                                  </Button>
+                                )}
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
                                 {p.sku}
@@ -1530,7 +1583,53 @@ const SalesOrderDetails: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Return Parts Modal */}
+      {/* Link Custom Item to Inventory Modal */}
+      <Dialog open={linkModalOpen} onOpenChange={setLinkModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Link to Inventory Product</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Search products by name or SKU..."
+              value={linkSearchQuery}
+              onChange={(e) => searchProductsForLink(e.target.value)}
+              autoFocus
+            />
+            {linkProducts.length > 0 ? (
+              <div className="border rounded-lg max-h-64 overflow-y-auto">
+                {linkProducts.map((p: any) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between px-3 py-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                    onClick={() => handleLinkItem(p.id)}
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.sku || p.SKU || "—"} · {p.manufacturer_name || "—"}
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {p.quantity_on_hand != null ? `Stock: ${p.quantity_on_hand}` : "Not tracked"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : linkSearchQuery.length >= 2 ? (
+              <div className="py-8 text-center text-muted-foreground border border-dashed rounded-lg">
+                <p className="text-sm">No products found</p>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground border border-dashed rounded-lg">
+                <p className="text-sm">Type at least 2 characters to search</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Items Modal */}
       <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>

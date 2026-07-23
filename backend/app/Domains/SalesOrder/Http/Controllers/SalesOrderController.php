@@ -17,6 +17,7 @@ use App\Domains\SalesOrder\Application\UseCases\StartWorkSalesOrder;
 use App\Domains\SalesOrder\Application\UseCases\IssueSalesOrderItems;
 use App\Domains\SalesOrder\Application\UseCases\ReturnSalesOrderItems;
 use App\Domains\SalesOrder\Application\UseCases\AddEstimateItemsToSalesOrder;
+use App\Domains\SalesOrder\Application\UseCases\LinkCustomItem;
 use App\Domains\Estimate\Domain\Models\EstimateItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -127,7 +128,8 @@ class SalesOrderController extends Controller
                 'mileage' => 'nullable|integer|min:0',
                 'notes' => 'nullable|string',
                 'items' => 'required_without:estimate_id|array|min:1',
-                'items.*.product_id' => 'required|uuid',
+                'items.*.product_id' => 'nullable|uuid',
+                'items.*.custom_name' => 'nullable|string|max:255',
                 'items.*.quantity' => 'required|numeric|min:1',
                 'items.*.unit_price' => 'required|numeric|min:0',
                 'items.*.needs_ordering' => 'nullable|boolean',
@@ -159,7 +161,8 @@ class SalesOrderController extends Controller
                 'mileage' => 'nullable|integer|min:0',
                 'notes' => 'nullable|string',
                 'items' => 'nullable|array|min:1',
-                'items.*.product_id' => 'required_with:items|uuid',
+                'items.*.product_id' => 'nullable|uuid',
+                'items.*.custom_name' => 'nullable|string|max:255',
                 'items.*.quantity' => 'required_with:items|numeric|min:1',
                 'items.*.unit_price' => 'required_with:items|numeric|min:0',
                 'items.*.needs_ordering' => 'nullable|boolean',
@@ -390,6 +393,29 @@ class SalesOrderController extends Controller
             ], 422);
         } catch (\Exception $e) {
             return $this->handleUseCaseException($e, 'add estimate items');
+        }
+    }
+
+    public function linkCustomItem(Request $request, string $id, string $itemId, LinkCustomItem $useCase): JsonResponse
+    {
+        try {
+            $validated = $request->validate([
+                'product_id' => 'required|exists:App\Domains\Product\Domain\Models\Product,id',
+            ]);
+
+            $item = $useCase->execute($id, $itemId, $validated['product_id']);
+
+            return response()->json([
+                'message' => 'Custom item linked to product successfully.',
+                'data' => $item,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'link custom item');
         }
     }
 

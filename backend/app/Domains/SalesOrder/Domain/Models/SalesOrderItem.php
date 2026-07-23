@@ -19,6 +19,7 @@ class SalesOrderItem extends Model
     protected $fillable = [
         'SalesOrderID',
         'ProductID',
+        'custom_name',
         'quantity',
         'UnitPrice',
         'SubTotal',

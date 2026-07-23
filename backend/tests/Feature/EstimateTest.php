@@ -907,7 +907,7 @@ class EstimateTest extends TestCase
         $this->assertNotContains($e2->id, $ids);
     }
 
-    public function test_custom_service_on_estimate_dropped_on_approval()
+    public function test_custom_service_flows_to_jo_on_approval()
     {
         $this->actingAs($this->user);
 
@@ -926,15 +926,17 @@ class EstimateTest extends TestCase
 
         $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
 
-        // JO created but with NO services (custom service dropped)
+        // JO created WITH custom service
         $jo = JobOrder::where('estimate_id', $estimate->id)->first();
-        if ($jo) {
-            $this->assertCount(0, JobOrderService::where('JobOrderID', $jo->id)->get(),
-                'Custom services are currently dropped on approval (known gap)');
-        }
+        $this->assertNotNull($jo, 'JO should be created for custom service');
+
+        $services = JobOrderService::where('JobOrderID', $jo->id)->get();
+        $this->assertCount(1, $services);
+        $this->assertEquals('Custom Diagnostic', $services->first()->custom_name);
+        $this->assertNull($services->first()->ServiceID);
     }
 
-    public function test_custom_part_on_estimate_dropped_on_approval()
+    public function test_custom_part_flows_to_so_on_approval()
     {
         $this->actingAs($this->user);
 
@@ -953,11 +955,180 @@ class EstimateTest extends TestCase
 
         $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
 
-        // SO created but with NO items (custom part dropped)
+        // SO created WITH custom part
         $so = SalesOrder::where('estimate_id', $estimate->id)->first();
-        if ($so) {
-            $this->assertCount(0, SalesOrderItem::where('SalesOrderID', $so->id)->get(),
-                'Custom parts are currently dropped on approval (known gap)');
-        }
+        $this->assertNotNull($so, 'SO should be created for custom part');
+
+        $items = SalesOrderItem::where('SalesOrderID', $so->id)->get();
+        $this->assertCount(1, $items);
+        $this->assertEquals('Custom Gasket Set', $items->first()->custom_name);
+        $this->assertNull($items->first()->ProductID);
+    }
+
+    public function test_custom_items_flow_to_billing()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 800.00]);
+
+        // Custom part
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'custom_name' => 'Custom Brake Pad',
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+        ]);
+
+        // Custom service
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'custom_name' => 'Custom Diagnostic',
+            'quantity' => 1,
+            'unit_price' => 300.00,
+            'subtotal' => 300.00,
+        ]);
+
+        // Approve
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so);
+        $this->assertNotNull($jo);
+
+        // Start JO → complete → SO completed → billing
+        $this->patchJson("/api/job-orders/{$jo->id}/status", ['status' => 'In Progress'])->assertOk();
+        $this->patchJson("/api/job-orders/{$jo->id}/status", ['status' => 'Completed'])->assertOk();
+
+        // Verify billing items have custom names
+        $bill = \App\Domains\Billing\Domain\Models\BillingStatement::where('SOID', $so->id)
+            ->where('status', '!=', 'Cancelled')->first();
+        $this->assertNotNull($bill);
+
+        $billItems = \App\Domains\Billing\Domain\Models\BillingStatementItem::where('BillingStatementID', $bill->id)->get();
+        $names = $billItems->pluck('name')->toArray();
+        $this->assertContains('Custom Brake Pad', $names);
+        $this->assertContains('Custom Diagnostic', $names);
+    }
+
+    public function test_link_custom_item_to_product()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO with custom part
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Oil Filter',
+                    'quantity' => 2,
+                    'unit_price' => 250.00,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $response->assertStatus(201);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        // Submit + Approve
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Link custom item to real product
+        $response = $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $this->product->id,
+        ]);
+        $response->assertOk();
+
+        // Verify item is now linked
+        $item = SalesOrderItem::find($itemId);
+        $this->assertEquals($this->product->id, $item->ProductID);
+        $this->assertEquals('Custom Oil Filter', $item->custom_name);
+        $this->assertNotNull($item->TaxAtSale);
+    }
+
+    public function test_relink_custom_item_to_different_product()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO with custom part
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 3000.00,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // First link
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $this->product->id,
+        ])->assertOk();
+
+        $item = SalesOrderItem::find($itemId);
+        $this->assertEquals($this->product->id, $item->ProductID);
+
+        // Re-link to a different product — should succeed (overwrite)
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-002',
+            'name' => 'Radiator Assy',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 3500.00,
+        ]);
+
+        $response = $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $product2->id,
+        ]);
+        $response->assertOk();
+
+        $item->refresh();
+        $this->assertEquals($product2->id, $item->ProductID);
+    }
+
+    public function test_create_so_with_custom_item()
+    {
+        $this->actingAs($this->user);
+
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Spark Plug',
+                    'quantity' => 4,
+                    'unit_price' => 150.00,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $response->assertStatus(201);
+
+        $item = SalesOrderItem::where('SalesOrderID', $response->json('data.id'))->first();
+        $this->assertEquals('Custom Spark Plug', $item->custom_name);
+        $this->assertNull($item->ProductID);
+        $this->assertTrue($item->needs_ordering);
+        $this->assertEquals(600.00, $item->SubTotal);
     }
 }

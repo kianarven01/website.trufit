@@ -131,7 +131,8 @@ class JobOrderController extends Controller
             'sale_order_id' => 'nullable|exists:SalesOrder,id',
             'date' => 'nullable|date',
             'services' => 'nullable|array',
-            'services.*.service_id' => 'required_with:services|exists:ServiceType,id',
+            'services.*.service_id' => 'nullable|exists:ServiceType,id',
+            'services.*.custom_name' => 'nullable|string|max:255',
             'services.*.price' => 'nullable|numeric|min:0',
         ]);
 
@@ -151,9 +152,12 @@ class JobOrderController extends Controller
 
             if (!empty($validated['services'])) {
                 foreach ($validated['services'] as $svc) {
+                    if (empty($svc['service_id']) && empty($svc['custom_name'])) continue;
+
                     JobOrderService::create([
                         'JobOrderID' => $jobOrder->id,
-                        'ServiceID' => $svc['service_id'],
+                        'ServiceID' => $svc['service_id'] ?? null,
+                        'custom_name' => $svc['custom_name'] ?? null,
                         'PriceAtSale' => $svc['price'] ?? 0,
                     ]);
                 }
@@ -192,7 +196,8 @@ class JobOrderController extends Controller
             'technician_id' => 'nullable|exists:Employees,id',
             'notes' => 'nullable|string',
             'services' => 'nullable|array',
-            'services.*.service_id' => 'required_with:services|exists:ServiceType,id',
+            'services.*.service_id' => 'nullable|exists:ServiceType,id',
+            'services.*.custom_name' => 'nullable|string|max:255',
             'services.*.price' => 'nullable|numeric|min:0',
         ]);
 
@@ -212,9 +217,12 @@ class JobOrderController extends Controller
             if (isset($validated['services'])) {
                 $jobOrder->services()->delete();
                 foreach ($validated['services'] as $svc) {
+                    if (empty($svc['service_id']) && empty($svc['custom_name'])) continue;
+
                     JobOrderService::create([
                         'JobOrderID' => $jobOrder->id,
-                        'ServiceID' => $svc['service_id'],
+                        'ServiceID' => $svc['service_id'] ?? null,
+                        'custom_name' => $svc['custom_name'] ?? null,
                         'PriceAtSale' => $svc['price'] ?? 0,
                     ]);
                 }

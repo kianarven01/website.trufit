@@ -47,6 +47,7 @@ class CreateSalesOrder
                             if (in_array($estItem->item_type, ['part', 'supply'], true)) {
                                 $items[] = [
                                     'product_id' => $estItem->product_id,
+                                    'custom_name' => $estItem->custom_name,
                                     'quantity' => $estItem->quantity,
                                     'unit_price' => $estItem->unit_price,
                                     'subtotal' => $estItem->subtotal,
@@ -76,7 +77,11 @@ class CreateSalesOrder
             ]);
 
             foreach ($items as $item) {
-                if (empty($item['product_id'])) {
+                $hasProduct = !empty($item['product_id']);
+                $hasCustomName = !empty($item['custom_name']);
+
+                // Skip items with neither product nor custom name
+                if (!$hasProduct && !$hasCustomName) {
                     continue;
                 }
 
@@ -86,15 +91,17 @@ class CreateSalesOrder
 
                 // Resolve tax code from product supplier if not provided
                 $taxAtSale = $item['tax_at_sale'] ?? null;
-                if (!$taxAtSale) {
+                if (!$taxAtSale && $hasProduct) {
                     $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
                     $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
                 }
+                $taxAtSale = $taxAtSale ?? 'NON_VAT';
 
                 SalesOrderItem::create([
                     'id' => (string) Str::uuid(),
                     'SalesOrderID' => $salesOrder->id,
-                    'ProductID' => $item['product_id'],
+                    'ProductID' => $item['product_id'] ?? null,
+                    'custom_name' => $item['custom_name'] ?? null,
                     'quantity' => $quantity,
                     'UnitPrice' => $unitPrice,
                     'SubTotal' => $subtotal,

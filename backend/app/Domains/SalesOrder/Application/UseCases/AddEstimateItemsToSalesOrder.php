@@ -36,16 +36,21 @@ class AddEstimateItemsToSalesOrder
                 throw new InvalidArgumentException('No valid estimate items found.');
             }
 
-            $existingProductIds = $salesOrder->items->pluck('ProductID')->toArray();
+            $existingProductIds = $salesOrder->items->pluck('ProductID')->filter()->toArray();
+            $existingCustomNames = $salesOrder->items->pluck('custom_name')->filter()->toArray();
 
             $added = 0;
             $newItems = [];
             foreach ($estimateItems as $estItem) {
-                if ($estItem->item_type !== 'part' || !$estItem->product_id) {
+                if ($estItem->item_type !== 'part') {
                     continue;
                 }
 
-                if (in_array($estItem->product_id, $existingProductIds)) {
+                // Skip if already on SO (by product_id or custom_name)
+                if (!empty($estItem->product_id) && in_array($estItem->product_id, $existingProductIds)) {
+                    continue;
+                }
+                if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingCustomNames)) {
                     continue;
                 }
 
@@ -53,12 +58,16 @@ class AddEstimateItemsToSalesOrder
                 $unitPrice = round((float) $estItem->unit_price, 2);
                 $subTotal = round($quantity * $unitPrice, 2);
 
-                $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
-                $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+                $taxAtSale = 'NON_VAT';
+                if (!empty($estItem->product_id)) {
+                    $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
+                    $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+                }
 
                 $newItem = SalesOrderItem::create([
                     'SalesOrderID' => $salesOrder->id,
                     'ProductID' => $estItem->product_id,
+                    'custom_name' => $estItem->custom_name,
                     'quantity' => $quantity,
                     'UnitPrice' => $unitPrice,
                     'SubTotal' => $subTotal,
@@ -68,7 +77,12 @@ class AddEstimateItemsToSalesOrder
                 ]);
 
                 $newItems[] = $newItem;
-                $existingProductIds[] = $estItem->product_id;
+                if (!empty($estItem->product_id)) {
+                    $existingProductIds[] = $estItem->product_id;
+                }
+                if (!empty($estItem->custom_name)) {
+                    $existingCustomNames[] = $estItem->custom_name;
+                }
                 $added++;
             }
 

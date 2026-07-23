@@ -54,13 +54,14 @@ class ApproveEstimate
                     continue;
                 }
 
-                if (in_array($estItem->item_type, ['part', 'supply'], true) && $estItem->product_id) {
+                if (in_array($estItem->item_type, ['part', 'supply'], true)) {
                     $quantity = (int) ($estItem->quantity ?? 1);
                     $unitPrice = (float) ($estItem->unit_price ?? 0);
                     $subtotal = round($quantity * $unitPrice, 2);
 
                     $partSupplyItems[] = [
                         'product_id' => $estItem->product_id,
+                        'custom_name' => $estItem->custom_name,
                         'quantity' => $quantity,
                         'unit_price' => $unitPrice,
                         'subtotal' => $subtotal,
@@ -68,7 +69,7 @@ class ApproveEstimate
                     ];
 
                     $totalParts += $subtotal;
-                } elseif ($estItem->item_type === 'service' && $estItem->service_id) {
+                } elseif ($estItem->item_type === 'service') {
                     $serviceItems[] = $estItem;
                 }
             }
@@ -107,15 +108,17 @@ class ApproveEstimate
                 ]);
 
                 foreach ($partSupplyItems as $item) {
-                    if (empty($item['product_id'])) continue;
-
-                    $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
-                    $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+                    $taxAtSale = 'NON_VAT';
+                    if (!empty($item['product_id'])) {
+                        $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
+                        $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+                    }
 
                     SalesOrderItem::create([
                         'id' => (string) Str::uuid(),
                         'SalesOrderID' => $salesOrder->id,
                         'ProductID' => $item['product_id'],
+                        'custom_name' => $item['custom_name'] ?? null,
                         'quantity' => $item['quantity'],
                         'UnitPrice' => $item['unit_price'],
                         'SubTotal' => $item['subtotal'],
@@ -154,6 +157,7 @@ class ApproveEstimate
                     JobOrderService::create([
                         'JobOrderID' => $jobOrder->id,
                         'ServiceID' => $estItem->service_id,
+                        'custom_name' => $estItem->custom_name,
                         'PriceAtSale' => $price,
                     ]);
                 }

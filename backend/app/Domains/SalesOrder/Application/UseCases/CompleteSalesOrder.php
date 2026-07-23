@@ -60,8 +60,10 @@ class CompleteSalesOrder
                         }
                     }
 
+                    $itemName = $item->custom_name ?? $item->product?->name ?? 'Unknown';
+
                     $billingItems[] = [
-                        'name' => $item->product?->name ?? 'Unknown',
+                        'name' => $itemName,
                         'qty' => $item->quantity,
                         'price' => $item->UnitPrice,
                         'amount' => $item->quantity * $item->UnitPrice,
@@ -76,7 +78,7 @@ class CompleteSalesOrder
                         ->get();
 
                     foreach ($joServices as $joService) {
-                        $serviceName = $joService->serviceType->name ?? 'Service';
+                        $serviceName = $joService->custom_name ?? $joService->serviceType->name ?? 'Service';
                         $price = (float) ($joService->PriceAtSale ?? 0);
                         $billingItems[] = [
                             'name' => $serviceName,

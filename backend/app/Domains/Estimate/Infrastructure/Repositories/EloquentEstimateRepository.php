@@ -213,24 +213,32 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         }
 
         // ── Sync parts/supplies to SO ──
-        $existingProductIds = $salesOrder->items->pluck('ProductID')->toArray();
+        $existingProductIds = $salesOrder->items->pluck('ProductID')->filter()->toArray();
+        $existingCustomNames = $salesOrder->items->pluck('custom_name')->filter()->toArray();
         $newItems = [];
 
         foreach ($estimate->items as $estItem) {
             if (!empty($estItem->is_tentative)) continue;
-            if (!in_array($estItem->item_type, ['part', 'supply'], true) || !$estItem->product_id) continue;
-            if (in_array($estItem->product_id, $existingProductIds)) continue;
+            if (!in_array($estItem->item_type, ['part', 'supply'], true)) continue;
+
+            // Skip if already on SO
+            if (!empty($estItem->product_id) && in_array($estItem->product_id, $existingProductIds)) continue;
+            if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingCustomNames)) continue;
 
             $quantity = (int) ($estItem->quantity ?? 1);
             $unitPrice = round((float) ($estItem->unit_price ?? 0), 2);
             $subTotal = round($quantity * $unitPrice, 2);
 
-            $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
-            $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+            $taxAtSale = 'NON_VAT';
+            if (!empty($estItem->product_id)) {
+                $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
+                $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+            }
 
             $newItem = \App\Domains\SalesOrder\Domain\Models\SalesOrderItem::create([
                 'SalesOrderID' => $salesOrder->id,
                 'ProductID' => $estItem->product_id,
+                'custom_name' => $estItem->custom_name,
                 'quantity' => $quantity,
                 'UnitPrice' => $unitPrice,
                 'SubTotal' => $subTotal,
@@ -240,12 +248,21 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             ]);
 
             $newItems[] = $newItem;
-            $existingProductIds[] = $estItem->product_id;
+            if (!empty($estItem->product_id)) {
+                $existingProductIds[] = $estItem->product_id;
+            }
+            if (!empty($estItem->custom_name)) {
+                $existingCustomNames[] = $estItem->custom_name;
+            }
         }
 
         // Sync needs_ordering flag and remove items now tentative on estimate
         foreach ($salesOrder->items as $soItem) {
-            $estItem = $estimate->items->where('product_id', $soItem->ProductID)->first();
+            $estItem = $estimate->items->first(function ($ei) use ($soItem) {
+                if (!empty($soItem->ProductID) && $ei->product_id === $soItem->ProductID) return true;
+                if (!empty($soItem->custom_name) && !empty($ei->custom_name) && $ei->custom_name === $soItem->custom_name) return true;
+                return false;
+            });
             if ($estItem) {
                 if ($soItem->needs_ordering !== (bool) ($estItem->needs_ordering ?? false)) {
                     $soItem->update(['needs_ordering' => $estItem->needs_ordering ?? false]);
@@ -282,19 +299,29 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         }
 
         if ($jobOrder) {
-            $existingServiceIds = $jobOrder->services->pluck('ServiceID')->toArray();
+            $existingServiceIds = $jobOrder->services->pluck('ServiceID')->filter()->toArray();
+            $existingServiceNames = $jobOrder->services->pluck('custom_name')->filter()->toArray();
 
             foreach ($estimate->items as $estItem) {
                 if (!empty($estItem->is_tentative)) continue;
-                if ($estItem->item_type !== 'service' || !$estItem->service_id) continue;
-                if (in_array($estItem->service_id, $existingServiceIds)) continue;
+                if ($estItem->item_type !== 'service') continue;
+
+                // Skip if already on JO
+                if (!empty($estItem->service_id) && in_array($estItem->service_id, $existingServiceIds)) continue;
+                if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingServiceNames)) continue;
 
                 \App\Domains\JobOrder\Domain\Models\JobOrderService::create([
                     'JobOrderID' => $jobOrder->id,
                     'ServiceID' => $estItem->service_id,
+                    'custom_name' => $estItem->custom_name,
                     'PriceAtSale' => (float) ($estItem->unit_price ?? 0),
                 ]);
-                $existingServiceIds[] = $estItem->service_id;
+                if (!empty($estItem->service_id)) {
+                    $existingServiceIds[] = $estItem->service_id;
+                }
+                if (!empty($estItem->custom_name)) {
+                    $existingServiceNames[] = $estItem->custom_name;
+                }
             }
         }
     }

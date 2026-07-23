@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { toast } from "sonner";
 import {
@@ -134,6 +135,17 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
   const partsMap = useMemo(() => {
     return Object.fromEntries(partsCatalog.map((p) => [p.id, p]));
   }, [partsCatalog]);
+
+  const getNeedsOrderingReason = (productId: string, quantity: number): string => {
+    const p = partsMap[productId];
+    if (!p) return "Custom item — no stock data";
+    const onHand = p.quantityOnHand ?? 0;
+    const reserved = p.reservedQuantity ?? 0;
+    const available = onHand - reserved;
+    if (onHand === 0) return "No stock on hand";
+    if (available <= 0) return "All stock reserved by other orders";
+    return `Insufficient: ${available} available, ${quantity} needed`;
+  };
 
   const customerVehicles = useMemo(() => {
     return vehicles.filter(
@@ -947,24 +959,52 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                                 {peso(l.amount)}
                               </TableCell>
                               <TableCell className="text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={l.needsOrdering}
-                                  disabled={(() => {
-                                    const p = partsMap[l.ProductId];
-                                    if (!p) return false;
-                                    const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
-                                    return avail >= l.quantity;
-                                  })()}
-                                  onChange={(e) =>
-                                    updateLine(
-                                      l.id,
-                                      "needsOrdering",
-                                      e.target.checked,
-                                    )
-                                  }
-                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                                />
+                                {l.needsOrdering ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <input
+                                        type="checkbox"
+                                        checked={l.needsOrdering}
+                                        disabled={(() => {
+                                          const p = partsMap[l.ProductId];
+                                          if (!p) return false;
+                                          const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                          return avail >= l.quantity;
+                                        })()}
+                                        onChange={(e) =>
+                                          updateLine(
+                                            l.id,
+                                            "needsOrdering",
+                                            e.target.checked,
+                                          )
+                                        }
+                                        className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {getNeedsOrderingReason(l.ProductId, l.quantity)}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <input
+                                    type="checkbox"
+                                    checked={l.needsOrdering}
+                                    disabled={(() => {
+                                      const p = partsMap[l.ProductId];
+                                      if (!p) return false;
+                                      const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                      return avail >= l.quantity;
+                                    })()}
+                                    onChange={(e) =>
+                                      updateLine(
+                                        l.id,
+                                        "needsOrdering",
+                                        e.target.checked,
+                                      )
+                                    }
+                                    className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                  />
+                                )}
                               </TableCell>
                               <TableCell className="text-center">
                                 <Button
@@ -1153,6 +1193,32 @@ const SalesOrderForm: React.FC<SalesOrderFormProps> = ({ mode = "create" }) => {
                               <TableCell className="text-center">
                                 {isSundries ? (
                                   <span className="text-xs text-muted-foreground">—</span>
+                                ) : l.needsOrdering ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <input
+                                        type="checkbox"
+                                        checked={l.needsOrdering}
+                                        disabled={(() => {
+                                          const p = partsMap[l.ProductId];
+                                          if (!p) return false;
+                                          const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                          return avail >= l.quantity;
+                                        })()}
+                                        onChange={(e) =>
+                                          updateLine(
+                                            l.id,
+                                            "needsOrdering",
+                                            e.target.checked,
+                                          )
+                                        }
+                                        className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
+                                      />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {getNeedsOrderingReason(l.ProductId, l.quantity)}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 ) : (
                                   <input
                                     type="checkbox"

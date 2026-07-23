@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DataToolbar from "@/components/DataToolbar";
@@ -60,6 +61,7 @@ interface Product {
   price: number;
   unit: string;
   quantityOnHand: number | null;
+  reservedQuantity: number | null;
   reorderLevel: number | null;
   productId?: string;
   categoryIsSpol?: boolean;
@@ -193,6 +195,7 @@ const EstimateDetail: React.FC = () => {
             price,
             unit: product.unit_name || product.unit?.name || "pc",
             quantityOnHand: Number(row.quantity_on_hand ?? 0),
+            reservedQuantity: Number(row.reserved_quantity ?? 0),
             reorderLevel: Number(row.reorder_level ?? 5),
             supplierName,
             categoryIsSpol: Boolean(row.product?.category_is_spol),
@@ -726,9 +729,24 @@ const EstimateDetail: React.FC = () => {
                                   Custom Item
                                 </Badge>
                               ) : item.needs_ordering ? (
-                                <Badge variant="pending" className="whitespace-nowrap">
-                                  Needs Order ({orderQty} {product?.unit || "pc"}{orderQty > 1 ? "s" : ""})
-                                </Badge>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Badge variant="pending" className="whitespace-nowrap cursor-help">
+                                      Needs Order ({orderQty} {product?.unit || "pc"}{orderQty > 1 ? "s" : ""})
+                                    </Badge>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {(() => {
+                                      if (!product) return "Custom item — no stock data";
+                                      const onHand = product.quantityOnHand ?? 0;
+                                      const reserved = product.reservedQuantity ?? 0;
+                                      const available = onHand - reserved;
+                                      if (onHand === 0) return "No stock on hand";
+                                      if (available <= 0) return "All stock reserved by other orders";
+                                      return `Insufficient: ${available} available, ${qty} needed`;
+                                    })()}
+                                  </TooltipContent>
+                                </Tooltip>
                               ) : !isTracked ? (
                                 <Badge variant="approved" className="whitespace-nowrap">
                                   In Stock

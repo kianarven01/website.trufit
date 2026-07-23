@@ -11,6 +11,7 @@ import CurrencyInput from "@/components/ui/currencyInput";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -246,6 +247,17 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       partsCatalog.map(p => [p.id, p])
     );
   }, [partsCatalog]);
+
+  const getNeedsOrderingReason = (productId: string, quantity: number): string => {
+    const p = partsMap[productId];
+    if (!p) return "Custom item — no stock data";
+    const onHand = p.quantityOnHand ?? 0;
+    const reserved = p.reservedQuantity ?? 0;
+    const available = onHand - reserved;
+    if (onHand === 0) return "No stock on hand";
+    if (available <= 0) return "All stock reserved by other orders";
+    return `Insufficient: ${available} available, ${quantity} needed`;
+  };
 
   const partsOnly = useMemo(() => partsCatalog.filter(p => !p.categoryIsSpol), [partsCatalog]);
   const spolOnly = useMemo(() => partsCatalog.filter(p => p.categoryIsSpol), [partsCatalog]);
@@ -1724,18 +1736,40 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             </TableCell>
 
                             <TableCell className="text-center">
-                              <input
-                                type="checkbox"
-                                checked={l.needsOrdering}
-                                disabled={l.isTentative || (() => {
-                                  const p = partsMap[l.ProductId];
-                                  if (!p) return false;
-                                  const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
-                                  return avail >= Number(l.quantity);
-                                })()}
-                                onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
-                                className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
-                              />
+                              {l.needsOrdering ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <input
+                                      type="checkbox"
+                                      checked={l.needsOrdering}
+                                      disabled={l.isTentative || (() => {
+                                        const p = partsMap[l.ProductId];
+                                        if (!p) return false;
+                                        const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                        return avail >= Number(l.quantity);
+                                      })()}
+                                      onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
+                                      className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {getNeedsOrderingReason(l.ProductId, Number(l.quantity))}
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={l.needsOrdering}
+                                  disabled={l.isTentative || (() => {
+                                    const p = partsMap[l.ProductId];
+                                    if (!p) return false;
+                                    const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                    return avail >= Number(l.quantity);
+                                  })()}
+                                  onChange={(e) => updateSO(idx, "needsOrdering", e.target.checked)}
+                                  className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                                />
+                              )}
                             </TableCell>
 
                             <TableCell className="text-center">
@@ -1913,6 +1947,26 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                             <TableCell className="text-center">
                               {isSundries ? (
                                 <span className="text-muted-foreground text-xs">—</span>
+                              ) : l.needsOrdering ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <input
+                                      type="checkbox"
+                                      checked={l.needsOrdering}
+                                      disabled={l.isTentative || (() => {
+                                        const p = partsMap[l.ProductId];
+                                        if (!p) return false;
+                                        const avail = (p.quantityOnHand ?? 0) - (p.reservedQuantity ?? 0);
+                                        return avail >= Number(l.quantity);
+                                      })()}
+                                      onChange={(e) => updateSPOL(idx, "needsOrdering", e.target.checked)}
+                                      className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer disabled:opacity-40"
+                                    />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {getNeedsOrderingReason(l.ProductId, Number(l.quantity))}
+                                  </TooltipContent>
+                                </Tooltip>
                               ) : (
                                 <input
                                   type="checkbox"

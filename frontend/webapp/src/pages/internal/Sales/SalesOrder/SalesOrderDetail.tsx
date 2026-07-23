@@ -63,6 +63,7 @@ import {
   Import,
 } from "lucide-react";
 import DataToolbar from "@/components/DataToolbar";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import api from "@/api/axios";
 import { toast } from "sonner";
 
@@ -100,6 +101,7 @@ interface Product {
   amount: number;
   needsOrdering: boolean;
   quantityOnHand: number | null;
+  reservedQuantity: number | null;
   isIssued: boolean;
   quantityReturned: number;
   isSpol: boolean;
@@ -194,6 +196,7 @@ const SalesOrderDetails: React.FC = () => {
         const product = i.product;
         const isSundries = product?.category?.name === 'Sundries';
         let quantityOnHand: number | null = null;
+        let reservedQuantity: number | null = null;
         if (!isSundries) {
           if (product?.inventory_rows?.length) {
             const total = product.inventory_rows.reduce(
@@ -201,12 +204,20 @@ const SalesOrderDetails: React.FC = () => {
               0
             );
             quantityOnHand = total;
+            reservedQuantity = product.inventory_rows.reduce(
+              (sum: number, row: any) => sum + Number(row.reserved_quantity ?? 0),
+              0
+            );
           } else if (product?.product_suppliers?.length) {
             const total = product.product_suppliers.reduce(
               (sum: number, ps: any) => sum + Number(ps.inventory?.quantity_on_hand ?? 0),
               0
             );
             quantityOnHand = total;
+            reservedQuantity = product.product_suppliers.reduce(
+              (sum: number, ps: any) => sum + Number(ps.inventory?.reserved_quantity ?? 0),
+              0
+            );
           }
         }
         return {
@@ -222,6 +233,7 @@ const SalesOrderDetails: React.FC = () => {
           amount: Number(i.SubTotal) || 0,
           needsOrdering: Boolean(i.needs_ordering),
           quantityOnHand,
+          reservedQuantity,
           isIssued: Boolean(i.is_issued),
           quantityReturned: Number(i.quantity_returned) || 0,
           isSpol: Boolean(product?.category?.is_spol),
@@ -308,6 +320,15 @@ const SalesOrderDetails: React.FC = () => {
       }
     };
   }, [id]);
+
+  const getNeedsOrderingReason = (p: { quantityOnHand: number | null; reservedQuantity: number | null; qty: number }): string => {
+    const onHand = p.quantityOnHand ?? 0;
+    const reserved = p.reservedQuantity ?? 0;
+    const available = onHand - reserved;
+    if (onHand === 0) return "No stock on hand";
+    if (available <= 0) return "All stock reserved by other orders";
+    return `Insufficient: ${available} available, ${p.qty} needed`;
+  };
 
   const handleAction = async (action: string) => {
     if (!order) return;
@@ -885,9 +906,16 @@ const SalesOrderDetails: React.FC = () => {
                                     Returned
                                   </span>
                                 ) : p.needsOrdering ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                    To Order
-                                  </span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help">
+                                        To Order
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {getNeedsOrderingReason(p)}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">—</span>
                                 )}
@@ -1058,9 +1086,16 @@ const SalesOrderDetails: React.FC = () => {
                                     Returned
                                   </span>
                                 ) : p.needsOrdering ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                    To Order
-                                  </span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help">
+                                        To Order
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {getNeedsOrderingReason(p)}
+                                    </TooltipContent>
+                                  </Tooltip>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">—</span>
                                 )}

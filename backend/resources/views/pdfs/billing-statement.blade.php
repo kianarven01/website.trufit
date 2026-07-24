@@ -140,7 +140,7 @@
         <tr>
             <td>
                 <div class="label">Date/Time Received</div>
-                <div class="value">{{ $so->created_at ? \Carbon\Carbon::parse($so->created_at)->format('M d, Y h:i A') : '—' }}</div>
+                <div class="value">{{ $so?->created_at ? \Carbon\Carbon::parse($so->created_at)->format('M d, Y h:i A') : '—' }}</div>
             </td>
             <td>
                 <div class="label">Business Phone No.</div>
@@ -148,7 +148,7 @@
             </td>
             <td>
                 <div class="label">Odometer (Km)</div>
-                <div class="value">{{ $so->mileage ? number_format($so->mileage) : '—' }}</div>
+                <div class="value">{{ $so?->mileage ? number_format($so->mileage) : '—' }}</div>
             </td>
             <td>
                 <div class="label">Stock No.</div>
@@ -158,7 +158,7 @@
         <tr>
             <td>
                 <div class="label">Date Released</div>
-                <div class="value">{{ $so->completed_at ? \Carbon\Carbon::parse($so->completed_at)->format('M d, Y') : '—' }}</div>
+                <div class="value">{{ $so?->completed_at ? \Carbon\Carbon::parse($so->completed_at)->format('M d, Y') : '—' }}</div>
             </td>
             <td>
                 <div class="label">Engine No.</div>

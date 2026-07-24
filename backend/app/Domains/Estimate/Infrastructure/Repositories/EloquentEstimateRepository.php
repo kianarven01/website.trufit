@@ -162,6 +162,31 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
             $estimate->update($updateData);
 
+            // Sync mileage to linked SO (estimate is source of truth for mileage)
+            if (isset($data['mileage'])) {
+                $newMileage = $estimate->mileage;
+                $linkedSOs = \App\Domains\SalesOrder\Domain\Models\SalesOrder::where('estimate_id', $estimate->id)
+                    ->whereIn('Status', ['APPROVED', 'IN_PROGRESS', 'COMPLETED'])
+                    ->get();
+
+                // Fallback: COUNTER SOs may not have estimate_id — match by customer+vehicle
+                if ($linkedSOs->isEmpty()) {
+                    $linkedSOs = collect([\App\Domains\SalesOrder\Domain\Models\SalesOrder::where('customerID', $estimate->customer_id)
+                        ->where('vehicle_id', $estimate->vehicle_id)
+                        ->where('type', 'COUNTER')
+                        ->whereIn('Status', ['APPROVED', 'IN_PROGRESS', 'COMPLETED'])
+                        ->latest()
+                        ->first()
+                    ])->filter();
+                }
+
+                foreach ($linkedSOs as $so) {
+                    if ((int) $so->mileage !== (int) $newMileage) {
+                        $so->update(['mileage' => $newMileage]);
+                    }
+                }
+            }
+
             if (isset($data['items']) && is_array($data['items'])) {
                 // Remove old items
                 $estimate->items()->delete();

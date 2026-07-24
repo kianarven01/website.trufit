@@ -51,8 +51,6 @@ class VoidSalesOrder
 
                     $item->update([
                         'is_issued' => false,
-                        'issued_at' => null,
-                        'issued_by' => null,
                     ]);
                 }
             }

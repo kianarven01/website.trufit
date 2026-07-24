@@ -259,7 +259,7 @@ class JobOrderController extends Controller
             'status' => 'required|string|in:In Progress,Completed,Cancelled',
         ]);
 
-        $currentStatusName = $jobOrder->statusRecord->name ?? null;
+        $currentStatusName = $jobOrder->statusRecord?->name ?? null;
 
         $allowedTransitions = [
             'Pending' => ['In Progress', 'Cancelled'],
@@ -295,7 +295,7 @@ class JobOrderController extends Controller
         }
 
         // When JO completes, trigger SO completion (which auto-creates billing)
-        // Or create billing directly if no SO exists (services-only estimate)
+        // Or create billing directly if no SO exists or SO is not in IN_PROGRESS
         $soCompleted = false;
         if ($validated['status'] === 'Completed') {
             $jobOrder->load('salesOrder');
@@ -303,8 +303,8 @@ class JobOrderController extends Controller
                 app(\App\Domains\SalesOrder\Application\UseCases\CompleteSalesOrder::class)
                     ->execute($jobOrder->salesOrder->id, $request->user()?->id);
                 $soCompleted = true;
-            } elseif (!$jobOrder->salesOrder) {
-                // JO-only (services from estimate, no parts) — create billing directly
+            } else {
+                // JO-only or SO in wrong state — create billing from JO services directly
                 app(\App\Domains\JobOrder\Application\UseCases\CompleteJobOrder::class)
                     ->execute($jobOrder->id, $request->user()?->id);
             }

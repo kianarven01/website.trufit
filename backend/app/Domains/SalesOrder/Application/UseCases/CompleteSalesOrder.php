@@ -38,8 +38,6 @@ class CompleteSalesOrder
                 ->exists();
 
             if (!$billExists) {
-                $grandTotal = (float)$salesOrder->Total;
-
                 // Load items with product, category
                 $salesOrder->load([
                     'items.product.category',
@@ -89,6 +87,8 @@ class CompleteSalesOrder
                         ];
                     }
                 }
+
+                $grandTotal = array_sum(array_column($billingItems, 'amount'));
 
                 $this->createBillingStatement->execute([
                     'customer_id' => $salesOrder->customerID,

@@ -39,9 +39,7 @@ class JobOrder extends Model
         'timer_total_seconds' => 'integer',
     ];
 
-    protected $appends = [
-        'joNumber',
-    ];
+    protected $appends = [];
 
     public function salesOrder()
     {
@@ -51,11 +49,6 @@ class JobOrder extends Model
     public function estimate()
     {
         return $this->belongsTo(\App\Domains\Estimate\Domain\Models\Estimate::class, 'estimate_id', 'id');
-    }
-
-    public function technician()
-    {
-        return $this->belongsTo(Employee::class, 'TechnicianID', 'id');
     }
 
     public function technicians()
@@ -88,17 +81,20 @@ class JobOrder extends Model
         return $this->belongsTo(\App\Domains\Status\Domain\Models\Status::class, 'status', 'id');
     }
 
-    public function getJoNumberAttribute(): ?string
-    {
-        return $this->attributes['jo_number'] ?? null;
-    }
-
     public static function generateJoNumber(): string
     {
         $prefix = 'JO-' . now()->format('ymd') . '-';
+        $maxRetries = 10;
+        $attempt = 0;
         do {
             $number = $prefix . str_pad(random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
-        } while (static::where('jo_number', $number)->exists());
+            $attempt++;
+        } while (static::where('jo_number', $number)->exists() && $attempt < $maxRetries);
+
+        if ($attempt >= $maxRetries) {
+            throw new \RuntimeException('Failed to generate unique JO number after ' . $maxRetries . ' attempts.', 500);
+        }
+
         return $number;
     }
 

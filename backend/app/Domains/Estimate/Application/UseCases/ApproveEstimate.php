@@ -85,9 +85,16 @@ class ApproveEstimate
 
             // ── 1. Create Sales Order (only if parts/supplies exist) ──
             if (!empty($partSupplyItems)) {
+                $maxRetries = 10;
+                $attempt = 0;
                 do {
                     $soNumber = 'SO-' . now()->format('ymd') . '-' . random_int(1000, 9999);
-                } while (SalesOrder::withTrashed()->where('so_number', $soNumber)->exists());
+                    $attempt++;
+                } while (SalesOrder::withTrashed()->where('so_number', $soNumber)->exists() && $attempt < $maxRetries);
+
+                if ($attempt >= $maxRetries) {
+                    throw new RuntimeException('Failed to generate unique SO number after ' . $maxRetries . ' attempts.', 500);
+                }
 
                 $salesOrder = SalesOrder::create([
                     'id' => (string) Str::uuid(),

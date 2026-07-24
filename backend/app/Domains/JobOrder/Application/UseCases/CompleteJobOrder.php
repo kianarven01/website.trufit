@@ -34,7 +34,7 @@ class CompleteJobOrder
             $grandTotal = 0.0;
 
             foreach ($jobOrder->services as $joService) {
-                $serviceName = $joService->custom_name ?? $joService->serviceType->name ?? 'Service';
+                $serviceName = $joService->custom_name ?? $joService->serviceType?->name ?? 'Service';
                 $price = (float) ($joService->PriceAtSale ?? 0);
                 $billingItems[] = [
                     'name' => $serviceName,

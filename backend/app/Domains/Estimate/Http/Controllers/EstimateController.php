@@ -81,7 +81,7 @@ class EstimateController extends Controller
                 'customer_id' => 'required|exists:App\Domains\Customer\Domain\Models\Customer,customer_id',
                 'vehicle_id' => 'required|exists:App\Domains\Customer\Domain\Models\CustomerVehicle,id',
                 'status' => 'nullable|string|in:DRAFT,FOR APPROVAL,FOR_APPROVAL,APPROVED,APPROVED WITH DOWNPAYMENT,APPROVED_WITH_DOWNPAYMENT,ISSUED,CANCELLED',
-                'total_amount' => 'required|numeric',
+                'total_amount' => 'nullable|numeric',
                 'mileage' => 'required|numeric|min:0',
                 'downpayment_amount' => 'nullable|numeric|min:0',
                 'payment_method' => 'nullable|string|max:50',
@@ -98,6 +98,11 @@ class EstimateController extends Controller
                 'items.*.custom_name' => 'nullable|string|max:255',
                 'items.*.is_tentative' => 'nullable|boolean',
             ]);
+
+            // Auto-calculate total from items (override client-provided total)
+            if (!empty($validated['items'])) {
+                $validated['total_amount'] = array_sum(array_map(fn($item) => (float) ($item['subtotal'] ?? 0), $validated['items']));
+            }
 
             $customer = \App\Domains\Customer\Domain\Models\Customer::find($validated['customer_id']);
             if ($customer && $customer->origin === 'appointment') {
@@ -151,6 +156,11 @@ class EstimateController extends Controller
                 'items.*.custom_name' => 'nullable|string|max:255',
                 'items.*.is_tentative' => 'nullable|boolean',
             ]);
+
+            // Auto-calculate total from items if items are provided
+            if (!empty($validated['items'])) {
+                $validated['total_amount'] = array_sum(array_map(fn($item) => (float) ($item['subtotal'] ?? 0), $validated['items']));
+            }
 
             if (isset($validated['customer_id'])) {
                 $customer = \App\Domains\Customer\Domain\Models\Customer::find($validated['customer_id']);

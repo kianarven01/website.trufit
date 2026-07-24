@@ -129,8 +129,8 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
           );
           setNotes(jo.notes || "");
           // Update breadcrumb with JO number
-          if (jo.jo_number || jo.joNumber) {
-            sessionStorage.setItem(`breadcrumb-/webapp/services/job-orders/${id}`, jo.jo_number || jo.joNumber);
+          if (jo.jo_number) {
+            sessionStorage.setItem(`breadcrumb-/webapp/services/job-orders/${id}`, jo.jo_number);
             window.dispatchEvent(new Event('breadcrumb-update'));
           }
         }
@@ -224,7 +224,7 @@ const JobOrderForm: React.FC<JobOrderFormProps> = ({ mode = "create" }) => {
         ? await api.patch(`/job-orders/${id}`, payload)
         : await api.post("/job-orders", payload);
       const jo = res.data.data;
-      toast.success(`Job Order ${jo.jo_number || jo.joNumber || id} ${isEdit ? "updated" : "created"} successfully`);
+      toast.success(`Job Order ${jo.jo_number || id} ${isEdit ? "updated" : "created"} successfully`);
       navigate(isEdit ? `/webapp/services/job-orders/${id}` : "/webapp/services/job-orders");
     } catch (err: any) {
       console.error(err);

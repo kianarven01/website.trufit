@@ -104,7 +104,7 @@ const mapBillingStatement = (b: any): BillingStatement => {
     vehicleVIN: vehicle.VIN || "",
     vehicleRegistration: vehicle.registration_number || "",
     vehicleDealer: vehicle.selling_dealer || "",
-    vehicleMileage: Number(vehicle.mileage) || 0,
+    vehicleMileage: Number(salesOrder.mileage) || Number(salesOrder.estimate?.mileage) || Number(vehicle.mileage) || 0,
     date: b.Date || new Date().toISOString(),
     status: b.status || "Unpaid",
     soid: salesOrder.so_number || b.SOID || "—",

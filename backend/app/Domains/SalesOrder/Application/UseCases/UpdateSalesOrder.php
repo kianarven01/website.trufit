@@ -31,18 +31,31 @@ class UpdateSalesOrder
             ]);
 
             if (isset($data['items']) && is_array($data['items'])) {
-                $existingItems = $salesOrder->items()->get()->keyBy('ProductID');
+                $existingItems = $salesOrder->items()->get();
+
+                // Build lookup maps by ProductID and by custom_name
+                $existingByProductId = $existingItems->whereNotNull('ProductID')->keyBy('ProductID');
+                $existingByCustomName = $existingItems->whereNotNull('custom_name')->keyBy('custom_name');
 
                 $submittedProductIds = [];
+                $submittedCustomNames = [];
                 foreach ($data['items'] as $item) {
                     if (!empty($item['product_id'])) {
                         $submittedProductIds[] = $item['product_id'];
                     }
+                    if (!empty($item['custom_name'])) {
+                        $submittedCustomNames[] = $item['custom_name'];
+                    }
                 }
 
                 // Remove items no longer in the submission
-                foreach ($existingItems as $productId => $existingItem) {
+                foreach ($existingByProductId as $productId => $existingItem) {
                     if (!in_array($productId, $submittedProductIds)) {
+                        $existingItem->delete();
+                    }
+                }
+                foreach ($existingByCustomName as $customName => $existingItem) {
+                    if (!in_array($customName, $submittedCustomNames)) {
                         $existingItem->delete();
                     }
                 }
@@ -50,17 +63,19 @@ class UpdateSalesOrder
                 $totalAmount = 0;
 
                 foreach ($data['items'] as $item) {
-                    if (empty($item['product_id'])) {
-                        continue;
-                    }
-
                     $quantity = (int) ($item['quantity'] ?? 1);
                     $unitPrice = (float) ($item['unit_price'] ?? 0);
                     $subtotal = round($quantity * $unitPrice, 2);
 
-                    if (isset($existingItems[$item['product_id']])) {
-                        // Update existing item
-                        $existingItem = $existingItems[$item['product_id']];
+                    // Find existing item by product_id or custom_name
+                    $existingItem = null;
+                    if (!empty($item['product_id']) && isset($existingByProductId[$item['product_id']])) {
+                        $existingItem = $existingByProductId[$item['product_id']];
+                    } elseif (!empty($item['custom_name']) && isset($existingByCustomName[$item['custom_name']])) {
+                        $existingItem = $existingByCustomName[$item['custom_name']];
+                    }
+
+                    if ($existingItem) {
                         $existingItem->update([
                             'quantity' => $quantity,
                             'UnitPrice' => $unitPrice,
@@ -69,17 +84,18 @@ class UpdateSalesOrder
                             'TaxAtSale' => $item['tax_at_sale'] ?? $existingItem->TaxAtSale,
                         ]);
                     } else {
-                        // Create new item
                         $taxAtSale = $item['tax_at_sale'] ?? null;
-                        if (!$taxAtSale) {
+                        if (!$taxAtSale && !empty($item['product_id'])) {
                             $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
                             $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
                         }
+                        $taxAtSale = $taxAtSale ?? 'NON_VAT';
 
                         SalesOrderItem::create([
                             'id' => \Illuminate\Support\Str::uuid(),
                             'SalesOrderID' => $salesOrder->id,
-                            'ProductID' => $item['product_id'],
+                            'ProductID' => $item['product_id'] ?? null,
+                            'custom_name' => $item['custom_name'] ?? null,
                             'quantity' => $quantity,
                             'UnitPrice' => $unitPrice,
                             'SubTotal' => $subtotal,

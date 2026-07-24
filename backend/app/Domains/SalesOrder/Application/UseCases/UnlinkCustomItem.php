@@ -58,9 +58,20 @@ class UnlinkCustomItem
 
             // Recalculate SO Total
             $totalAmount = $salesOrder->items()->sum('SubTotal');
+            $balance = $totalAmount;
+
+            // If billing exists with payments, subtract paid amount from balance
+            $billing = \App\Domains\Billing\Domain\Models\BillingStatement::where('SOID', $salesOrder->id)
+                ->where('status', '!=', 'Cancelled')
+                ->first();
+            if ($billing) {
+                $totalPaid = $billing->payments()->sum('Amount');
+                $balance = max(0, $totalAmount - (float) $totalPaid);
+            }
+
             $salesOrder->update([
                 'Total' => $totalAmount,
-                'Balance' => $totalAmount,
+                'Balance' => $balance,
             ]);
 
             return $item->fresh();

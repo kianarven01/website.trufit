@@ -1570,4 +1570,51 @@ class EstimateTest extends TestCase
         $this->assertEquals(0, (float) $item->SubTotal);
         $this->assertNull($item->original_custom_price);
     }
+
+    public function test_mileage_syncs_to_so_on_estimate_edit()
+    {
+        $this->actingAs($this->user);
+
+        // Create estimate with mileage + part item
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 1000.00, 'mileage' => 12345]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'product_id' => $this->product->id,
+            'quantity' => 2,
+            'unit_price' => 500.00,
+            'subtotal' => 1000.00,
+        ]);
+
+        // Approve → SO gets mileage
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so);
+        $this->assertEquals(12345, (int) $so->mileage);
+
+        // Edit estimate mileage to 12346
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'mileage' => 12346,
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'product_id' => $this->product->id,
+                    'quantity' => 2,
+                    'unit_price' => 500.00,
+                    'subtotal' => 1000.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // SO mileage should now be 12346
+        $so->refresh();
+        $this->assertEquals(12346, (int) $so->mileage);
+
+        // Estimate mileage should also be 12346
+        $estimate->refresh();
+        $this->assertEquals(12346, (int) $estimate->mileage);
+    }
 }

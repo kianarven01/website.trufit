@@ -36,10 +36,14 @@ class ApproveSalesOrder
             $this->reserveInventoryService->reserve($salesOrder);
 
             // For counter sales, automatically issue/deduct stock immediately
+            // Skip items with needs_ordering (no stock available)
             if ($salesOrder->type === 'COUNTER') {
-                $itemIds = $salesOrder->items->pluck('id')->toArray();
-                if (!empty($itemIds)) {
-                    $this->issueSalesOrderItems->execute($salesOrder->id, $itemIds, $userId);
+                $issuableItemIds = $salesOrder->items
+                    ->filter(fn ($item) => !$item->needs_ordering)
+                    ->pluck('id')
+                    ->toArray();
+                if (!empty($issuableItemIds)) {
+                    $this->issueSalesOrderItems->execute($salesOrder->id, $issuableItemIds, $userId);
                 }
 
                 // Check if billing statement already exists
@@ -48,8 +52,6 @@ class ApproveSalesOrder
                     ->exists();
 
                 if (!$billExists) {
-                    $grandTotal = (float)$salesOrder->Total;
-
                     // Load items with product and category for name/type/spol checks
                     $salesOrder->load('items.product.category');
 
@@ -72,6 +74,8 @@ class ApproveSalesOrder
                             'type' => $type,
                         ];
                     }
+
+                    $grandTotal = array_sum(array_column($billingItems, 'amount'));
 
                     $this->createBillingStatement->execute([
                         'customer_id' => $salesOrder->customerID,

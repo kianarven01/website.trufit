@@ -17,7 +17,7 @@ class BillingController extends Controller
     {
         $search = $request->query('search');
         $status = $request->query('status');
-        $perPage = (int)$request->query('per_page', 25);
+        $perPage = max(1, min((int)$request->query('per_page', 25), 100));
         $archived = $request->query('archived') === 'true';
 
         $query = BillingStatement::with([
@@ -61,6 +61,7 @@ class BillingController extends Controller
             'customer',
             'vehicle',
             'salesOrder.items.product.manufacturer',
+            'salesOrder.estimate',
             'jobOrder',
             'payments',
             'items',
@@ -95,6 +96,7 @@ class BillingController extends Controller
             'payment.type' => 'nullable|string',
         ]);
 
+        $validated['created_by'] = $request->user()?->id;
         $statement = $useCase->execute($validated);
 
         return response()->json([

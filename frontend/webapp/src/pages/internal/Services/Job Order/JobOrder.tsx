@@ -29,7 +29,6 @@ import TableSkeleton from "@/components/ui/TableSkeleton";
 interface JobOrderRow {
   id: string;
   jo_number: string;
-  joNumber: string;
   date: string;
   status: string;
   statusRecord: { name: string } | null;
@@ -212,7 +211,7 @@ const JobOrderList: React.FC = () => {
                     className="cursor-pointer bg-card border rounded-lg hover:bg-accent/30 text-center"
                   >
                     <TableCell className="font-mono font-bold text-primary">
-                      {jo.jo_number || jo.joNumber || `JO-${jo.id.substring(0, 8).toUpperCase()}`}
+                      {jo.jo_number || `JO-${jo.id.substring(0, 8).toUpperCase()}`}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(jo.date).toLocaleDateString()}

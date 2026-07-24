@@ -33,7 +33,7 @@ class IssueSalesOrderItems
 
                 if ($item->needs_ordering) {
                     throw new RuntimeException(
-                        "Cannot issue item '{$item->product->name}' — it is marked as needing to be ordered.",
+                        "Cannot issue item '" . ($item->custom_name ?? $item->product?->name ?? 'Unknown') . "' — it is marked as needing to be ordered.",
                         422
                     );
                 }
@@ -44,7 +44,7 @@ class IssueSalesOrderItems
 
                 if ($productInventories->isEmpty()) {
                     throw new RuntimeException(
-                        "No inventory record found for product '{$item->product->name}'.",
+                        "No inventory record found for product '" . ($item->custom_name ?? $item->product?->name ?? 'Unknown') . "'.",
                         422
                     );
                 }

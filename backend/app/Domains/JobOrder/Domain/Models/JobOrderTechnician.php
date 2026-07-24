@@ -35,11 +35,4 @@ class JobOrderTechnician extends Model
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'id');
     }
-
-    public function getEmployeeNameAttribute(): ?string
-    {
-        return $this->employee
-            ? trim($this->employee->first_name . ' ' . $this->employee->last_name)
-            : null;
-    }
 }

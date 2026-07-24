@@ -1,8 +1,7 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableHeader,
@@ -12,7 +11,6 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import {
   DropdownMenu,
@@ -23,7 +21,6 @@ import {
 import { Receipt, MoreVertical, Eye, Archive, RotateCcw, Trash2 } from "lucide-react";
 import api from "@/api/axios";
 import { toast } from "sonner";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,8 +87,6 @@ export interface BillingStatement {
   notes?: string;
 }
 
-
-
 const statusFilterOptions: FilterOption[] = [
   {
     key: "status",
@@ -112,6 +107,32 @@ const statusFilterOptions: FilterOption[] = [
     ],
   },
 ];
+
+const statusConfig: Record<string, { label: string; className: string }> = {
+  Draft: {
+    label: "Draft",
+    className: "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200",
+  },
+  Unpaid: {
+    label: "Unpaid",
+    className: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  },
+  "Partially Paid": {
+    label: "Partial",
+    className: "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  },
+  Paid: {
+    label: "Paid",
+    className: "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300",
+  },
+  Cancelled: {
+    label: "Cancelled",
+    className: "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300",
+  },
+};
+
+const formatCurrency = (n: number) => `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+const formatDate = (d: string) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 const mapBillingStatement = (b: any): BillingStatement => {
   const customer = b.customer || {};
@@ -209,7 +230,6 @@ const BillingList: React.FC = () => {
 
   const isArchivedView = filters.archived === "true";
 
-  // Archive
   const handleArchive = async (s: BillingStatement) => {
     try {
       await api.delete(`/billing-statements/${s.id}`);
@@ -220,7 +240,6 @@ const BillingList: React.FC = () => {
     }
   };
 
-  // Restore
   const handleRestore = async (s: BillingStatement) => {
     try {
       await api.patch(`/billing-statements/${s.id}/restore`);
@@ -231,7 +250,6 @@ const BillingList: React.FC = () => {
     }
   };
 
-  // Force Delete
   const handleForceDelete = async (s: BillingStatement) => {
     try {
       await api.delete(`/billing-statements/${s.id}/force`);
@@ -242,62 +260,45 @@ const BillingList: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: BillingStatement["status"]) => {
-    switch (status) {
-      case "Paid":
-        return <Badge variant="approved">Paid</Badge>;
-      case "Partially Paid":
-        return <Badge variant="received">Partially Paid</Badge>;
-      case "Unpaid":
-        return <Badge variant="for-approval">Unpaid</Badge>;
-      case "Cancelled":
-        return <Badge variant="cancelled">Cancelled</Badge>;
-      default:
-        return <Badge variant="default">Draft</Badge>;
-    }
-  };
-
   return (
     <>
-    <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
-      <DataToolbar
-        searchPlaceholder="Search bills, customers, plate number..."
-        onSearch={setSearch}
-        filters={statusFilterOptions}
-        activeFilters={filters}
-        onFilterChange={(key, value) =>
-          setFilters((prev) => ({ ...prev, [key]: value }))
-        }
-      />
+      <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
+        <DataToolbar
+          searchPlaceholder="Search bills, customers..."
+          onSearch={setSearch}
+          filters={statusFilterOptions}
+          activeFilters={filters}
+          onFilterChange={(key, value) =>
+            setFilters((prev) => ({ ...prev, [key]: value }))
+          }
+        />
 
-      {isLoading ? (
-        <div className="flex-1 flex flex-col justify-start py-4">
-          <TableSkeleton
-            columns={9}
-            rows={8}
-          />
-        </div>
-      ) : statements.length > 0 ? (
-        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
-          <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full border-separate border-spacing-y-2">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-center w-[12%]">Bill ID</TableHead>
-                  <TableHead className="text-center w-[9%]">Date</TableHead>
-                  <TableHead className="text-center w-[16%]">Customer</TableHead>
-                  <TableHead className="text-center w-[9%]">Plate Number</TableHead>
-                  <TableHead className="text-center w-[12%]">Ref SO</TableHead>
-                  <TableHead className="text-center w-[9%]">Ref JO</TableHead>
-                  <TableHead className="text-center w-[10%]">Total</TableHead>
-                  <TableHead className="text-center w-[10%]">Paid / Balance</TableHead>
-                  <TableHead className="text-center w-[8%]">Status</TableHead>
-                  <TableHead className="w-[5%] text-right pr-4"></TableHead>
-                </TableRow>
-              </TableHeader>
+        {isLoading ? (
+          <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+            <div className="flex-1 flex flex-col items-center justify-center py-20">
+              <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+              <p className="text-sm font-medium text-muted-foreground animate-pulse">
+                Loading billing statements...
+              </p>
+            </div>
+          </div>
+        ) : statements.length > 0 ? (
+          <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
+            <ScrollArea className="flex-1 px-3">
+              <Table className="table-fixed w-full border-separate border-spacing-y-2">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[18%] text-center">Bill ID</TableHead>
+                    <TableHead className="w-[22%] text-center">Customer</TableHead>
+                    <TableHead className="w-[18%] text-center">Date</TableHead>
+                    <TableHead className="w-[18%] text-center">Total</TableHead>
+                    <TableHead className="w-[14%] text-center">Status</TableHead>
+                    <TableHead className="w-[10%] text-right pr-6"></TableHead>
+                  </TableRow>
+                </TableHeader>
 
-              <TableBody>
-                {statements.map((s) => {
+                <TableBody>
+                  {statements.map((s) => {
                     const paidAmount = s.payments.reduce((sum, p) => sum + p.amount, 0);
                     const discountAmount = s.discountType === 'fixed'
                       ? (s.discountValue ?? 0)
@@ -305,75 +306,41 @@ const BillingList: React.FC = () => {
                         ? Math.round(s.total * (s.discountValue ?? 0) / 100 * 100) / 100
                         : 0;
                     const effectiveTotal = s.total - discountAmount;
-                    const balance = effectiveTotal - paidAmount;
+
+                    const config = statusConfig[s.status] || { label: s.status, className: "border-slate-300 bg-slate-100 text-slate-700" };
 
                     return (
                       <TableRow
                         key={s.id}
                         onClick={() => navigate(`/webapp/sales/billing/${s.id}`)}
                         className={cn(
-                          "cursor-pointer bg-card border rounded-lg hover:bg-accent/30 text-center"
+                          "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md",
+                          "hover:bg-accent/30"
                         )}
                       >
-                        <TableCell className="font-mono font-bold text-center text-primary">
-                          {s.billNumber || s.id.substring(0, 8).toUpperCase()}
+                        <TableCell className="py-2.5 text-left pl-8">
+                          <span className="font-semibold text-sm font-mono">{s.billNumber || s.id.substring(0, 8).toUpperCase()}</span>
                         </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {new Date(s.date).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-center font-medium">
-                          {s.customerName}
+                        <TableCell className="text-center font-medium">{s.customerName}</TableCell>
+                        <TableCell className="text-center text-muted-foreground">{formatDate(s.date)}</TableCell>
+                        <TableCell className="text-center font-semibold text-foreground">
+                          {formatCurrency(effectiveTotal)}
                         </TableCell>
                         <TableCell className="text-center">
-                          {s.vehiclePlate ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                              {s.vehiclePlate}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center font-semibold text-muted-foreground">
-                          {s.soid || "—"}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {s.joid && s.joid !== "—" ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                              {s.joid}
-                            </span>
-                          ) : "—"}
-                        </TableCell>
-                        <TableCell className="text-center font-bold">
-                          {discountAmount > 0 ? (
-                            <div className="flex flex-col items-center">
-                              <span className="text-xs text-muted-foreground line-through">₱{s.total.toLocaleString()}</span>
-                              <span className="text-green-600">₱{effectiveTotal.toLocaleString()}</span>
-                            </div>
-                          ) : (
-                            `₱ ${s.total.toLocaleString()}`
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center text-xs">
-                          <div className="flex flex-col items-center">
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                              Paid: ₱{paidAmount.toLocaleString()}
-                            </span>
-                            <span className="text-muted-foreground">
-                              Due: ₱{Math.max(0, balance).toLocaleString()}
+                          <div className="flex justify-center">
+                            <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${config.className}`}>
+                              {config.label}
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          {getStatusBadge(s.status)}
-                        </TableCell>
-                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-right pr-4" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button type="button" className="p-2 rounded-md hover:bg-muted text-muted-foreground transition-colors outline-none">
                                 <MoreVertical size={16} />
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 z-[100]">
+                            <DropdownMenuContent align="end" className="w-44">
                               <DropdownMenuItem onClick={() => navigate(`/webapp/sales/billing/${s.id}`)} className="cursor-pointer">
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Details
@@ -405,34 +372,32 @@ const BillingList: React.FC = () => {
                       </TableRow>
                     );
                   })}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+                </TableBody>
+              </Table>
+            </ScrollArea>
 
-          {totalItems > pageSize && (
-            <div className="border-t mx-3">
-              <Pagination
-                totalItems={totalItems}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
+            {totalItems > pageSize && (
+              <div className="border-t mx-3">
+                <Pagination
+                  totalItems={totalItems}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+            <div className="py-16 flex flex-col items-center text-center">
+              <Receipt className="h-6 w-6 mb-2 text-muted-foreground" />
+              <p className="text-sm font-medium">No billing statements found</p>
+              <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
             </div>
-          )}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center text-center">
-            <Receipt className="h-8 w-8 mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">No billing statements available</p>
-            <p className="text-xs text-muted-foreground">
-              Create a new bill to get started
-            </p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
 
       {/* CONFIRM PERMANENT DELETE */}
       <AlertDialog open={!!confirmDeleteTarget} onOpenChange={(open) => !open && setConfirmDeleteTarget(null)}>

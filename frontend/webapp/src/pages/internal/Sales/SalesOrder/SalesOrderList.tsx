@@ -392,69 +392,48 @@ const SalesOrderList: React.FC = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[14%] text-center">SO #</TableHead>
-                  <TableHead className="w-[20%] text-center">Customer</TableHead>
-                  <TableHead className="w-[10%] text-center">Plate No.</TableHead>
-                  <TableHead className="w-[8%] text-center">Type</TableHead>
-                  <TableHead className="w-[6%] text-center">Items</TableHead>
-                  <TableHead className="w-[13%] text-center">Total</TableHead>
-                  <TableHead className="w-[10%] text-center">Status</TableHead>
+                  <TableHead className="w-[18%] text-center">SO #</TableHead>
+                  <TableHead className="w-[28%] text-center">Customer</TableHead>
+                  <TableHead className="w-[18%] text-center">Total</TableHead>
+                  <TableHead className="w-[18%] text-center">Status</TableHead>
                   <TableHead className="w-[10%] text-center">Date</TableHead>
-                  <TableHead className="w-[7%] text-right pr-4"></TableHead>
+                  <TableHead className="w-[8%] text-right pr-6"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((o) => {
-                  const config = statusConfig[o.status] || { label: o.status, variant: "default" };
+                  const statusLabel = statusConfig[o.status]?.label || o.status;
                   const isCounter = o.type === "COUNTER";
                   return (
                     <TableRow
                       key={o.id}
                       onClick={() => navigate(`/webapp/sales/sales-orders/${o.id}`)}
-                      className="cursor-pointer bg-card border border-border/60 shadow-sm rounded-lg hover:bg-accent/30 text-center"
+                      className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
                     >
-                      <TableCell className="font-mono font-semibold">{o.so_number}</TableCell>
-                      <TableCell className="font-medium">{o.customerName}</TableCell>
-                      <TableCell>
-                        {o.plateNo !== "—" ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                            {o.plateNo}
+                      <TableCell className="py-2.5 text-left pl-8">
+                        <span className="font-semibold text-sm font-mono">{o.so_number}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1.5">{isCounter ? "Counter" : "Repair"}</span>
+                      </TableCell>
+                      <TableCell className="text-center font-medium">{o.customerName}</TableCell>
+                      <TableCell className="text-center font-semibold text-foreground">
+                        ₱{o.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center">
+                          <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
+                            o.status === "APPROVED" ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300" :
+                            o.status === "IN_PROGRESS" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                            o.status === "COMPLETED" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                            o.status === "CANCELLED" ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300" :
+                            o.status === "SUBMITTED" ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" :
+                            "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                          }`}>
+                            {statusLabel}
                           </span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${isCounter ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-sky-50 text-sky-700 border-sky-200"}`}>
-                          {isCounter ? "Counter" : "Repair"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-semibold">{o.itemCount}</TableCell>
-                      <TableCell className="font-semibold">₱{o.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col items-center gap-1 justify-center">
-                          <Badge variant={config.variant} className="whitespace-nowrap px-3 justify-center">
-                            {config.label}
-                          </Badge>
-                          {((isCounter && o.status === "APPROVED") || (!isCounter && o.status === "COMPLETED")) && (!o.billing_statement || o.billing_statement.status !== "Paid") && (
-                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/50 leading-none">
-                              For Billing
-                            </span>
-                          )}
-                          {o.billing_statement?.status === "Paid" && (
-                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/20 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/50 leading-none">
-                              Paid
-                            </span>
-                          )}
-                          {o.hasUnissuedItems && (
-                            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/50 leading-none animate-pulse">
-                              Items Need Attention
-                            </span>
-                          )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}
+                      <TableCell className="text-center text-muted-foreground text-xs">
+                        {o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
                       </TableCell>
                       <TableCell className="text-right pr-4">{renderActions(o)}</TableCell>
                     </TableRow>

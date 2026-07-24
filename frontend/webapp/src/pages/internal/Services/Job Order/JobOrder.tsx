@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableHeader,
@@ -12,7 +11,6 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Badge } from "@/components/ui/badge";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import {
   DropdownMenu,
@@ -23,7 +21,6 @@ import {
 import { Wrench, MoreVertical, Eye, Play, CircleCheck, XCircle, Clock } from "lucide-react";
 import api from "@/api/axios";
 import { toast } from "sonner";
-import TableSkeleton from "@/components/ui/TableSkeleton";
 
 /* TYPES */
 interface JobOrderRow {
@@ -54,21 +51,6 @@ const statusFilterOptions: FilterOption[] = [
     ],
   },
 ];
-
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "Completed":
-      return <Badge variant="approved">Completed</Badge>;
-    case "In Progress":
-      return <Badge variant="received">In Progress</Badge>;
-    case "Pending":
-      return <Badge variant="for-approval">Pending</Badge>;
-    case "Cancelled":
-      return <Badge variant="cancelled">Cancelled</Badge>;
-    default:
-      return <Badge variant="default">{status}</Badge>;
-  }
-};
 
 const formatTimerShort = (totalSeconds: number): string => {
   const h = Math.floor(totalSeconds / 3600);
@@ -183,23 +165,24 @@ const JobOrderList: React.FC = () => {
       />
 
       {isLoading ? (
-        <div className="flex-1 flex flex-col justify-start py-4">
-          <TableSkeleton columns={8} rows={8} />
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading job orders...</p>
+          </div>
         </div>
       ) : jobOrders.length > 0 ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
           <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full min-w-[900px] border-separate border-spacing-y-2">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-center w-[12%]">JO #</TableHead>
-                  <TableHead className="text-center w-[14%]">Date</TableHead>
-                  <TableHead className="text-center w-[14%]">Plate No.</TableHead>
-                  <TableHead className="text-center w-[16%]">Technician</TableHead>
-                  <TableHead className="text-center w-[10%]">Timer</TableHead>
-                  <TableHead className="text-center w-[14%]">Services</TableHead>
-                  <TableHead className="text-center w-[12%]">Status</TableHead>
-                  <TableHead className="text-center w-[8%]"></TableHead>
+                  <TableHead className="w-[18%] text-center">JO #</TableHead>
+                  <TableHead className="w-[22%] text-center">Customer</TableHead>
+                  <TableHead className="w-[18%] text-center">Technician</TableHead>
+                  <TableHead className="w-[18%] text-center">Status</TableHead>
+                  <TableHead className="w-[10%] text-center">Date</TableHead>
+                  <TableHead className="w-[8%] text-right pr-6"></TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -208,41 +191,33 @@ const JobOrderList: React.FC = () => {
                   <TableRow
                     key={jo.id}
                     onClick={() => navigate(`/webapp/services/job-orders/${jo.id}`)}
-                    className="cursor-pointer bg-card border rounded-lg hover:bg-accent/30 text-center"
+                    className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
                   >
-                    <TableCell className="font-mono font-bold text-primary">
-                      {jo.jo_number || `JO-${jo.id.substring(0, 8).toUpperCase()}`}
+                    <TableCell className="py-2.5 text-left pl-8">
+                      <span className="font-semibold text-sm font-mono">{jo.jo_number || `JO-${jo.id.substring(0, 8).toUpperCase()}`}</span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(jo.date).toLocaleDateString()}
+                    <TableCell className="text-center font-medium">
+                      {jo.vehicle ? `${jo.vehicle.year_model || ""} ${jo.vehicle.make || ""} ${jo.vehicle.model || ""}`.trim() || "—" : "—"}
                     </TableCell>
-                    <TableCell>
-                      {jo.vehicle?.plate_number ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                          {jo.vehicle.plate_number}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell className="text-center font-medium">
                       {jo.technicianName || "Unassigned"}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className={`inline-block w-2 h-2 rounded-full ${jo.timer_status === "running" ? "bg-green-500 animate-pulse" : jo.timer_status === "paused" ? "bg-amber-500" : "bg-gray-300"}`} />
-                        <span className={`text-xs font-mono ${jo.timer_status === "running" ? "text-green-600 font-bold" : jo.timer_status === "paused" ? "text-amber-600" : "text-muted-foreground"}`}>
-                          {formatTimerShort(jo.timer_total_seconds || 0)}
+                    <TableCell className="text-center">
+                      <div className="flex justify-center">
+                        <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
+                          jo.statusRecord?.name === "In Progress" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                          jo.statusRecord?.name === "Completed" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                          jo.statusRecord?.name === "Cancelled" ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300" :
+                          "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        }`}>
+                          {jo.statusRecord?.name || "Pending"}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {jo.services?.length > 0
-                        ? jo.services.map((s) => s.service_type?.name).filter(Boolean).join(", ")
-                        : "—"}
+                    <TableCell className="text-center text-muted-foreground text-xs">
+                      {new Date(jo.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </TableCell>
-                    <TableCell>{getStatusBadge(jo.statusRecord?.name ?? "Pending")}</TableCell>
-                    <TableCell>{renderActions(jo)}</TableCell>
+                    <TableCell className="text-right pr-4">{renderActions(jo)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -262,15 +237,13 @@ const JobOrderList: React.FC = () => {
           )}
         </div>
       ) : (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center text-center">
-            <Wrench className="h-8 w-8 mb-2 text-muted-foreground" />
-            <p className="text-sm font-medium">No job orders available</p>
-            <p className="text-xs text-muted-foreground">
-              Create a new job order to get started
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="py-16 flex flex-col items-center text-center">
+            <Wrench className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No job orders found</p>
+            <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
+          </div>
+        </div>
       )}
     </div>
   );

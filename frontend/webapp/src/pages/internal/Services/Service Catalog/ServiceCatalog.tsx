@@ -1,13 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 
-import { ImageIcon } from "lucide-react";
+import { Wrench } from "lucide-react";
 import api from "@/api/axios";
 
 /* ================= TYPES ================= */
@@ -155,77 +154,54 @@ const ServiceCatalogList: React.FC = () => {
         activeFilters={filters}
       />
 
-      <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
-        <ScrollArea className="flex-1 px-3">
-          <Table className="table-fixed w-full border-separate border-spacing-y-2">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-1/4 text-center">Service</TableHead>
-                <TableHead className="w-1/4 text-center">Category</TableHead>
-                <TableHead className="text-center">Tasks</TableHead>
-                <TableHead className="w-[15%] text-center">Pricing</TableHead>
-              </TableRow>
-            </TableHeader>
+      {isLoading ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="flex-1 flex flex-col items-center justify-center py-20">
+            <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading services...</p>
+          </div>
+        </div>
+      ) : filtered.length > 0 ? (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
+          <ScrollArea className="flex-1 px-3">
+            <Table className="table-fixed w-full border-separate border-spacing-y-2">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[28%] text-center">Service</TableHead>
+                  <TableHead className="w-[22%] text-center">Category</TableHead>
+                  <TableHead className="w-[32%] text-center">Tasks</TableHead>
+                  <TableHead className="w-[18%] text-center">Pricing</TableHead>
+                </TableRow>
+              </TableHeader>
 
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <div className="py-20 flex flex-col items-center justify-center">
-                      <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-                      <p className="text-sm font-medium text-muted-foreground animate-pulse">
-                        Loading services...
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : services.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <div className="py-16 flex flex-col items-center text-center">
-                      <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                      <p className="text-sm font-medium">No services available</p>
-                      <p className="text-xs text-muted-foreground">Add a service to get started</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : filtered.length > 0 ? (
-                paginated.map((s) => {
+              <TableBody>
+                {paginated.map((s) => {
                   const category = categoryMap.get(s.serviceCategoryId);
-
                   return (
                     <TableRow
                       key={s.id}
                       onClick={() => navigate(`/webapp/services/service-catalog/${s.id}`)}
-                      className="rounded-lg border bg-card shadow-sm hover:shadow-md cursor-pointer"
+                      className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
                     >
-                      <TableCell className="font-medium text-center">{s.name}</TableCell>
-                      <TableCell className="text-center">{s.category || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground truncate text-center">{s.tasks && s.tasks.length > 0 ? s.tasks.join(', ') : "No tasks"}</TableCell>
+                      <TableCell className="py-2.5 text-left pl-8">
+                        <span className="font-semibold text-sm">{s.name}</span>
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">{s.category || "—"}</TableCell>
+                      <TableCell className="text-center text-muted-foreground truncate text-xs">
+                        {s.tasks && s.tasks.length > 0 ? s.tasks.join(', ') : "No tasks"}
+                      </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline">
+                        <span className="inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
                           {s.pricingType === "hourly rate" ? "Hourly Rate" : "Fixed Price"}
-                        </Badge>
+                        </span>
                       </TableCell>
                     </TableRow>
                   );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <div className="py-16 flex flex-col items-center text-center">
-                      <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
-                      <p className="text-sm font-medium">No services found</p>
-                      <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                })}
+              </TableBody>
+            </Table>
+          </ScrollArea>
 
-        {filtered.length > 0 && (
           <div className="border-t mx-3">
             <Pagination
               totalItems={filtered.length}
@@ -235,8 +211,16 @@ const ServiceCatalogList: React.FC = () => {
               onPageSizeChange={setPageSize}
             />
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
+          <div className="py-16 flex flex-col items-center text-center">
+            <Wrench className="h-6 w-6 mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No services found</p>
+            <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

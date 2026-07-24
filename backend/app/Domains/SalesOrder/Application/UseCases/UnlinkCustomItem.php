@@ -42,12 +42,18 @@ class UnlinkCustomItem
             // Release reservation for this item
             $this->reserveInventoryService->unreserveItem($item);
 
-            // Unlink — clear product, keep custom_name and price
+            // Unlink — clear product, restore original custom price
+            $originalPrice = (float) ($item->original_custom_price ?? 0);
+            $quantity = (int) $item->quantity;
+
             $item->update([
                 'ProductID' => null,
                 'TaxAtSale' => null,
+                'UnitPrice' => $originalPrice,
+                'SubTotal' => round($quantity * $originalPrice, 2),
                 'needs_ordering' => true,
                 'quantity_returned' => 0,
+                'original_custom_price' => null,
             ]);
 
             // Recalculate SO Total

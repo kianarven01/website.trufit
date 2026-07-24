@@ -31,6 +31,7 @@ class SalesOrderItem extends Model
         'issued_by',
         'quantity_returned',
         'is_tentative',
+        'original_custom_price',
     ];
 
     protected $casts = [
@@ -42,6 +43,7 @@ class SalesOrderItem extends Model
         'needs_ordering' => 'boolean',
         'is_issued' => 'boolean',
         'is_tentative' => 'boolean',
+        'original_custom_price' => 'decimal:2',
         'issued_at' => 'datetime',
     ];
 

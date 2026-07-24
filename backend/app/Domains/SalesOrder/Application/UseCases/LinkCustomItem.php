@@ -44,9 +44,12 @@ class LinkCustomItem
             $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $productId)->first();
             $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
 
-            // Get inventory price
-            $inventory = \App\Domains\Inventory\Domain\Models\Inventory::where('productID', $productId)->first();
-            $inventoryPrice = (float) ($inventory?->sell_price ?? 0);
+            // Price priority: supplier price record → inventory sell_price
+            $inventoryPrice = (float) ($ps->price?->Price ?? 0);
+            if ($inventoryPrice <= 0) {
+                $inventory = \App\Domains\Inventory\Domain\Models\Inventory::where('productID', $productId)->first();
+                $inventoryPrice = (float) ($inventory?->sell_price ?? 0);
+            }
 
             // Determine price
             $currentPrice = (float) $item->UnitPrice;
@@ -71,13 +74,20 @@ class LinkCustomItem
             $needsOrdering = $availableStock < $quantity;
 
             // Update the item
-            $item->update([
+            $updateData = [
                 'ProductID' => $productId,
                 'TaxAtSale' => $taxAtSale,
                 'UnitPrice' => $unitPrice,
                 'SubTotal' => $subTotal,
                 'needs_ordering' => $needsOrdering,
-            ]);
+            ];
+
+            // Store original custom price on first link (for restore on unlink)
+            if (empty($item->original_custom_price) && $currentPrice > 0) {
+                $updateData['original_custom_price'] = $currentPrice;
+            }
+
+            $item->update($updateData);
 
             // Auto-reserve the newly linked item
             $this->reserveInventoryService->reserveItems([$item]);

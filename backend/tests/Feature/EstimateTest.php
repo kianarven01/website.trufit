@@ -1202,6 +1202,8 @@ class EstimateTest extends TestCase
 
         $item = SalesOrderItem::find($itemId);
         $this->assertNotNull($item->ProductID);
+        // Original custom price should be stored
+        $this->assertEquals(3000.00, (float) $item->original_custom_price);
 
         // Unlink
         $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/unlink")->assertOk();
@@ -1211,9 +1213,10 @@ class EstimateTest extends TestCase
         $this->assertNull($item->TaxAtSale);
         $this->assertTrue($item->needs_ordering);
         $this->assertEquals(0, $item->quantity_returned);
-        // Custom name and price should be preserved
+        // Custom name preserved, price restored to original
         $this->assertEquals('Custom Radiator', $item->custom_name);
         $this->assertEquals(3000.00, (float) $item->UnitPrice);
+        $this->assertNull($item->original_custom_price);
     }
 
     public function test_cannot_unlink_non_custom_item()
@@ -1412,5 +1415,159 @@ class EstimateTest extends TestCase
         $jo = JobOrder::where('estimate_id', $estimate->id)->first();
         $this->assertNotNull($jo, 'JO should be created for confirmed services');
         $this->assertCount(1, JobOrderService::where('JobOrderID', $jo->id)->get());
+    }
+
+    public function test_link_custom_item_pulls_price_from_product_supplier()
+    {
+        $this->actingAs($this->user);
+
+        // Create a ProductSupplier with a linked ProductPrice (selling price = 1200)
+        $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $this->product->id)->first();
+        \App\Domains\Product\Domain\Models\ProductPrice::create([
+            'id' => (string) Str::uuid(),
+            'product_supplier_id' => $ps->id,
+            'Price' => 1200.00,
+            'Markup' => 0,
+        ]);
+
+        // Create SO with custom part at ₱0
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 0,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Link — price should come from ProductSupplier.price.Price (1200)
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $this->product->id,
+        ])->assertOk();
+
+        $item = SalesOrderItem::find($itemId);
+        $this->assertEquals(1200.00, (float) $item->UnitPrice);
+        $this->assertEquals(1200.00, (float) $item->SubTotal);
+    }
+
+    public function test_so_jo_linked_when_so_created_after_jo_exists()
+    {
+        $this->actingAs($this->user);
+
+        // Estimate: confirmed service + tentative custom part
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 800.00,
+            'subtotal' => 800.00,
+        ]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'custom_name' => 'Custom Radiator',
+            'quantity' => 1,
+            'unit_price' => 3000.00,
+            'subtotal' => 3000.00,
+            'is_tentative' => true,
+        ]);
+
+        // Approve → JO created (service), no SO (part is tentative)
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo);
+        $this->assertNull($jo->SaleOrderID, 'JO should have no SO initially');
+        $this->assertNull(SalesOrder::where('estimate_id', $estimate->id)->first());
+
+        // Edit: confirm the custom part → SO should be created AND linked to existing JO
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'total_amount' => 3800.00,
+            'items' => [
+                [
+                    'item_type' => 'service',
+                    'service_id' => $this->serviceType->id,
+                    'quantity' => 1,
+                    'unit_price' => 800.00,
+                    'subtotal' => 800.00,
+                ],
+                [
+                    'item_type' => 'part',
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 3000.00,
+                    'subtotal' => 3000.00,
+                    'needs_ordering' => true,
+                    'is_tentative' => false,
+                ],
+            ],
+        ])->assertOk();
+
+        // Verify SO created
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so, 'SO should be created');
+
+        // Verify SO and JO are linked
+        $jo->refresh();
+        $this->assertEquals($so->id, $jo->SaleOrderID, 'JO should be linked to SO');
+        $this->assertEquals($jo->id, $so->job_order_id, 'SO should be linked to JO');
+    }
+
+    public function test_unlink_resets_zero_price_to_zero()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO with custom part at ₱0
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 0,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Link — price pulled from inventory
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $this->product->id,
+        ])->assertOk();
+
+        $item = SalesOrderItem::find($itemId);
+        $this->assertGreaterThan(0, (float) $item->UnitPrice);
+        $this->assertNull($item->original_custom_price, 'No original price to store (was ₱0)');
+
+        // Unlink — price should go back to ₱0
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/unlink")->assertOk();
+
+        $item->refresh();
+        $this->assertEquals(0, (float) $item->UnitPrice);
+        $this->assertEquals(0, (float) $item->SubTotal);
+        $this->assertNull($item->original_custom_price);
     }
 }

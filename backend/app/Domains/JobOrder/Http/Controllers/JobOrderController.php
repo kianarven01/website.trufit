@@ -102,6 +102,7 @@ class JobOrderController extends Controller
                 'items' => $so->items->map(fn($item) => [
                     'id' => $item->id,
                     'ProductID' => $item->ProductID,
+                    'custom_name' => $item->custom_name,
                     'quantity' => $item->quantity,
                     'UnitPrice' => $item->UnitPrice,
                     'SubTotal' => $item->SubTotal,

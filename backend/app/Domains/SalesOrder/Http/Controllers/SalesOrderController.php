@@ -345,7 +345,7 @@ class SalesOrderController extends Controller
             return response()->json(['message' => 'This Sales Order has no linked estimate.'], 422);
         }
 
-        $existingProductIds = $order->items->pluck('ProductID')->toArray();
+        $existingProductIds = $order->items->pluck('ProductID')->filter()->toArray();
 
         $availableItems = EstimateItem::with('product')
             ->where('estimate_id', $order->estimate_id)

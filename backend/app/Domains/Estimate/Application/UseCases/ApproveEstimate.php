@@ -164,7 +164,10 @@ class ApproveEstimate
             }
 
             return [
-                'estimate' => $estimate->fresh(),
+                'estimate' => $estimate->fresh()->load([
+                    'customer', 'vehicle', 'items',
+                    'creator.employee', 'editor.employee', 'approver.employee',
+                ]),
                 'salesOrder' => $salesOrder?->load(['items.product', 'customer', 'vehicle']),
                 'jobOrder' => $jobOrder?->load(['services.serviceType', 'vehicle']),
             ];

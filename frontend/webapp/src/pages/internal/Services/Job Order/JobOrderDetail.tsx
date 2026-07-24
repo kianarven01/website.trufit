@@ -87,7 +87,7 @@ interface SalesOrder {
   so_number: string;
   Status: string;
   Total: number;
-  items?: { id: string; ProductID: string; quantity: number; UnitPrice: number; SubTotal: number; is_issued?: boolean; product?: { name: string; SKU: string; part_number?: string; manufacturer_name?: string; category_is_spol?: boolean; category_name?: string } }[];
+  items?: { id: string; ProductID: string; custom_name?: string; quantity: number; UnitPrice: number; SubTotal: number; is_issued?: boolean; product?: { name: string; SKU: string; part_number?: string; manufacturer_name?: string; category_is_spol?: boolean; category_name?: string } }[];
 }
 
 interface BillingStatement {
@@ -675,7 +675,7 @@ const JobOrderDetail: React.FC = () => {
                           return (
                             <TableRow key={item.id} className="hover:bg-transparent text-center">
                               <TableCell className="font-medium text-center">
-                                {item.product?.manufacturer_name ? `${item.product.manufacturer_name} — ` : ""}{item.product?.name || "Unknown Item"}
+                                {item.product?.manufacturer_name ? `${item.product.manufacturer_name} — ` : ""}{item.custom_name || item.product?.name || "Unknown Item"}
                               </TableCell>
                               <TableCell className="text-center font-mono text-xs text-muted-foreground">
                                 {item.product?.part_number || item.product?.SKU || "—"}

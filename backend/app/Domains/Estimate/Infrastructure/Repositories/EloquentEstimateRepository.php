@@ -254,19 +254,41 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         $existingProductIds = $salesOrder->items->pluck('ProductID')->filter()->toArray();
         $existingCustomNames = $salesOrder->items->pluck('custom_name')->filter()->toArray();
         $newItems = [];
+        $soRecalculated = false;
 
         foreach ($estimate->items as $estItem) {
             if (!empty($estItem->is_tentative)) continue;
             if (!in_array($estItem->item_type, ['part', 'supply'], true)) continue;
 
-            // Skip if already on SO
-            if (!empty($estItem->product_id) && in_array($estItem->product_id, $existingProductIds)) continue;
-            if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingCustomNames)) continue;
-
             $quantity = (int) ($estItem->quantity ?? 1);
             $unitPrice = round((float) ($estItem->unit_price ?? 0), 2);
             $subTotal = round($quantity * $unitPrice, 2);
 
+            // Check if already on SO
+            $existingSOItem = $salesOrder->items->first(function ($soItem) use ($estItem) {
+                if (!empty($estItem->product_id) && $soItem->ProductID === $estItem->product_id) return true;
+                if (!empty($estItem->custom_name) && $soItem->custom_name === $estItem->custom_name) return true;
+                return false;
+            });
+
+            if ($existingSOItem) {
+                // Update existing SO item if price, quantity, or needs_ordering changed
+                if ((float) $existingSOItem->UnitPrice !== $unitPrice
+                    || (int) $existingSOItem->quantity !== $quantity
+                    || $existingSOItem->needs_ordering !== (bool) ($estItem->needs_ordering ?? false)) {
+
+                    $existingSOItem->update([
+                        'UnitPrice' => $unitPrice,
+                        'SubTotal' => $subTotal,
+                        'quantity' => $quantity,
+                        'needs_ordering' => $estItem->needs_ordering ?? false,
+                    ]);
+                    $soRecalculated = true;
+                }
+                continue;
+            }
+
+            // Add new item to SO
             $taxAtSale = 'NON_VAT';
             if (!empty($estItem->product_id)) {
                 $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $estItem->product_id)->first();
@@ -294,7 +316,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             }
         }
 
-        // Sync needs_ordering flag and remove items now tentative on estimate
+        // Sync needs_ordering flag for items on SO
         foreach ($salesOrder->items as $soItem) {
             $estItem = $estimate->items->first(function ($ei) use ($soItem) {
                 if (!empty($soItem->ProductID) && $ei->product_id === $soItem->ProductID) return true;
@@ -304,9 +326,6 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             if ($estItem) {
                 if ($soItem->needs_ordering !== (bool) ($estItem->needs_ordering ?? false)) {
                     $soItem->update(['needs_ordering' => $estItem->needs_ordering ?? false]);
-                }
-                if (!empty($estItem->is_tentative) && !$soItem->is_issued) {
-                    $soItem->delete();
                 }
             }
         }
@@ -336,6 +355,16 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
             if ($confirmedServices->isNotEmpty()) {
                 $jobOrder = $this->createJobOrderForSO($salesOrder, $estimate);
+            }
+        }
+
+        // Link SO ↔ JO if both exist but aren't connected
+        if ($salesOrder && $jobOrder) {
+            if (empty($jobOrder->SaleOrderID)) {
+                $jobOrder->update(['SaleOrderID' => $salesOrder->id]);
+            }
+            if (empty($salesOrder->job_order_id)) {
+                $salesOrder->update(['job_order_id' => $jobOrder->id]);
             }
         }
 

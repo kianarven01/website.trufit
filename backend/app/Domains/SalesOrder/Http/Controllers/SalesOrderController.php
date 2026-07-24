@@ -18,6 +18,7 @@ use App\Domains\SalesOrder\Application\UseCases\IssueSalesOrderItems;
 use App\Domains\SalesOrder\Application\UseCases\ReturnSalesOrderItems;
 use App\Domains\SalesOrder\Application\UseCases\AddEstimateItemsToSalesOrder;
 use App\Domains\SalesOrder\Application\UseCases\LinkCustomItem;
+use App\Domains\SalesOrder\Application\UseCases\UnlinkCustomItem;
 use App\Domains\Estimate\Domain\Models\EstimateItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -401,9 +402,14 @@ class SalesOrderController extends Controller
         try {
             $validated = $request->validate([
                 'product_id' => 'required|exists:App\Domains\Product\Domain\Models\Product,id',
+                'use_custom_price' => 'nullable|boolean',
             ]);
 
-            $item = $useCase->execute($id, $itemId, $validated['product_id']);
+            $useCustomPrice = array_key_exists('use_custom_price', $validated)
+                ? (bool) $validated['use_custom_price']
+                : null;
+
+            $item = $useCase->execute($id, $itemId, $validated['product_id'], $useCustomPrice);
 
             return response()->json([
                 'message' => 'Custom item linked to product successfully.',
@@ -416,6 +422,20 @@ class SalesOrderController extends Controller
             ], 422);
         } catch (\Exception $e) {
             return $this->handleUseCaseException($e, 'link custom item');
+        }
+    }
+
+    public function unlinkCustomItem(string $id, string $itemId, UnlinkCustomItem $useCase): JsonResponse
+    {
+        try {
+            $item = $useCase->execute($id, $itemId);
+
+            return response()->json([
+                'message' => 'Item unlinked successfully.',
+                'data' => $item,
+            ]);
+        } catch (\Exception $e) {
+            return $this->handleUseCaseException($e, 'unlink item');
         }
     }
 

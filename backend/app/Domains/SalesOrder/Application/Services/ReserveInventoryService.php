@@ -90,6 +90,32 @@ class ReserveInventoryService
     }
 
     /**
+     * Unreserve a single SalesOrderItem.
+     */
+    public function unreserveItem($item): void
+    {
+        if (empty($item->ProductID)) {
+            return;
+        }
+
+        $qtyToUnreserve = (int) $item->quantity;
+        $productInventories = Inventory::where('productID', $item->ProductID)
+            ->where('reserved_quantity', '>', 0)
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($productInventories as $inventory) {
+            if ($qtyToUnreserve <= 0) {
+                break;
+            }
+            $unreserveFromRow = min($qtyToUnreserve, $inventory->reserved_quantity);
+            $inventory->reserved_quantity -= $unreserveFromRow;
+            $inventory->save();
+            $qtyToUnreserve -= $unreserveFromRow;
+        }
+    }
+
+    /**
      * Unreserve inventory items (e.g. if Sales Order is voided or cancelled).
      */
     public function unreserve(SalesOrder $salesOrder): void

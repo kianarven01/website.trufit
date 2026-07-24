@@ -94,6 +94,7 @@ interface Product {
   id: string;
   name: string;
   customName?: string | null;
+  isLinked?: boolean;
   manufacturer: string;
   sku: string;
   taxCode: string | null;
@@ -171,6 +172,7 @@ const SalesOrderDetails: React.FC = () => {
   const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
   const [linkSearchQuery, setLinkSearchQuery] = useState("");
   const [linkProducts, setLinkProducts] = useState<any[]>([]);
+  const [linkConfirmProduct, setLinkConfirmProduct] = useState<any>(null);
   const [availableEstimateItems, setAvailableEstimateItems] = useState<any[]>([]);
   const [selectedEstimateItems, setSelectedEstimateItems] = useState<Set<string>>(new Set());
   const [isLoadingEstimateItems, setIsLoadingEstimateItems] = useState(false);
@@ -230,6 +232,7 @@ const SalesOrderDetails: React.FC = () => {
           id: i.id,
           name: i.custom_name || product?.name || "Unknown Product",
           customName: i.custom_name || null,
+          isLinked: Boolean(i.custom_name) && Boolean(i.ProductID),
           manufacturer: product?.manufacturer?.name || "",
           sku: product?.part_number || product?.SKU || "—",
           taxCode: i.TaxAtSale
@@ -473,40 +476,60 @@ const SalesOrderDetails: React.FC = () => {
     }
   };
 
-  const openLinkModal = (itemId: string) => {
+  const openLinkModal = async (itemId: string) => {
     setLinkingItemId(itemId);
     setLinkSearchQuery("");
-    setLinkProducts([]);
+    setLinkConfirmProduct(null);
     setLinkModalOpen(true);
-  };
-
-  const searchProductsForLink = async (query: string) => {
-    setLinkSearchQuery(query);
-    if (query.length < 2) {
-      setLinkProducts([]);
-      return;
-    }
     try {
-      const res = await api.get(`/products?search=${encodeURIComponent(query)}`);
+      const res = await api.get("/products");
       const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
-      setLinkProducts(data.slice(0, 10));
+      setLinkProducts(data);
     } catch {
       setLinkProducts([]);
     }
   };
 
-  const handleLinkItem = async (productId: string) => {
+  const onLinkProductClick = (product: any) => {
+    if (!order || !linkingItemId) return;
+    const item = order.products.find(p => p.id === linkingItemId);
+    const customPrice = item?.price ?? 0;
+    const inventoryPrice = Number(product.preferred_selling_price ?? product.selling_price ?? 0);
+
+    // If custom price is 0, or prices match, link directly
+    if (customPrice <= 0 || customPrice === inventoryPrice) {
+      handleLinkItem(product.id, customPrice <= 0 ? undefined : true);
+    } else {
+      // Prices differ — show confirmation
+      setLinkConfirmProduct(product);
+    }
+  };
+
+  const handleLinkItem = async (productId: string, useCustomPrice?: boolean) => {
     if (!order || !linkingItemId) return;
     try {
-      await api.post(`/sales-orders/${order.id}/items/${linkingItemId}/link`, {
-        product_id: productId,
-      });
+      const payload: any = { product_id: productId };
+      if (useCustomPrice !== undefined) {
+        payload.use_custom_price = useCustomPrice;
+      }
+      await api.post(`/sales-orders/${order.id}/items/${linkingItemId}/link`, payload);
       toast.success("Item linked to inventory product.");
       setLinkModalOpen(false);
       setLinkingItemId(null);
       fetchOrderDetails();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to link item");
+    }
+  };
+
+  const handleUnlinkItem = async (itemId: string) => {
+    if (!order) return;
+    try {
+      await api.post(`/sales-orders/${order.id}/items/${itemId}/unlink`);
+      toast.success("Item unlinked.");
+      fetchOrderDetails();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to unlink item");
     }
   };
 
@@ -912,15 +935,29 @@ const SalesOrderDetails: React.FC = () => {
                               )}
                               <TableCell className="text-left px-4">
                                 <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
+                                {p.customName && (
+                                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-1.5">Custom</span>
+                                )}
                                 {p.customName && !p.isIssued && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
-                                  <Button
-                                    variant="link"
-                                    size="sm"
-                                    className="h-5 p-0 ml-2 text-[10px]"
-                                    onClick={() => openLinkModal(p.id)}
-                                  >
-                                    Link to Inventory
-                                  </Button>
+                                  p.isLinked ? (
+                                    <Button
+                                      variant="link"
+                                      size="sm"
+                                      className="h-5 p-0 ml-2 text-[10px] text-destructive hover:text-destructive"
+                                      onClick={() => handleUnlinkItem(p.id)}
+                                    >
+                                      Unlink
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="link"
+                                      size="sm"
+                                      className="h-5 p-0 ml-2 text-[10px]"
+                                      onClick={() => openLinkModal(p.id)}
+                                    >
+                                      Link to Inventory
+                                    </Button>
+                                  )
                                 )}
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
@@ -1102,6 +1139,30 @@ const SalesOrderDetails: React.FC = () => {
                               )}
                               <TableCell className="text-left px-4">
                                 <span className="font-medium">{p.manufacturer ? `${p.manufacturer} — ` : ""}{p.name}</span>
+                                {p.customName && (
+                                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-1.5">Custom</span>
+                                )}
+                                {p.customName && !p.isIssued && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
+                                  p.isLinked ? (
+                                    <Button
+                                      variant="link"
+                                      size="sm"
+                                      className="h-5 p-0 ml-2 text-[10px] text-destructive hover:text-destructive"
+                                      onClick={() => handleUnlinkItem(p.id)}
+                                    >
+                                      Unlink
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="link"
+                                      size="sm"
+                                      className="h-5 p-0 ml-2 text-[10px]"
+                                      onClick={() => openLinkModal(p.id)}
+                                    >
+                                      Link to Inventory
+                                    </Button>
+                                  )
+                                )}
                               </TableCell>
                               <TableCell className="text-center font-mono font-medium text-xs text-muted-foreground">
                                 {p.sku}
@@ -1584,46 +1645,114 @@ const SalesOrderDetails: React.FC = () => {
       </Dialog>
 
       {/* Link Custom Item to Inventory Modal */}
-      <Dialog open={linkModalOpen} onOpenChange={setLinkModalOpen}>
+      <Dialog open={linkModalOpen} onOpenChange={(open) => { if (!open) { setLinkConfirmProduct(null); } setLinkModalOpen(open); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Link to Inventory Product</DialogTitle>
+            <DialogTitle>
+              Link to Inventory
+              {linkingItemId && (() => {
+                const item = order?.products.find(p => p.id === linkingItemId);
+                return item ? <span className="text-muted-foreground font-normal ml-2">— {item.customName || item.name}</span> : null;
+              })()}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              placeholder="Search products by name or SKU..."
-              value={linkSearchQuery}
-              onChange={(e) => searchProductsForLink(e.target.value)}
-              autoFocus
-            />
-            {linkProducts.length > 0 ? (
-              <div className="border rounded-lg max-h-64 overflow-y-auto">
-                {linkProducts.map((p: any) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between px-3 py-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
-                    onClick={() => handleLinkItem(p.id)}
-                  >
-                    <div>
-                      <div className="text-sm font-medium">{p.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.sku || p.SKU || "—"} · {p.manufacturer_name || "—"}
-                      </div>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {p.quantity_on_hand != null ? `Stock: ${p.quantity_on_hand}` : "Not tracked"}
-                    </span>
+          <div className="space-y-3">
+            {linkConfirmProduct ? (
+              // Price confirmation step
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  This item has a different price than the inventory product.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border rounded-lg p-3 text-center">
+                    <div className="text-xs text-muted-foreground mb-1">Custom Price</div>
+                    <div className="text-lg font-bold">{peso(order?.products.find(p => p.id === linkingItemId)?.price ?? 0)}</div>
                   </div>
-                ))}
-              </div>
-            ) : linkSearchQuery.length >= 2 ? (
-              <div className="py-8 text-center text-muted-foreground border border-dashed rounded-lg">
-                <p className="text-sm">No products found</p>
+                  <div className="border rounded-lg p-3 text-center">
+                    <div className="text-xs text-muted-foreground mb-1">Inventory Price</div>
+                    <div className="text-lg font-bold">{peso(Number(linkConfirmProduct.preferred_selling_price ?? 0))}</div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleLinkItem(linkConfirmProduct.id, true)}
+                  >
+                    Use Custom Price
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={() => handleLinkItem(linkConfirmProduct.id, false)}
+                  >
+                    Use Inventory Price
+                  </Button>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={() => setLinkConfirmProduct(null)}
+                >
+                  Cancel
+                </Button>
               </div>
             ) : (
-              <div className="py-8 text-center text-muted-foreground border border-dashed rounded-lg">
-                <p className="text-sm">Type at least 2 characters to search</p>
-              </div>
+              // Product list
+              <>
+                <Input
+                  placeholder="Filter by name, SKU, or manufacturer..."
+                  value={linkSearchQuery}
+                  onChange={(e) => setLinkSearchQuery(e.target.value)}
+                  autoFocus
+                />
+                {(() => {
+                  const filtered = linkProducts.filter((p: any) => {
+                    const q = linkSearchQuery.toLowerCase();
+                    if (!q) return true;
+                    return p.name?.toLowerCase().includes(q)
+                      || (p.sku || p.SKU || "").toLowerCase().includes(q)
+                      || (p.manufacturer_name || "").toLowerCase().includes(q);
+                  });
+                  return filtered.length > 0 ? (
+                    <div className="border rounded-lg max-h-72 overflow-y-auto">
+                      {filtered.map((p: any) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between px-3 py-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                          onClick={() => onLinkProductClick(p)}
+                        >
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{p.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {p.sku || p.SKU || "—"} · {p.manufacturer_name || "—"}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 ml-3">
+                            {p.preferred_selling_price != null && (
+                              <div className="text-xs font-medium">₱{Number(p.preferred_selling_price).toLocaleString()}</div>
+                            )}
+                            <div className="text-[10px]">
+                              {p.quantity_on_hand != null ? (
+                                p.quantity_on_hand > 0 ? (
+                                  <span className="text-green-600">In Stock ({p.quantity_on_hand})</span>
+                                ) : (
+                                  <span className="text-red-600">Out of Stock</span>
+                                )
+                              ) : (
+                                <span className="text-muted-foreground">Not tracked</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-muted-foreground border border-dashed rounded-lg">
+                      <p className="text-sm">{linkSearchQuery ? "No products match your search" : "No products available"}</p>
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>
         </DialogContent>

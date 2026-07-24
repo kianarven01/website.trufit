@@ -1131,4 +1131,115 @@ class EstimateTest extends TestCase
         $this->assertTrue($item->needs_ordering);
         $this->assertEquals(600.00, $item->SubTotal);
     }
+
+    public function test_link_custom_item_updates_price_and_needs_ordering()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO with custom part at ₱0
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 0,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $response->assertStatus(201);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Link to product with stock
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $this->product->id,
+        ])->assertOk();
+
+        $item = SalesOrderItem::find($itemId);
+        $this->assertEquals($this->product->id, $item->ProductID);
+        // Price should be pulled from product (selling_price = 500)
+        $this->assertEquals(500.00, (float) $item->UnitPrice);
+        $this->assertEquals(500.00, (float) $item->SubTotal);
+        // needs_ordering should be false (10 in stock, need 1)
+        $this->assertFalse($item->needs_ordering);
+    }
+
+    public function test_unlink_custom_item()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO with custom part
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 3000.00,
+                    'needs_ordering' => true,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Link
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/link", [
+            'product_id' => $this->product->id,
+        ])->assertOk();
+
+        $item = SalesOrderItem::find($itemId);
+        $this->assertNotNull($item->ProductID);
+
+        // Unlink
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/unlink")->assertOk();
+
+        $item->refresh();
+        $this->assertNull($item->ProductID);
+        $this->assertNull($item->TaxAtSale);
+        $this->assertTrue($item->needs_ordering);
+        $this->assertEquals(0, $item->quantity_returned);
+        // Custom name and price should be preserved
+        $this->assertEquals('Custom Radiator', $item->custom_name);
+        $this->assertEquals(3000.00, (float) $item->UnitPrice);
+    }
+
+    public function test_cannot_unlink_non_custom_item()
+    {
+        $this->actingAs($this->user);
+
+        // Create SO with regular product
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+        $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Try to unlink a non-custom item
+        $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/unlink")->assertStatus(422);
+    }
 }

@@ -19,6 +19,7 @@ Route::prefix('sales-orders')->group(function () {
     Route::get('/{id}/estimate-items', [SalesOrderController::class, 'estimateItems']);
     Route::post('/{id}/add-items', [SalesOrderController::class, 'addItems']);
     Route::post('/{id}/items/{itemId}/link', [SalesOrderController::class, 'linkCustomItem']);
+    Route::post('/{id}/items/{itemId}/unlink', [SalesOrderController::class, 'unlinkCustomItem']);
     Route::patch('/{id}/restore', [SalesOrderController::class, 'restore']);
     Route::delete('/{id}/force', [SalesOrderController::class, 'forceDelete']);
 

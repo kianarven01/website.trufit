@@ -30,6 +30,11 @@ class ProductFormatterService
             $preferredSellingPrice = $inventory?->sell_price;
         }
 
+        // Aggregate quantity_on_hand from inventory rows
+        $quantityOnHand = $product->relationLoaded('inventoryRows')
+            ? $product->inventoryRows->sum('quantity_on_hand')
+            : null;
+
         return [
             'id' => $product->id,
             'name' => $product->name,
@@ -76,6 +81,7 @@ class ProductFormatterService
                 'supplier_code' => $preferredSupplier->supplier->supplier_code,
             ] : null,
             'preferred_selling_price' => $preferredSellingPrice,
+            'quantity_on_hand' => $quantityOnHand,
 
             'suppliers' => $productSuppliers
                 ->map(fn ($productSupplier) => [

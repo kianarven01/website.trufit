@@ -1242,4 +1242,175 @@ class EstimateTest extends TestCase
         // Try to unlink a non-custom item
         $this->postJson("/api/sales-orders/{$soId}/items/{$itemId}/unlink")->assertStatus(422);
     }
+
+    /* ================================================================
+     *  TENTATIVE-TO-CONFIRMED SYNC TESTS
+     * ================================================================ */
+
+    public function test_tentative_custom_part_creates_so_when_confirmed()
+    {
+        $this->actingAs($this->user);
+
+        // Create estimate with only a tentative custom part
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        $estItem = EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'custom_name' => 'Custom Radiator',
+            'quantity' => 1,
+            'unit_price' => 3000.00,
+            'subtotal' => 3000.00,
+            'is_tentative' => true,
+        ]);
+
+        // Approve — no SO should be created (all items tentative)
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNull($so, 'No SO should exist when all items are tentative');
+
+        // Edit estimate: toggle item to non-tentative
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'total_amount' => 3000.00,
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'custom_name' => 'Custom Radiator',
+                    'quantity' => 1,
+                    'unit_price' => 3000.00,
+                    'subtotal' => 3000.00,
+                    'needs_ordering' => true,
+                    'is_tentative' => false,
+                ],
+            ],
+        ])->assertOk();
+
+        // Verify SO was created with the custom part
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so, 'SO should be created when tentative item becomes confirmed');
+        $this->assertEquals('APPROVED', $so->Status);
+
+        $items = SalesOrderItem::where('SalesOrderID', $so->id)->get();
+        $this->assertCount(1, $items);
+        $this->assertEquals('Custom Radiator', $items->first()->custom_name);
+        $this->assertEquals(3000.00, (float) $items->first()->UnitPrice);
+    }
+
+    public function test_tentative_service_creates_jo_when_confirmed()
+    {
+        $this->actingAs($this->user);
+
+        // Create estimate with only a tentative custom service
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'custom_name' => 'Custom Diagnostic',
+            'quantity' => 1,
+            'unit_price' => 500.00,
+            'subtotal' => 500.00,
+            'is_tentative' => true,
+        ]);
+
+        // Approve — no JO should be created (all items tentative)
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNull($jo, 'No JO should exist when all items are tentative');
+
+        // Edit estimate: toggle item to non-tentative
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'total_amount' => 500.00,
+            'items' => [
+                [
+                    'item_type' => 'service',
+                    'custom_name' => 'Custom Diagnostic',
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                    'subtotal' => 500.00,
+                    'is_tentative' => false,
+                ],
+            ],
+        ])->assertOk();
+
+        // Verify JO was created with the custom service
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo, 'JO should be created when tentative service becomes confirmed');
+
+        $services = JobOrderService::where('JobOrderID', $jo->id)->get();
+        $this->assertCount(1, $services);
+        $this->assertEquals('Custom Diagnostic', $services->first()->custom_name);
+        $this->assertEquals(500.00, (float) $services->first()->PriceAtSale);
+    }
+
+    public function test_mixed_tentative_items_creates_so_and_jo_when_confirmed()
+    {
+        $this->actingAs($this->user);
+
+        // Create estimate with tentative part + tentative service
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 0.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'part',
+            'custom_name' => 'Custom Part',
+            'quantity' => 1,
+            'unit_price' => 1000.00,
+            'subtotal' => 1000.00,
+            'is_tentative' => true,
+        ]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 800.00,
+            'subtotal' => 800.00,
+            'is_tentative' => true,
+        ]);
+
+        // Approve — no SO, no JO
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $this->assertNull(SalesOrder::where('estimate_id', $estimate->id)->first());
+        $this->assertNull(JobOrder::where('estimate_id', $estimate->id)->first());
+
+        // Edit: confirm both items
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'total_amount' => 1800.00,
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'custom_name' => 'Custom Part',
+                    'quantity' => 1,
+                    'unit_price' => 1000.00,
+                    'subtotal' => 1000.00,
+                    'is_tentative' => false,
+                ],
+                [
+                    'item_type' => 'service',
+                    'service_id' => $this->serviceType->id,
+                    'quantity' => 1,
+                    'unit_price' => 800.00,
+                    'subtotal' => 800.00,
+                    'is_tentative' => false,
+                ],
+            ],
+        ])->assertOk();
+
+        // Verify both SO and JO created
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($so, 'SO should be created for confirmed parts');
+        $this->assertCount(1, SalesOrderItem::where('SalesOrderID', $so->id)->get());
+
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo, 'JO should be created for confirmed services');
+        $this->assertCount(1, JobOrderService::where('JobOrderID', $jo->id)->get());
+    }
 }

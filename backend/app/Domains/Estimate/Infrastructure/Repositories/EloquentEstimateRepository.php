@@ -199,6 +199,7 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
 
     /**
      * Sync confirmed items from estimate to linked SO and JO.
+     * Creates SO/JO if they don't exist yet (e.g. all items were tentative at approval).
      * Adds new parts/supplies to SO and new services to JO.
      * Removes items now tentative on estimate (if not yet issued).
      */
@@ -207,8 +208,45 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         // Reload items to get fresh data after delete+recreate in update()
         $estimate->load('items');
 
+        // Only sync if estimate is APPROVED
+        $upperStatus = strtoupper($estimate->status ?? '');
+        if (!in_array($upperStatus, ['APPROVED', 'APPROVED WITH DOWNPAYMENT', 'APPROVED_WITH_DOWNPAYMENT'])) {
+            return;
+        }
+
         $salesOrder = \App\Domains\SalesOrder\Domain\Models\SalesOrder::where('estimate_id', $estimate->id)->first();
-        if (!$salesOrder || !in_array($salesOrder->Status, ['APPROVED', 'IN_PROGRESS'])) {
+
+        // ── If no SO exists, create one if there are confirmed parts/supplies ──
+        if (!$salesOrder) {
+            $confirmedParts = $estimate->items->where('is_tentative', false)
+                ->whereIn('item_type', ['part', 'supply']);
+
+            if ($confirmedParts->isNotEmpty()) {
+                $salesOrder = $this->createSalesOrderForEstimate($estimate, $confirmedParts);
+            }
+        }
+
+        // ── If still no SO, check JO-only case (services only) ──
+        if (!$salesOrder) {
+            $jobOrder = \App\Domains\JobOrder\Domain\Models\JobOrder::where('estimate_id', $estimate->id)->first();
+
+            if (!$jobOrder) {
+                $confirmedServices = $estimate->items->where('item_type', 'service')
+                    ->where('is_tentative', false);
+
+                if ($confirmedServices->isNotEmpty()) {
+                    $jobOrder = $this->createStandaloneJobOrder($estimate, $confirmedServices);
+                }
+            }
+
+            if ($jobOrder) {
+                $this->syncServicesToJobOrder($jobOrder, $estimate);
+            }
+            return;
+        }
+
+        // SO exists but not in editable state
+        if (!in_array($salesOrder->Status, ['APPROVED', 'IN_PROGRESS'])) {
             return;
         }
 
@@ -287,41 +325,164 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
         // ── Sync services to JO ──
         $jobOrder = $salesOrder->jobOrder;
         if (!$jobOrder) {
-            // No JO exists — create one if there are services
-            $hasServices = $estimate->items->where('item_type', 'service')
-                ->where('is_tentative', false)
-                ->whereNotNull('service_id')
-                ->isNotEmpty();
+            // Also check by estimate_id (JO-only case from initial approval)
+            $jobOrder = \App\Domains\JobOrder\Domain\Models\JobOrder::where('estimate_id', $estimate->id)->first();
+        }
 
-            if ($hasServices) {
+        if (!$jobOrder) {
+            // No JO exists — create one if there are confirmed services
+            $confirmedServices = $estimate->items->where('item_type', 'service')
+                ->where('is_tentative', false);
+
+            if ($confirmedServices->isNotEmpty()) {
                 $jobOrder = $this->createJobOrderForSO($salesOrder, $estimate);
             }
         }
 
         if ($jobOrder) {
-            $existingServiceIds = $jobOrder->services->pluck('ServiceID')->filter()->toArray();
-            $existingServiceNames = $jobOrder->services->pluck('custom_name')->filter()->toArray();
+            $this->syncServicesToJobOrder($jobOrder, $estimate);
+        }
+    }
 
-            foreach ($estimate->items as $estItem) {
-                if (!empty($estItem->is_tentative)) continue;
-                if ($estItem->item_type !== 'service') continue;
+    /**
+     * Create a Sales Order for an estimate that didn't have one (e.g. all items were tentative at approval).
+     */
+    private function createSalesOrderForEstimate(Estimate $estimate, $confirmedParts): \App\Domains\SalesOrder\Domain\Models\SalesOrder
+    {
+        $authUserId = auth()->user()?->id;
+        $employeeId = $authUserId ? (auth()->user() ? auth()->user()->employeeID : null) : null;
+        if (!$employeeId) {
+            $firstEmployee = DB::table('Main.Employees')->first();
+            $employeeId = $firstEmployee?->id;
+        }
 
-                // Skip if already on JO
-                if (!empty($estItem->service_id) && in_array($estItem->service_id, $existingServiceIds)) continue;
-                if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingServiceNames)) continue;
+        $totalParts = 0;
+        $partSupplyItems = [];
+        foreach ($confirmedParts as $estItem) {
+            $quantity = (int) ($estItem->quantity ?? 1);
+            $unitPrice = (float) ($estItem->unit_price ?? 0);
+            $subtotal = round($quantity * $unitPrice, 2);
 
-                \App\Domains\JobOrder\Domain\Models\JobOrderService::create([
-                    'JobOrderID' => $jobOrder->id,
-                    'ServiceID' => $estItem->service_id,
-                    'custom_name' => $estItem->custom_name,
-                    'PriceAtSale' => (float) ($estItem->unit_price ?? 0),
-                ]);
-                if (!empty($estItem->service_id)) {
-                    $existingServiceIds[] = $estItem->service_id;
-                }
-                if (!empty($estItem->custom_name)) {
-                    $existingServiceNames[] = $estItem->custom_name;
-                }
+            $partSupplyItems[] = [
+                'product_id' => $estItem->product_id,
+                'custom_name' => $estItem->custom_name,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'subtotal' => $subtotal,
+                'needs_ordering' => $estItem->needs_ordering ?? false,
+            ];
+            $totalParts += $subtotal;
+        }
+
+        do {
+            $soNumber = 'SO-' . now()->format('ymd') . '-' . random_int(1000, 9999);
+        } while (\App\Domains\SalesOrder\Domain\Models\SalesOrder::withTrashed()->where('so_number', $soNumber)->exists());
+
+        $salesOrder = \App\Domains\SalesOrder\Domain\Models\SalesOrder::create([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'so_number' => $soNumber,
+            'estimate_id' => $estimate->id,
+            'customerID' => $estimate->customer_id,
+            'vehicle_id' => $estimate->vehicle_id,
+            'employee' => $employeeId,
+            'type' => 'REPAIR',
+            'mileage' => $estimate->mileage,
+            'Total' => $totalParts,
+            'Balance' => $totalParts,
+            'Status' => 'APPROVED',
+            'submitted_by' => $authUserId,
+            'submitted_at' => now(),
+            'approved_by' => $authUserId,
+            'approved_at' => now(),
+        ]);
+
+        foreach ($partSupplyItems as $item) {
+            $taxAtSale = 'NON_VAT';
+            if (!empty($item['product_id'])) {
+                $ps = \App\Domains\Supplier\Domain\Models\ProductSupplier::where('product_id', $item['product_id'])->first();
+                $taxAtSale = $ps && $ps->is_vat ? 'VAT' : 'NON_VAT';
+            }
+
+            \App\Domains\SalesOrder\Domain\Models\SalesOrderItem::create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'SalesOrderID' => $salesOrder->id,
+                'ProductID' => $item['product_id'],
+                'custom_name' => $item['custom_name'] ?? null,
+                'quantity' => $item['quantity'],
+                'UnitPrice' => $item['unit_price'],
+                'SubTotal' => $item['subtotal'],
+                'CostAtSale' => 0.00,
+                'TaxAtSale' => $taxAtSale,
+                'needs_ordering' => $item['needs_ordering'],
+            ]);
+        }
+
+        return $salesOrder;
+    }
+
+    /**
+     * Create a standalone Job Order (no linked SO) for services-only estimates.
+     */
+    private function createStandaloneJobOrder(Estimate $estimate, $confirmedServices): \App\Domains\JobOrder\Domain\Models\JobOrder
+    {
+        $pendingStatusId = DB::connection('pgsql')
+            ->table('Main.Status')
+            ->where('name', 'Pending')
+            ->where('category', 'JOB_ORDER')
+            ->value('id');
+
+        $joNumber = \App\Domains\JobOrder\Domain\Models\JobOrder::generateJoNumber();
+
+        $jobOrder = \App\Domains\JobOrder\Domain\Models\JobOrder::create([
+            'jo_number' => $joNumber,
+            'SaleOrderID' => null,
+            'estimate_id' => $estimate->id,
+            'VehicleID' => '',
+            'TechnicianID' => null,
+            'date' => now(),
+            'status' => $pendingStatusId,
+            'vehicle_id_new' => $estimate->vehicle_id,
+        ]);
+
+        foreach ($confirmedServices as $estItem) {
+            \App\Domains\JobOrder\Domain\Models\JobOrderService::create([
+                'JobOrderID' => $jobOrder->id,
+                'ServiceID' => $estItem->service_id,
+                'custom_name' => $estItem->custom_name,
+                'PriceAtSale' => (float) ($estItem->unit_price ?? 0),
+            ]);
+        }
+
+        return $jobOrder;
+    }
+
+    /**
+     * Sync confirmed services to a Job Order (add new ones).
+     */
+    private function syncServicesToJobOrder(\App\Domains\JobOrder\Domain\Models\JobOrder $jobOrder, Estimate $estimate): void
+    {
+        $existingServiceIds = $jobOrder->services->pluck('ServiceID')->filter()->toArray();
+        $existingServiceNames = $jobOrder->services->pluck('custom_name')->filter()->toArray();
+
+        foreach ($estimate->items as $estItem) {
+            if (!empty($estItem->is_tentative)) continue;
+            if ($estItem->item_type !== 'service') continue;
+
+            // Skip if already on JO
+            if (!empty($estItem->service_id) && in_array($estItem->service_id, $existingServiceIds)) continue;
+            if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingServiceNames)) continue;
+
+            \App\Domains\JobOrder\Domain\Models\JobOrderService::create([
+                'JobOrderID' => $jobOrder->id,
+                'ServiceID' => $estItem->service_id,
+                'custom_name' => $estItem->custom_name,
+                'PriceAtSale' => (float) ($estItem->unit_price ?? 0),
+            ]);
+            if (!empty($estItem->service_id)) {
+                $existingServiceIds[] = $estItem->service_id;
+            }
+            if (!empty($estItem->custom_name)) {
+                $existingServiceNames[] = $estItem->custom_name;
             }
         }
     }

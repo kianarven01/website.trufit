@@ -312,9 +312,7 @@ const Estimates: React.FC = () => {
                           onClick={() => navigate(`/webapp/sales/estimates/${e.id}`)}
                         >
                           {e.vehicle?.plate_number ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-                              {e.vehicle.plate_number}
-                            </span>
+                            <span className="font-medium text-sm">{e.vehicle.plate_number}</span>
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}

@@ -392,10 +392,11 @@ const SalesOrderList: React.FC = () => {
             <Table className="table-fixed w-full border-separate border-spacing-y-2">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[18%] text-center">SO #</TableHead>
-                  <TableHead className="w-[28%] text-center">Customer</TableHead>
-                  <TableHead className="w-[18%] text-center">Total</TableHead>
-                  <TableHead className="w-[18%] text-center">Status</TableHead>
+                  <TableHead className="w-[16%] text-center">SO #</TableHead>
+                  <TableHead className="w-[22%] text-center">Customer</TableHead>
+                  <TableHead className="w-[10%] text-center">Type</TableHead>
+                  <TableHead className="w-[16%] text-center">Total</TableHead>
+                  <TableHead className="w-[14%] text-center">Status</TableHead>
                   <TableHead className="w-[10%] text-center">Date</TableHead>
                   <TableHead className="w-[8%] text-right pr-6"></TableHead>
                 </TableRow>
@@ -412,9 +413,9 @@ const SalesOrderList: React.FC = () => {
                     >
                       <TableCell className="py-2.5 text-left pl-8">
                         <span className="font-semibold text-sm font-mono">{o.so_number}</span>
-                        <span className="text-[10px] text-muted-foreground ml-1.5">{isCounter ? "Counter" : "Repair"}</span>
                       </TableCell>
                       <TableCell className="text-center font-medium">{o.customerName}</TableCell>
+                      <TableCell className="text-center text-xs font-medium">{isCounter ? "Counter" : "Repair"}</TableCell>
                       <TableCell className="text-center font-semibold text-foreground">
                         ₱{o.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </TableCell>

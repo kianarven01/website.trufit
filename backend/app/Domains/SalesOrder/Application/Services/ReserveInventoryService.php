@@ -28,6 +28,10 @@ class ReserveInventoryService
     public function reserveItems(iterable $items): void
     {
         $reservableItems = collect($items)->reject(function ($item) {
+            // Skip items without a product (custom items have no inventory)
+            if (empty($item->ProductID)) {
+                return true;
+            }
             // Skip items without needs_ordering
             if ($item->needs_ordering) {
                 return true;

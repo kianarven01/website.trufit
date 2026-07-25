@@ -250,6 +250,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
     );
   }, [partsCatalog]);
 
+  const issuedProductUuids = useMemo(() => {
+    return new Set(Array.from(issuedProductIds).map(id => partsMap[id]?.productId || id));
+  }, [issuedProductIds, partsMap]);
+
   const getNeedsOrderingReason = (productId: string, quantity: number): string => {
     const p = partsMap[productId];
     if (!p) return "Custom item — no stock data";
@@ -644,7 +648,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
                 return {
                   id: p.id,
-                  ProductId: matchedInventoryItem ? matchedInventoryItem.productId : (p.product_id || ""),
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
                   quantity: Number(p.quantity),
                   amount: Number(p.subtotal),
                   manualPrice: Number(p.unit_price) || 0,
@@ -664,7 +668,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
                 return {
                   id: p.id,
-                  ProductId: matchedInventoryItem ? matchedInventoryItem.productId : (p.product_id || ""),
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
                   quantity: Number(p.quantity),
                   amount: Number(p.subtotal),
                   manualPrice: Number(p.unit_price) || 0,
@@ -1689,6 +1693,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                                     description: `${peso(p.price)}${p.quantityOnHand != null ? ` · Stock: ${p.quantityOnHand}` : ""}`,
                                   }))}
                                   placeholder="Select part"
+                                  disabled={issuedProductUuids.has(String(partsMap[l.ProductId]?.productId || ""))}
                                 />
                               )}
                             </TableCell>
@@ -1811,7 +1816,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                             <TableCell>
                               {soLines.length > 1 && (
-                                issuedProductIds.has(String(l.ProductId || "")) ? (
+                                issuedProductUuids.has(String(partsMap[l.ProductId]?.productId || "")) ? (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <span>

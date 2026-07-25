@@ -114,6 +114,10 @@ class IssueSalesOrderItems
                 $issuedCount++;
             }
 
+            if ($issuedCount === 0) {
+                throw new RuntimeException('All selected items are already issued.', 422);
+            }
+
             if ($salesOrder->Status === 'APPROVED' && $issuedCount > 0 && $salesOrder->type !== 'COUNTER') {
                 $salesOrder->update(['Status' => 'IN_PROGRESS']);
             }

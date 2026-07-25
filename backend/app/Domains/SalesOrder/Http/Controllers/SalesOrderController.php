@@ -377,23 +377,36 @@ class SalesOrderController extends Controller
         }
 
         $existingProductIds = $order->items->pluck('ProductID')->filter()->toArray();
+        $existingCustomNames = $order->items->pluck('custom_name')->filter()->toArray();
 
         $availableItems = EstimateItem::with('product.category')
             ->where('estimate_id', $order->estimate_id)
             ->where('item_type', 'part')
-            ->whereNotNull('product_id')
-            ->whereNotIn('product_id', $existingProductIds)
+            ->where(function ($q) use ($existingProductIds, $existingCustomNames) {
+                // Catalog items: has product_id and not on SO
+                $q->where(function ($q2) use ($existingProductIds) {
+                    $q2->whereNotNull('product_id')
+                       ->whereNotIn('product_id', $existingProductIds);
+                });
+                // Custom items: no product_id, has custom_name, and not on SO by custom_name
+                $q->orWhere(function ($q2) use ($existingCustomNames) {
+                    $q2->whereNull('product_id')
+                       ->whereNotNull('custom_name')
+                       ->whereNotIn('custom_name', $existingCustomNames);
+                });
+            })
             ->get()
             ->map(fn($item) => [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
-                'product_name' => $item->product?->name ?? 'Unknown Product',
+                'product_name' => $item->custom_name ?? $item->product?->name ?? 'Unknown Product',
                 'sku' => $item->product?->part_number ?? $item->product?->SKU ?? '',
                 'manufacturer' => $item->product?->manufacturer?->Name ?? '',
                 'quantity' => (int) $item->quantity,
                 'unit_price' => (float) $item->unit_price,
                 'needs_ordering' => $item->needs_ordering ?? false,
                 'is_tentative' => (bool) ($item->is_tentative ?? false),
+                'is_custom' => empty($item->product_id) && !empty($item->custom_name),
                 'category_name' => $item->product?->category?->name ?? '',
             ]);
 

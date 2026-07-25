@@ -894,7 +894,7 @@ const SalesOrderDetails: React.FC = () => {
                           variant="outline"
                           className="h-7 gap-1 text-xs"
                           onClick={() => handleIssueItems("parts")}
-                          disabled={isSubmitting || selectedParts.size === 0}
+                          disabled={isSubmitting || selectedParts.size === 0 || Array.from(selectedParts).every(id => order.products.find(p => p.id === id)?.isIssued)}
                         >
                           <PackageCheck className="h-3 w-3" /> Issue Selected
                         </Button>
@@ -1110,7 +1110,7 @@ const SalesOrderDetails: React.FC = () => {
                           variant="outline"
                           className="h-7 gap-1 text-xs"
                           onClick={() => handleIssueItems("spol")}
-                          disabled={isSubmitting || selectedSpol.size === 0}
+                          disabled={isSubmitting || selectedSpol.size === 0 || Array.from(selectedSpol).every(id => order.products.find(p => p.id === id)?.isIssued)}
                         >
                           <PackageCheck className="h-3 w-3" /> Issue Selected
                         </Button>

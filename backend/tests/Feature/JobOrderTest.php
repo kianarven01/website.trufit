@@ -208,34 +208,40 @@ class JobOrderTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $payload = [
+        // Create estimate with service
+        $estimate = Estimate::create([
+            'id' => (string) Str::uuid(),
+            'customer_id' => $this->customer->customer_id,
             'vehicle_id' => $this->vehicle->id,
-            'date' => now()->toDateString(),
-            'services' => [
-                [
-                    'service_id' => $this->serviceType->id,
-                    'price' => 800.00,
-                ],
-            ],
-        ];
-
-        $response = $this->postJson('/api/job-orders', $payload);
-        $response->assertStatus(201);
-        $response->assertJsonStructure([
-            'message',
-            'data' => ['id', 'jo_number', 'status'],
+            'status' => 'DRAFT',
+            'total_amount' => 800.00,
+            'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
+            'created_by' => $this->user->id,
         ]);
 
-        $joId = $response->json('data.id');
-        $jo = JobOrder::find($joId);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 800.00,
+            'subtotal' => 800.00,
+        ]);
 
+        // Approve estimate to trigger JO creation
+        $response = $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED']);
+        $response->assertOk();
+
+        // Verify JO created
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
         $this->assertNotNull($jo);
         $this->assertNotNull($jo->jo_number);
         $this->assertStringStartsWith('JO-', $jo->jo_number);
         $this->assertEquals($this->vehicle->id, $jo->vehicle_id_new);
 
         // Verify services created
-        $services = JobOrderService::where('JobOrderID', $joId)->get();
+        $services = JobOrderService::where('JobOrderID', $jo->id)->get();
         $this->assertCount(1, $services);
         $this->assertEquals($this->serviceType->id, $services->first()->ServiceID);
         $this->assertEquals(800.00, $services->first()->PriceAtSale);
@@ -576,20 +582,41 @@ class JobOrderTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $response = $this->postJson('/api/job-orders', [
+        // Create JO via estimate flow
+        $estimate = Estimate::create([
+            'id' => (string) Str::uuid(),
+            'customer_id' => $this->customer->customer_id,
             'vehicle_id' => $this->vehicle->id,
-            'technician_id' => $this->employee->id,
-            'date' => now()->toDateString(),
-            'services' => [
-                ['service_id' => $this->serviceType->id, 'price' => 500.00],
-            ],
+            'status' => 'DRAFT',
+            'total_amount' => 800.00,
+            'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
+            'created_by' => $this->user->id,
         ]);
 
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 800.00,
+            'subtotal' => 800.00,
+        ]);
+
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo);
+
+        // Assign technician
+        $response = $this->postJson("/api/job-orders/{$jo->id}/technicians", [
+            'employee_id' => $this->employee->id,
+            'role' => 'PRIMARY',
+        ]);
         $response->assertStatus(201);
-        $joId = $response->json('data.id');
 
         // Verify JobOrderTechnician record was created
-        $techRecord = JobOrderTechnician::where('JobOrderID', $joId)
+        $techRecord = JobOrderTechnician::where('JobOrderID', $jo->id)
             ->where('employee_id', $this->employee->id)
             ->first();
 
@@ -602,61 +629,35 @@ class JobOrderTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        $response = $this->postJson('/api/job-orders', [
+        // Create JO via estimate flow
+        $estimate = Estimate::create([
+            'id' => (string) Str::uuid(),
+            'customer_id' => $this->customer->customer_id,
             'vehicle_id' => $this->vehicle->id,
-            'date' => now()->toDateString(),
-            'services' => [
-                ['service_id' => $this->serviceType->id, 'price' => 500.00],
-            ],
+            'status' => 'DRAFT',
+            'total_amount' => 800.00,
+            'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
+            'created_by' => $this->user->id,
         ]);
 
-        $response->assertStatus(201);
-        $joId = $response->json('data.id');
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
+            'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 800.00,
+            'subtotal' => 800.00,
+        ]);
+
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo);
 
         // Verify no JobOrderTechnician record
-        $techCount = JobOrderTechnician::where('JobOrderID', $joId)->count();
+        $techCount = JobOrderTechnician::where('JobOrderID', $jo->id)->count();
         $this->assertEquals(0, $techCount);
-    }
-
-    public function test_update_jo_vehicle_and_services()
-    {
-        $this->actingAs($this->user);
-
-        // Create JO with one service
-        $joId = $this->createJobOrder();
-        $this->postJson("/api/job-orders/{$joId}/technicians", [
-            'employee_id' => $this->employee->id,
-            'role' => 'PRIMARY',
-        ])->assertStatus(201);
-
-        $newVehicle = CustomerVehicle::create([
-            'customerID' => $this->customer->customer_id,
-            'plate_number' => 'XYZ' . rand(1000, 9999),
-            'engine_number' => 'E999999',
-            'VIN' => 'V999999',
-            'color' => 'Blue',
-            'registration_number' => 'REG9999',
-            'selling_dealer' => 'Dealer2',
-            'make' => 'Toyota',
-            'model' => 'Vios',
-        ]);
-
-        // Update vehicle and services
-        $response = $this->patchJson("/api/job-orders/{$joId}", [
-            'vehicle_id' => $newVehicle->id,
-            'services' => [
-                ['service_id' => $this->serviceType->id, 'price' => 750.00],
-            ],
-        ]);
-
-        $response->assertOk();
-        $jo = JobOrder::find($joId);
-        $this->assertEquals($newVehicle->id, $jo->vehicle_id_new);
-
-        // Verify services were replaced
-        $services = JobOrderService::where('JobOrderID', $joId)->get();
-        $this->assertCount(1, $services);
-        $this->assertEquals(750.00, $services->first()->PriceAtSale);
     }
 
     public function test_update_jo_notes()
@@ -665,7 +666,7 @@ class JobOrderTest extends TestCase
 
         $joId = $this->createJobOrder();
 
-        $response = $this->patchJson("/api/job-orders/{$joId}", [
+        $response = $this->patchJson("/api/job-orders/{$joId}/notes", [
             'notes' => 'Customer requested premium oil change',
         ]);
 
@@ -734,12 +735,12 @@ class JobOrderTest extends TestCase
             'duration' => 30,
         ]);
 
-        // Create estimate to link JO (needed for customer_id on billing)
+        // Create estimate with zero-price service
         $estimate = Estimate::create([
             'id' => (string) Str::uuid(),
             'customer_id' => $this->customer->customer_id,
             'vehicle_id' => $this->vehicle->id,
-            'status' => 'APPROVED',
+            'status' => 'DRAFT',
             'total_amount' => 0.00,
             'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
             'created_by' => $this->user->id,
@@ -755,22 +756,17 @@ class JobOrderTest extends TestCase
             'subtotal' => 0.00,
         ]);
 
-        $pendingId = $this->getStatusId('Pending');
-        $jo = JobOrder::create([
-            'jo_number' => JobOrder::generateJoNumber(),
-            'VehicleID' => '',
-            'date' => now(),
-            'status' => $pendingId,
-            'vehicle_id_new' => $this->vehicle->id,
-            'estimate_id' => $estimate->id,
-        ]);
+        // Approve estimate to trigger JO creation
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
 
-        // Add service
-        $this->patchJson("/api/job-orders/{$jo->id}", [
-            'services' => [
-                ['service_id' => $zeroService->id, 'price' => 0.00],
-            ],
-        ])->assertOk();
+        // Verify JO created with zero-price service
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo);
+
+        $joServices = JobOrderService::where('JobOrderID', $jo->id)->get();
+        $this->assertCount(1, $joServices);
+        $this->assertEquals($zeroService->id, $joServices->first()->ServiceID);
+        $this->assertEquals(0.00, $joServices->first()->PriceAtSale);
 
         // Start + complete
         $this->patchJson("/api/job-orders/{$jo->id}/status", ['status' => 'In Progress'])->assertOk();
@@ -789,33 +785,42 @@ class JobOrderTest extends TestCase
     {
         $this->actingAs($this->user);
 
-        // Create estimate to provide customer_id
+        // Create estimate with only services (no parts) — JO should be created without a linked SO
         $estimate = Estimate::create([
             'id' => (string) Str::uuid(),
             'customer_id' => $this->customer->customer_id,
             'vehicle_id' => $this->vehicle->id,
-            'status' => 'APPROVED',
+            'status' => 'DRAFT',
             'total_amount' => 800.00,
             'estimate_number' => 'EST-' . now()->format('ymd') . '-' . rand(1000, 9999),
             'created_by' => $this->user->id,
         ]);
 
-        $pendingId = $this->getStatusId('Pending');
-        $jo = JobOrder::create([
-            'jo_number' => JobOrder::generateJoNumber(),
-            'VehicleID' => '',
-            'date' => now(),
-            'status' => $pendingId,
-            'vehicle_id_new' => $this->vehicle->id,
+        EstimateItem::create([
+            'id' => (string) Str::uuid(),
             'estimate_id' => $estimate->id,
+            'item_type' => 'service',
+            'service_id' => $this->serviceType->id,
+            'quantity' => 1,
+            'unit_price' => 800.00,
+            'subtotal' => 800.00,
         ]);
 
-        // Add paid service
-        $this->patchJson("/api/job-orders/{$jo->id}", [
-            'services' => [
-                ['service_id' => $this->serviceType->id, 'price' => 800.00],
-            ],
-        ])->assertOk();
+        // Approve estimate
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+
+        // JO should be created with service
+        $jo = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jo);
+
+        $joServices = JobOrderService::where('JobOrderID', $jo->id)->get();
+        $this->assertCount(1, $joServices);
+
+        // No linked SO (or SO has no items)
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        if ($so) {
+            $this->assertCount(0, SalesOrderItem::where('SalesOrderID', $so->id)->get());
+        }
 
         // Start + complete (no linked SO)
         $this->patchJson("/api/job-orders/{$jo->id}/status", ['status' => 'In Progress'])->assertOk();
@@ -942,43 +947,6 @@ class JobOrderTest extends TestCase
         $response = $this->patchJson("/api/job-orders/{$joId}/status", ['status' => 'In Progress']);
         // Backend allows it (frontend enforces this)
         $response->assertOk();
-    }
-
-    public function test_update_jo_services_replaces_all()
-    {
-        $this->actingAs($this->user);
-
-        $joId = $this->createJobOrder();
-
-        // Create second service type
-        $service2 = ServiceType::create([
-            'id' => (string) Str::uuid(),
-            'name' => 'Wheel Alignment',
-            'pricing_type' => 'fixed',
-            'price' => 1200.00,
-            'duration' => 45,
-        ]);
-
-        // Add 2 services
-        $this->patchJson("/api/job-orders/{$joId}", [
-            'services' => [
-                ['service_id' => $this->serviceType->id, 'price' => 800.00],
-                ['service_id' => $service2->id, 'price' => 1200.00],
-            ],
-        ])->assertOk();
-        $this->assertCount(2, JobOrderService::where('JobOrderID', $joId)->get());
-
-        // Replace with 1 service
-        $this->patchJson("/api/job-orders/{$joId}", [
-            'services' => [
-                ['service_id' => $service2->id, 'price' => 1500.00],
-            ],
-        ])->assertOk();
-
-        $services = JobOrderService::where('JobOrderID', $joId)->get();
-        $this->assertCount(1, $services);
-        $this->assertEquals($service2->id, $services->first()->ServiceID);
-        $this->assertEquals(1500.00, $services->first()->PriceAtSale);
     }
 
     public function test_cannot_skip_pending_to_completed()

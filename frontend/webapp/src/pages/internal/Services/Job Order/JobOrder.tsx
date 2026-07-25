@@ -161,8 +161,6 @@ const JobOrderList: React.FC = () => {
         filters={statusFilterOptions}
         activeFilters={filters}
         onFilterChange={(key, value) => setFilters((prev) => ({ ...prev, [key]: value }))}
-        onAdd={() => navigate("/webapp/services/job-orders/new")}
-        addLabel="New Job Order"
       />
 
       {isLoading ? (

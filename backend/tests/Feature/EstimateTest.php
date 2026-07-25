@@ -1830,7 +1830,7 @@ class EstimateTest extends TestCase
         $this->assertEquals($this->serviceType->id, $joServices->first()->ServiceID);
     }
 
-    public function test_estimate_items_endpoint_excludes_tentative()
+    public function test_estimate_items_endpoint_includes_tentative_with_flag()
     {
         $this->actingAs($this->user);
 
@@ -1870,13 +1870,19 @@ class EstimateTest extends TestCase
             'is_tentative' => true,
         ]);
 
-        // Call estimateItems endpoint
+        // Call estimateItems endpoint — should return both items
         $response = $this->getJson("/api/sales-orders/{$so->id}/estimate-items")->assertOk();
         $items = $response->json('data');
 
-        // Should only return confirmed part (not tentative)
-        $this->assertCount(1, $items);
-        $this->assertEquals($this->product->id, $items[0]['product_id']);
+        $this->assertCount(2, $items);
+
+        // Confirmed item should have is_tentative = false
+        $confirmed = collect($items)->first(fn($i) => $i['product_id'] === $this->product->id);
+        $this->assertFalse($confirmed['is_tentative']);
+
+        // Tentative item should have is_tentative = true
+        $tentative = collect($items)->first(fn($i) => $i['product_id'] === $product2->id);
+        $this->assertTrue($tentative['is_tentative']);
     }
 
     public function test_so_total_recalculates_after_removal()

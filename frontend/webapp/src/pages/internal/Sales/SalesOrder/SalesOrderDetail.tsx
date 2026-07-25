@@ -61,6 +61,7 @@ import {
   PackageX,
   Plus,
   Import,
+  AlertTriangle,
 } from "lucide-react";
 import DataToolbar from "@/components/DataToolbar";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -108,6 +109,7 @@ interface Product {
   quantityReturned: number;
   isSpol: boolean;
   categoryName?: string | null;
+  isTentative?: boolean;
 }
 
 interface SalesOrder {
@@ -138,6 +140,18 @@ interface SalesOrder {
   archived?: boolean;
   estimate_id?: string;
   estimate?: { id: string; estimate_number?: string };
+  has_tentative_items?: boolean;
+  tentative_count?: number;
+  tentative_estimate_items?: Array<{
+    id: string;
+    product_id: string;
+    product_name: string;
+    part_number: string;
+    manufacturer: string;
+    quantity: number;
+    unit_price: number;
+    is_sundries: boolean;
+  }>;
   job_order?: { id: string; jo_number: string; status: string } | null;
   billing_statement?: { id: string; bill_number?: string; status?: string } | null;
 }
@@ -305,6 +319,9 @@ const SalesOrderDetails: React.FC = () => {
         completedAt: o.completed_at,
         estimate_id: o.estimate_id || null,
         estimate: o.estimate || null,
+        has_tentative_items: o.has_tentative_items || false,
+        tentative_count: o.tentative_count || 0,
+        tentative_estimate_items: o.tentative_estimate_items || [],
         job_order: o.job_order || null,
         billing_statement: o.billing_statement ? {
           id: o.billing_statement.id,
@@ -600,7 +617,29 @@ const SalesOrderDetails: React.FC = () => {
     return <div className="p-6 font-sans">Sales order not found</div>;
   }
 
-  const items = order.products;
+  const items = [
+    ...order.products,
+    ...(order.tentative_estimate_items || []).map((ti) => ({
+      id: `tentative-${ti.id}`,
+      name: ti.product_name,
+      customName: null as string | null,
+      isLinked: false,
+      manufacturer: ti.manufacturer,
+      sku: ti.part_number,
+      taxCode: null as string | null,
+      qty: ti.quantity,
+      price: ti.unit_price,
+      amount: ti.quantity * ti.unit_price,
+      needsOrdering: false,
+      quantityOnHand: null as number | null,
+      reservedQuantity: null as number | null,
+      isIssued: false,
+      quantityReturned: 0,
+      isSpol: ti.is_sundries,
+      categoryName: ti.is_sundries ? "Sundries" : null,
+      isTentative: true,
+    })),
+  ];
   const config = statusConfig[order.status] || { label: order.status, variant: "default" };
   const isCounter = order.type === "COUNTER";
   const hasIssuedItems = order.products.some((p) => p.isIssued);
@@ -916,21 +955,34 @@ const SalesOrderDetails: React.FC = () => {
                           const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
                           const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && p.isIssued && (p.qty > p.quantityReturned);
                           return (
-                            <TableRow key={p.id} className="hover:bg-transparent">
+                            <TableRow key={p.id} className={`hover:bg-transparent ${p.isTentative ? 'opacity-60 bg-amber-50/30 border-l-2 border-l-amber-400' : ''}`}>
                               {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
                                 <TableCell className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="rounded"
-                                    checked={selectedParts.has(p.id)}
-                                    disabled={!canSelect && !canSelectReturn}
-                                    onChange={() => setSelectedParts(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(p.id)) next.delete(p.id);
-                                      else next.add(p.id);
-                                      return next;
-                                    })}
-                                  />
+                                  {!p.isTentative ? (
+                                    <input
+                                      type="checkbox"
+                                      className="rounded"
+                                      checked={selectedParts.has(p.id)}
+                                      disabled={!canSelect && !canSelectReturn}
+                                      onChange={() => setSelectedParts(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(p.id)) next.delete(p.id);
+                                        else next.add(p.id);
+                                        return next;
+                                      })}
+                                    />
+                                  ) : (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center justify-center w-4 h-4">
+                                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="right" sideOffset={4}>
+                                        <p className="text-xs">Tentative — click "Add Item" to add.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
                                 </TableCell>
                               )}
                               <TableCell className="text-left px-4">
@@ -990,7 +1042,18 @@ const SalesOrderDetails: React.FC = () => {
                               </TableCell>
                               <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
                               <TableCell className="text-center">
-                                {p.isIssued ? (
+                                {p.isTentative ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help">
+                                        Tentative
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" sideOffset={4}>
+                                      <p className="text-xs">Tentative — click &quot;Add Item&quot; to add.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : p.isIssued ? (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                     Issued
                                   </span>
@@ -1194,7 +1257,18 @@ const SalesOrderDetails: React.FC = () => {
                               </TableCell>
                               <TableCell className="text-center font-bold text-primary">{peso(p.amount)}</TableCell>
                               <TableCell className="text-center">
-                                {p.isIssued ? (
+                                {p.isTentative ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 cursor-help">
+                                        Tentative
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" sideOffset={4}>
+                                      <p className="text-xs">Tentative — click &quot;Add Item&quot; to add.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : p.isIssued ? (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                     Issued
                                   </span>
@@ -1306,10 +1380,13 @@ const SalesOrderDetails: React.FC = () => {
                   )}
 
                   {order.estimate && (
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Estimate Ref.</span>
-                      <span className="font-mono text-xs font-medium text-foreground">
-                        {order.estimate.estimate_number || order.estimate.id?.substring(0, 8).toUpperCase() || "—"}
+                      <span
+                        className="font-mono text-xs font-medium text-primary cursor-pointer hover:underline"
+                        onClick={() => navigate(`/webapp/sales/estimates/${order.estimate!.id}`)}
+                      >
+                        {order.estimate.estimate_number || "—"}
                       </span>
                     </div>
                   )}
@@ -1322,7 +1399,6 @@ const SalesOrderDetails: React.FC = () => {
                         onClick={() => navigate(`/webapp/services/job-orders/${order.job_order!.id}`)}
                       >
                         {order.job_order.jo_number}
-                        <span className="ml-1.5 text-muted-foreground">({order.job_order.status})</span>
                       </span>
                     </div>
                   )}
@@ -1590,8 +1666,8 @@ const SalesOrderDetails: React.FC = () => {
                         </TableHead>
                         <TableHead className="text-xs">Product</TableHead>
                         <TableHead className="text-xs text-center w-[10%]">Part No.</TableHead>
-                        <TableHead className="text-xs text-center w-[10%]">Qty</TableHead>
-                        <TableHead className="text-xs text-center w-[15%]">Unit Price</TableHead>
+                        <TableHead className="text-xs text-center w-[8%]">Qty</TableHead>
+                        <TableHead className="text-xs text-center w-[13%]">Unit Price</TableHead>
                         <TableHead className="text-xs text-center w-[12%]">Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1611,13 +1687,17 @@ const SalesOrderDetails: React.FC = () => {
                               {item.manufacturer ? `${item.manufacturer} — ` : ""}{item.product_name}
                             </span>
                           </TableCell>
-                          <TableCell className="text-center font-mono text-xs text-muted-foreground">{item.sku}</TableCell>
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground">{item.sku || "—"}</TableCell>
                           <TableCell className="text-center font-semibold">{item.quantity}</TableCell>
                           <TableCell className="text-center font-medium">{peso(item.unit_price)}</TableCell>
                           <TableCell className="text-center">
                             {item.needs_ordering ? (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
                                 To Order
+                              </span>
+                            ) : item.category_name?.toLowerCase() === "sundries" ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                Sundries
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground">—</span>

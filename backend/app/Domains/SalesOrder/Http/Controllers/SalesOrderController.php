@@ -115,7 +115,38 @@ class SalesOrderController extends Controller
             return response()->json(['message' => 'Sales Order not found.'], 404);
         }
 
-        return response()->json(['data' => $order]);
+        // Compute tentative items from linked estimate
+        $data = $order->toArray();
+        $data['has_tentative_items'] = false;
+        $data['tentative_count'] = 0;
+        $data['tentative_estimate_items'] = [];
+
+        if ($order->estimate_id) {
+            $existingProductIds = $order->items->pluck('ProductID')->filter()->toArray();
+
+            $tentativeItems = \App\Domains\Estimate\Domain\Models\EstimateItem::with('product.manufacturer', 'product.category')
+                ->where('estimate_id', $order->estimate_id)
+                ->where('is_tentative', true)
+                ->where('item_type', 'part')
+                ->whereNotNull('product_id')
+                ->whereNotIn('product_id', $existingProductIds)
+                ->get();
+
+            $data['tentative_count'] = $tentativeItems->count();
+            $data['has_tentative_items'] = $tentativeItems->isNotEmpty();
+            $data['tentative_estimate_items'] = $tentativeItems->map(fn($item) => [
+                'id' => $item->id,
+                'product_id' => $item->product_id,
+                'product_name' => $item->product?->name ?? 'Unknown',
+                'part_number' => $item->product?->part_number ?? $item->product?->SKU ?? '',
+                'manufacturer' => $item->product?->manufacturer?->Name ?? '',
+                'quantity' => (int) $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                'is_sundries' => $item->product?->category?->is_spol && strtolower($item->product?->category?->name ?? '') === 'sundries',
+            ])->toArray();
+        }
+
+        return response()->json(['data' => $data]);
     }
 
     public function store(Request $request, CreateSalesOrder $createSalesOrder): JsonResponse
@@ -347,24 +378,23 @@ class SalesOrderController extends Controller
 
         $existingProductIds = $order->items->pluck('ProductID')->filter()->toArray();
 
-        $availableItems = EstimateItem::with('product')
+        $availableItems = EstimateItem::with('product.category')
             ->where('estimate_id', $order->estimate_id)
             ->where('item_type', 'part')
             ->whereNotNull('product_id')
-            ->where(function ($q) {
-                $q->where('is_tentative', false)->orWhereNull('is_tentative');
-            })
             ->whereNotIn('product_id', $existingProductIds)
             ->get()
             ->map(fn($item) => [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
                 'product_name' => $item->product?->name ?? 'Unknown Product',
-                'sku' => $item->product?->PartNumber ?? '',
+                'sku' => $item->product?->part_number ?? $item->product?->SKU ?? '',
                 'manufacturer' => $item->product?->manufacturer?->Name ?? '',
                 'quantity' => (int) $item->quantity,
                 'unit_price' => (float) $item->unit_price,
                 'needs_ordering' => $item->needs_ordering ?? false,
+                'is_tentative' => (bool) ($item->is_tentative ?? false),
+                'category_name' => $item->product?->category?->name ?? '',
             ]);
 
         return response()->json(['data' => $availableItems]);

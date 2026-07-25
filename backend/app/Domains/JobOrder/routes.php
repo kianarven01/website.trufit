@@ -6,9 +6,8 @@ use App\Domains\JobOrder\Http\Controllers\JobOrderController;
 Route::prefix('job-orders')->group(function () {
     // CRUD
     Route::get('/', [JobOrderController::class, 'index']);
-    Route::post('/', [JobOrderController::class, 'store']);
     Route::get('/{id}', [JobOrderController::class, 'show']);
-    Route::patch('/{id}', [JobOrderController::class, 'update']);
+    Route::patch('/{id}/notes', [JobOrderController::class, 'updateNotes']);
     Route::patch('/{id}/status', [JobOrderController::class, 'updateStatus']);
 
     // Timer

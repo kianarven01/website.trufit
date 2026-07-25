@@ -265,7 +265,7 @@ const JobOrderDetail: React.FC = () => {
     if (!id) return;
     try {
       setIsSavingNotes(true);
-      await api.patch(`/job-orders/${id}`, { notes: notes || null });
+      await api.patch(`/job-orders/${id}/notes`, { notes: notes || null });
       toast.success("Notes saved");
       setJobOrder((prev) => prev ? { ...prev, notes } : null);
     } catch (err: any) {
@@ -344,9 +344,6 @@ const JobOrderDetail: React.FC = () => {
               <Button variant="outline" size="sm" onClick={() => navigate("/webapp/services/job-orders")}>
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate(`/webapp/services/job-orders/${id}/edit`)}>
-                Edit
               </Button>
               {currentStatus === "Pending" && activeTechs.length > 0 && (!jobOrder?.salesOrder || ["APPROVED", "IN_PROGRESS"].includes(jobOrder.salesOrder.Status)) && (
                 <Button size="sm" onClick={() => setConfirmAction("start-job")} className="bg-blue-600 hover:bg-blue-700">

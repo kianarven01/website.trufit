@@ -4,8 +4,6 @@ namespace App\Domains\JobOrder\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Domains\JobOrder\Domain\Models\JobOrder;
-use App\Domains\JobOrder\Domain\Models\JobOrderService;
-use App\Domains\JobOrder\Domain\Models\JobOrderTechnician;
 use App\Domains\JobOrder\Application\UseCases\StartTimer;
 use App\Domains\JobOrder\Application\UseCases\PauseTimer;
 use App\Domains\JobOrder\Application\UseCases\ResumeTimer;
@@ -124,131 +122,20 @@ class JobOrderController extends Controller
         return response()->json(['data' => $data]);
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'vehicle_id' => 'required|exists:CustomerVehicles,id',
-            'technician_id' => 'nullable|exists:Employees,id',
-            'sale_order_id' => 'nullable|exists:SalesOrder,id',
-            'date' => 'nullable|date',
-            'services' => 'nullable|array',
-            'services.*.service_id' => 'nullable|exists:ServiceType,id',
-            'services.*.custom_name' => 'nullable|string|max:255',
-            'services.*.price' => 'nullable|numeric|min:0',
-        ]);
-
-        return DB::transaction(function () use ($validated) {
-            $pendingStatusId = $this->getStatusId('Pending');
-            $joNumber = JobOrder::generateJoNumber();
-
-            $jobOrder = JobOrder::create([
-                'jo_number' => $joNumber,
-                'SaleOrderID' => $validated['sale_order_id'] ?? null,
-                'VehicleID' => '',
-                'TechnicianID' => $validated['technician_id'] ?? null,
-                'date' => $validated['date'] ?? now(),
-                'status' => $pendingStatusId,
-                'vehicle_id_new' => $validated['vehicle_id'],
-            ]);
-
-            if (!empty($validated['services'])) {
-                foreach ($validated['services'] as $svc) {
-                    if (empty($svc['service_id']) && empty($svc['custom_name'])) continue;
-
-                    JobOrderService::create([
-                        'JobOrderID' => $jobOrder->id,
-                        'ServiceID' => $svc['service_id'] ?? null,
-                        'custom_name' => $svc['custom_name'] ?? null,
-                        'PriceAtSale' => $svc['price'] ?? 0,
-                    ]);
-                }
-            }
-
-            // Create JobOrderTechnician record if technician_id provided
-            if (!empty($validated['technician_id'])) {
-                JobOrderTechnician::create([
-                    'JobOrderID' => $jobOrder->id,
-                    'employee_id' => $validated['technician_id'],
-                    'role' => 'PRIMARY',
-                    'assigned_at' => now(),
-                ]);
-            }
-
-            if (!empty($validated['sale_order_id'])) {
-                DB::connection('pgsql')
-                    ->table('Main.SalesOrder')
-                    ->where('id', $validated['sale_order_id'])
-                    ->update(['job_order_id' => $jobOrder->id]);
-            }
-
-            return response()->json([
-                'message' => 'Job order created successfully',
-                'data' => $jobOrder->fresh(['technicians.employee', 'services.serviceType', 'vehicle']),
-            ], 201);
-        });
-    }
-
-    public function update(Request $request, string $id): JsonResponse
+    public function updateNotes(Request $request, string $id): JsonResponse
     {
         $jobOrder = JobOrder::findOrFail($id);
 
         $validated = $request->validate([
-            'vehicle_id' => 'sometimes|required|exists:CustomerVehicles,id',
-            'technician_id' => 'nullable|exists:Employees,id',
             'notes' => 'nullable|string',
-            'services' => 'nullable|array',
-            'services.*.service_id' => 'nullable|exists:ServiceType,id',
-            'services.*.custom_name' => 'nullable|string|max:255',
-            'services.*.price' => 'nullable|numeric|min:0',
         ]);
 
-        return DB::transaction(function () use ($jobOrder, $validated) {
-            $updateData = [];
-            if (isset($validated['vehicle_id'])) {
-                $updateData['vehicle_id_new'] = $validated['vehicle_id'];
-            }
-            if (array_key_exists('notes', $validated)) {
-                $updateData['notes'] = $validated['notes'];
-            }
+        $jobOrder->update(['notes' => $validated['notes'] ?? null]);
 
-            if (!empty($updateData)) {
-                $jobOrder->update($updateData);
-            }
-
-            if (isset($validated['services'])) {
-                $jobOrder->services()->delete();
-                foreach ($validated['services'] as $svc) {
-                    if (empty($svc['service_id']) && empty($svc['custom_name'])) continue;
-
-                    JobOrderService::create([
-                        'JobOrderID' => $jobOrder->id,
-                        'ServiceID' => $svc['service_id'] ?? null,
-                        'custom_name' => $svc['custom_name'] ?? null,
-                        'PriceAtSale' => $svc['price'] ?? 0,
-                    ]);
-                }
-            }
-
-            // Handle technician assignment
-            if (array_key_exists('technician_id', $validated)) {
-                // Remove existing active technicians
-                $jobOrder->technicians()->whereNull('removed_at')->update(['removed_at' => now()]);
-                // Add new technician if provided
-                if (!empty($validated['technician_id'])) {
-                    JobOrderTechnician::create([
-                        'JobOrderID' => $jobOrder->id,
-                        'employee_id' => $validated['technician_id'],
-                        'role' => 'PRIMARY',
-                        'assigned_at' => now(),
-                    ]);
-                }
-            }
-
-            return response()->json([
-                'message' => 'Job order updated successfully',
-                'data' => $jobOrder->fresh(['technicians.employee', 'services.serviceType', 'vehicle']),
-            ]);
-        });
+        return response()->json([
+            'message' => 'Notes updated successfully',
+            'data' => $jobOrder->fresh(),
+        ]);
     }
 
     public function updateStatus(Request $request, string $id): JsonResponse

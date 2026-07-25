@@ -73,8 +73,6 @@ const statusConfig: Record<string, { label: string; variant: any }> = {
   CANCELLED: { label: "Cancelled", variant: "cancelled" as const },
 };
 
-const ALL_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-
 const SO_FILTERS_CONFIG: FilterOption[] = [
   {
     key: "status",

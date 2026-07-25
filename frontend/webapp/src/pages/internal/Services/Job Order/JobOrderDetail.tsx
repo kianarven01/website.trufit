@@ -34,7 +34,6 @@ import {
   UserPlus,
   Trash2,
   Box,
-  Fuel,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";

@@ -106,7 +106,7 @@ class IssueSalesOrderItems
 
                 $item->update([
                     'is_issued' => true,
-                    'quantity_returned' => 0,
+                    'quantity_returned' => $item->quantity_returned ?? 0,
                     'issued_at' => now(),
                     'issued_by' => $userId,
                 ]);

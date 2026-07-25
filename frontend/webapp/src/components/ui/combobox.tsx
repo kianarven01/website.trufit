@@ -122,7 +122,7 @@ const Combobox: FC<MakeComboboxProps> = ({
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground opacity-50" />
-            ) : search ? (
+            ) : !disabled && search ? (
               <button
                 type="button"
                 onClick={handleClear}
@@ -130,12 +130,12 @@ const Combobox: FC<MakeComboboxProps> = ({
               >
                 <X className="h-4 w-4" />
               </button>
-            ) : (
+            ) : !disabled ? (
               <ChevronDown
                 className="h-4 w-4 opacity-50 cursor-pointer"
                 onClick={() => setOpen(true)}
               />
-            )}
+            ) : null}
           </div>
         </div>
       </PopoverTrigger>

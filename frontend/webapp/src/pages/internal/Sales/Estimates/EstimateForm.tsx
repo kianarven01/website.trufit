@@ -234,6 +234,9 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [shortageItems, setShortageItems] = useState<string[]>([]);
+  const [showIssuedQtyConfirm, setShowIssuedQtyConfirm] = useState(false);
+  const [issuedQtyChanges, setIssuedQtyChanges] = useState<string[]>([]);
+  const [originalQuantities, setOriginalQuantities] = useState<Record<string, number>>({});
 
   const [servicesCatalog, setServicesCatalog] = useState<Service[]>([]);
   const [partsCatalog, setPartsCatalog] = useState<Product[]>([]);
@@ -643,12 +646,15 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           }
 
           if (partItems.length > 0) {
+            const origQtyMap: Record<string, number> = {};
             setSoLines(
               partItems.map((p: any) => {
                 const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
+                const productId = matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || "");
+                origQtyMap[productId || p.id] = Number(p.quantity);
                 return {
                   id: p.id,
-                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
+                  ProductId: productId,
                   quantity: Number(p.quantity),
                   amount: Number(p.subtotal),
                   manualPrice: Number(p.unit_price) || 0,
@@ -658,6 +664,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 };
               })
             );
+            setOriginalQuantities(prev => ({ ...prev, ...origQtyMap }));
           } else {
             setSoLines([emptySOLine()]);
           }
@@ -1199,7 +1206,24 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
       setShortageItems(uncheckedShortageList);
       setShowConfirmModal(true);
     } else {
-      saveEstimate();
+      // Check for issued items with quantity increases
+      const issuedQtyIncList: string[] = [];
+      soLines.forEach((l) => {
+        if (l.customName !== undefined || !l.ProductId) return;
+        const productUuid = partsMap[l.ProductId]?.productId;
+        if (!productUuid || !issuedProductIds.has(String(productUuid))) return;
+        const origQty = originalQuantities[l.ProductId] || 0;
+        if (Number(l.quantity) > origQty) {
+          const name = partsMap[l.ProductId]?.name || "Part";
+          issuedQtyIncList.push(`${name}: ${origQty} → ${l.quantity} (+${Number(l.quantity) - origQty})`);
+        }
+      });
+      if (issuedQtyIncList.length > 0) {
+        setIssuedQtyChanges(issuedQtyIncList);
+        setShowIssuedQtyConfirm(true);
+      } else {
+        saveEstimate();
+      }
     }
   };
 
@@ -1788,6 +1812,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                               <input
                                 type="checkbox"
                                 checked={l.isTentative}
+                                disabled={issuedProductUuids.has(String(partsMap[l.ProductId]?.productId || ""))}
                                 onChange={(e) => {
                                   const checked = e.target.checked;
                                   setSoLines(prev => prev.map((line, i) => {
@@ -2234,6 +2259,32 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
         cancelLabel="Cancel"
         onConfirm={() => {
           setShowConfirmModal(false);
+          saveEstimate();
+        }}
+      />
+
+      {/* Issued Item Quantity Increase confirmation dialog */}
+      <ConfirmDialog
+        open={showIssuedQtyConfirm}
+        onOpenChange={setShowIssuedQtyConfirm}
+        title="Auto-Issue Additional Units?"
+        description={
+          <div className="space-y-2 text-left">
+            <p className="text-sm">
+              The following items are already issued on the Sales Order. Increasing their quantity will automatically issue the additional units from inventory:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+              {issuedQtyChanges.map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ul>
+            <p className="text-sm font-medium mt-2">Do you want to proceed?</p>
+          </div>
+        }
+        confirmLabel="Proceed"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowIssuedQtyConfirm(false);
           saveEstimate();
         }}
       />

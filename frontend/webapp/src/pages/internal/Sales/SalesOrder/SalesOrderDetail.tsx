@@ -56,11 +56,9 @@ import {
   FileText,
   CircleCheck,
   Play,
-  RefreshCw,
   PackageCheck,
   PackageX,
   Plus,
-  Import,
   AlertTriangle,
 } from "lucide-react";
 import DataToolbar from "@/components/DataToolbar";
@@ -106,6 +104,7 @@ interface Product {
   quantityOnHand: number | null;
   reservedQuantity: number | null;
   isIssued: boolean;
+  issuedQuantity: number;
   quantityReturned: number;
   isSpol: boolean;
   categoryName?: string | null;
@@ -259,6 +258,7 @@ const SalesOrderDetails: React.FC = () => {
           quantityOnHand,
           reservedQuantity,
           isIssued: Boolean(i.is_issued),
+          issuedQuantity: Number(i.issued_quantity) || 0,
           quantityReturned: Number(i.quantity_returned) || 0,
           isSpol: Boolean(product?.category?.is_spol),
           categoryName: product?.category?.name || null,
@@ -643,7 +643,6 @@ const SalesOrderDetails: React.FC = () => {
   const config = statusConfig[order.status] || { label: order.status, variant: "default" };
   const isCounter = order.type === "COUNTER";
   const hasIssuedItems = order.products.some((p) => p.isIssued);
-  const allItemsIssued = order.products.length > 0 && order.products.every((p) => p.isIssued);
   const isReadyToBill = (isCounter && order.status === "APPROVED") || (!isCounter && order.status === "COMPLETED");
 
   const ACTION_CONFIRMATIONS: Record<string, { action: string; label: string; description: string; className?: string }> = {

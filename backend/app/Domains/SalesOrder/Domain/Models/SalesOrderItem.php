@@ -30,6 +30,7 @@ class SalesOrderItem extends Model
         'issued_at',
         'issued_by',
         'quantity_returned',
+        'issued_quantity',
         'is_tentative',
         'original_custom_price',
     ];
@@ -37,6 +38,7 @@ class SalesOrderItem extends Model
     protected $casts = [
         'quantity' => 'integer',
         'quantity_returned' => 'integer',
+        'issued_quantity' => 'integer',
         'UnitPrice' => 'decimal:2',
         'SubTotal' => 'decimal:2',
         'CostAtSale' => 'decimal:2',

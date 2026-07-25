@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import DataToolbar from "@/components/DataToolbar";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Table,
   TableHeader,
@@ -409,7 +411,12 @@ const SalesOrderList: React.FC = () => {
                     <TableRow
                       key={o.id}
                       onClick={() => navigate(`/webapp/sales/sales-orders/${o.id}`)}
-                      className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
+                      className={cn(
+                        "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30",
+                        o.hasUnissuedItems
+                          ? "ring-2 ring-amber-500 animate-border-pulse-amber"
+                          : ""
+                      )}
                     >
                       <TableCell className="py-2.5 text-left pl-8">
                         <span className="font-semibold text-sm font-mono">{o.so_number}</span>
@@ -421,16 +428,34 @@ const SalesOrderList: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
-                          <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
-                            o.status === "APPROVED" ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300" :
-                            o.status === "IN_PROGRESS" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
-                            o.status === "COMPLETED" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
-                            o.status === "CANCELLED" ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300" :
-                            o.status === "SUBMITTED" ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" :
-                            "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                          }`}>
-                            {statusLabel}
-                          </span>
+                          {o.hasUnissuedItems ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
+                                  o.status === "APPROVED" ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300" :
+                                  o.status === "IN_PROGRESS" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                                  o.status === "COMPLETED" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                                  o.status === "CANCELLED" ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300" :
+                                  o.status === "SUBMITTED" ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" :
+                                  "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                                }`}>
+                                  {statusLabel}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>Unissued items need attention</TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
+                              o.status === "APPROVED" ? "border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/30 dark:text-green-300" :
+                              o.status === "IN_PROGRESS" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                              o.status === "COMPLETED" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                              o.status === "CANCELLED" ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300" :
+                              o.status === "SUBMITTED" ? "border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300" :
+                              "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            }`}>
+                              {statusLabel}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-center text-muted-foreground text-xs">

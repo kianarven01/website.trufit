@@ -185,3 +185,22 @@
     margin: 1cm;
   }
 }
+
+/* Border pulse animations for attention rows */
+@keyframes border-pulse-amber {
+  0%, 100% { border-color: rgb(245 158 11); box-shadow: 0 0 0 1px rgb(245 158 11 / 0.4); }
+  50% { border-color: rgb(217 119 6); box-shadow: 0 0 0 3px rgb(245 158 11 / 0.25); }
+}
+
+@keyframes border-pulse-green {
+  0%, 100% { border-color: rgb(34 197 94); box-shadow: 0 0 0 1px rgb(34 197 94 / 0.4); }
+  50% { border-color: rgb(22 163 74); box-shadow: 0 0 0 3px rgb(34 197 94 / 0.25); }
+}
+
+.animate-border-pulse-amber {
+  animation: border-pulse-amber 1.5s ease-in-out infinite;
+}
+
+.animate-border-pulse-green {
+  animation: border-pulse-green 1.5s ease-in-out infinite;
+}

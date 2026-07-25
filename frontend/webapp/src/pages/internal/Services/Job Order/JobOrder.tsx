@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import DataToolbar, { FilterOption } from "@/components/DataToolbar";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import {
   Table,
   TableHeader,
@@ -187,12 +188,23 @@ const JobOrderList: React.FC = () => {
               </TableHeader>
 
               <TableBody>
-                {jobOrders.map((jo) => (
-                  <TableRow
-                    key={jo.id}
-                    onClick={() => navigate(`/webapp/services/job-orders/${jo.id}`)}
-                    className="cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30"
-                  >
+                {jobOrders.map((jo) => {
+                  const needsAttention = jo.timer_status === "running"
+                    || (jo.statusRecord?.name === "Pending" && !jo.technicianName);
+                  const attentionClass = needsAttention
+                    ? jo.timer_status === "running"
+                      ? "ring-2 ring-green-500 animate-border-pulse-green"
+                      : "ring-2 ring-amber-500 animate-border-pulse-amber"
+                    : "border-border/60";
+                  return (
+                    <TableRow
+                      key={jo.id}
+                      onClick={() => navigate(`/webapp/services/job-orders/${jo.id}`)}
+                      className={cn(
+                        "cursor-pointer transition-all rounded-lg border border-border/60 bg-card shadow-sm hover:shadow-md hover:bg-accent/30",
+                        attentionClass
+                      )}
+                    >
                     <TableCell className="py-2.5 text-left pl-8">
                       <span className="font-semibold text-sm font-mono">{jo.jo_number || `JO-${jo.id.substring(0, 8).toUpperCase()}`}</span>
                     </TableCell>
@@ -203,7 +215,23 @@ const JobOrderList: React.FC = () => {
                       {jo.technicianName || "Unassigned"}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex justify-center">
+                      {needsAttention ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
+                              jo.statusRecord?.name === "In Progress" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
+                              jo.statusRecord?.name === "Completed" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
+                              jo.statusRecord?.name === "Cancelled" ? "border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300" :
+                              "border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                            }`}>
+                              {jo.statusRecord?.name || "Pending"}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {jo.timer_status === "running" ? "Timer is running — work in progress" : "No technician assigned"}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
                         <span className={`inline-flex w-fit items-center rounded-md border px-2.5 py-1 text-xs font-medium ${
                           jo.statusRecord?.name === "In Progress" ? "border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300" :
                           jo.statusRecord?.name === "Completed" ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" :
@@ -212,14 +240,15 @@ const JobOrderList: React.FC = () => {
                         }`}>
                           {jo.statusRecord?.name || "Pending"}
                         </span>
-                      </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-center text-muted-foreground text-xs">
                       {new Date(jo.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </TableCell>
                     <TableCell className="text-right pr-4">{renderActions(jo)}</TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </ScrollArea>

@@ -91,6 +91,47 @@ class ReturnSalesOrderItems
                 ]);
             }
 
+            // Recalculate SO total from effective quantities (quantity - quantity_returned)
+            $effectiveTotal = $salesOrder->items->sum(function ($item) {
+                $effectiveQty = max(0, (int) $item->quantity - (int) $item->quantity_returned);
+                return round($effectiveQty * (float) $item->UnitPrice, 2);
+            });
+            $salesOrder->update([
+                'Total' => $effectiveTotal,
+                'Balance' => $effectiveTotal,
+            ]);
+
+            // Update linked billing statement if it exists
+            $bill = \App\Domains\Billing\Domain\Models\BillingStatement::where('SOID', $salesOrder->id)
+                ->where('status', '!=', 'Cancelled')
+                ->first();
+
+            if ($bill) {
+                // Update billing items — reduce quantities for returned items
+                foreach ($items as $item) {
+                    $qtyToReturn = $returnQtys->get($item->id, 0);
+                    if ($qtyToReturn <= 0) continue;
+
+                    $itemName = $item->custom_name ?? $item->product?->name ?? '';
+                    $billItem = \App\Domains\Billing\Domain\Models\BillingStatementItem::where('BillingStatementID', $bill->id)
+                        ->where('name', $itemName)
+                        ->first();
+
+                    if ($billItem) {
+                        $newQty = max(0, (int) $billItem->quantity - $qtyToReturn);
+                        $billItem->update([
+                            'quantity' => $newQty,
+                            'SubTotal' => round($newQty * (float) $billItem->UnitPrice, 2),
+                        ]);
+                    }
+                }
+
+                // Recalculate billing total from items
+                $billTotal = \App\Domains\Billing\Domain\Models\BillingStatementItem::where('BillingStatementID', $bill->id)
+                    ->sum('SubTotal');
+                $bill->update(['Total' => $billTotal]);
+            }
+
             return $salesOrder->fresh(['items.product.manufacturer', 'items.product.productSuppliers.inventory', 'items.product.inventoryRows']);
         });
     }

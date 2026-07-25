@@ -675,7 +675,7 @@ const SalesOrderDetails: React.FC = () => {
                 </>
               )}
 
-              {(order.status === "COMPLETED" || order.status === "CANCELLED") && !isCounter && (
+              {order.status === "CANCELLED" && !isCounter && (
                 <Button variant="outline" size="sm" onClick={() => setConfirmAction(ACTION_CONFIRMATIONS.reopen)} disabled={isSubmitting}>
                   <RotateCcw className="w-4 h-4 mr-1" />
                   Reopen

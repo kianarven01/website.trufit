@@ -342,7 +342,7 @@ const SalesOrderList: React.FC = () => {
                   </>
                 )}
 
-                {order.status === "COMPLETED" && order.type !== "COUNTER" && (
+                {order.status === "CANCELLED" && (
                   <>
                     <DropdownMenuItem onClick={() => setConfirmAction({ order, action: "reopen", label: "Reopen" })} className="cursor-pointer">
                       <RotateCcw className="w-4 h-4 mr-2" />

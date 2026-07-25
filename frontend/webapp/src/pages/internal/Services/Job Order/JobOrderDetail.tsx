@@ -682,7 +682,11 @@ const JobOrderDetail: React.FC = () => {
                               </TableCell>
                               <TableCell className="text-center">{item.quantity}</TableCell>
                               <TableCell className="text-center">
-                                {!isSundries && item.is_issued ? (
+                                {isSundries ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                    Sundries
+                                  </span>
+                                ) : item.is_issued ? (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-200">
                                     Issued
                                   </span>

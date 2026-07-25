@@ -1617,4 +1617,323 @@ class EstimateTest extends TestCase
         $estimate->refresh();
         $this->assertEquals(12346, (int) $estimate->mileage);
     }
+
+    /* ================================================================
+     *  SYNC OVERHAUL TESTS — estimate as source of truth
+     * ================================================================ */
+
+    public function test_edit_removes_deleted_part_from_so_when_not_issued()
+    {
+        $this->actingAs($this->user);
+
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-DEL',
+            'name' => 'Deleted Part',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 300.00,
+        ]);
+        Inventory::create([
+            'productID' => $product2->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 5,
+            'reserved_quantity' => 0,
+            'sell_price' => 300.00,
+            'location_id' => $this->locationId,
+        ]);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 800.00]);
+
+        // 2 confirmed parts
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $this->product->id,
+            'quantity' => 1, 'unit_price' => 500.00, 'subtotal' => 500.00,
+        ]);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $product2->id,
+            'quantity' => 1, 'unit_price' => 300.00, 'subtotal' => 300.00,
+        ]);
+
+        // Approve → SO with 2 items
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertCount(2, SalesOrderItem::where('SalesOrderID', $so->id)->get());
+
+        // Remove product2 from estimate, keep only product1
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                    'subtotal' => 500.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // SO should now have only 1 item (product2 removed)
+        $soItems = SalesOrderItem::where('SalesOrderID', $so->id)->get();
+        $this->assertCount(1, $soItems);
+        $this->assertEquals($this->product->id, $soItems->first()->ProductID);
+    }
+
+    public function test_edit_does_not_remove_issued_part_from_so()
+    {
+        $this->actingAs($this->user);
+
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-NODEL',
+            'name' => 'Issued Part',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 300.00,
+        ]);
+        Inventory::create([
+            'productID' => $product2->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 5,
+            'reserved_quantity' => 0,
+            'sell_price' => 300.00,
+            'location_id' => $this->locationId,
+        ]);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 800.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $this->product->id,
+            'quantity' => 1, 'unit_price' => 500.00, 'subtotal' => 500.00,
+        ]);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $product2->id,
+            'quantity' => 1, 'unit_price' => 300.00, 'subtotal' => 300.00,
+        ]);
+
+        // Approve → SO with 2 items
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+
+        // Issue product2
+        $soItem2 = SalesOrderItem::where('SalesOrderID', $so->id)->where('ProductID', $product2->id)->first();
+        $this->postJson("/api/sales-orders/{$so->id}/issue", [
+            'item_ids' => [$soItem2->id],
+        ])->assertOk();
+
+        // Remove product2 from estimate
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                    'subtotal' => 500.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // SO should still have 2 items — issued item was NOT removed
+        $soItems = SalesOrderItem::where('SalesOrderID', $so->id)->get();
+        $this->assertCount(2, $soItems);
+    }
+
+    public function test_edit_updates_service_price_on_jo()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 800.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'service', 'service_id' => $this->serviceType->id,
+            'quantity' => 1, 'unit_price' => 800.00, 'subtotal' => 800.00,
+        ]);
+
+        // Approve → JO with 1 service at 800
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $jobOrder = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertNotNull($jobOrder);
+
+        $joService = JobOrderService::where('JobOrderID', $jobOrder->id)->first();
+        $this->assertEquals(800.00, (float) $joService->PriceAtSale);
+
+        // Update service price on estimate to 1000
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'items' => [
+                [
+                    'item_type' => 'service',
+                    'service_id' => $this->serviceType->id,
+                    'quantity' => 1,
+                    'unit_price' => 1000.00,
+                    'subtotal' => 1000.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // JO service price should now be 1000
+        $joService->refresh();
+        $this->assertEquals(1000.00, (float) $joService->PriceAtSale);
+    }
+
+    public function test_edit_removes_deleted_service_from_jo()
+    {
+        $this->actingAs($this->user);
+
+        $service2 = ServiceType::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Brake Check',
+            'pricing_type' => 'fixed',
+            'price' => 500.00,
+            'duration' => 30,
+        ]);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 1300.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'service', 'service_id' => $this->serviceType->id,
+            'quantity' => 1, 'unit_price' => 800.00, 'subtotal' => 800.00,
+        ]);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'service', 'service_id' => $service2->id,
+            'quantity' => 1, 'unit_price' => 500.00, 'subtotal' => 500.00,
+        ]);
+
+        // Approve → JO with 2 services
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $jobOrder = JobOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertCount(2, JobOrderService::where('JobOrderID', $jobOrder->id)->get());
+
+        // Remove service2 from estimate
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'items' => [
+                [
+                    'item_type' => 'service',
+                    'service_id' => $this->serviceType->id,
+                    'quantity' => 1,
+                    'unit_price' => 800.00,
+                    'subtotal' => 800.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // JO should now have only 1 service
+        $joServices = JobOrderService::where('JobOrderID', $jobOrder->id)->get();
+        $this->assertCount(1, $joServices);
+        $this->assertEquals($this->serviceType->id, $joServices->first()->ServiceID);
+    }
+
+    public function test_estimate_items_endpoint_excludes_tentative()
+    {
+        $this->actingAs($this->user);
+
+        $estimate = $this->createEstimate(['status' => 'APPROVED', 'total_amount' => 800.00]);
+
+        // Create SO manually linked to estimate
+        $so = SalesOrder::create([
+            'id' => (string) Str::uuid(),
+            'so_number' => 'SO-' . rand(10000, 99999),
+            'estimate_id' => $estimate->id,
+            'customerID' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'employee' => $this->employee->id,
+            'type' => 'REPAIR',
+            'Total' => 0.00,
+            'Balance' => 0.00,
+            'Status' => 'APPROVED',
+        ]);
+
+        // 1 confirmed part + 1 tentative part
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $this->product->id,
+            'quantity' => 1, 'unit_price' => 500.00, 'subtotal' => 500.00,
+            'is_tentative' => false,
+        ]);
+
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(), 'SKU' => 'PROD-TENT',
+            'name' => 'Tentative Part', 'item_type' => 'part',
+            'conversion_factor' => 1, 'selling_price' => 300.00,
+        ]);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $product2->id,
+            'quantity' => 1, 'unit_price' => 300.00, 'subtotal' => 300.00,
+            'is_tentative' => true,
+        ]);
+
+        // Call estimateItems endpoint
+        $response = $this->getJson("/api/sales-orders/{$so->id}/estimate-items")->assertOk();
+        $items = $response->json('data');
+
+        // Should only return confirmed part (not tentative)
+        $this->assertCount(1, $items);
+        $this->assertEquals($this->product->id, $items[0]['product_id']);
+    }
+
+    public function test_so_total_recalculates_after_removal()
+    {
+        $this->actingAs($this->user);
+
+        $product2 = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'PROD-RECALC',
+            'name' => 'Recalc Part',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 300.00,
+        ]);
+        Inventory::create([
+            'productID' => $product2->id,
+            'product_supplier_id' => $this->productSupplier->id,
+            'quantity_on_hand' => 5,
+            'reserved_quantity' => 0,
+            'sell_price' => 300.00,
+            'location_id' => $this->locationId,
+        ]);
+
+        $estimate = $this->createEstimate(['status' => 'FOR APPROVAL', 'total_amount' => 800.00]);
+
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $this->product->id,
+            'quantity' => 1, 'unit_price' => 500.00, 'subtotal' => 500.00,
+        ]);
+        EstimateItem::create([
+            'id' => (string) Str::uuid(), 'estimate_id' => $estimate->id,
+            'item_type' => 'part', 'product_id' => $product2->id,
+            'quantity' => 1, 'unit_price' => 300.00, 'subtotal' => 300.00,
+        ]);
+
+        // Approve → SO total = 800
+        $this->putJson("/api/estimates/{$estimate->id}", ['status' => 'APPROVED'])->assertOk();
+        $so = SalesOrder::where('estimate_id', $estimate->id)->first();
+        $this->assertEquals(800.00, (float) $so->Total);
+
+        // Remove product2 from estimate
+        $this->putJson("/api/estimates/{$estimate->id}", [
+            'items' => [
+                [
+                    'item_type' => 'part',
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                    'subtotal' => 500.00,
+                ],
+            ],
+        ])->assertOk();
+
+        // SO total should now be 500
+        $so->refresh();
+        $this->assertEquals(500.00, (float) $so->Total);
+        $this->assertEquals(500.00, (float) $so->Balance);
+    }
 }

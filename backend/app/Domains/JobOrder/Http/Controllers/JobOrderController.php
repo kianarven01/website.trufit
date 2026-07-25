@@ -74,7 +74,7 @@ class JobOrderController extends Controller
         $jobOrder = JobOrder::with([
             'technicians.employee',
             'services.serviceType',
-            'salesOrder.items.product',
+            'salesOrder.items.product.category',
             'vehicle',
             'billingStatements',
             'statusRecord',
@@ -112,8 +112,8 @@ class JobOrderController extends Controller
                         'SKU' => $item->product->SKU,
                         'part_number' => $item->product->part_number,
                         'manufacturer_name' => $item->product->manufacturer_name,
-                        'category_is_spol' => $item->product->category_is_spol,
-                        'category_name' => $item->product->category_name,
+                        'category_is_spol' => $item->product->category?->is_spol,
+                        'category_name' => $item->product->category?->name,
                     ] : null,
                 ])->toArray(),
             ];
@@ -272,16 +272,10 @@ class JobOrderController extends Controller
             ], 422);
         }
 
-        // Stop timer if completing or cancelling
-        if (in_array($validated['status'], ['Completed', 'Cancelled']) && $jobOrder->timer_status) {
-            app(StopTimer::class)->execute($id);
-        }
-
-        $newStatusId = $this->getStatusId($validated['status']);
-        $jobOrder->update(['status' => $newStatusId]);
+        $soStarted = false;
+        $soCompleted = false;
 
         // When JO starts, sync SO to IN_PROGRESS
-        $soStarted = false;
         if ($validated['status'] === 'In Progress') {
             $jobOrder->load('salesOrder');
             if ($jobOrder->salesOrder && $jobOrder->salesOrder->Status === 'APPROVED') {
@@ -294,9 +288,8 @@ class JobOrderController extends Controller
             }
         }
 
-        // When JO completes, trigger SO completion (which auto-creates billing)
-        // Or create billing directly if no SO exists or SO is not in IN_PROGRESS
-        $soCompleted = false;
+        // When JO completes, validate + complete SO FIRST (before updating JO status or stopping timer)
+        // This will throw if items aren't issued, preventing JO from being marked Completed and timer from stopping
         if ($validated['status'] === 'Completed') {
             $jobOrder->load('salesOrder');
             if ($jobOrder->salesOrder && $jobOrder->salesOrder->Status === 'IN_PROGRESS') {
@@ -309,6 +302,14 @@ class JobOrderController extends Controller
                     ->execute($jobOrder->id, $request->user()?->id);
             }
         }
+
+        // Now safe to stop timer and update JO status (no exception = SO completed/billing created OK)
+        if (in_array($validated['status'], ['Completed', 'Cancelled']) && $jobOrder->timer_status) {
+            app(StopTimer::class)->execute($id);
+        }
+
+        $newStatusId = $this->getStatusId($validated['status']);
+        $jobOrder->update(['status' => $newStatusId]);
 
         $freshData = $jobOrder->fresh(['technicians.employee', 'services.serviceType', 'vehicle', 'statusRecord', 'salesOrder'])->toArray();
         $freshData['statusRecord'] = $jobOrder->fresh()->statusRecord

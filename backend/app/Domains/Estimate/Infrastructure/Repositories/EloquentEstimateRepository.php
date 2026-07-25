@@ -355,16 +355,33 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
             }
         }
 
+        // Remove SO items deleted from estimate (only if not issued — issued items must be returned first)
+        $confirmedEstParts = $estimate->items->where('is_tentative', false)->whereIn('item_type', ['part', 'supply']);
+        $salesOrder->items->each(function ($soItem) use ($confirmedEstParts, &$soRecalculated) {
+            if ($soItem->is_issued) return;
+            $stillExists = $confirmedEstParts->first(function ($ei) use ($soItem) {
+                if (!empty($soItem->ProductID) && $ei->product_id === $soItem->ProductID) return true;
+                if (!empty($soItem->custom_name) && !empty($ei->custom_name) && $ei->custom_name === $soItem->custom_name) return true;
+                return false;
+            });
+            if (!$stillExists) {
+                $soItem->delete();
+                $soRecalculated = true;
+            }
+        });
+
         // Auto-reserve newly added items and recalculate SO Total
         if (!empty($newItems)) {
             $reserveService = app(\App\Domains\SalesOrder\Application\Services\ReserveInventoryService::class);
             $reserveService->reserveItems($newItems);
-
-            $totalAmount = $salesOrder->items()->sum('SubTotal');
-            $salesOrder->update([
-                'Total' => $totalAmount,
-            ]);
         }
+
+        // Always recalculate SO Total and Balance (handles additions, updates, and removals)
+        $totalAmount = $salesOrder->items()->sum('SubTotal');
+        $salesOrder->update([
+            'Total' => $totalAmount,
+            'Balance' => $totalAmount,
+        ]);
 
         // ── Sync services to JO ──
         $jobOrder = $salesOrder->jobOrder;
@@ -511,18 +528,18 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
     }
 
     /**
-     * Sync confirmed services to a Job Order (add new ones).
+     * Sync confirmed services to a Job Order — add new, update prices, remove deleted.
      */
     private function syncServicesToJobOrder(\App\Domains\JobOrder\Domain\Models\JobOrder $jobOrder, Estimate $estimate): void
     {
         $existingServiceIds = $jobOrder->services->pluck('ServiceID')->filter()->toArray();
         $existingServiceNames = $jobOrder->services->pluck('custom_name')->filter()->toArray();
 
+        // 1. Add new services not yet on JO
         foreach ($estimate->items as $estItem) {
             if (!empty($estItem->is_tentative)) continue;
             if ($estItem->item_type !== 'service') continue;
 
-            // Skip if already on JO
             if (!empty($estItem->service_id) && in_array($estItem->service_id, $existingServiceIds)) continue;
             if (!empty($estItem->custom_name) && in_array($estItem->custom_name, $existingServiceNames)) continue;
 
@@ -539,6 +556,34 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                 $existingServiceNames[] = $estItem->custom_name;
             }
         }
+
+        // 2. Update existing services' price if estimate rate changed
+        foreach ($jobOrder->services as $joService) {
+            $match = $estimate->items->where('item_type', 'service')->where('is_tentative', false)->first(function ($ei) use ($joService) {
+                if (!empty($joService->ServiceID) && $ei->service_id === $joService->ServiceID) return true;
+                if (!empty($joService->custom_name) && !empty($ei->custom_name) && $ei->custom_name === $joService->custom_name) return true;
+                return false;
+            });
+            if ($match) {
+                $newPrice = round((float) ($match->unit_price ?? 0), 2);
+                if ((float) $joService->PriceAtSale !== $newPrice) {
+                    $joService->update(['PriceAtSale' => $newPrice]);
+                }
+            }
+        }
+
+        // 3. Remove services deleted from estimate (always — no inventory concern)
+        $confirmedEstServices = $estimate->items->where('item_type', 'service')->where('is_tentative', false);
+        $jobOrder->services->each(function ($joService) use ($confirmedEstServices) {
+            $stillExists = $confirmedEstServices->first(function ($ei) use ($joService) {
+                if (!empty($joService->ServiceID) && $ei->service_id === $joService->ServiceID) return true;
+                if (!empty($joService->custom_name) && !empty($ei->custom_name) && $ei->custom_name === $joService->custom_name) return true;
+                return false;
+            });
+            if (!$stillExists) {
+                $joService->delete();
+            }
+        });
     }
 
     /**

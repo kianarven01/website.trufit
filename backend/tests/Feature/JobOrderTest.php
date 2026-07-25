@@ -489,6 +489,10 @@ class JobOrderTest extends TestCase
         ]);
         $so->update(['job_order_id' => $joId]);
 
+        // Issue items first (required before completion)
+        $itemId = SalesOrderItem::where('SalesOrderID', $so->id)->first()->id;
+        $this->postJson("/api/sales-orders/{$so->id}/issue", ['item_ids' => [$itemId]])->assertOk();
+
         // Start and complete JO (triggers SO completion automatically)
         $this->patchJson("/api/job-orders/{$joId}/status", ['status' => 'In Progress'])->assertOk();
         $this->postJson("/api/job-orders/{$joId}/timer/start")->assertOk();

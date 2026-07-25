@@ -31,6 +31,13 @@ class IssueSalesOrderItems
                     continue;
                 }
 
+                // Skip Sundries items (no inventory tracking)
+                if ($item->product && $item->product->category
+                    && $item->product->category->is_spol
+                    && strtolower($item->product->category->name) === 'sundries') {
+                    continue;
+                }
+
                 if ($item->needs_ordering) {
                     throw new RuntimeException(
                         "Cannot issue item '" . ($item->custom_name ?? $item->product?->name ?? 'Unknown') . "' — it is marked as needing to be ordered.",

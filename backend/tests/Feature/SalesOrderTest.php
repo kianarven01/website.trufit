@@ -15,6 +15,7 @@ use App\Domains\Auth\Domain\Models\User;
 use App\Domains\Employee\Domain\Models\Employee;
 use App\Domains\Supplier\Domain\Models\Supplier;
 use App\Domains\Supplier\Domain\Models\ProductSupplier;
+use App\Domains\Product\Domain\Models\Category;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 
@@ -233,6 +234,10 @@ class SalesOrderTest extends TestCase
 
         $this->postJson("/api/sales-orders/{$orderId}/submit")->assertOk();
         $this->postJson("/api/sales-orders/{$orderId}/approve")->assertOk();
+
+        // Issue all items before completing
+        $itemIds = SalesOrderItem::where('SalesOrderID', $orderId)->pluck('id')->toArray();
+        $this->postJson("/api/sales-orders/{$orderId}/issue", ['item_ids' => $itemIds])->assertOk();
 
         // Move to IN_PROGRESS manually
         SalesOrder::where('id', $orderId)->update(['Status' => 'IN_PROGRESS']);
@@ -788,7 +793,11 @@ class SalesOrderTest extends TestCase
 
         $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
         $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
-        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        // Issue items before completing (this also transitions to IN_PROGRESS)
+        $itemIds = SalesOrderItem::where('SalesOrderID', $soId)->pluck('id')->toArray();
+        $this->postJson("/api/sales-orders/{$soId}/issue", ['item_ids' => $itemIds])->assertOk();
+
         $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
 
         $so = SalesOrder::find($soId);
@@ -908,7 +917,11 @@ class SalesOrderTest extends TestCase
 
         $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
         $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
-        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        // Issue items before completing
+        $itemIds = SalesOrderItem::where('SalesOrderID', $soId)->pluck('id')->toArray();
+        $this->postJson("/api/sales-orders/{$soId}/issue", ['item_ids' => $itemIds])->assertOk();
+
         $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
 
         $so = SalesOrder::find($soId);
@@ -1153,7 +1166,11 @@ class SalesOrderTest extends TestCase
 
         $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
         $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
-        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        // Issue items before completing (auto-transitions to IN_PROGRESS)
+        $itemIds = SalesOrderItem::where('SalesOrderID', $soId)->pluck('id')->toArray();
+        $this->postJson("/api/sales-orders/{$soId}/issue", ['item_ids' => $itemIds])->assertOk();
+
         $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
 
         $so = SalesOrder::find($soId);
@@ -1201,12 +1218,155 @@ class SalesOrderTest extends TestCase
 
         $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
         $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
-        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        // Issue items before completing (auto-transitions to IN_PROGRESS)
+        $itemIds = SalesOrderItem::where('SalesOrderID', $soId)->pluck('id')->toArray();
+        $this->postJson("/api/sales-orders/{$soId}/issue", ['item_ids' => $itemIds])->assertOk();
+
         $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
 
         $itemId = SalesOrderItem::where('SalesOrderID', $soId)->first()->id;
         $this->postJson("/api/sales-orders/{$soId}/issue", [
             'item_ids' => [$itemId],
         ])->assertStatus(422);
+    }
+
+    public function test_complete_so_with_only_sundries_succeeds_without_issuing()
+    {
+        $this->actingAs($this->user);
+
+        // Create Sundries category
+        $sundriesCategory = Category::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Sundries',
+            'is_spol' => true,
+        ]);
+
+        // Create Sundries product
+        $sundriesProduct = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'SUN-001',
+            'name' => 'Cleaning Rags',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 50.00,
+            'category_id' => $sundriesCategory->id,
+        ]);
+
+        // SO with only Sundries
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $sundriesProduct->id,
+                    'quantity' => 2,
+                    'unit_price' => 50.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Start work (transitions to IN_PROGRESS)
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        // Complete WITHOUT issuing Sundries — should succeed
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('COMPLETED', $so->Status);
+    }
+
+    public function test_complete_so_with_parts_plus_sundries_only_requires_parts_issued()
+    {
+        $this->actingAs($this->user);
+
+        // Create Sundries category
+        $sundriesCategory = Category::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Sundries',
+            'is_spol' => true,
+        ]);
+
+        // Create Sundries product
+        $sundriesProduct = Product::create([
+            'id' => (string) Str::uuid(),
+            'SKU' => 'SUN-002',
+            'name' => 'Grease',
+            'item_type' => 'part',
+            'conversion_factor' => 1,
+            'selling_price' => 30.00,
+            'category_id' => $sundriesCategory->id,
+        ]);
+
+        // SO with regular part + Sundries
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+                [
+                    'product_id' => $sundriesProduct->id,
+                    'quantity' => 1,
+                    'unit_price' => 30.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Issue only the regular part (not Sundries)
+        $regularPartId = SalesOrderItem::where('SalesOrderID', $soId)
+            ->where('ProductID', $this->product->id)
+            ->first()->id;
+        $this->postJson("/api/sales-orders/{$soId}/issue", [
+            'item_ids' => [$regularPartId],
+        ])->assertOk();
+
+        // Complete — should succeed (Sundries excluded from unissued check)
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertOk();
+
+        $so = SalesOrder::find($soId);
+        $this->assertEquals('COMPLETED', $so->Status);
+    }
+
+    public function test_complete_so_still_blocks_unissued_non_sundries()
+    {
+        $this->actingAs($this->user);
+
+        // SO with regular part (not issued)
+        $response = $this->postJson('/api/sales-orders', [
+            'customer_id' => $this->customer->customer_id,
+            'vehicle_id' => $this->vehicle->id,
+            'type' => 'REPAIR',
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'unit_price' => 500.00,
+                ],
+            ],
+        ]);
+        $soId = $response->json('data.id');
+
+        $this->postJson("/api/sales-orders/{$soId}/submit")->assertOk();
+        $this->postJson("/api/sales-orders/{$soId}/approve")->assertOk();
+
+        // Start work (transitions to IN_PROGRESS)
+        $this->postJson("/api/sales-orders/{$soId}/start-work")->assertOk();
+
+        // Complete WITHOUT issuing — should fail
+        $this->postJson("/api/sales-orders/{$soId}/complete")->assertStatus(422);
     }
 }

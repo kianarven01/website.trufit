@@ -46,6 +46,11 @@ class AddEstimateItemsToSalesOrder
                     continue;
                 }
 
+                // Skip tentative items — they should not be added to SO
+                if (!empty($estItem->is_tentative)) {
+                    continue;
+                }
+
                 // Skip if already on SO (by product_id or custom_name)
                 if (!empty($estItem->product_id) && in_array($estItem->product_id, $existingProductIds)) {
                     continue;

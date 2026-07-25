@@ -351,6 +351,9 @@ class SalesOrderController extends Controller
             ->where('estimate_id', $order->estimate_id)
             ->where('item_type', 'part')
             ->whereNotNull('product_id')
+            ->where(function ($q) {
+                $q->where('is_tentative', false)->orWhereNull('is_tentative');
+            })
             ->whereNotIn('product_id', $existingProductIds)
             ->get()
             ->map(fn($item) => [

@@ -26,6 +26,25 @@ class CompleteSalesOrder
                 throw new RuntimeException('Only in-progress sales orders can be completed.', 422);
             }
 
+            // Check that all issuable items have been issued
+            // Only count items with ProductID (custom items without ProductID can't be issued)
+            // Exclude Sundries (category name) — they have no inventory stock to issue
+            $unissuedItems = $salesOrder->items()
+                ->whereNotNull('ProductID')
+                ->where('needs_ordering', false)
+                ->where('is_issued', false)
+                ->with('product.category')
+                ->get()
+                ->filter(fn($item) => strtolower($item->product?->category?->name ?? '') !== 'sundries')
+                ->count();
+
+            if ($unissuedItems > 0) {
+                throw new RuntimeException(
+                    "Cannot complete: {$unissuedItems} item(s) have not been issued yet. Issue all items before completing.",
+                    422
+                );
+            }
+
             $salesOrder->update([
                 'Status' => 'COMPLETED',
                 'completed_by' => $userId,

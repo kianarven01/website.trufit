@@ -27,7 +27,19 @@ class ReserveInventoryService
      */
     public function reserveItems(iterable $items): void
     {
-        $reservableItems = collect($items)->reject(fn ($item) => $item->needs_ordering);
+        $reservableItems = collect($items)->reject(function ($item) {
+            // Skip items without needs_ordering
+            if ($item->needs_ordering) {
+                return true;
+            }
+            // Skip Sundries items (no inventory tracking)
+            if ($item->product && $item->product->category
+                && $item->product->category->is_spol
+                && strtolower($item->product->category->name) === 'sundries') {
+                return true;
+            }
+            return false;
+        });
 
         if ($reservableItems->isEmpty()) {
             return;

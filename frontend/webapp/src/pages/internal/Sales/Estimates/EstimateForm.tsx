@@ -213,6 +213,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [mileage, setMileage] = useState<number>(0);
   const [estimateNumber, setEstimateNumber] = useState<string>("");
+  const [estimateStatus, setEstimateStatus] = useState<string>("");
 
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
@@ -571,6 +572,8 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
             sessionStorage.setItem(`breadcrumb-/webapp/sales/estimates/${estimateId}`, found.estimate_number);
             window.dispatchEvent(new Event('breadcrumb-update'));
           }
+
+          setEstimateStatus(found.status || "");
 
           const cust = found.customer;
           const normalizedCust = cust ? {
@@ -1294,6 +1297,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                     allowAdd
                     addLabel="customer"
                     onAdd={handleAddCustomer}
+                    disabled={mode === "edit" && ["APPROVED", "APPROVED WITH DOWNPAYMENT", "APPROVED_WITH_DOWNPAYMENT"].includes(estimateStatus.toUpperCase())}
                   />
                 </div>
                 <div>

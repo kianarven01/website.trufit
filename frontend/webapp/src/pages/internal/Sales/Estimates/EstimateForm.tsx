@@ -214,6 +214,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
   const [mileage, setMileage] = useState<number>(0);
   const [estimateNumber, setEstimateNumber] = useState<string>("");
   const [estimateStatus, setEstimateStatus] = useState<string>("");
+  const [issuedProductIds, setIssuedProductIds] = useState<Set<string>>(new Set());
 
   // Add Customer Modal
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
@@ -574,6 +575,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
           }
 
           setEstimateStatus(found.status || "");
+          setIssuedProductIds(new Set((found.issued_product_ids || []).map(String)));
 
           const cust = found.customer;
           const normalizedCust = cust ? {
@@ -642,9 +644,10 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
                 return {
                   id: p.id,
-                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.productId : (p.product_id || ""),
                   quantity: Number(p.quantity),
                   amount: Number(p.subtotal),
+                  manualPrice: Number(p.unit_price) || 0,
                   needsOrdering: p.needs_ordering ?? false,
                   customName: p.custom_name || undefined,
                   isTentative: p.is_tentative ?? false,
@@ -661,7 +664,7 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
                 const matchedInventoryItem = normalizedParts.find(np => np.productId === p.product_id);
                 return {
                   id: p.id,
-                  ProductId: matchedInventoryItem ? matchedInventoryItem.id : (p.product_id || ""),
+                  ProductId: matchedInventoryItem ? matchedInventoryItem.productId : (p.product_id || ""),
                   quantity: Number(p.quantity),
                   amount: Number(p.subtotal),
                   manualPrice: Number(p.unit_price) || 0,
@@ -1808,13 +1811,26 @@ const AddEstimate: React.FC<AddEstimateProps> = ({ mode = "create" }) => {
 
                             <TableCell>
                               {soLines.length > 1 && (
-                                <Button
-                                  size="icon_xs"
-                                  variant="ghost"
-                                  onClick={() => removeSOLine(idx)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
+                                issuedProductIds.has(String(l.ProductId || "")) ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <Button size="icon_xs" variant="ghost" disabled>
+                                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                                        </Button>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Issued on Sales Order — return it first to remove.</TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <Button
+                                    size="icon_xs"
+                                    variant="ghost"
+                                    onClick={() => removeSOLine(idx)}
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )
                               )}
                             </TableCell>
                           </TableRow>

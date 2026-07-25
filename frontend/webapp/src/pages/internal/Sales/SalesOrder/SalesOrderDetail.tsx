@@ -688,7 +688,7 @@ const SalesOrderDetails: React.FC = () => {
                 </Button>
               )}
 
-              {order.status === "APPROVED" && (
+              {(order.status === "APPROVED" || order.status === "IN_PROGRESS") && (
                 <>
                   {order.estimate_id && (
                     <Button variant="outline" size="sm" onClick={openEstimateItemsModal} disabled={isSubmitting}>

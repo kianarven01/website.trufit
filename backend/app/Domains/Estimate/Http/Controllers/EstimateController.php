@@ -58,9 +58,24 @@ class EstimateController extends Controller
                 ], 404);
             }
 
+            $data = $estimate->toArray();
+
+            // Include issued product IDs from linked SO
+            $data['issued_product_ids'] = [];
+            $linkedSO = \App\Domains\SalesOrder\Domain\Models\SalesOrder::where('estimate_id', $estimate->id)->first();
+            if ($linkedSO) {
+                $data['issued_product_ids'] = $linkedSO->items()
+                    ->where('is_issued', true)
+                    ->whereNotNull('ProductID')
+                    ->pluck('ProductID')
+                    ->filter()
+                    ->values()
+                    ->toArray();
+            }
+
             return response()->json([
                 'status' => 'success',
-                'data' => $estimate,
+                'data' => $data,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to fetch estimate: ' . $e->getMessage());

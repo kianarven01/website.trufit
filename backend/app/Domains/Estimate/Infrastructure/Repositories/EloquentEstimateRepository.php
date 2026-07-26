@@ -302,12 +302,19 @@ class EloquentEstimateRepository implements EstimateRepositoryInterface
                     || (int) $existingSOItem->quantity !== $quantity
                     || $existingSOItem->needs_ordering !== (bool) ($estItem->needs_ordering ?? false)) {
 
-                    $existingSOItem->update([
+                    $updateData = [
                         'UnitPrice' => $unitPrice,
                         'SubTotal' => $subTotal,
                         'quantity' => $quantity,
                         'needs_ordering' => $estItem->needs_ordering ?? false,
-                    ]);
+                    ];
+
+                    // Recalculate is_issued based on quantity_issued vs new quantity
+                    if ((int) $existingSOItem->quantity_issued > 0) {
+                        $updateData['is_issued'] = (int) $existingSOItem->quantity_issued >= $quantity;
+                    }
+
+                    $existingSOItem->update($updateData);
                     $soRecalculated = true;
                 }
                 continue;

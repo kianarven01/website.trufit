@@ -104,7 +104,7 @@ interface Product {
   quantityOnHand: number | null;
   reservedQuantity: number | null;
   isIssued: boolean;
-  issuedQuantity: number;
+  quantityIssued: number;
   quantityReturned: number;
   isSpol: boolean;
   categoryName?: string | null;
@@ -258,7 +258,7 @@ const SalesOrderDetails: React.FC = () => {
           quantityOnHand,
           reservedQuantity,
           isIssued: Boolean(i.is_issued),
-          issuedQuantity: Number(i.issued_quantity) || 0,
+          quantityIssued: Number(i.quantity_issued) || 0,
           quantityReturned: Number(i.quantity_returned) || 0,
           isSpol: Boolean(product?.category?.is_spol),
           categoryName: product?.category?.name || null,
@@ -349,6 +349,12 @@ const SalesOrderDetails: React.FC = () => {
       }
     };
   }, [id]);
+
+  // Clear selections when order data changes (e.g. after estimate edit syncs quantity/issued changes)
+  useEffect(() => {
+    setSelectedParts(new Set());
+    setSelectedSpol(new Set());
+  }, [order]);
 
   const getNeedsOrderingReason = (p: { quantityOnHand: number | null; reservedQuantity: number | null; qty: number }): string => {
     const onHand = p.quantityOnHand ?? 0;
@@ -634,6 +640,7 @@ const SalesOrderDetails: React.FC = () => {
       quantityOnHand: null as number | null,
       reservedQuantity: null as number | null,
       isIssued: false,
+      quantityIssued: 0,
       quantityReturned: 0,
       isSpol: ti.is_sundries,
       categoryName: ti.is_sundries ? "Sundries" : null,
@@ -644,6 +651,9 @@ const SalesOrderDetails: React.FC = () => {
   const isCounter = order.type === "COUNTER";
   const hasIssuedItems = order.products.some((p) => p.isIssued);
   const isReadyToBill = (isCounter && order.status === "APPROVED") || (!isCounter && order.status === "COMPLETED");
+  const isSundries = (p: Product) => p.isSpol && p.categoryName?.toLowerCase() === "sundries";
+  const canIssueItem = (p: Product) => !p.isTentative && p.quantityIssued < p.qty && !p.needsOrdering && !isSundries(p);
+  const canReturnItem = (p: Product) => p.isIssued && p.quantityReturned < p.quantityIssued;
 
   const ACTION_CONFIRMATIONS: Record<string, { action: string; label: string; description: string; className?: string }> = {
     submit: { action: "submit", label: "Submit", description: "Are you sure you want to submit this Sales Order for approval?" },
@@ -893,7 +903,7 @@ const SalesOrderDetails: React.FC = () => {
                           variant="outline"
                           className="h-7 gap-1 text-xs"
                           onClick={() => handleIssueItems("parts")}
-                          disabled={isSubmitting || selectedParts.size === 0 || Array.from(selectedParts).every(id => order.products.find(p => p.id === id)?.isIssued)}
+                          disabled={isSubmitting || selectedParts.size === 0 || Array.from(selectedParts).every(id => !canIssueItem(order.products.find(p => p.id === id)!))}
                         >
                           <PackageCheck className="h-3 w-3" /> Issue Selected
                         </Button>
@@ -921,9 +931,9 @@ const SalesOrderDetails: React.FC = () => {
                           <input
                             type="checkbox"
                             className="rounded border-input text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                            checked={order.products.filter(p => !p.isSpol && !p.needsOrdering && (p.isIssued ? (p.qty > p.quantityReturned) : (p.quantityOnHand ?? 0) > 0)).length > 0 && order.products.filter(p => !p.isSpol && !p.needsOrdering && (p.isIssued ? (p.qty > p.quantityReturned) : (p.quantityOnHand ?? 0) > 0)).every(p => selectedParts.has(p.id))}
+                            checked={order.products.filter(p => !p.isSpol && (canIssueItem(p) || canReturnItem(p))).length > 0 && order.products.filter(p => !p.isSpol && (canIssueItem(p) || canReturnItem(p))).every(p => selectedParts.has(p.id))}
                             onChange={(e) => {
-                              const selectable = order.products.filter(p => !p.isSpol && !p.needsOrdering && (p.isIssued ? (p.qty > p.quantityReturned) : (p.quantityOnHand ?? 0) > 0));
+                              const selectable = order.products.filter(p => !p.isSpol && (canIssueItem(p) || canReturnItem(p)));
                               if (e.target.checked) {
                                 setSelectedParts(new Set(selectable.map(p => p.id)));
                               } else {
@@ -951,8 +961,8 @@ const SalesOrderDetails: React.FC = () => {
                               : p.quantityOnHand <= 0
                                 ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
                                 : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
-                          const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
-                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && p.isIssued && (p.qty > p.quantityReturned);
+                          const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && canIssueItem(p) && (p.quantityOnHand ?? 0) > 0;
+                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && canReturnItem(p);
                           return (
                             <TableRow key={p.id} className={`hover:bg-transparent ${p.isTentative ? 'opacity-60 bg-amber-50/30 border-l-2 border-l-amber-400' : ''}`}>
                               {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (
@@ -1109,7 +1119,7 @@ const SalesOrderDetails: React.FC = () => {
                           variant="outline"
                           className="h-7 gap-1 text-xs"
                           onClick={() => handleIssueItems("spol")}
-                          disabled={isSubmitting || selectedSpol.size === 0 || Array.from(selectedSpol).every(id => order.products.find(p => p.id === id)?.isIssued)}
+                          disabled={isSubmitting || selectedSpol.size === 0 || Array.from(selectedSpol).every(id => !canIssueItem(order.products.find(p => p.id === id)!))}
                         >
                           <PackageCheck className="h-3 w-3" /> Issue Selected
                         </Button>
@@ -1139,11 +1149,11 @@ const SalesOrderDetails: React.FC = () => {
                               type="checkbox"
                               className="rounded"
                               checked={
-                                order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).length > 0 &&
-                                order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0).every(p => selectedSpol.has(p.id))
+                                order.products.filter(p => p.isSpol && (canIssueItem(p) || canReturnItem(p))).length > 0 &&
+                                order.products.filter(p => p.isSpol && (canIssueItem(p) || canReturnItem(p))).every(p => selectedSpol.has(p.id))
                               }
                               onChange={() => {
-                                const selectables = order.products.filter(p => p.isSpol && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0);
+                                const selectables = order.products.filter(p => p.isSpol && (canIssueItem(p) || canReturnItem(p)));
                                 const allSelected = selectables.length > 0 && selectables.every(p => selectedSpol.has(p.id));
                                 setSelectedSpol(prev => {
                                   const next = new Set(prev);
@@ -1179,8 +1189,8 @@ const SalesOrderDetails: React.FC = () => {
                               : p.quantityOnHand <= 0
                                 ? { text: "Out of Stock", cls: "text-red-600 bg-red-50 border-red-200" }
                                 : { text: `In Stock (${p.quantityOnHand})`, cls: "text-green-600 bg-green-50 border-green-200" };
-                          const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && !p.isIssued && !p.needsOrdering && (p.quantityOnHand ?? 0) > 0;
-                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && p.isIssued && (p.qty > p.quantityReturned);
+                          const canSelect = !isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS") && canIssueItem(p) && (p.quantityOnHand ?? 0) > 0;
+                          const canSelectReturn = (order.status === "IN_PROGRESS" || order.status === "COMPLETED") && !isCounter && canReturnItem(p);
                           return (
                             <TableRow key={p.id} className="hover:bg-transparent">
                               {!isCounter && (order.status === "APPROVED" || order.status === "IN_PROGRESS" || order.status === "COMPLETED") && (

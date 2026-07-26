@@ -27,7 +27,8 @@ class IssueSalesOrderItems
             $issuedCount = 0;
 
             foreach ($items as $item) {
-                if ($item->is_issued) {
+                $remainingQty = (int) $item->quantity - (int) $item->quantity_issued;
+                if ($remainingQty <= 0) {
                     continue;
                 }
 
@@ -58,14 +59,15 @@ class IssueSalesOrderItems
 
                 $totalOnHand = $productInventories->sum('quantity_on_hand');
 
-                if ($totalOnHand < (int) $item->quantity) {
+                if ($totalOnHand < $remainingQty) {
+                    $itemName = $item->custom_name ?? $item->product?->name ?? 'Unknown';
                     throw new RuntimeException(
-                        "Insufficient stock for '{$item->product->name}'. Available: {$totalOnHand}, Requested: {$item->quantity}.",
+                        "Insufficient stock for '{$itemName}'. Available: {$totalOnHand}, Requested: {$remainingQty}.",
                         422
                     );
                 }
 
-                $qtyToIssue = (int) $item->quantity;
+                $qtyToIssue = $remainingQty;
 
                 // Prioritize rows that have both quantity_on_hand > 0 and reserved_quantity > 0
                 $sortedInventories = $productInventories->sortByDesc(function ($inv) {
@@ -104,9 +106,11 @@ class IssueSalesOrderItems
                     $qtyToIssue -= $deductFromRow;
                 }
 
+                $newQtyIssued = (int) $item->quantity_issued + $remainingQty;
                 $item->update([
-                    'is_issued' => true,
-                    'quantity_returned' => $item->quantity_returned ?? 0,
+                    'is_issued' => $newQtyIssued >= (int) $item->quantity,
+                    'quantity_issued' => $newQtyIssued,
+                    'quantity_returned' => 0,
                     'issued_at' => now(),
                     'issued_by' => $userId,
                 ]);

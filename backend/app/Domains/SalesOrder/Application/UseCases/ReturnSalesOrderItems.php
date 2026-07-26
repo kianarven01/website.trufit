@@ -28,6 +28,8 @@ class ReturnSalesOrderItems
                 throw new RuntimeException('No valid items found to return.', 422);
             }
 
+            $returnedCount = 0;
+
             foreach ($items as $item) {
                 if (!$item->is_issued) {
                     continue;
@@ -68,13 +70,15 @@ class ReturnSalesOrderItems
                     'reserved_quantity' => max(0, $inventory->reserved_quantity - $qtyToReturn),
                 ]);
 
-                // Update item's quantity_returned and is_issued state
+                // Update item's quantity_returned, quantity_issued, and is_issued state
                 $newQtyReturned = (int) $item->quantity_returned + $qtyToReturn;
+                $newQtyIssued = max(0, (int) $item->quantity_issued - $qtyToReturn);
                 $item->update([
                     'quantity_returned' => $newQtyReturned,
-                    'is_issued' => $newQtyReturned < (int) $item->quantity,
-                    'issued_at' => $newQtyReturned < (int) $item->quantity ? $item->issued_at : null,
-                    'issued_by' => $newQtyReturned < (int) $item->quantity ? $item->issued_by : null,
+                    'quantity_issued' => $newQtyIssued,
+                    'is_issued' => $newQtyIssued > 0,
+                    'issued_at' => $newQtyIssued > 0 ? $item->issued_at : null,
+                    'issued_by' => $newQtyIssued > 0 ? $item->issued_by : null,
                 ]);
 
                 // Log StockMovement
@@ -89,6 +93,12 @@ class ReturnSalesOrderItems
                     'notes' => "Returned {$qtyToReturn} units for Sales Order " . ($salesOrder->so_number ?? $salesOrder->id),
                     'created_by' => $userId,
                 ]);
+
+                $returnedCount++;
+            }
+
+            if ($returnedCount === 0) {
+                throw new RuntimeException('Selected items are not eligible for return. Items must be issued first.', 422);
             }
 
             // Recalculate SO total from effective quantities (quantity - quantity_returned)

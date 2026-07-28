@@ -74,6 +74,7 @@ class JobOrderController extends Controller
             'services.serviceType',
             'salesOrder.items.product.category',
             'vehicle',
+            'estimate',
             'billingStatements',
             'statusRecord',
         ])->findOrFail($id);

@@ -123,6 +123,7 @@ interface JobOrderDetail {
   elapsed_seconds: number;
   vehicle: Vehicle | null;
   salesOrder: SalesOrder | null;
+  estimate?: { id: string; mileage?: number } | null;
   services: JOService[];
   technicians: TechAssignment[];
   billingStatements: BillingStatement[];
@@ -554,7 +555,7 @@ const JobOrderDetail: React.FC = () => {
                       <div className="sm:col-span-2">
                         <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
                         <Input value={(() => {
-                          const mileage = jobOrder.vehicle?.mileage || jobOrder.salesOrder?.mileage;
+                          const mileage = jobOrder.vehicle?.mileage || jobOrder.salesOrder?.mileage || jobOrder.estimate?.mileage;
                           return mileage ? `${Number(mileage).toLocaleString()} km` : "—";
                         })()} readOnly />
                       </div>

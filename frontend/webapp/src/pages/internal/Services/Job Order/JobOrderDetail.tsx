@@ -55,6 +55,11 @@ interface Vehicle {
   model?: string;
   variant?: string;
   color?: string;
+  engine_number?: string;
+  VIN?: string;
+  registration_number?: string;
+  mileage?: number;
+  selling_dealer?: string;
 }
 
 interface ServiceType {
@@ -67,6 +72,7 @@ interface ServiceType {
 interface JOService {
   id: number;
   ServiceID: string;
+  custom_name?: string;
   service_type: ServiceType | null;
   PriceAtSale: number;
 }
@@ -86,6 +92,7 @@ interface SalesOrder {
   so_number: string;
   Status: string;
   Total: number;
+  mileage?: number;
   items?: { id: string; ProductID: string; custom_name?: string; quantity: number; UnitPrice: number; SubTotal: number; is_issued?: boolean; product?: { name: string; SKU: string; part_number?: string; manufacturer_name?: string; category_is_spol?: boolean; category_name?: string } }[];
 }
 
@@ -138,6 +145,7 @@ const JobOrderDetail: React.FC = () => {
 
   // Dialogs
   const [confirmAction, setConfirmAction] = useState<"start-job" | "complete" | "cancel" | null>(null);
+  const [confirmRemoveTech, setConfirmRemoveTech] = useState<number | null>(null);
   const [isAssignTechOpen, setIsAssignTechOpen] = useState(false);
   const [assignTechId, setAssignTechId] = useState("");
   const [assignRole, setAssignRole] = useState("PRIMARY");
@@ -463,24 +471,50 @@ const JobOrderDetail: React.FC = () => {
                 <CardHeader className="py-4">
                   <div className="flex items-center gap-2 text-blue-500">
                     <Car className="size-5" />
-                    <p className="font-semibold text-foreground">Vehicle</p>
+                    <p className="font-semibold text-foreground">Vehicle Details</p>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent>
                   {jobOrder.vehicle ? (
-                    <>
+                    <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div className="sm:col-span-2 grid lg:grid-cols-4 gap-4">
+                        <div className="lg:col-span-2">
+                          <Label className="text-muted-foreground font-normal text-xs">Year / Make / Model</Label>
+                          <Input value={`${jobOrder.vehicle.year_model || ""} ${jobOrder.vehicle.make || ""} ${jobOrder.vehicle.model || ""}`.trim() || "—"} readOnly />
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground font-normal text-xs">Variant</Label>
+                          <Input value={jobOrder.vehicle.variant || "—"} readOnly />
+                        </div>
+                        <div>
+                          <Label className="text-muted-foreground font-normal text-xs">Color</Label>
+                          <Input value={jobOrder.vehicle.color || "—"} readOnly />
+                        </div>
+                      </div>
                       <div>
-                        <Label className="text-muted-foreground font-normal text-xs">Plate Number</Label>
+                        <Label className="text-muted-foreground font-normal text-xs">Plate No.</Label>
                         <Input value={jobOrder.vehicle.plate_number || "—"} readOnly />
                       </div>
                       <div>
-                        <Label className="text-muted-foreground font-normal text-xs">Vehicle</Label>
-                        <Input
-                          value={`${jobOrder.vehicle.year_model || ""} ${jobOrder.vehicle.make || ""} ${jobOrder.vehicle.model || ""} ${jobOrder.vehicle.variant || ""}`.trim() || "—"}
-                          readOnly
-                        />
+                        <Label className="text-muted-foreground font-normal text-xs">Engine No.</Label>
+                        <Input value={jobOrder.vehicle.engine_number || "—"} readOnly />
                       </div>
-                    </>
+                      <div>
+                        <Label className="text-muted-foreground font-normal text-xs">Chassis No. (VIN)</Label>
+                        <Input value={jobOrder.vehicle.VIN || "—"} readOnly />
+                      </div>
+                      <div>
+                        <Label className="text-muted-foreground font-normal text-xs">Registration No.</Label>
+                        <Input value={jobOrder.vehicle.registration_number || "—"} readOnly />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <Label className="text-muted-foreground font-normal text-xs">Mileage</Label>
+                        <Input value={(() => {
+                          const mileage = jobOrder.vehicle?.mileage || jobOrder.salesOrder?.mileage;
+                          return mileage ? `${Number(mileage).toLocaleString()} km` : "—";
+                        })()} readOnly />
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No vehicle assigned</p>
                   )}
@@ -524,14 +558,36 @@ const JobOrderDetail: React.FC = () => {
                                 </p>
                               </div>
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveTech(ta.employee_id)}
-                              className="text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={async () => {
+                                  const newRole = ta.role === "PRIMARY" ? "ASSISTANT" : "PRIMARY";
+                                  try {
+                                    await api.post(`/job-orders/${id}/technicians`, {
+                                      employee_id: ta.employee_id,
+                                      role: newRole,
+                                    });
+                                    toast.success(`Technician role changed to ${newRole}`);
+                                    fetchJobOrder();
+                                  } catch (err: any) {
+                                    toast.error(err.response?.data?.message || "Failed to update role");
+                                  }
+                                }}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                {ta.role === "PRIMARY" ? "Demote" : "Promote"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmRemoveTech(ta.employee_id)}
+                                className="text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -617,7 +673,7 @@ const JobOrderDetail: React.FC = () => {
                         jobOrder.services.map((svc) => (
                           <TableRow key={svc.id} className="hover:bg-transparent text-center">
                             <TableCell className="font-medium text-center">
-                              {svc.service_type?.name || `Service (${svc.ServiceID || "?"})`}
+                              {svc.custom_name || svc.service_type?.name || "Service"}
                             </TableCell>
                             <TableCell className="text-left text-xs text-muted-foreground">
                             {svc.service_type?.tasks && svc.service_type.tasks.length > 0 ? (
@@ -787,6 +843,30 @@ const JobOrderDetail: React.FC = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleAssignTech}>Assign</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* REMOVE TECHNICIAN CONFIRMATION */}
+      <AlertDialog open={confirmRemoveTech !== null} onOpenChange={() => setConfirmRemoveTech(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Technician?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this technician from the job order? Their accumulated time will be saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                if (confirmRemoveTech !== null) handleRemoveTech(confirmRemoveTech);
+                setConfirmRemoveTech(null);
+              }}
+            >
+              Remove
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

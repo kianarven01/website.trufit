@@ -18,12 +18,14 @@ class JobOrderTechnician extends Model
         'assigned_at',
         'removed_at',
         'accumulated_seconds',
+        'timer_baseline',
     ];
 
     protected $casts = [
         'assigned_at' => 'datetime',
         'removed_at' => 'datetime',
         'accumulated_seconds' => 'integer',
+        'timer_baseline' => 'integer',
     ];
 
     public function jobOrder()

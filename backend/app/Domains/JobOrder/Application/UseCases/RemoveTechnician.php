@@ -23,14 +23,11 @@ class RemoveTechnician
 
             $jobOrder = JobOrder::findOrFail($jobOrderId);
 
-            // Calculate accumulated time if JO timer was running during this assignment
-            $accumulated = $assignment->accumulated_seconds ?? 0;
-
-            if (strtolower($jobOrder->timer_status ?? '') === 'running' && $assignment->assigned_at) {
-                // Add time from assignment to now (if timer was running during this period)
-                $elapsed = (int) abs(now()->diffInSeconds($assignment->assigned_at));
-                $accumulated += max(0, $elapsed);
-            }
+            // Calculate accumulated time using timer-active time only
+            // Uses elapsed_seconds (which includes running session time) as the current timer position
+            $timerTotal = $jobOrder->elapsed_seconds;
+            $baseline = $assignment->timer_baseline ?? 0;
+            $accumulated = max(0, $timerTotal - $baseline);
 
             $assignment->update([
                 'removed_at' => now(),

@@ -24,11 +24,20 @@ class AssignTechnician
                 throw new RuntimeException('Technician is already assigned to this job order.', 422);
             }
 
+            // If assigning PRIMARY, demote existing PRIMARY to ASSISTANT
+            if (strtoupper($role) === 'PRIMARY') {
+                JobOrderTechnician::where('JobOrderID', $jobOrderId)
+                    ->where('role', 'PRIMARY')
+                    ->whereNull('removed_at')
+                    ->update(['role' => 'ASSISTANT']);
+            }
+
             return JobOrderTechnician::create([
                 'JobOrderID' => $jobOrderId,
                 'employee_id' => $employeeId,
                 'role' => $role,
                 'assigned_at' => now(),
+                'timer_baseline' => $jobOrder->timer_total_seconds ?? 0,
             ]);
         });
     }

@@ -97,6 +97,7 @@ class JobOrderController extends Controller
                 'so_number' => $so->so_number,
                 'Status' => $so->Status,
                 'Total' => $so->Total,
+                'mileage' => $so->mileage,
                 'items' => $so->items->map(fn($item) => [
                     'id' => $item->id,
                     'ProductID' => $item->ProductID,

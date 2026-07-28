@@ -323,6 +323,24 @@ class JobOrderController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────
 
+    public function downloadPdf(string $id)
+    {
+        $jobOrder = \App\Domains\JobOrder\Domain\Models\JobOrder::with([
+            'technicians.employee',
+            'services.serviceType',
+            'vehicle',
+            'salesOrder.customer',
+            'salesOrder.vehicle',
+            'estimate',
+        ])->findOrFail($id);
+
+        $filename = ($jobOrder->jo_number ?: 'JO-' . substr($jobOrder->id, 0, 8)) . '.pdf';
+
+        return \Spatie\LaravelPdf\Facades\Pdf::view('pdfs.job-order', [
+            'jobOrder' => $jobOrder,
+        ])->format('a4')->inline($filename);
+    }
+
     private function getStatusId(string $name): string
     {
         $status = DB::connection('pgsql')

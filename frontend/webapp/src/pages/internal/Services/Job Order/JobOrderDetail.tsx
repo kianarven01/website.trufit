@@ -17,6 +17,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import DataToolbar from "@/components/DataToolbar";
 import {
   ArrowLeft,
@@ -34,6 +40,7 @@ import {
   UserPlus,
   Trash2,
   Box,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/api/axios";
@@ -139,6 +146,11 @@ const JobOrderDetail: React.FC = () => {
   const [jobOrder, setJobOrder] = useState<JobOrderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // PDF preview state
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+
   // Timer state
   const [liveSeconds, setLiveSeconds] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -240,6 +252,34 @@ const JobOrderDetail: React.FC = () => {
   };
 
   /* ACTIONS */
+  const loadPdfPreview = useCallback(async () => {
+    if (!id) return;
+    setIsLoadingPdf(true);
+    try {
+      const response = await api.get(`/job-orders/${id}/download-pdf`, { responseType: 'blob' });
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      setPdfBlobUrl(url);
+    } catch (error) {
+      console.error("Error loading PDF:", error);
+      toast.error("Failed to load PDF preview.");
+    } finally {
+      setIsLoadingPdf(false);
+    }
+  }, [id, pdfBlobUrl]);
+
+  const handlePreviewPDF = async () => {
+    setShowPdfPreview(true);
+    await loadPdfPreview();
+  };
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) window.URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
+
   const handleStatusChange = async (newStatus: string) => {
     try {
       await api.patch(`/job-orders/${id}/status`, { status: newStatus });
@@ -370,6 +410,10 @@ const JobOrderDetail: React.FC = () => {
                   Cancel
                 </Button>
               )}
+              <Button variant="outline" size="sm" onClick={handlePreviewPDF}>
+                <Printer className="w-4 h-4 mr-1" />
+                Print
+              </Button>
             </div>
           }
         />
@@ -909,6 +953,45 @@ const JobOrderDetail: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ========== PDF PREVIEW DIALOG ========== */}
+      <Dialog open={showPdfPreview} onOpenChange={(open) => {
+        setShowPdfPreview(open);
+        if (!open && pdfBlobUrl) {
+          window.URL.revokeObjectURL(pdfBlobUrl);
+          setPdfBlobUrl(null);
+        }
+      }}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b bg-background shrink-0">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-lg font-semibold">
+                PDF Preview — {jobOrder?.jo_number || "Job Order"}
+              </DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-muted/30">
+            {isLoadingPdf ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-sm text-muted-foreground animate-pulse">Generating PDF...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <iframe
+                src={pdfBlobUrl}
+                className="w-full h-full border-0"
+                title="Job Order PDF Preview"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-muted-foreground">No preview available</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

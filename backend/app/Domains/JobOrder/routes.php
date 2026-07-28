@@ -9,6 +9,7 @@ Route::prefix('job-orders')->group(function () {
     Route::get('/{id}', [JobOrderController::class, 'show']);
     Route::patch('/{id}/notes', [JobOrderController::class, 'updateNotes']);
     Route::patch('/{id}/status', [JobOrderController::class, 'updateStatus']);
+    Route::get('/{id}/download-pdf', [JobOrderController::class, 'downloadPdf']);
 
     // Timer
     Route::post('/{id}/timer/start', [JobOrderController::class, 'startTimer']);

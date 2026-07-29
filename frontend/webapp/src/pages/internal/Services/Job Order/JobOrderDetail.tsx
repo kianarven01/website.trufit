@@ -113,7 +113,6 @@ interface BillingStatement {
 interface JobOrderDetail {
   id: string;
   jo_number: string;
-  joNumber: string;
   date: string;
   status: string;
   notes: string | null;
@@ -561,7 +560,11 @@ const JobOrderDetail: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No vehicle assigned</p>
+                    <div className="flex flex-col items-center justify-center py-4 border border-dashed rounded-lg">
+                      <Car className="size-6 text-muted-foreground mb-1" />
+                      <p className="text-sm text-muted-foreground">No vehicle assigned</p>
+                      <p className="text-xs text-muted-foreground/70">Vehicle will be linked from the estimate</p>
+                    </div>
                   )}
                 </CardContent>
               </Card>

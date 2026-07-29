@@ -33,11 +33,7 @@ interface JobOrderRow {
   timer_status: string | null;
   timer_total_seconds: number;
   technicianName: string;
-  technicians: { employee: { id: number; first_name: string; last_name: string } | null; role: string }[];
-  technician: { id: number; first_name: string; last_name: string } | null;
   vehicle: { id: number; plate_number: string; year_model: string; make: string; model: string; variant: string } | null;
-  salesOrder: { id: string; so_number: string } | null;
-  services: { id: number; service_type: { name: string } | null; PriceAtSale: number }[];
 }
 
 const statusFilterOptions: FilterOption[] = [
@@ -52,13 +48,6 @@ const statusFilterOptions: FilterOption[] = [
     ],
   },
 ];
-
-const formatTimerShort = (totalSeconds: number): string => {
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = Math.floor(totalSeconds % 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-};
 
 /* COMPONENT */
 const JobOrderList: React.FC = () => {
@@ -177,7 +166,7 @@ const JobOrderList: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[18%] text-center">JO #</TableHead>
-                  <TableHead className="w-[22%] text-center">Customer</TableHead>
+                  <TableHead className="w-[22%] text-center">Vehicle</TableHead>
                   <TableHead className="w-[18%] text-center">Technician</TableHead>
                   <TableHead className="w-[18%] text-center">Status</TableHead>
                   <TableHead className="w-[10%] text-center">Date</TableHead>

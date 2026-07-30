@@ -775,7 +775,7 @@ const ProductsList: React.FC = () => {
                             <div className="flex flex-col gap-1">
                               <span className="font-medium">{product.name}</span>
                               <span className="text-[11px] text-muted-foreground leading-none">
-                                {product.category || "-"}
+                                {product.manufacturer || "-"}
                               </span>
                             </div>
                           </div>

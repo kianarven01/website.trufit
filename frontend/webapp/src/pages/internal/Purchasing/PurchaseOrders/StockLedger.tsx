@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "@/api/axios";
-import StockMovementTypeBadge from "@/components/purchasing/StockMovementTypeBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatDate, getCleanApiError, getRows } from "@/components/purchasing/purchasingUtils";
-import { TrendingUp, TrendingDown, ImageIcon, ChevronDown, Check, X } from "lucide-react";
+import { Package, ChevronDown, Check, X } from "lucide-react";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -56,10 +54,20 @@ const getQuantityDisplay = (movementType: string, quantity: number) => {
 
   const signedQuantity = isOut ? -Math.abs(quantity) : Math.abs(quantity);
 
-  return {
-    value: signedQuantity,
-    isOut,
-  };
+  return { value: signedQuantity, isOut };
+};
+
+const formatReference = (refId: string, refType: string) => {
+  if (refType === "SALES_ORDER" && refId.length > 8) {
+    return { display: `SO-${refId.slice(0, 8)}...`, full: refId };
+  }
+  if (refType === "PURCHASE_ORDER" && refId.length > 8) {
+    return { display: `PO-${refId.slice(0, 8)}...`, full: refId };
+  }
+  if (refType === "GOODS_RECEIPT" && refId.length > 8) {
+    return { display: `GR-${refId.slice(0, 8)}...`, full: refId };
+  }
+  return { display: refId.length > 12 ? refId.slice(0, 12) + "..." : refId, full: refId };
 };
 
 const StockLedger = () => {
@@ -83,7 +91,6 @@ const StockLedger = () => {
 
   const loadStockMovements = async () => {
     setLoading(true);
-
     try {
       const response = await api.get("/purchasing/stock-movements", {
         params: {
@@ -118,7 +125,6 @@ const StockLedger = () => {
         <PurchasingToast type={toast.type} title={toast.title} message={toast.message} duration={4000} onClose={() => setToast(null)} />
       )}
 
-      {/* Toolbar with dropdown filter */}
       <div className="flex items-center gap-3">
         <div className="flex-1">
           <DataToolbar
@@ -127,7 +133,6 @@ const StockLedger = () => {
           />
         </div>
 
-        {/* Type Filter Dropdown */}
         <div className="relative">
           <Button
             variant="outline"
@@ -181,78 +186,77 @@ const StockLedger = () => {
         )}
       </div>
 
-      {/* Table Container */}
       {loading ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
           <div className="flex-1 flex flex-col items-center justify-center py-20">
             <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-            <p className="text-sm font-medium text-muted-foreground animate-pulse">
-              Loading stock ledger...
-            </p>
+            <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading stock ledger...</p>
           </div>
         </div>
       ) : movements.length > 0 ? (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl overflow-hidden bg-background">
-          <ScrollArea className="flex-1 px-3">
-            <Table className="table-fixed w-full border-separate border-spacing-y-2">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[15%]">Date</TableHead>
-                  <TableHead className="w-[25%]">Part</TableHead>
-                  <TableHead className="w-[15%]">Type</TableHead>
-                  <TableHead className="w-[12%] text-right">Quantity</TableHead>
-                  <TableHead className="w-[18%]">Reference</TableHead>
-                  <TableHead className="w-[15%]">Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {movements.map((movement) => {
-                  const quantityDisplay = getQuantityDisplay(
-                    movement.movementType,
-                    Number(movement.quantity || 0)
-                  );
+          <ScrollArea className="flex-1">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Date</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Part</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Type</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Qty</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Reference</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((movement, idx) => {
+                  const quantityDisplay = getQuantityDisplay(movement.movementType, Number(movement.quantity || 0));
+                  const ref = formatReference(movement.referenceId, movement.referenceType);
 
                   return (
-                    <TableRow key={movement.id} className="border-t border-border/60">
-                      <TableCell className="text-muted-foreground">{formatDate(movement.date)}</TableCell>
-                      <TableCell>
-                        <p className="font-semibold text-sm">{movement.productName}</p>
-                        {movement.supplierName !== "-" && <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{movement.supplierName}</p>}
-                      </TableCell>
-                      <TableCell><StockMovementTypeBadge type={movement.movementType} /></TableCell>
-                      <TableCell>
-                        <div
-                          className={`flex items-center justify-end gap-1 font-semibold text-sm ${
-                            quantityDisplay.isOut
-                              ? "text-red-700 dark:text-red-400"
-                              : "text-green-700 dark:text-green-400"
-                          }`}
-                        >
-                          {quantityDisplay.isOut ? (
-                            <TrendingDown size={14} />
-                          ) : (
-                            <TrendingUp size={14} />
+                    <tr
+                      key={movement.id}
+                      className={cn(
+                        "border-b border-border/40 hover:bg-accent/30 transition-colors",
+                        idx % 2 === 0 ? "bg-card/50" : "bg-background"
+                      )}
+                    >
+                      <td className="py-3 px-4 text-muted-foreground text-xs whitespace-nowrap">{formatDate(movement.date)}</td>
+                      <td className="py-3 px-4">
+                        <p className="font-medium text-sm">{movement.productName}</p>
+                        {movement.supplierName !== "-" && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">{movement.supplierName}</p>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm capitalize">{movement.movementType.replace(/_/g, " ").toLowerCase()}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={cn(
+                            "font-semibold text-sm",
+                            quantityDisplay.isOut ? "text-red-600" : "text-green-600"
                           )}
-                          <span>
-                            {quantityDisplay.value > 0
-                              ? `+${quantityDisplay.value}`
-                              : quantityDisplay.value}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <p className="font-medium text-sm text-foreground">{movement.referenceId}</p>
-                        <p className="text-[11px] leading-none mt-0.5">{movement.referenceType}</p>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{movement.notes || "-"}</TableCell>
-                    </TableRow>
+                        >
+                          {quantityDisplay.isOut ? "" : "+"}{quantityDisplay.value}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {movement.notes && movement.notes.match(/SO-[\d-]+/) ? (
+                          <p className="font-medium text-sm text-foreground">{movement.notes.match(/SO-[\d-]+/)?.[0]}</p>
+                        ) : movement.notes && movement.notes.match(/PO-[\d-]+/) ? (
+                          <p className="font-medium text-sm text-foreground">{movement.notes.match(/PO-[\d-]+/)?.[0]}</p>
+                        ) : (
+                          <p className="font-medium text-sm text-foreground" title={ref.full}>{ref.display}</p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{movement.referenceType.replace(/_/g, " ")}</p>
+                      </td>
+                      <td className="py-3 px-4 text-xs text-muted-foreground max-w-[150px] truncate">{movement.notes || "-"}</td>
+                    </tr>
                   );
                 })}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </ScrollArea>
 
-          <div className="border-t mx-3">
+          <div className="border-t px-4">
             <Pagination
               totalItems={totalItems}
               page={page}
@@ -265,7 +269,7 @@ const StockLedger = () => {
       ) : (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">
           <div className="py-16 flex flex-col items-center text-center">
-            <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground" />
+            <Package className="h-8 w-8 mb-2 text-muted-foreground/50" />
             <p className="text-sm font-medium">No stock movement records found</p>
             <p className="text-xs text-muted-foreground">Try adjusting your search or filters</p>
           </div>

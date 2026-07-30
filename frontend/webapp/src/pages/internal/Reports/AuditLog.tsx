@@ -1,19 +1,10 @@
 import { useState, useEffect } from "react";
 import api from "@/api/axios";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import {
-  Activity,
-  RefreshCw,
-  User,
-  Settings,
-  ShoppingCart,
-  FileText,
-  Shield,
-  Clock,
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Clock, User, Package } from "lucide-react";
 
 interface AuditLog {
   id: number;
@@ -27,24 +18,59 @@ interface AuditLog {
   created_at: string;
 }
 
-const actionIcons: Record<string, any> = {
-  ONBOARDING: User,
-  EMPLOYEE: User,
-  ROLE: Shield,
-  JOB_ORDER: Settings,
-  SALES_ORDER: FileText,
-  PURCHASE_ORDER: ShoppingCart,
-  INVENTORY: Settings,
+const actionBadgeColors: Record<string, string> = {
+  LOGIN_SUCCESS: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  LOGIN_FAILED: "bg-red-50 text-red-600 border-red-200",
+  REGISTRATION_COMPLETED: "bg-blue-50 text-blue-600 border-blue-200",
+  KEY_GENERATED: "bg-violet-50 text-violet-600 border-violet-200",
+  ONBOARDING: "bg-blue-50 text-blue-600 border-blue-200",
+  ROLE: "bg-amber-50 text-amber-600 border-amber-200",
+  JOB_ORDER: "bg-teal-50 text-teal-600 border-teal-200",
+  SALES_ORDER: "bg-cyan-50 text-cyan-600 border-cyan-200",
+  PURCHASE_ORDER: "bg-rose-50 text-rose-600 border-rose-200",
+  INVENTORY: "bg-orange-50 text-orange-600 border-orange-200",
 };
 
-const actionColors: Record<string, string> = {
-  ONBOARDING: "bg-blue-500/10 text-blue-500",
-  EMPLOYEE: "bg-violet-500/10 text-violet-500",
-  ROLE: "bg-amber-500/10 text-amber-500",
-  JOB_ORDER: "bg-emerald-500/10 text-emerald-500",
-  SALES_ORDER: "bg-cyan-500/10 text-cyan-500",
-  PURCHASE_ORDER: "bg-rose-500/10 text-rose-500",
-  INVENTORY: "bg-slate-500/10 text-slate-500",
+const actionMessages: Record<string, string> = {
+  LOGIN_SUCCESS: "logged in successfully",
+  LOGIN_FAILED: "failed to log in",
+  REGISTRATION_COMPLETED: "completed registration",
+  KEY_GENERATED: "generated a registration key",
+  ONBOARDING: "was onboarded to the system",
+  ROLE_UPDATED: "updated a role configuration",
+  ROLE_CREATED: "created a new role",
+  ROLE_DELETED: "deleted a role",
+  EMPLOYEE_UPDATED: "updated employee details",
+  EMPLOYEE_TERMINATED: "terminated an employee",
+  JOB_ORDER_CREATED: "created a job order",
+  JOB_ORDER_COMPLETED: "completed a job order",
+  SALES_ORDER_CREATED: "created a sales order",
+  SALES_ORDER_APPROVED: "approved a sales order",
+  SALES_ORDER_COMPLETED: "completed a sales order",
+  PURCHASE_ORDER_CREATED: "created a purchase order",
+  PURCHASE_ORDER_APPROVED: "approved a purchase order",
+  INVENTORY_ADJUSTED: "adjusted inventory stock",
+};
+
+const formatAction = (action: string): string => {
+  return action.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const getBadgeColor = (action: string) => {
+  const upper = action.toUpperCase();
+  for (const [key, color] of Object.entries(actionBadgeColors)) {
+    if (upper.includes(key)) return color;
+  }
+  return "bg-gray-50 text-gray-600 border-gray-200";
+};
+
+const getActionMessage = (action: string, description?: string): string => {
+  if (description) return description;
+  const upper = action.toUpperCase();
+  for (const [key, msg] of Object.entries(actionMessages)) {
+    if (upper.includes(key)) return msg;
+  }
+  return formatAction(action).toLowerCase();
 };
 
 export default function AuditLog() {
@@ -71,93 +97,79 @@ export default function AuditLog() {
     }
   };
 
-  useEffect(() => {
-    fetchLogs(1);
-  }, []);
+  useEffect(() => { fetchLogs(1); }, []);
 
   const formatDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleString("en-PH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+        month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit",
       });
-    } catch {
-      return dateStr;
-    }
+    } catch { return dateStr; }
   };
 
-  const getActionType = (action: string): string => {
-    const upper = action.toUpperCase();
-    if (upper.includes("ONBOARD") || upper.includes("REGISTRATION")) return "ONBOARDING";
-    if (upper.includes("EMPLOYEE")) return "EMPLOYEE";
-    if (upper.includes("ROLE")) return "ROLE";
-    if (upper.includes("JOB")) return "JOB_ORDER";
-    if (upper.includes("SALES")) return "SALES_ORDER";
-    if (upper.includes("PURCHASE") || upper.includes("PO")) return "PURCHASE_ORDER";
-    if (upper.includes("INVENTORY") || upper.includes("STOCK")) return "INVENTORY";
-    return "EMPLOYEE";
-  };
+  const groupedLogs = logs.reduce((acc, log) => {
+    const date = new Date(log.created_at).toLocaleDateString("en-PH", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(log);
+    return acc;
+  }, {} as Record<string, AuditLog[]>);
 
   return (
     <div className="h-full flex flex-col gap-4 p-4 overflow-auto">
-
-      <Card className="flex-1">
-        <CardContent className="p-0">
+      <Card className="flex-1 flex flex-col border border-border/60">
+        <CardContent className="flex-1 p-0 flex flex-col">
           {loading && logs.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
+            <div className="flex-1 flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
             </div>
           ) : logs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-              <Activity className="h-10 w-10 mb-2 opacity-50" />
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground py-20">
+              <Package className="h-8 w-8 mb-2 opacity-40" />
               <p className="text-sm font-medium">No audit logs found</p>
             </div>
           ) : (
-            <ScrollArea className="h-[calc(100vh-280px)]">
-              <div className="divide-y divide-border/50">
-                {logs.map((log, idx) => {
-                  const actionType = getActionType(log.action);
-                  const Icon = actionIcons[actionType] || Activity;
-                  const colorClass = actionColors[actionType] || "bg-gray-500/10 text-gray-500";
+            <ScrollArea className="flex-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Date</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Action</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[40%]">Description</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">User</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Entity</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log, idx) => {
+                    const user = log.user_name || "System";
+                    const message = getActionMessage(log.action, log.description);
+                    const entity = log.entity_type
+                      ? log.entity_type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
+                      : "-";
 
-                  return (
-                    <div key={log.id || idx} className="flex items-start gap-4 p-4 hover:bg-accent/30 transition-colors">
-                      <div className={`p-2 rounded-lg shrink-0 ${colorClass}`}>
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold">{log.action}</span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {actionType.replace("_", " ")}
+                    return (
+                      <tr
+                        key={log.id || idx}
+                        className={`border-b border-border/40 hover:bg-accent/30 transition-colors ${idx % 2 === 0 ? "bg-card/50" : "bg-background"}`}
+                      >
+                        <td className="py-3 px-4 text-muted-foreground text-xs whitespace-nowrap">
+                          {formatDate(log.created_at)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant="outline" className={`text-[10px] font-semibold ${getBadgeColor(log.action)}`}>
+                            {formatAction(log.action)}
                           </Badge>
-                        </div>
-                        {log.description && (
-                          <p className="text-sm text-muted-foreground mt-0.5">{log.description}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground/70">
-                          {log.user_name && (
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" />
-                              {log.user_name}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {formatDate(log.created_at)}
-                          </span>
-                          {log.entity_type && (
-                            <span>{log.entity_type} #{log.entity_id}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        </td>
+                        <td className="py-3 px-4 text-sm">{message}</td>
+                        <td className="py-3 px-4 text-sm font-medium">{user}</td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">{entity}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </ScrollArea>
           )}
         </CardContent>

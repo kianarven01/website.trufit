@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import DataToolbar from "@/components/DataToolbar";
 
 import { Wrench } from "lucide-react";
@@ -36,9 +36,6 @@ const ServiceCatalogList: React.FC = () => {
     category: "all",
     pricingType: "all",
   });
-
-  const { page, setPage, pageSize, setPageSize, paginate } =
-    usePagination(25);
 
   /* ================= LOAD ================= */
   useEffect(() => {
@@ -110,7 +107,7 @@ const ServiceCatalogList: React.FC = () => {
     });
   }, [services, categoryMap, search, filters]);
 
-  const paginated = paginate(filtered);
+
 
   /* ================= FILTER OPTIONS ================= */
   const categoryOptions = useMemo(
@@ -135,10 +132,6 @@ const ServiceCatalogList: React.FC = () => {
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, pageSize]);
 
   /* ================= UI ================= */
 
@@ -175,7 +168,7 @@ const ServiceCatalogList: React.FC = () => {
               </TableHeader>
 
               <TableBody>
-                {paginated.map((s) => {
+                {filtered.map((s) => {
                   const category = categoryMap.get(s.serviceCategoryId);
                   return (
                     <TableRow
@@ -201,16 +194,6 @@ const ServiceCatalogList: React.FC = () => {
               </TableBody>
             </Table>
           </ScrollArea>
-
-          <div className="border-t mx-3">
-            <Pagination
-              totalItems={filtered.length}
-              page={page}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col border border-border/60 rounded-xl px-2 overflow-hidden bg-background">

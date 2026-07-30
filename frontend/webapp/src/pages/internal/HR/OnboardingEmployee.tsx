@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import DataToolbar from "@/components/DataToolbar";
 import AddEmployeeModal from "@/components/popupModal/addEmployee";
 import { ImageIcon, MoreVertical, ClipboardCopy, Send, Ban } from "lucide-react";
@@ -31,8 +31,6 @@ const OnboardingEmployees: React.FC = () => {
   const [employees, setEmployees] = useState<OnboardingEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
-
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
   const [filters, setFilters] = useState<Record<string, string>>({
     status: "all",
@@ -125,11 +123,6 @@ const OnboardingEmployees: React.FC = () => {
     },
   ];
 
-  const paginated = paginate(filtered);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, pageSize, filters, setPage]);
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
@@ -168,7 +161,7 @@ const OnboardingEmployees: React.FC = () => {
 
               <TableBody>
                 {filtered.length > 0 ? (
-                  paginated.map((e) => (
+                  filtered.map((e) => (
                     <TableRow
                       key={e.id}
                       className={cn(
@@ -243,14 +236,6 @@ const OnboardingEmployees: React.FC = () => {
               </TableBody>
             </Table>
           </ScrollArea>
-
-          <Pagination
-            totalItems={filtered.length}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
         </div>
       ) : (
         <Card>

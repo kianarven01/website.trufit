@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardTitle, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -110,8 +110,6 @@ const SupplierDetails: React.FC = () => {
       setSellingPrice(calculatedPrice.toFixed(2));
     }
   };
-
-  const { page, setPage, pageSize, setPageSize, paginate } = usePagination(25);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -451,7 +449,7 @@ const SupplierDetails: React.FC = () => {
                   <ScrollArea className="flex-1">
                     <Table className="table-fixed w-full">
                       <TableBody>
-                        {paginate(products).map((prod, index) => (
+                        {products.map((prod, index) => (
                           <TableRow key={prod.id} className="hover:bg-transparent">
                             <TableCell className="w-[20%] py-3 pl-4 text-left">
                               <p className="font-semibold text-foreground text-sm">{prod.name}{prod.manufacturer ? ` — ${prod.manufacturer}` : ""}</p>
@@ -517,16 +515,6 @@ const SupplierDetails: React.FC = () => {
                       </TableBody>
                     </Table>
                   </ScrollArea>
-
-                  {products.length > pageSize && (
-                    <Pagination
-                      totalItems={products.length}
-                      page={page}
-                      pageSize={pageSize}
-                      onPageChange={setPage}
-                      onPageSizeChange={setPageSize}
-                    />
-                  )}
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">

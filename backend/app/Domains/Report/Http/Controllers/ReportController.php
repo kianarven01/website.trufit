@@ -138,15 +138,15 @@ class ReportController extends Controller
         $inStock = $inventorySummary->filter(fn($item) => $item->available > max($item->reorder_level, 0))->count();
 
         $lowStock = $inventorySummary->filter(function ($item) use ($lowStockThreshold) {
-            $threshold = max($item->reorder_level, $lowStockThreshold);
+            $threshold = $item->reorder_level > 0 ? $item->reorder_level : $lowStockThreshold;
             return $item->available > 0 && $item->available <= $threshold;
         })->count();
 
         $outOfStock = $inventorySummary->filter(fn($item) => $item->available <= 0)->count();
 
         $lowStockItems = $inventorySummary->filter(function ($item) use ($lowStockThreshold) {
-            $threshold = max($item->reorder_level, $lowStockThreshold);
-            return $item->available <= $threshold;
+            $threshold = $item->reorder_level > 0 ? $item->reorder_level : $lowStockThreshold;
+            return $item->available > 0 && $item->available <= $threshold;
         })->values();
 
         // Total inventory value excluding Sundries

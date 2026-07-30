@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import DataToolbar from "@/components/DataToolbar";
 import { Button } from "@/components/ui/button";
 import Calendar from "@/components/ui/calendar-appointment";
@@ -103,8 +103,6 @@ const AppointmentsList: React.FC = () => {
   };
 
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
-  const { page, setPage, pageSize, setPageSize, paginate } =
-    usePagination(25);
 
 
   /* ================= LOAD ================= */
@@ -373,7 +371,6 @@ const AppointmentsList: React.FC = () => {
   }, [appointments, search, filters, selectedDate]);
 
 
-  const paginated = paginate(filtered);
 
   /* ================= FILTER OPTIONS ================= */
   const statusOptions: { label: string; value: string }[] = [
@@ -399,10 +396,6 @@ const AppointmentsList: React.FC = () => {
       }
     }
   };
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, pageSize, selectedDate, filters]);
 
   const handleCreateAppointment = async (data: any) => {
     setIsActionLoading(true);
@@ -553,7 +546,7 @@ const AppointmentsList: React.FC = () => {
                   {isLoading ? (
                     <TableSkeleton rows={8} />
                   ) : filtered.length > 0 ? (
-                    paginated.map((a) => {
+                    filtered.map((a) => {
                       return (
                         <TableRow
                           key={a.id}
@@ -654,14 +647,6 @@ const AppointmentsList: React.FC = () => {
                 </TableBody>
               </Table>
             </ScrollArea>
-
-            <Pagination
-                  totalItems={filtered.length}
-                  page={page}
-                  pageSize={pageSize}
-                  onPageChange={setPage}
-                  onPageSizeChange={setPageSize}
-                />
           </div>        
         ) : (
         <Card className="min-w-0 flex-1 flex flex-col border rounded-xl overflow-hidden h-[330px]">

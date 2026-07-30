@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import api from "@/api/axios";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Badge } from "@/components/ui/badge";
-import { Clock, User, Package } from "lucide-react";
+import { Clock, Package } from "lucide-react";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 interface AuditLog {
   id: number;
@@ -76,20 +76,19 @@ const getActionMessage = (action: string, description?: string): string => {
 export default function AuditLog() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalItems, setTotalItems] = useState(0);
+  const { page, setPage, pageSize, setPageSize } = usePagination(25);
 
-  const fetchLogs = async (pageNum: number = 1) => {
+  const fetchLogs = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/admin/audit-logs?per_page=50&page=${pageNum}`);
+      const res = await api.get(`/admin/audit-logs`, {
+        params: { per_page: pageSize, page },
+      });
       const data = res.data?.data || res.data || [];
-      if (pageNum === 1) {
-        setLogs(Array.isArray(data) ? data : data.data || []);
-      } else {
-        setLogs((prev) => [...prev, ...(Array.isArray(data) ? data : data.data || [])]);
-      }
-      setHasMore(Array.isArray(data) ? data.length === 50 : (data.data || []).length === 50);
+      const items = Array.isArray(data) ? data : data.data || [];
+      setLogs(items);
+      setTotalItems(res.data?.total ?? items.length);
     } catch (err) {
       console.error("Failed to load audit logs", err);
     } finally {
@@ -97,7 +96,9 @@ export default function AuditLog() {
     }
   };
 
-  useEffect(() => { fetchLogs(1); }, []);
+  useEffect(() => {
+    fetchLogs();
+  }, [page, pageSize]);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -107,18 +108,9 @@ export default function AuditLog() {
     } catch { return dateStr; }
   };
 
-  const groupedLogs = logs.reduce((acc, log) => {
-    const date = new Date(log.created_at).toLocaleDateString("en-PH", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(log);
-    return acc;
-  }, {} as Record<string, AuditLog[]>);
-
   return (
     <div className="h-full flex flex-col gap-4 p-4 overflow-auto">
-      <Card className="flex-1 flex flex-col border border-border/60">
+      <Card className="flex-1 flex flex-col border border-border">
         <CardContent className="flex-1 p-0 flex flex-col">
           {loading && logs.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
@@ -130,58 +122,62 @@ export default function AuditLog() {
               <p className="text-sm font-medium">No audit logs found</p>
             </div>
           ) : (
-            <ScrollArea className="flex-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Date</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Action</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[40%]">Description</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">User</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Entity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log, idx) => {
-                    const user = log.user_name || "System";
-                    const message = getActionMessage(log.action, log.description);
-                    const entity = log.entity_type
-                      ? log.entity_type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
-                      : "-";
+            <>
+              <ScrollArea className="flex-1">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Date</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Action</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[40%]">Description</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">User</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground w-[15%]">Entity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log, idx) => {
+                      const user = log.user_name || "System";
+                      const message = getActionMessage(log.action, log.description);
+                      const entity = log.entity_type
+                        ? log.entity_type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
+                        : "-";
 
-                    return (
-                      <tr
-                        key={log.id || idx}
-                        className={`border-b border-border/40 hover:bg-accent/30 transition-colors ${idx % 2 === 0 ? "bg-card/50" : "bg-background"}`}
-                      >
-                        <td className="py-3 px-4 text-muted-foreground text-xs whitespace-nowrap">
-                          {formatDate(log.created_at)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge variant="outline" className={`text-[10px] font-semibold ${getBadgeColor(log.action)}`}>
-                            {formatAction(log.action)}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-sm">{message}</td>
-                        <td className="py-3 px-4 text-sm font-medium">{user}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">{entity}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </ScrollArea>
+                      return (
+                        <tr
+                          key={log.id || idx}
+                          className={`border-b border-border/40 hover:bg-accent/30 transition-colors ${idx % 2 === 0 ? "bg-card/50" : "bg-background"}`}
+                        >
+                          <td className="py-3 px-4 text-muted-foreground text-xs whitespace-nowrap">
+                            {formatDate(log.created_at)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline" className={`text-[10px] font-semibold ${getBadgeColor(log.action)}`}>
+                              {formatAction(log.action)}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-sm">{message}</td>
+                          <td className="py-3 px-4 text-sm font-medium">{user}</td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">{entity}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </ScrollArea>
+
+              <div className="border-t px-4">
+                <Pagination
+                  totalItems={totalItems}
+                  page={page}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={setPageSize}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
-
-      {hasMore && !loading && logs.length > 0 && (
-        <div className="flex justify-center">
-          <Button variant="outline" size="sm" onClick={() => { setPage(page + 1); fetchLogs(page + 1); }}>
-            Load More
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

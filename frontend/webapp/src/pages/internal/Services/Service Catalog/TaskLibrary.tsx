@@ -17,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import DataToolbar from "@/components/DataToolbar";
 
 import TaskLibraryModal from "@/components/popupModal/ServiceCatalog/TaskLibraryModal";
@@ -76,9 +76,6 @@ const TaskLibraryList: React.FC = () => {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskLibraryItem | null>(null);
 
-  const { page, setPage, pageSize, setPageSize, paginate } =
-    usePagination(25);
-
   /* ================= LOAD ================= */
   useEffect(() => {
     seedTaskLibrary();
@@ -103,11 +100,7 @@ const TaskLibraryList: React.FC = () => {
     });
   }, [tasks, search]);
 
-  const paginated = paginate(filtered);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, pageSize]);
 
   /* ================= CRUD ================= */
 
@@ -216,7 +209,7 @@ const TaskLibraryList: React.FC = () => {
             </TableHeader>
 
             <TableBody>
-              {paginated.map((t) => (
+              {filtered.map((t) => (
                 <TableRow
                   key={t.id}
                   className="rounded-lg border bg-card shadow-sm hover:shadow-md"
@@ -268,17 +261,6 @@ const TaskLibraryList: React.FC = () => {
 
           </Table>
         </ScrollArea>
-
-        {/* PAGINATION */}
-        <div className="border-t mx-3">
-          <Pagination
-            totalItems={filtered.length}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        </div>
       </div>
     </div>
   );

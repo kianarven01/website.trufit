@@ -34,7 +34,7 @@ import {
 
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Pagination } from "@/components/ui/pagination";
+
 import { ImageIcon, MoreVertical, Trash2, RefreshCw, Eye } from "lucide-react";
 import api from "@/api/axios";
 
@@ -106,12 +106,6 @@ const Estimates: React.FC = () => {
     status: "all",
     archived: "false",
   });
-  const [pagination, setPagination] = useState({
-    total: 0,
-    per_page: 25,
-    current_page: 1,
-    last_page: 1,
-  });
 
   // Confirm dialogs
   const [confirmArchive, setConfirmArchive] = useState<Estimate | null>(null);
@@ -127,8 +121,7 @@ const Estimates: React.FC = () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
-      params.set("per_page", String(pagination.per_page));
-      params.set("page", String(pagination.current_page));
+      params.set("per_page", "1000");
       if (search) params.set("search", search);
       if (filters.status !== "all") params.set("status", filters.status);
       if (showArchived) params.set("archived", "true");
@@ -162,27 +155,17 @@ const Estimates: React.FC = () => {
       });
 
       setEstimates(normalized);
-      setPagination({
-        total: meta.total || 0,
-        per_page: meta.per_page || 25,
-        current_page: meta.current_page || 1,
-        last_page: meta.last_page || 1,
-      });
     } catch (err) {
       console.error("Failed to load estimates", err);
       setEstimates([]);
     } finally {
       setIsLoading(false);
     }
-  }, [pagination.current_page, pagination.per_page, search, filters.status, showArchived]);
+  }, [search, filters.status, showArchived]);
 
   useEffect(() => {
     fetchEstimates();
   }, [fetchEstimates]);
-
-  useEffect(() => {
-    setPagination((prev) => ({ ...prev, current_page: 1 }));
-  }, [search, filters.status, filters.archived]);
 
   /* ================= ACTIONS ================= */
 
@@ -420,16 +403,6 @@ const Estimates: React.FC = () => {
               </TableBody>
             </Table>
           </ScrollArea>
-
-          <div className="border-t mx-3">
-            <Pagination
-              totalItems={pagination.total}
-              page={pagination.current_page}
-              pageSize={pagination.per_page}
-              onPageChange={(p) => setPagination((prev) => ({ ...prev, current_page: p }))}
-              onPageSizeChange={(size) => setPagination((prev) => ({ ...prev, per_page: size, current_page: 1 }))}
-            />
-          </div>
         </div>
       ) : (
         <Card>

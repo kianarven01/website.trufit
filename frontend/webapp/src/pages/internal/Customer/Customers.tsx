@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
-import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import DataToolbar from "@/components/DataToolbar";
 import CustomerFormModal from "@/components/popupModal/Customers/addCustomer";
 import { ImageIcon } from "lucide-react";
@@ -58,9 +58,6 @@ const CustomersList: React.FC = () => {
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [vehicleModels, setVehicleModels] = useState<VehicleModel[]>([]);
-
-  const { page, setPage, pageSize, setPageSize, paginate } =
-    usePagination(25);
 
   const getFullName = (c: Customer) =>
     `${c.firstName} ${c.lastName}`.trim();
@@ -301,11 +298,6 @@ const toolbarFilters = [
   },
 ];
 
-  const paginated = paginate(filtered);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, pageSize]);
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden">
@@ -346,7 +338,7 @@ const toolbarFilters = [
 
               <TableBody>
                 {filtered.length > 0 ? (
-                  paginated.map((c) => (
+                  filtered.map((c) => (
                     <TableRow
                       key={c.id}
                       onClick={() => navigate(`${c.id}`)}
@@ -409,14 +401,6 @@ const toolbarFilters = [
               </TableBody>
             </Table>
           </ScrollArea>
-
-          <Pagination
-            totalItems={filtered.length}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
         </div>
       ) : (
         <Card>

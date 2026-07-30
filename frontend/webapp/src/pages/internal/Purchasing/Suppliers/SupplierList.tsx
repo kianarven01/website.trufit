@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+
 import SupplierModal from "@/components/popupModal/Purchasing/addSupplier";
 import { ImageIcon } from "lucide-react";
 import api from "@/api/axios";
@@ -61,10 +62,6 @@ const SupplierList: React.FC = () => {
     void loadSuppliers();
   }, []);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
-
   /* FILTER */
 const filtered = suppliers.filter((s) => {
   const q = search.toLowerCase().trim();
@@ -79,7 +76,7 @@ const filtered = suppliers.filter((s) => {
     s.viber?.toLowerCase().includes(q) ||
     s.contactPerson?.toLowerCase().includes(q)
   );
-});
+}  );
 
   const paginated = paginate(filtered);
 
@@ -185,18 +182,15 @@ const filtered = suppliers.filter((s) => {
             </Table>
           </ScrollArea>
 
-          {/* PAGINATION */}
-          {filtered.length > 0 && (
-            <div className="border-t mx-3">
-              <Pagination
-                totalItems={filtered.length}
-                page={page}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={setPageSize}
-              />
-            </div>
-          )}
+          <div className="border-t px-4">
+            <Pagination
+              totalItems={filtered.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         </div>
       ) : (
         <Card>

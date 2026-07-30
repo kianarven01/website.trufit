@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   DashboardSquare01Icon,
@@ -76,11 +77,13 @@ interface NavItem {
   icon: any;
   path?: string;
   roles?: string[];
+  permissions?: string[];
   children?: {
     label: string;
     path: string;
     icon: any;
     roles?: string[];
+    permissions?: string[];
   }[];
 }
 
@@ -90,8 +93,18 @@ const navItems: NavItem[] = [
     icon: DashboardSquare01Icon,
     path: "/webapp/dashboard",
   },
-  { label: "Appointments", icon: Calendar03Icon, path: "/webapp/appointments" },
-  { label: "Customers", path: "/webapp/customers", icon: UserGroupIcon },
+  {
+    label: "Appointments",
+    icon: Calendar03Icon,
+    path: "/webapp/appointments",
+    permissions: ["appointments.view", "appointments.manage"],
+  },
+  {
+    label: "Customers",
+    path: "/webapp/customers",
+    icon: UserGroupIcon,
+    permissions: ["customers.view", "customers.manage"],
+  },
   {
     label: "Services",
     icon: Activity01Icon,
@@ -100,11 +113,13 @@ const navItems: NavItem[] = [
         label: "Job Orders",
         path: "/webapp/services/job-orders",
         icon: Task01Icon,
+        permissions: ["services.view_job_orders", "services.manage_job_orders"],
       },
       {
         label: "Service Catalog",
         path: "/webapp/services/service-catalog",
         icon: Settings01Icon,
+        permissions: ["services.manage_catalog"],
       },
     ],
   },
@@ -116,16 +131,19 @@ const navItems: NavItem[] = [
         label: "Sales Orders",
         path: "/webapp/sales/sales-orders",
         icon: DocumentValidationIcon,
+        permissions: ["sales.view", "sales.manage"],
       },
       {
         label: "Estimates",
         path: "/webapp/sales/estimates",
         icon: Estimate01Icon,
+        permissions: ["sales.view", "sales.manage"],
       },
       {
         label: "Billing",
         path: "/webapp/sales/billing",
         icon: StickyNote01Icon,
+        permissions: ["sales.view", "sales.manage"],
       },
     ],
   },
@@ -137,21 +155,25 @@ const navItems: NavItem[] = [
         label: "Purchase Orders",
         path: "/webapp/purchasing/purchase-orders",
         icon: PackageReceive01Icon,
+        permissions: ["purchasing.view", "purchasing.manage"],
       },
       {
         label: "Goods Receipts",
         path: "/webapp/purchasing/goods-receipts",
         icon: TaskDone01Icon,
+        permissions: ["purchasing.view", "purchasing.manage"],
       },
       {
         label: "Supplier Bills",
         path: "/webapp/purchasing/supplier-bills",
         icon: StickyNote01Icon,
+        permissions: ["purchasing.view", "purchasing.manage"],
       },
       {
         label: "Suppliers",
         path: "/webapp/purchasing/suppliers",
         icon: Briefcase01Icon,
+        permissions: ["purchasing.view", "purchasing.manage"],
       },
     ],
   },
@@ -163,16 +185,19 @@ const navItems: NavItem[] = [
         label: "Product Catalog",
         path: "/webapp/products/product-catalog",
         icon: Package01Icon,
+        permissions: ["products.view", "products.manage"],
       },
       {
         label: "Inventory",
         path: "/webapp/products/inventory",
         icon: WarehouseIcon,
+        permissions: ["products.view", "products.manage"],
       },
       {
         label: "Warehouse",
         path: "/webapp/products/warehouse",
         icon: Building03Icon,
+        permissions: ["products.view", "products.manage"],
       },
     ],
   },
@@ -184,26 +209,25 @@ const navItems: NavItem[] = [
         label: "Sales Summary",
         path: "/webapp/reports/sales-summary",
         icon: Analytics01Icon,
-      },
-      {
-        label: "Sales Order List",
-        path: "/webapp/reports/sales-orders",
-        icon: DocumentValidationIcon,
+        permissions: ["sales.view"],
       },
       {
         label: "Reorder & Forecast",
         path: "/webapp/reports/reorder-forecast",
         icon: ChartBarLineIcon,
+        permissions: ["products.view", "purchasing.view"],
       },
       {
         label: "Audit Log",
         path: "/webapp/reports/audit-log",
         icon: Activity01Icon,
+        permissions: ["system.manage_employees"],
       },
       {
         label: "Stock Movement",
         path: "/webapp/purchasing/stock-ledger",
         icon: Exchange01Icon,
+        permissions: ["products.view"],
       },
     ],
   },
@@ -215,17 +239,19 @@ const navItems: NavItem[] = [
         label: "Current Employees",
         path: "/webapp/employee-management/current-employees",
         icon: UserGroup02Icon,
+        permissions: ["system.manage_employees"],
       },
       {
         label: "Onboarding",
         path: "/webapp/employee-management/onboarding-employees",
         icon: UserAdd01Icon,
+        permissions: ["system.onboard"],
       },
       {
         label: "Roles and Permissions",
         path: "/webapp/settings/roles-and-permissions",
         icon: UserShield01Icon,
-        roles: ["admin"],
+        permissions: ["system.manage_roles"],
       },
     ],
   },
@@ -254,6 +280,7 @@ const mockNotifications = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const { hasPermission, hasRole } = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<string[]>([]);
@@ -282,14 +309,37 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const userRole = user?.role?.toLowerCase() || "admin";
 
-  const filteredNavItems = navItems.map((item) => {
-    if (!item.children) return item;
-    const filteredChildren = item.children.filter((child) => {
-      if (!child.roles) return true;
-      return child.roles.includes(userRole);
+  const filteredNavItems = navItems
+    .filter((item) => {
+      // Filter parent items by permissions
+      if (!item.children && item.permissions && item.permissions.length > 0) {
+        return item.permissions.some((p) => hasPermission(p));
+      }
+      if (!item.children && item.roles && item.roles.length > 0) {
+        return item.roles.includes(userRole);
+      }
+      return true;
+    })
+    .map((item) => {
+      if (!item.children) return item;
+      const filteredChildren = item.children.filter((child) => {
+        if (child.permissions && child.permissions.length > 0) {
+          return child.permissions.some((p) => hasPermission(p));
+        }
+        if (child.roles && child.roles.length > 0) {
+          return child.roles.includes(userRole);
+        }
+        return true;
+      });
+      return { ...item, children: filteredChildren };
+    })
+    .filter((item) => {
+      // Hide parent groups with no visible children
+      if (item.children && item.children.length === 0) {
+        return false;
+      }
+      return true;
     });
-    return { ...item, children: filteredChildren };
-  });
 
   // Auto-expand active group on route change
   useEffect(() => {

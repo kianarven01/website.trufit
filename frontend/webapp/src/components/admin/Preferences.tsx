@@ -21,15 +21,26 @@ import {
   Calendar,
   ShoppingBag,
   TrendingUp,
-  Sliders,
   Settings,
-  HelpCircle
+  HelpCircle,
+  ChevronRight,
+  Check,
+  AlertTriangle,
+  UserCog,
+  Package,
+  Truck,
+  Receipt,
+  ClipboardList,
+  Wrench,
+  BarChart3,
+  FileText,
 } from "lucide-react";
 
 interface Role {
   id: number;
   name: string;
   permissions: string[];
+  employee_count?: number;
 }
 
 interface PermissionItem {
@@ -41,48 +52,88 @@ interface PermissionItem {
 interface PermissionGroup {
   title: string;
   icon: React.ComponentType<any>;
+  color: string;
   permissions: PermissionItem[];
 }
 
 const permissionGroups: PermissionGroup[] = [
   {
-    title: "Appointments & Customers",
+    title: "Appointments & Calendar",
     icon: Calendar,
+    color: "text-blue-500",
     permissions: [
-      { id: "appointments.view", label: "View Appointments", description: "Read-only access to calendar schedules and logs" },
-      { id: "appointments.manage", label: "Manage Appointments", description: "Create, reschedule, or cancel appointments" },
-      { id: "customers.view", label: "View Customers", description: "Access customer profile lists and vehicle history" },
-      { id: "customers.manage", label: "Manage Customers", description: "Add, edit, or remove customer accounts" },
+      { id: "appointments.view", label: "View Appointments", description: "Read-only access to calendar schedules and appointment logs" },
+      { id: "appointments.manage", label: "Manage Appointments", description: "Create, reschedule, confirm, or cancel appointments" },
     ],
   },
   {
-    title: "Sales & Services",
+    title: "Customer Management",
+    icon: Users,
+    color: "text-violet-500",
+    permissions: [
+      { id: "customers.view", label: "View Customers", description: "Access customer profiles, contact info, and vehicle history" },
+      { id: "customers.manage", label: "Manage Customers", description: "Add, edit, or remove customer accounts and vehicles" },
+    ],
+  },
+  {
+    title: "Job Orders & Services",
+    icon: Wrench,
+    color: "text-amber-500",
+    permissions: [
+      { id: "services.view_job_orders", label: "View Job Orders", description: "Track service tasks, job status, and technician assignments" },
+      { id: "services.manage_job_orders", label: "Manage Job Orders", description: "Create, dispatch, update status, and close job orders" },
+    ],
+  },
+  {
+    title: "Service Catalog",
+    icon: ClipboardList,
+    color: "text-orange-500",
+    permissions: [
+      { id: "services.manage_catalog", label: "Manage Service Catalog", description: "Edit services, pricing, task library, and categories" },
+    ],
+  },
+  {
+    title: "Sales & Estimates",
     icon: TrendingUp,
+    color: "text-emerald-500",
     permissions: [
-      { id: "services.view_job_orders", label: "View Job Orders", description: "Track service tasks and job status" },
-      { id: "services.manage_job_orders", label: "Manage Job Orders", description: "Create, dispatch, and close job orders" },
-      { id: "services.manage_catalog", label: "Manage Service Catalog", description: "Edit services, pricing, and categories" },
-      { id: "sales.view", label: "View Sales & Estimates", description: "Read estimates and transaction details" },
-      { id: "sales.manage", label: "Manage Sales & Estimates", description: "Draft, issue, and convert sales orders" },
+      { id: "sales.view", label: "View Sales & Estimates", description: "Read estimates, sales orders, and transaction details" },
+      { id: "sales.manage", label: "Manage Sales & Estimates", description: "Draft, issue, convert estimates to sales orders, and manage billing" },
     ],
   },
   {
-    title: "Operations & Inventory",
-    icon: ShoppingBag,
+    title: "Product Catalog",
+    icon: Package,
+    color: "text-cyan-500",
     permissions: [
-      { id: "products.view", label: "View Product Catalog", description: "Check parts directory and retail catalog" },
-      { id: "products.manage", label: "Manage Product Catalog", description: "Add, edit, or deprecate stock products" },
-      { id: "purchasing.view", label: "View Purchasing", description: "View purchase orders and suppliers list" },
-      { id: "purchasing.manage", label: "Manage Purchasing", description: "Issue POs and manage supplier relations" },
+      { id: "products.view", label: "View Products", description: "Check parts directory, vehicle variants, and retail catalog" },
+      { id: "products.manage", label: "Manage Products", description: "Add, edit, archive, or deprecate stock products and variants" },
+    ],
+  },
+  {
+    title: "Purchasing & Suppliers",
+    icon: Truck,
+    color: "text-rose-500",
+    permissions: [
+      { id: "purchasing.view", label: "View Purchasing", description: "View purchase orders, goods receipts, supplier bills, and stock movements" },
+      { id: "purchasing.manage", label: "Manage Purchasing", description: "Create POs, receive goods, process supplier bills, and manage suppliers" },
+    ],
+  },
+  {
+    title: "Employee Management",
+    icon: UserCog,
+    color: "text-indigo-500",
+    permissions: [
+      { id: "system.manage_employees", label: "Manage Employees", description: "View employee profiles, update details, and terminate accounts" },
+      { id: "system.onboard", label: "Employee Onboarding", description: "Generate registration keys and onboard new employees" },
     ],
   },
   {
     title: "System Administration",
     icon: Settings,
+    color: "text-slate-500",
     permissions: [
-      { id: "system.manage_employees", label: "Manage Employees", description: "View employee profiles and soft-delete" },
-      { id: "system.onboard", label: "Employee Onboarding", description: "Generate new employee registration keys" },
-      { id: "system.manage_roles", label: "Manage Roles & UAC", description: "Full access to modify user roles and permissions" },
+      { id: "system.manage_roles", label: "Manage Roles & Permissions", description: "Full access to create, edit, and delete user roles and permissions" },
     ],
   },
 ];
@@ -95,10 +146,25 @@ const Preferences: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     fetchRoles();
   }, []);
+
+  useEffect(() => {
+    if (selectedRole) {
+      const originalPerms: Record<string, boolean> = {};
+      selectedRole.permissions.forEach((p) => {
+        originalPerms[p] = true;
+      });
+      const currentActiveCount = Object.keys(rolePermissions).filter((k) => rolePermissions[k]).length;
+      const originalActiveCount = Object.keys(originalPerms).filter((k) => originalPerms[k]).length;
+      setHasChanges(roleName !== selectedRole.name || currentActiveCount !== originalActiveCount);
+    } else {
+      setHasChanges(roleName.trim().length > 0);
+    }
+  }, [roleName, rolePermissions, selectedRole]);
 
   const fetchRoles = async () => {
     setIsLoading(true);
@@ -115,8 +181,7 @@ const Preferences: React.FC = () => {
         }));
         setRoles(fetchedRoles);
         
-        // Auto-select first role if available
-        if (fetchedRoles.length > 0) {
+        if (fetchedRoles.length > 0 && !selectedRole) {
           handleSelectRole(fetchedRoles[0]);
         }
       }
@@ -128,10 +193,13 @@ const Preferences: React.FC = () => {
   };
 
   const handleSelectRole = (role: Role) => {
+    if (hasChanges && !confirm("You have unsaved changes. Discard them?")) {
+      return;
+    }
     setSelectedRole(role);
     setRoleName(role.name);
+    setHasChanges(false);
     
-    // Set active checkboxes
     const activePerms: Record<string, boolean> = {};
     role.permissions.forEach((p) => {
       activePerms[p] = true;
@@ -140,9 +208,13 @@ const Preferences: React.FC = () => {
   };
 
   const handleCreateNewRole = () => {
+    if (hasChanges && !confirm("You have unsaved changes. Discard them?")) {
+      return;
+    }
     setSelectedRole(null);
     setRoleName("");
     setRolePermissions({});
+    setHasChanges(false);
   };
 
   const handleTogglePermission = (id: string, checked: boolean) => {
@@ -150,6 +222,20 @@ const Preferences: React.FC = () => {
       ...prev,
       [id]: checked,
     }));
+  };
+
+  const handleToggleGroup = (group: PermissionGroup, checked: boolean) => {
+    const newPerms = { ...rolePermissions };
+    group.permissions.forEach((p) => {
+      newPerms[p.id] = checked;
+    });
+    setRolePermissions(newPerms);
+  };
+
+  const getGroupState = (group: PermissionGroup) => {
+    const total = group.permissions.length;
+    const active = group.permissions.filter((p) => rolePermissions[p.id]).length;
+    return { total, active, isAll: active === total, isPartial: active > 0 && active < total };
   };
 
   const handleSaveRole = async () => {
@@ -162,7 +248,6 @@ const Preferences: React.FC = () => {
 
     try {
       if (selectedRole?.id) {
-        // Update Role
         const res = await api.put(`/admin/roles/${selectedRole.id}`, {
           name: roleName,
           permissions: activePermArray,
@@ -170,10 +255,10 @@ const Preferences: React.FC = () => {
         
         if (res.data?.status === "success") {
           toast.success("Role permissions updated successfully!");
+          setHasChanges(false);
           await fetchRoles();
         }
       } else {
-        // Create Role
         const res = await api.post("/admin/roles", {
           name: roleName,
           permissions: activePermArray,
@@ -181,7 +266,11 @@ const Preferences: React.FC = () => {
 
         if (res.data?.status === "success") {
           toast.success("New role registered successfully!");
+          setHasChanges(false);
           await fetchRoles();
+          if (res.data?.data) {
+            handleSelectRole(res.data.data);
+          }
         }
       }
     } catch (error: any) {
@@ -197,6 +286,10 @@ const Preferences: React.FC = () => {
     const roleToDelete = roles.find((r) => r.id === roleId);
     if (roleToDelete?.name.toLowerCase() === "admin") {
       return toast.error("The system Admin role is immutable and cannot be deleted");
+    }
+
+    if (roleToDelete?.employees_count && roleToDelete.employees_count > 0) {
+      return toast.error(`Cannot delete role assigned to ${roleToDelete.employees_count} employee(s). Reassign them first.`);
     }
 
     if (!confirm(`Are you sure you want to delete the "${roleToDelete?.name}" role?`)) {
@@ -221,6 +314,8 @@ const Preferences: React.FC = () => {
       setIsDeleting(null);
     }
   };
+
+  const totalPermissions = Object.keys(rolePermissions).filter((k) => rolePermissions[k]).length;
 
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden bg-background">
@@ -283,7 +378,12 @@ const Preferences: React.FC = () => {
                             {r.name}
                           </span>
                           <span className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                            {r.permissions.length} modules granted
+                            {r.permissions.length} permissions
+                            {r.employees_count !== undefined && (
+                              <span className="ml-1">
+                                · {r.employees_count} {r.employees_count === 1 ? 'employee' : 'employees'}
+                              </span>
+                            )}
                           </span>
                         </div>
                         {!isAdmin && (
@@ -319,14 +419,28 @@ const Preferences: React.FC = () => {
                   onChange={(e) => setRoleName(e.target.value)}
                   className="w-full bg-background font-semibold"
                 />
+                {selectedRole && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    {totalPermissions} of {Object.values(permissionGroups).flat().length} permissions enabled
+                  </p>
+                )}
               </div>
               <Button
                 onClick={handleSaveRole}
-                disabled={isSaving}
+                disabled={isSaving || (!hasChanges && !!selectedRole)}
                 className="shrink-0 flex items-center gap-1.5 shadow-sm"
               >
-                <Save className="h-4 w-4" />
-                {isSaving ? "Saving..." : selectedRole ? "Save Configurations" : "Register New Role"}
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    {selectedRole ? "Save Changes" : "Create Role"}
+                  </>
+                )}
               </Button>
             </div>
 
@@ -334,13 +448,29 @@ const Preferences: React.FC = () => {
               <div className="p-6 space-y-6 max-w-5xl">
                 {permissionGroups.map((group) => {
                   const Icon = group.icon;
+                  const groupState = getGroupState(group);
                   return (
                     <div key={group.title} className="border border-border/60 rounded-xl overflow-hidden bg-card shadow-sm">
-                      <div className="px-5 py-4 border-b border-border/40 bg-accent/5 flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                          {group.title}
-                        </h3>
+                      <div className="px-5 py-4 border-b border-border/40 bg-accent/5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                            {group.title}
+                          </h3>
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            ({groupState.active}/{groupState.total})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={groupState.isAll}
+                            onCheckedChange={(checked) => handleToggleGroup(group, checked === true)}
+                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          />
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            {groupState.isAll ? "All" : groupState.isPartial ? "Partial" : "None"}
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="divide-y divide-border/40">

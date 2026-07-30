@@ -1,8 +1,5 @@
 import axios from "axios";
 
-// When we use just `/api`, Axios will send requests to whatever domain the frontend is on
-// (e.g., https://app.trufitautocenter.com/api or http://localhost:5173/api)
-// Vercel and Vite will then PROXY that request to the real Render backend.
 const api = axios.create({
   baseURL: "/api",
   headers: {
@@ -20,22 +17,35 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// RESPONSE INTERCEPTOR: Handle the "incoming" 401 errors
+// RESPONSE INTERCEPTOR: Handle auth errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const isLoginPage = window.location.pathname.includes("/login");
+    const requestUrl = error.config?.url || "";
 
-    if (error.response?.status === 401 && !isLoginPage) {
+    // Skip redirect for auth verify - let AuthContext handle it
+    const isAuthVerify = requestUrl.includes("/auth/verify");
+
+    // Handle 401 - session expired (only for non-login, non-verify routes)
+    if (error.response?.status === 401 && !isLoginPage && !isAuthVerify) {
       console.warn("Unauthorized! Clearing session...");
 
-      // Use the standardized trufit_ keys
       localStorage.removeItem("trufit_token");
       localStorage.removeItem("trufit_user");
 
-      // Use replace so the user can't "Go Back" to the broken dashboard
-      window.location.replace("/webapp/login?session=expired");
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes("/login")) {
+        window.location.replace("/webapp/login?session=expired");
+      }
     }
+
+    // Handle 403 - forbidden (don't clear session, just reject)
+    if (error.response?.status === 403) {
+      console.warn("Forbidden: Insufficient permissions for", requestUrl);
+      // Don't clear session or redirect - just let the component handle the error
+    }
+
     return Promise.reject(error);
   },
 );

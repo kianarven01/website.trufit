@@ -52,6 +52,7 @@ interface Technician {
   first_name: string;
   last_name: string;
   position?: string;
+  role_name?: string;
 }
 
 interface Vehicle {
@@ -221,20 +222,20 @@ const JobOrderDetail: React.FC = () => {
     }
   }, [jobOrder?.timer_status, jobOrder?.timer_started_at, jobOrder?.timer_total_seconds, jobOrder?.elapsed_seconds]);
 
-  /* EMPLOYEES FETCH */
+  /* TECHNICIANS FETCH */
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchTechnicians = async () => {
       try {
-        const res = await api.get("/admin/employees");
+        const res = await api.get("/job-orders/technician-options");
         const rawData = res.data;
         const data = rawData?.data || rawData || [];
         const list = Array.isArray(data) ? data : [];
         setEmployees(list);
       } catch (err) {
-        console.error("Failed to load employees", err);
+        console.error("Failed to load technicians", err);
       }
     };
-    fetchEmployees();
+    fetchTechnicians();
   }, [id]);
 
   /* STATUS */
@@ -376,7 +377,7 @@ const JobOrderDetail: React.FC = () => {
   const activeTechs = (jobOrder.technicians || []).filter((t) => !t.removed_at);
   const pastTechs = (jobOrder.technicians || []).filter((t) => t.removed_at);
   const employeeList = employees.map((e) => ({
-    label: `${e.first_name || ""} ${e.last_name || ""}`.trim(),
+    label: `${e.first_name || ""} ${e.last_name || ""}`.trim() + (e.role_name ? ` (${e.role_name})` : ""),
     value: String(e.id),
   }));
 

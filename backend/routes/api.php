@@ -4,26 +4,6 @@ use Illuminate\Support\Facades\Route;
 use App\Domains\Auth\Http\Controllers\AuthController;
 use App\Domains\KeyManagement\Http\Controllers\KeyController;
 
-
-
-// Product + Reference routes
-require app_path('Domains/Product/routes.php');
-
-// Vehicle routes
-require app_path('Domains/Vehicle/routes.php');
-
-// Inventory routes
-require app_path('Domains/Inventory/routes.php');
-
-// Supplier routes
-require app_path('Domains/Supplier/routes.php');
-
-/*
-|--------------------------------------------------------------------------
-| Supplier Reference Routes
-|--------------------------------------------------------------------------
-*/
-
 /*
 |--------------------------------------------------------------------------
 | Authentication Domain
@@ -48,10 +28,22 @@ Route::post('/register', [KeyController::class, 'register']);
 
 /*
 |--------------------------------------------------------------------------
-| Admin & Management Domains (Protected)
+| Protected Routes (Authentication Required)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
+
+    // Product + Reference routes
+    require app_path('Domains/Product/routes.php');
+
+    // Vehicle routes
+    require app_path('Domains/Vehicle/routes.php');
+
+    // Inventory routes
+    require app_path('Domains/Inventory/routes.php');
+
+    // Supplier routes
+    require app_path('Domains/Supplier/routes.php');
 
     // Employee & Key Management Domain
     require app_path('Domains/Employee/routes.php');
@@ -63,7 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
     require app_path('Domains/SalesOrder/routes.php');
     require app_path('Domains/Billing/routes.php');
     require app_path('Domains/JobOrder/routes.php');
-    // Future Domains will go here:
-    // require app_path('Domains/Inventory/routes.php');
-    // require app_path('Domains/Sales/routes.php');
+    require app_path('Domains/Report/routes.php');
+
+    // Role & Permission Management Domain
+    require app_path('Domains/Role/routes.php');
 });

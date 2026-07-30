@@ -1,0 +1,495 @@
+openapi: 3.0.3
+info:
+  title: TruFit Auto Center API
+  description: |
+    REST API for TruFit Auto Center Management System.
+    This system manages appointments, customers, services, sales, inventory, purchasing, and employee operations.
+  version: 1.0.0
+  contact:
+    name: TruFit Development Team
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local Development Server
+
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: Employees
+    description: Employee management and onboarding
+  - name: Roles
+    description: Role and permission management (RBAC)
+  - name: Customers
+    description: Customer profile management
+  - name: Appointments
+    description: Appointment scheduling
+  - name: Services
+    description: Service catalog and job orders
+  - name: Sales
+    description: Estimates, sales orders, and billing
+  - name: Products
+    description: Product catalog management
+  - name: Inventory
+    description: Stock and inventory management
+  - name: Purchasing
+    description: Purchase orders, suppliers, and receiving
+  - name: Reports
+    description: Analytics and reporting endpoints
+  - name: Audit
+    description: System audit logs
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum Token
+
+  schemas:
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        employee_count:
+          type: integer
+
+    Employee:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+          format: email
+        position:
+          type: string
+        role_name:
+          type: string
+        status:
+          type: boolean
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+
+    Appointment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_name:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, COMPLETED, CANCELLED]
+
+    Estimate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        estimate_number:
+          type: string
+        customer_name:
+          type: string
+        total_amount:
+          type: number
+          format: float
+        status:
+          type: string
+
+    SalesOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        so_number:
+          type: string
+        Total:
+          type: number
+          format: float
+        Status:
+          type: string
+        type:
+          type: string
+
+    BillingStatement:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bill_number:
+          type: string
+        Total:
+          type: number
+          format: float
+        status:
+          type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        sku:
+          type: string
+
+    JobOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        jo_number:
+          type: string
+        status:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                remember:
+                  type: boolean
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Invalid credentials
+
+  /auth/verify:
+    get:
+      tags: [Auth]
+      summary: Verify current session
+      responses:
+        '200':
+          description: Session valid
+        '401':
+          description: Invalid/expired token
+
+  /admin/roles:
+    get:
+      tags: [Roles]
+      summary: List all roles
+      responses:
+        '200':
+          description: List of roles with permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Role'
+    post:
+      tags: [Roles]
+      summary: Create a new role
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Role created
+        '403':
+          description: Insufficient permissions
+
+  /admin/roles/{id}:
+    put:
+      tags: [Roles]
+      summary: Update a role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Role updated
+        '403':
+          description: Insufficient permissions
+    delete:
+      tags: [Roles]
+      summary: Delete a role
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Role deleted
+        '400':
+          description: Cannot delete Admin role or role with assigned employees
+        '403':
+          description: Insufficient permissions
+
+  /admin/employees:
+    get:
+      tags: [Employees]
+      summary: List all employees
+      responses:
+        '200':
+          description: List of employees
+
+  /admin/employees/{id}:
+    put:
+      tags: [Employees]
+      summary: Update employee details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                email:
+                  type: string
+                position:
+                  type: string
+                role_id:
+                  type: integer
+      responses:
+        '200':
+          description: Employee updated
+
+  /admin/onboard-employee:
+    post:
+      tags: [Employees]
+      summary: Generate registration key for new employee
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_id]
+              properties:
+                role_id:
+                  type: integer
+      responses:
+        '201':
+          description: Registration key generated
+        '403':
+          description: Insufficient permissions
+
+  /customers:
+    get:
+      tags: [Customers]
+      summary: List all customers
+      responses:
+        '200':
+          description: List of customers
+
+  /estimates:
+    get:
+      tags: [Sales]
+      summary: List estimates
+      responses:
+        '200':
+          description: Paginated list of estimates
+
+  /sales-orders:
+    get:
+      tags: [Sales]
+      summary: List sales orders
+      responses:
+        '200':
+          description: Paginated list of sales orders
+
+  /billing-statements:
+    get:
+      tags: [Sales]
+      summary: List billing statements
+      responses:
+        '200':
+          description: Paginated list of billing statements
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      responses:
+        '200':
+          description: List of products
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List inventory (grouped by product)
+      responses:
+        '200':
+          description: Grouped inventory data
+
+  /purchasing/purchase-orders:
+    get:
+      tags: [Purchasing]
+      summary: List purchase orders
+      responses:
+        '200':
+          description: List of purchase orders
+
+  /purchasing/suppliers:
+    get:
+      tags: [Purchasing]
+      summary: List suppliers
+      responses:
+        '200':
+          description: List of suppliers
+
+  /reports/sales:
+    get:
+      tags: [Reports]
+      summary: Get sales summary report
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Sales summary with daily data and top services
+
+  /reports/inventory:
+    get:
+      tags: [Reports]
+      summary: Get inventory report
+      responses:
+        '200':
+          description: Inventory summary with low stock items
+
+  /reports/financial:
+    get:
+      tags: [Reports]
+      summary: Get financial report
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Financial summary with payment data
+
+  /admin/audit-logs:
+    get:
+      tags: [Audit]
+      summary: List audit logs
+      responses:
+        '200':
+          description: Paginated audit log entries

@@ -7,6 +7,7 @@ const API_URL =
 interface AuthContextType {
   user: any;
   role: string | null;
+  permissions: string[];
   loading: boolean;
   login: (
     u: string,
@@ -17,6 +18,10 @@ interface AuthContextType {
   updateUser: (userData: any) => void;
   refreshUser: () => Promise<void>;
   finalizeLogin: (authPayload: any) => void;
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (...permissions: string[]) => boolean;
+  hasAllPermissions: (...permissions: string[]) => boolean;
+  hasRole: (...roles: string[]) => boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -26,6 +31,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const hasInitialized = useRef(false);
+
+  const permissions: string[] = user?.permissions ?? [];
+  const isRoleAdmin = user?.role?.toLowerCase() === "admin";
+
+  const hasPermission = (permission: string): boolean => {
+    if (isRoleAdmin) return true;
+    return permissions.includes(permission);
+  };
+
+  const hasAnyPermission = (...perms: string[]): boolean => {
+    if (isRoleAdmin) return true;
+    return perms.some((p) => permissions.includes(p));
+  };
+
+  const hasAllPermissions = (...perms: string[]): boolean => {
+    if (isRoleAdmin) return true;
+    return perms.every((p) => permissions.includes(p));
+  };
+
+  const hasRole = (...roles: string[]): boolean => {
+    if (!user?.role) return false;
+    return roles.some((r) => r.toLowerCase() === user.role.toLowerCase());
+  };
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -56,9 +84,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem("trufit_user", JSON.stringify(userData));
         }
       } catch (error: any) {
+        // Only clear token on 401 - don't force redirect here
+        // The ProtectedRoute component will handle the redirect
         if (error.response?.status === 401) {
-          logout();
-          window.location.replace("/login?reason=session_expired");
+          localStorage.removeItem("trufit_token");
+          localStorage.removeItem("trufit_user");
+          setUser(null);
         }
       } finally {
         setLoading(false);
@@ -151,12 +182,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         user,
         role: user?.role || null,
+        permissions,
         login,
         logout,
         updateUser,
         refreshUser,
         finalizeLogin,
         loading,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
+        hasRole,
       }}
     >
       {children}

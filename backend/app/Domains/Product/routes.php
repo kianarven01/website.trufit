@@ -10,78 +10,77 @@ use App\Domains\Product\Http\Controllers\ProductVehicleCompatibilityController;
 use App\Domains\Supplier\Http\Controllers\SupplierController;
 
 Route::prefix('products')->group(function () {
-    Route::get('/', [ProductController::class, 'index']);
-    Route::post('/', [ProductController::class, 'store']);
+    // Product CRUD - list and create
+    Route::get('/', [ProductController::class, 'index'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/', [ProductController::class, 'store'])->middleware('permission:products.manage');
 
-    // Reference data routes
-    Route::get('/categories', [ProductReferenceController::class, 'categories']);
-    Route::post('/categories', [ProductReferenceController::class, 'storeCategory']);
-    Route::put('/categories/{id}', [ProductReferenceController::class, 'updateCategory']);
-    Route::delete('/categories/{id}', [ProductReferenceController::class, 'deleteCategory']);
+    // Reference data - Categories
+    Route::get('/categories', [ProductReferenceController::class, 'categories'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/categories', [ProductReferenceController::class, 'storeCategory'])->middleware('permission:products.manage');
+    Route::put('/categories/{id}', [ProductReferenceController::class, 'updateCategory'])->middleware('permission:products.manage');
+    Route::delete('/categories/{id}', [ProductReferenceController::class, 'deleteCategory'])->middleware('permission:products.manage');
 
-    Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories']);
-    Route::post('/service-categories', [ProductReferenceController::class, 'storeServiceCategory']);
-    Route::put('/service-categories/{id}', [ProductReferenceController::class, 'updateServiceCategory']);
-    Route::delete('/service-categories/{id}', [ProductReferenceController::class, 'deleteServiceCategory']);
+    // Reference data - Service Categories (Service Catalog)
+    Route::get('/service-categories', [ProductReferenceController::class, 'serviceCategories'])->middleware('check.permission:services.view_job_orders,services.manage_catalog');
+    Route::post('/service-categories', [ProductReferenceController::class, 'storeServiceCategory'])->middleware('permission:services.manage_catalog');
+    Route::put('/service-categories/{id}', [ProductReferenceController::class, 'updateServiceCategory'])->middleware('permission:services.manage_catalog');
+    Route::delete('/service-categories/{id}', [ProductReferenceController::class, 'deleteServiceCategory'])->middleware('permission:services.manage_catalog');
 
-    Route::get('/units', [ProductReferenceController::class, 'units']);
-    Route::post('/units', [ProductReferenceController::class, 'storeUnit']);
-    Route::put('/units/{id}', [ProductReferenceController::class, 'updateUnit']);
-    Route::delete('/units/{id}', [ProductReferenceController::class, 'deleteUnit']);
+    // Reference data - Units
+    Route::get('/units', [ProductReferenceController::class, 'units'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/units', [ProductReferenceController::class, 'storeUnit'])->middleware('permission:products.manage');
+    Route::put('/units/{id}', [ProductReferenceController::class, 'updateUnit'])->middleware('permission:products.manage');
+    Route::delete('/units/{id}', [ProductReferenceController::class, 'deleteUnit'])->middleware('permission:products.manage');
 
-    Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers']);
-    Route::post('/manufacturers', [ProductReferenceController::class, 'storeManufacturer']);
-    Route::put('/manufacturers/{id}', [ProductReferenceController::class, 'updateManufacturer']);
-    Route::delete('/manufacturers/{id}', [ProductReferenceController::class, 'deleteManufacturer']);
+    // Reference data - Manufacturers
+    Route::get('/manufacturers', [ProductReferenceController::class, 'manufacturers'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/manufacturers', [ProductReferenceController::class, 'storeManufacturer'])->middleware('permission:products.manage');
+    Route::put('/manufacturers/{id}', [ProductReferenceController::class, 'updateManufacturer'])->middleware('permission:products.manage');
+    Route::delete('/manufacturers/{id}', [ProductReferenceController::class, 'deleteManufacturer'])->middleware('permission:products.manage');
 
-    Route::get('/parts', [ProductController::class, 'parts']);
-    Route::post('/parts', [ProductReferenceController::class, 'storePart']);
-    Route::put('/parts/{id}', [ProductReferenceController::class, 'updatePart']);
-    Route::delete('/parts/{id}', [ProductReferenceController::class, 'deletePart']);
+    // Reference data - Parts
+    Route::get('/parts', [ProductController::class, 'parts'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/parts', [ProductReferenceController::class, 'storePart'])->middleware('permission:products.manage');
+    Route::put('/parts/{id}', [ProductReferenceController::class, 'updatePart'])->middleware('permission:products.manage');
+    Route::delete('/parts/{id}', [ProductReferenceController::class, 'deletePart'])->middleware('permission:products.manage');
 
-    Route::get('/vehicles', [ProductReferenceController::class, 'vehicles']);
-    Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle']);
+    // Reference data - Vehicles
+    Route::get('/vehicles', [ProductReferenceController::class, 'vehicles'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/vehicles/custom', [ProductReferenceController::class, 'storeCustomVehicle'])->middleware('permission:products.manage');
 
-    Route::get('/service-types', [ProductReferenceController::class, 'serviceTypes']);
-    Route::get('/service-types/{id}', [ProductReferenceController::class, 'showServiceType']);
-    Route::post('/service-types', [ProductReferenceController::class, 'storeServiceType']);
-    Route::put('/service-types/{id}', [ProductReferenceController::class, 'updateServiceType']);
-    Route::delete('/service-types/{id}', [ProductReferenceController::class, 'destroyServiceType']);
+    // SKU Preview
+    Route::get('/sku-preview', [ProductSkuController::class, 'preview'])->middleware('check.permission:products.view,products.manage');
+
+    // Service Types (Service Catalog)
+    Route::get('/service-types', [ProductReferenceController::class, 'serviceTypes'])->middleware('check.permission:services.view_job_orders,services.manage_catalog');
+    Route::get('/service-types/{id}', [ProductReferenceController::class, 'showServiceType'])->middleware('check.permission:services.view_job_orders,services.manage_catalog');
+    Route::post('/service-types', [ProductReferenceController::class, 'storeServiceType'])->middleware('permission:services.manage_catalog');
+    Route::put('/service-types/{id}', [ProductReferenceController::class, 'updateServiceType'])->middleware('permission:services.manage_catalog');
+    Route::delete('/service-types/{id}', [ProductReferenceController::class, 'destroyServiceType'])->middleware('permission:services.manage_catalog');
 
     // Supplier routes used by Product screens
-    Route::get('/suppliers', [SupplierController::class, 'index']);
-    Route::post('/{productId}/suppliers', [ProductSupplierController::class, 'store']);
-    Route::put('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'update']);
-    Route::delete('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'destroy']);
+    Route::get('/suppliers', [SupplierController::class, 'index'])->middleware('check.permission:purchasing.view,purchasing.manage');
 
-    // Equivalent group routes
-    Route::get('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'index']);
-    Route::get('/{productId}/equivalent-candidates', [ProductEquivalentGroupController::class, 'candidates']);
-    Route::post('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'store']);
-    Route::post('/equivalent-groups/{groupId}/items', [ProductEquivalentGroupController::class, 'addItem']);
-    Route::delete('/equivalent-groups/{groupId}/items/{productId}', [ProductEquivalentGroupController::class, 'removeItem']);
+    // Equivalent group routes (non-UUID paths first)
+    Route::post('/equivalent-groups/{groupId}/items', [ProductEquivalentGroupController::class, 'addItem'])->middleware('permission:products.manage');
+    Route::delete('/equivalent-groups/{groupId}/items/{productId}', [ProductEquivalentGroupController::class, 'removeItem'])->middleware('permission:products.manage');
 
-    // Vehicle compatibility routes
-    Route::post('/{productId}/vehicle-compatibilities', [ProductVehicleCompatibilityController::class, 'store']);
-    Route::post('/{productId}/vehicle-compatibilities/sync-equivalents', [ProductVehicleCompatibilityController::class, 'syncToEquivalents']);
-    Route::delete('/{productId}/vehicle-compatibilities/{compatibilityId}', [ProductVehicleCompatibilityController::class, 'destroy']);
+    // Product by UUID - MUST be after all specific routes
+    Route::get('/{id}', [ProductController::class, 'show'])->middleware('check.permission:products.view,products.manage');
+    Route::patch('/{id}', [ProductController::class, 'update'])->middleware('permission:products.manage');
+    Route::put('/{id}', [ProductController::class, 'update'])->middleware('permission:products.manage');
+    Route::delete('/{id}', [ProductController::class, 'archive'])->middleware('permission:products.manage');
+    Route::delete('/{id}/force', [ProductController::class, 'forceDelete'])->middleware('permission:products.manage');
+    Route::patch('/{id}/restore', [ProductController::class, 'restore'])->middleware('permission:products.manage');
 
-    // SKU preview route
-    Route::get('/sku-preview', [ProductSkuController::class, 'preview']);
-
-    // Product edit route
-    Route::patch('/{id}', [ProductController::class, 'update']);
-    Route::put('/{id}', [ProductController::class, 'update']);
-
-    // Product permanent delete route (must be before /{id} to avoid catch-all)
-    Route::delete('/{id}/force', [ProductController::class, 'forceDelete']);
-
-    // Product restore route
-    Route::patch('/{id}/restore', [ProductController::class, 'restore']);
-
-    // Product archive route
-    Route::delete('/{id}', [ProductController::class, 'archive']);
-
-    // Product details route. Keep this last so it does not catch static routes above.
-    Route::get('/{id}', [ProductController::class, 'show']);
+    // Product sub-routes (must be after /{id})
+    Route::post('/{productId}/suppliers', [ProductSupplierController::class, 'store'])->middleware('permission:products.manage');
+    Route::put('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'update'])->middleware('permission:products.manage');
+    Route::delete('/{productId}/suppliers/{productSupplierId}', [ProductSupplierController::class, 'destroy'])->middleware('permission:products.manage');
+    Route::get('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'index'])->middleware('check.permission:products.view,products.manage');
+    Route::get('/{productId}/equivalent-candidates', [ProductEquivalentGroupController::class, 'candidates'])->middleware('check.permission:products.view,products.manage');
+    Route::post('/{productId}/equivalent-groups', [ProductEquivalentGroupController::class, 'store'])->middleware('permission:products.manage');
+    Route::post('/{productId}/vehicle-compatibilities', [ProductVehicleCompatibilityController::class, 'store'])->middleware('permission:products.manage');
+    Route::post('/{productId}/vehicle-compatibilities/sync-equivalents', [ProductVehicleCompatibilityController::class, 'syncToEquivalents'])->middleware('permission:products.manage');
+    Route::delete('/{productId}/vehicle-compatibilities/{compatibilityId}', [ProductVehicleCompatibilityController::class, 'destroy'])->middleware('permission:products.manage');
 });

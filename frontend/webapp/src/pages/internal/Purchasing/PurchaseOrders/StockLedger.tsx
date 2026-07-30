@@ -3,11 +3,12 @@ import api from "@/api/axios";
 import StockMovementTypeBadge from "@/components/purchasing/StockMovementTypeBadge";
 import PurchasingToast, { PurchasingToastType } from "@/components/purchasing/PurchasingToast";
 import { formatDate, getCleanApiError, getRows } from "@/components/purchasing/purchasingUtils";
-import { TrendingUp, TrendingDown, ImageIcon } from "lucide-react";
+import { TrendingUp, TrendingDown, ImageIcon, ChevronDown, Check, X } from "lucide-react";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import DataToolbar from "@/components/DataToolbar";
 import { ScrollArea } from "@/components/ui/scrollArea";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface StockMovementRow {
@@ -23,7 +24,15 @@ interface StockMovementRow {
   createdBy?: string | null;
 }
 
-const movementFilters = ["ALL", "IN_RECEIPT", "OUT_SALES", "OUT_SUNDRIES", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "RETURN"];
+const movementFilters = [
+  { value: "ALL", label: "All Types" },
+  { value: "IN_RECEIPT", label: "In Receipt" },
+  { value: "OUT_SALES", label: "Out - Sales" },
+  { value: "OUT_SUNDRIES", label: "Out - Sundries" },
+  { value: "ADJUSTMENT_IN", label: "Adjustment In" },
+  { value: "ADJUSTMENT_OUT", label: "Adjustment Out" },
+  { value: "RETURN", label: "Return" },
+];
 
 const normalizeStockMovement = (row: any): StockMovementRow => ({
   id: String(row.id ?? ""),
@@ -58,6 +67,7 @@ const StockLedger = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState("ALL");
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [toast, setToast] = useState<{
     type: PurchasingToastType;
     title: string;
@@ -100,35 +110,75 @@ const StockLedger = () => {
     void loadStockMovements();
   }, [page, pageSize, activeType, search]);
 
+  const activeTypeLabel = movementFilters.find((f) => f.value === activeType)?.label || "All Types";
+
   return (
     <div className="w-full h-full px-4 py-2 flex flex-col gap-4 overflow-hidden select-none bg-background text-foreground">
       {toast && (
         <PurchasingToast type={toast.type} title={toast.title} message={toast.message} duration={4000} onClose={() => setToast(null)} />
       )}
 
-      {/* Toolbar */}
-      <DataToolbar
-        searchPlaceholder="Search part or reference..."
-        onSearch={(value) => { setSearch(value); setPage(1); }}
-      />
+      {/* Toolbar with dropdown filter */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <DataToolbar
+            searchPlaceholder="Search part or reference..."
+            onSearch={(value) => { setSearch(value); setPage(1); }}
+          />
+        </div>
 
-      {/* Filters Pill Bar */}
-      <div className="flex flex-wrap items-center bg-card/60 backdrop-blur-md border border-border/40 rounded-xl p-1 w-fit gap-1 shadow-sm">
-        {movementFilters.map((type) => (
-          <button
-            key={type}
-            type="button"
-            className={cn(
-              "px-4 py-1.5 text-xs font-semibold rounded-lg transition",
-              activeType === type
-                ? "bg-blue-600 dark:bg-blue-700 text-white shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => { setActiveType(type); setPage(1); }}
+        {/* Type Filter Dropdown */}
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+            className="gap-2 h-9"
           >
-            {type === "ALL" ? "All" : type}
-          </button>
-        ))}
+            {activeTypeLabel}
+            <ChevronDown className={cn("h-4 w-4 transition-transform", showTypeDropdown && "rotate-180")} />
+          </Button>
+
+          {showTypeDropdown && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowTypeDropdown(false)} />
+              <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-popover border border-border rounded-xl shadow-xl py-1 animate-in fade-in slide-in-from-top-2">
+                {movementFilters.map((filter) => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left",
+                      activeType === filter.value
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-foreground hover:bg-accent"
+                    )}
+                    onClick={() => {
+                      setActiveType(filter.value);
+                      setShowTypeDropdown(false);
+                      setPage(1);
+                    }}
+                  >
+                    <Check className={cn("h-4 w-4 shrink-0", activeType === filter.value ? "opacity-100" : "opacity-0")} />
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {activeType !== "ALL" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setActiveType("ALL"); setPage(1); }}
+            className="gap-1 h-9 text-muted-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        )}
       </div>
 
       {/* Table Container */}

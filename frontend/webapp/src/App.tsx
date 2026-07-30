@@ -7,6 +7,9 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; // Import this!
 import ProtectedRoute from "./components/ProtectedRoute";
+import PermissionRoute from "./components/PermissionRoute";
+import PermissionGate from "./components/PermissionGate";
+import AccessDenied from "./components/AccessDenied";
 
 import LoginPage from "./pages/internal/LoginPage";
 import Dashboard from "./pages/internal/Dashboard";
@@ -64,6 +67,14 @@ import Warehouse from "./pages/internal/Products/Warehouse";
 import Employees from "./pages/internal/HR/Employees"
 import OnboardingEmployees from "./pages/internal/HR/OnboardingEmployee"
 import RolesandPermissions from "./pages/internal/HR/RolesandPermissions";
+
+import SalesSummary from "./pages/internal/Reports/SalesSummary";
+import InventoryReports from "./pages/internal/Reports/InventoryReports";
+import FinancialReports from "./pages/internal/Reports/FinancialReports";
+import AuditLog from "./pages/internal/Reports/AuditLog";
+
+import ApiDocs from "./pages/internal/Documentation/ApiDocs";
+import UserManual from "./pages/internal/Documentation/UserManual";
 
 import AccountSettings from "./pages/internal/AccountSettings";
 
@@ -167,14 +178,38 @@ const App: React.FC = () => {
                 </Route>
               </Route>
 
-              <Route path="employee-management">
-                <Route path="current-employees" element={<Employees />} />
-                <Route path="onboarding-employees" element={<OnboardingEmployees />} />
+              <Route element={<PermissionRoute permissions={["system.manage_employees", "system.onboard"]} />}>
+                <Route path="employee-management">
+                  <Route path="current-employees" element={<Employees />} />
+                  <Route path="onboarding-employees" element={<OnboardingEmployees />} />
+                </Route>
               </Route>
 
               <Route path="settings">
-                <Route path="roles-and-permissions" element={<RolesandPermissions />} />
+                <Route
+                  path="roles-and-permissions"
+                  element={
+                    <PermissionGate permission="system.manage_roles" fallback={<AccessDenied />}>
+                      <RolesandPermissions />
+                    </PermissionGate>
+                  }
+                />
                 <Route path="account" element={<AccountSettings />} />
+              </Route>
+
+              {/* Reports */}
+              <Route path="reports">
+                <Route path="sales-summary" element={<SalesSummary />} />
+                <Route path="inventory" element={<InventoryReports />} />
+                <Route path="reorder-forecast" element={<InventoryReports />} />
+                <Route path="financial" element={<FinancialReports />} />
+                <Route path="audit-log" element={<AuditLog />} />
+              </Route>
+
+              {/* Documentation */}
+              <Route path="documentation">
+                <Route path="api-docs" element={<ApiDocs />} />
+                <Route path="user-manual" element={<UserManual />} />
               </Route>
 
               {/* Products */}

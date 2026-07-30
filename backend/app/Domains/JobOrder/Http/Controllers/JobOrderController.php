@@ -281,6 +281,34 @@ class JobOrderController extends Controller
 
     // ── Technician Endpoints ──────────────────────────────────
 
+    public function getTechnicianOptions(): JsonResponse
+    {
+        $technicianRoles = ['Technician', 'Technician Supervisor', 'Foreman'];
+
+        $employees = \App\Domains\Employee\Domain\Models\Employee::with('role')
+            ->where('status', true)
+            ->whereIn('roleID', function ($query) use ($technicianRoles) {
+                $query->select('id')
+                    ->from('Roles')
+                    ->whereIn('name', $technicianRoles);
+            })
+            ->orderBy('last_name', 'asc')
+            ->orderBy('first_name', 'asc')
+            ->get()
+            ->map(fn($e) => [
+                'id' => $e->id,
+                'first_name' => $e->first_name,
+                'last_name' => $e->last_name,
+                'position' => $e->position,
+                'role_name' => $e->role->name ?? 'Unassigned',
+            ]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $employees,
+        ]);
+    }
+
     public function assignTechnician(Request $request, string $id, AssignTechnician $useCase): JsonResponse
     {
         $validated = $request->validate([

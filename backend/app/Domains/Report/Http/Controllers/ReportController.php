@@ -17,31 +17,33 @@ class ReportController extends Controller
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
-        // Get total revenue and order count from BillingStatement (includes parts + services + supplies)
+        // Only count PAID billing statements as revenue
         $totalSales = DB::table('BillingStatement')
             ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
-            ->where('status', '!=', 'VOID')
+            ->where('status', 'Paid')
             ->sum('Total');
 
         $totalOrders = DB::table('BillingStatement')
             ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
-            ->where('status', '!=', 'VOID')
+            ->where('status', 'Paid')
             ->count();
 
-        $completedOrders = DB::table('SalesOrder')
-            ->whereBetween('created_at', [$start, $end])
-            ->where('Status', 'COMPLETED')
+        // Paid = completed billing
+        $completedOrders = DB::table('BillingStatement')
+            ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
+            ->where('status', 'Paid')
             ->count();
 
-        $pendingOrders = DB::table('SalesOrder')
-            ->whereBetween('created_at', [$start, $end])
-            ->where('Status', 'PENDING')
+        // Unpaid or Partially Paid = pending
+        $pendingOrders = DB::table('BillingStatement')
+            ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
+            ->whereIn('status', ['Unpaid', 'Partially Paid'])
             ->count();
 
-        // Daily revenue from BillingStatement (actual revenue)
+        // Daily revenue - only from PAID billing
         $dailySales = DB::table('BillingStatement')
             ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
-            ->where('status', '!=', 'VOID')
+            ->where('status', 'Paid')
             ->select(
                 DB::raw("DATE(\"Date\") as date"),
                 DB::raw('COUNT(*) as orders'),
@@ -51,12 +53,13 @@ class ReportController extends Controller
             ->orderBy('date')
             ->get();
 
-        // Sales by type from SalesOrder
-        $salesByType = DB::table('SalesOrder')
-            ->whereBetween('created_at', [$start, $end])
-            ->where('Status', '!=', 'VOID')
-            ->select('type', DB::raw('COUNT(*) as count'), DB::raw('SUM("Total") as total'))
-            ->groupBy('type')
+        // Sales by type - only from PAID billing
+        $salesByType = DB::table('BillingStatement')
+            ->join('SalesOrder', 'BillingStatement.SOID', '=', 'SalesOrder.id')
+            ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
+            ->where('BillingStatement.status', 'Paid')
+            ->select('SalesOrder.type', DB::raw('COUNT(*) as count'), DB::raw('SUM("BillingStatement"."Total") as total'))
+            ->groupBy('SalesOrder.type')
             ->get();
 
         // Get top items from BillingStatementItems with product details
@@ -73,7 +76,7 @@ class ReportController extends Controller
                      ->where('BillingStatementItems.type', '!=', 'supply');
             })
             ->whereBetween(DB::raw('"BillingStatement"."Date"'), [$start, $end])
-            ->where('BillingStatement.status', '!=', 'VOID')
+            ->where('BillingStatement.status', 'Paid')
             ->select(
                 DB::raw('CASE WHEN "BillingStatementItems"."type" = \'supply\' THEN "BillingStatementItems"."name" ELSE TRIM(COALESCE("Manufacturers"."name", \'\') || \' \' || COALESCE("Products"."part_number", \'\') || \' \' || "BillingStatementItems"."name") END as name'),
                 'BillingStatementItems.type',

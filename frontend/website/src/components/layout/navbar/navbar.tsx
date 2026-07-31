@@ -23,12 +23,6 @@ export default function Navbar() {
   const lastScrollY = useRef(0);
   const isLockedRef = useRef(false);
 
-  const careersUrl =
-    process.env.NEXT_PUBLIC_CAREERS_URL ||
-    (process.env.NODE_ENV === "development"
-      ? "http://localhost:3001"
-      : "https://careers.trufitautocenter.com");
-
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Services", href: "/services" },
@@ -36,7 +30,6 @@ export default function Navbar() {
     { name: "News", href: "/news" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
-    { name: "Careers", href: careersUrl },
   ];
 
   // handle custom hide event (e.g., from ProcessSection)
@@ -210,20 +203,9 @@ export default function Navbar() {
             <div className="hidden lg:flex flex-1 justify-center gap-12 ml-4">
               {navLinks.map((link) => {
                 const isActive =
-                  !link.external &&
-                  (pathname === link.href ||
-                    (link.href !== "/" && pathname?.startsWith(link.href)));
-                return link.external ? (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={getLinkStyle(false)}
-                  >
-                    {link.name}
-                  </a>
-                ) : (
+                  pathname === link.href ||
+                  (link.href !== "/" && pathname?.startsWith(link.href));
+                return (
                   <Link
                     key={link.name}
                     href={link.href}
@@ -280,24 +262,8 @@ export default function Navbar() {
               <div className="flex flex-col items-center gap-6 py-20 min-h-full">
                 {navLinks.map((link) => {
                   const isActive =
-                    !link.external &&
-                    (pathname === link.href ||
-                      (link.href !== "/" && pathname?.startsWith(link.href)));
-
-                  if (link.external) {
-                    return (
-                      <a
-                        key={link.name}
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-3xl transition-colors text-white hover:text-brand-red"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        {link.name}
-                      </a>
-                    );
-                  }
+                    pathname === link.href ||
+                    (link.href !== "/" && pathname?.startsWith(link.href));
 
                   return (
                     <Link

@@ -4,10 +4,19 @@ import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 
 interface Verse {
-  bookname: string
-  chapter: string
-  verse: string
+  reference: string
   text: string
+}
+
+const FALLBACK: Verse = {
+  reference: "Philippians 4:13",
+  text: "I can do all things through Christ who strengthens me."
+}
+
+const CACHE_KEY = "dailyVerse"
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
 }
 
 export default function BibleVerseMarquee() {
@@ -18,19 +27,33 @@ export default function BibleVerseMarquee() {
   useEffect(() => {
     const fetchVerse = async () => {
       try {
-        const response = await fetch("https://labs.bible.org/api/?passage=random&type=json")
-        const data = await response.json()
-        if (data && data.length > 0) {
-          setVerse(data[0])
+        // Check cache first
+        const cached = localStorage.getItem(CACHE_KEY)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          if (parsed.date === todayKey()) {
+            setVerse(parsed.verse)
+            return
+          }
+        }
+
+        const res = await fetch("https://beta.ourmanna.com/api/v1/get/?format=json&order=sequential&type=verse")
+        const data = await res.json()
+        const details = data?.verse?.details
+
+        if (details?.text && details?.reference) {
+          const v: Verse = {
+            reference: details.reference,
+            text: details.text.replace(/<[^>]*>?/gm, "")
+          }
+          setVerse(v)
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ date: todayKey(), verse: v }))
+        } else {
+          setVerse(FALLBACK)
         }
       } catch (error) {
         console.error("Failed to fetch Bible verse:", error)
-        setVerse({
-          bookname: "Philippians",
-          chapter: "4",
-          verse: "13",
-          text: "I can do all things through Christ who strengthens me."
-        })
+        setVerse(FALLBACK)
       } finally {
         setLoading(false)
       }
@@ -39,7 +62,6 @@ export default function BibleVerseMarquee() {
     fetchVerse()
   }, [])
 
-  // Show an empty but masked container while loading to prevent layout shift
   if (loading || !verse) {
     return (
       <div className="flex-1 overflow-hidden relative h-full flex items-center">
@@ -48,13 +70,11 @@ export default function BibleVerseMarquee() {
     )
   }
 
-  const cleanText = verse.text.replace(/<[^>]*>?/gm, "")
-  const verseText = `${verse.bookname} ${verse.chapter}:${verse.verse} - "${cleanText}"`
+  const verseText = `${verse.reference} - "${verse.text}"`
 
   return (
     <div className="flex-1 overflow-hidden relative h-full flex items-center">
-      {/* "Tunnel" effect container */}
-      <div 
+      <div
         className="relative w-full overflow-hidden h-full flex items-center"
         style={{
           maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
@@ -64,13 +84,13 @@ export default function BibleVerseMarquee() {
         <motion.div
           className="flex whitespace-nowrap w-max opacity-0"
           initial={{ x: "100%", opacity: 0 }}
-          animate={{ 
+          animate={{
             x: isLooping ? [0, "-50%"] : 0,
             opacity: 1
           }}
           transition={{
             x: {
-              duration: isLooping ? 35 : 15, // Initial entry is a bit faster than the loop
+              duration: isLooping ? 35 : 15,
               repeat: isLooping ? Infinity : 0,
               ease: "linear",
             },
@@ -80,7 +100,6 @@ export default function BibleVerseMarquee() {
             if (!isLooping) setIsLooping(true)
           }}
         >
-          {/* Dual clones for seamless looping */}
           <div className="flex items-center px-24 md:px-48">
             <span className="text-brand-red font-bold mr-2 shrink-0">Daily Bread:</span>
             <span className="font-medium tracking-wide">{verseText}</span>
